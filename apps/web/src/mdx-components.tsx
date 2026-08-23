@@ -40,7 +40,6 @@ function MdxImage({
       height={675}
       sizes="(max-width: 760px) 100vw, 720px"
       src={src}
-      style={{ height: "auto", width: "100%" }}
       title={title}
       width={1200}
     />

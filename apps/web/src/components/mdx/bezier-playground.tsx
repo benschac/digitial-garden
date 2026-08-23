@@ -9,8 +9,8 @@ export function BezierPlayground() {
   const path = `M 20 100 C 70 ${controlY}, 150 ${controlY}, 200 100`;
 
   return (
-    <section className="bezier-playground" aria-labelledby={`${inputId}-title`}>
-      <div className="bezier-playground__header">
+    <section aria-labelledby={`${inputId}-title`}>
+      <div>
         <h3 id={`${inputId}-title`}>Bezier curve playground</h3>
         <output htmlFor={inputId}>{bend}% bend</output>
       </div>
@@ -36,7 +36,7 @@ export function BezierPlayground() {
         type="range"
         value={bend}
       />
-      <p className="bezier-playground__fallback">
+      <p>
         The curve connects two fixed endpoints while both control points move
         vertically. The labeled slider changes their shared height.
       </p>

@@ -12,24 +12,24 @@ export default async function BlogIndexPage() {
   const posts = await getPublishedPosts();
 
   return (
-    <main className="shell">
-      <header className="page-header">
+    <main>
+      <header>
         <Link href="/">Benjamin Schachter</Link>
         <h1>Blog</h1>
         <p>Notes from the workbench: software, systems, and interaction.</p>
       </header>
-      <ol className="post-list">
+      <ol>
         {posts.map((post) => (
           <li key={post.slug}>
             <article>
-              <p className="eyebrow">
+              <p>
                 <time dateTime={post.publishedAt}>{post.publishedAt}</time>
               </p>
               <h2>
                 <Link href={`/blog/${post.slug}`}>{post.title}</Link>
               </h2>
               <p>{post.summary}</p>
-              <ul aria-label="Tags" className="tag-list">
+              <ul aria-label="Tags">
                 {post.tags.map((tag) => (
                   <li key={tag}>{tag}</li>
                 ))}

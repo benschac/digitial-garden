@@ -7,7 +7,7 @@ interface CalloutProps {
 
 export function Callout({ children, title = "Note" }: CalloutProps) {
   return (
-    <aside aria-label={title} className="mdx-callout">
+    <aside aria-label={title}>
       <strong>{title}</strong>
       <div>{children}</div>
     </aside>

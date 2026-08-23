@@ -68,13 +68,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { Content } = post;
 
   return (
-    <main className="shell shell--article">
+    <main>
       <article>
-        <header className="article-header">
+        <header>
           <Link href="/blog">← All posts</Link>
           <h1>{post.title}</h1>
-          <p className="article-summary">{post.summary}</p>
-          <p className="article-dates">
+          <p>{post.summary}</p>
+          <p>
             Published{" "}
             <time dateTime={post.publishedAt}>{post.publishedAt}</time>
             {post.updatedAt ? (
@@ -85,11 +85,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             ) : null}
           </p>
         </header>
-        <div className="prose">
+        <div>
           <Content />
         </div>
       </article>
-      <nav aria-label="Adjacent posts" className="adjacent-posts">
+      <nav aria-label="Adjacent posts">
         <div>
           {adjacentPosts.previous ? (
             <Link href={`/blog/${adjacentPosts.previous.slug}`}>
