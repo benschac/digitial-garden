@@ -18,6 +18,12 @@
     "check-types": {
       "dependsOn": ["transit"],
       "outputs": [".next/cache/tsconfig.tsbuildinfo"]
+    },
+    "content:validate": {
+      "dependsOn": ["transit"]
+    },
+    "test": {
+      "dependsOn": ["transit"]
     }
   }
 }

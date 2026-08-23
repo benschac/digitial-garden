@@ -100,6 +100,17 @@ describe("file-based post registry", () => {
     expect(posts.map((post) => post.slug)).toEqual([
       "designing-a-bezier-system-map",
       "why-i-built-this",
+      "upload-to-pinata-ipfs",
+      "persist-react-navigation-router-state",
+      "animated-blog-post-background",
+      "how-to-configure-and-package-fonts-with-tamagui",
+      "fixing-react-native-universal-fs-node-module",
+      "return-statement",
+      "what-i-learned-fixing-one-line-of-css-in-svelte",
+      "what-i-learned-from-failure",
+      "what-i-learned-9-months-into-my-first-programming-job",
+      "self-positioning-react-components",
+      "how-i-got-my-first-developer-job",
     ]);
   });
 

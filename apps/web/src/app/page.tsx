@@ -1,8 +1,11 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
-    <main>
+    <main className="shell home">
       <h1>Benjamin Schachter</h1>
-      <p>Personal site coming soon.</p>
+      <p>A personal workbench for software, systems, and experiments.</p>
+      <Link href="/blog">Read the blog →</Link>
     </main>
   );
 }
