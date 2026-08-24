@@ -19,7 +19,11 @@
     "check:write": "biome check --write .",
     "check-types": "turbo run check-types",
     "content:validate": "turbo run content:validate",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "wasm:build": "turbo run wasm:build --filter=@personal-site/web",
+    "wasm:dev": "turbo run wasm:dev --filter=@personal-site/web",
+    "wasm:setup": "turbo run wasm:setup --filter=@personal-site/web",
+    "wasm:watch": "turbo run wasm:watch --filter=@personal-site/web"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.10",

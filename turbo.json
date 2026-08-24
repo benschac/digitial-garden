@@ -24,6 +24,26 @@
     },
     "test": {
       "dependsOn": ["transit"]
+    },
+    "wasm:build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!public/wasm/**",
+        "$TURBO_ROOT$/packages/wasm-canvas-engine/**"
+      ],
+      "outputs": ["public/wasm/**"]
+    },
+    "wasm:dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "wasm:setup": {
+      "cache": false,
+      "interactive": true
+    },
+    "wasm:watch": {
+      "cache": false,
+      "persistent": true
     }
   }
 }

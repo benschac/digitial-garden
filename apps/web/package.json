@@ -8,7 +8,11 @@
     "dev": "next dev",
     "lint": "biome lint .",
     "test": "bun test",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "wasm:build": "CARGO_TARGET_DIR=/tmp/personal-site-wasm-target cargo build --manifest-path ../../packages/wasm-canvas-engine/Cargo.toml --target wasm32-unknown-unknown --release && mkdir -p public/wasm && cp /tmp/personal-site-wasm-target/wasm32-unknown-unknown/release/wasm_canvas_engine.wasm public/wasm/particle-engine.wasm",
+    "wasm:dev": "bun run --parallel --no-orphans dev wasm:watch",
+    "wasm:setup": "rustup target add wasm32-unknown-unknown",
+    "wasm:watch": "bun run scripts/watch-wasm.ts"
   },
   "dependencies": {
     "@mdx-js/loader": "3.1.1",
