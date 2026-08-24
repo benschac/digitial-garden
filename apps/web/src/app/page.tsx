@@ -1,13 +1,15 @@
 import Link from "next/link";
+import styles from "./home.module.css";
 
 export default function Home() {
   return (
-    <main>
+    <main className={styles.page}>
       <h1>Benjamin Schachter</h1>
       <p>A personal workbench for software, systems, and experiments.</p>
-      <Link href="/blog">Read the blog →</Link>
-      <br />
-      <Link href="/experiments/wasm-canvas">Explore WebGPU particles →</Link>
+      <nav aria-label="Primary" className={styles.links}>
+        <Link href="/blog">Read the blog →</Link>
+        <Link href="/experiments/wasm-canvas">Explore WebGPU particles →</Link>
+      </nav>
     </main>
   );
 }

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ParticleHeaderBackground } from "@/app/experiments/wasm-canvas/particle-header-background";
 import {
   getAdjacentPosts,
   getAllPostSlugs,
   getPostBySlug,
 } from "@/lib/content";
+import styles from "../blog.module.css";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -66,15 +68,22 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   }
 
   const { Content } = post;
+  const hasParticleHeader = post.slug === "rust-wasm-webgpu-particles";
 
   return (
-    <main>
+    <main className={styles.page}>
       <article>
-        <header>
-          <Link href="/blog">← All posts</Link>
+        <header
+          className={`${styles.postHeader}${
+            hasParticleHeader ? ` ${styles.particlePostHeader}` : ""
+          }`}
+        >
+          <Link className={styles.backLink} href="/blog">
+            ← All posts
+          </Link>
           <h1>{post.title}</h1>
-          <p>{post.summary}</p>
-          <p>
+          <p className={styles.summary}>{post.summary}</p>
+          <p className={styles.metadata}>
             Published{" "}
             <time dateTime={post.publishedAt}>{post.publishedAt}</time>
             {post.updatedAt ? (
@@ -84,12 +93,18 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               </>
             ) : null}
           </p>
+          {hasParticleHeader ? (
+            <ParticleHeaderBackground
+              canvasClassName={styles.particleHeaderCanvas}
+              controlsClassName={styles.particleHeaderControls}
+            />
+          ) : null}
         </header>
-        <div>
+        <div className={styles.prose}>
           <Content />
         </div>
       </article>
-      <nav aria-label="Adjacent posts">
+      <nav aria-label="Adjacent posts" className={styles.postNavigation}>
         <div>
           {adjacentPosts.previous ? (
             <Link href={`/blog/${adjacentPosts.previous.slug}`}>

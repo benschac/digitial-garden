@@ -35,14 +35,17 @@ function MdxImage({
   }
 
   return (
-    <Image
-      alt={alt}
-      height={675}
-      sizes="(max-width: 760px) 100vw, 720px"
-      src={src}
-      title={title}
-      width={1200}
-    />
+    <figure data-mdx-media>
+      <Image
+        alt={alt}
+        height={675}
+        sizes="(max-width: 672px) calc(100vw - 2rem), (max-width: 1280px) 90vw, 1152px"
+        src={src}
+        title={title}
+        width={1200}
+      />
+      {title ? <figcaption>{title}</figcaption> : null}
+    </figure>
   );
 }
 

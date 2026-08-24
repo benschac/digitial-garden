@@ -1,6 +1,17 @@
 import type { Metadata } from "next";
+import { Newsreader } from "next/font/google";
 import type { ReactNode } from "react";
 import { getSiteUrl } from "@/lib/site";
+import "./reset.css";
+
+const newsreader = Newsreader({
+  axes: ["opsz"],
+  display: "swap",
+  fallback: ["Iowan Old Style", "Palatino Linotype", "Palatino", "Georgia"],
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  variable: "--font-newsreader",
+});
 
 export const metadata: Metadata = {
   metadataBase: getSiteUrl(),
@@ -16,7 +27,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    <html className={newsreader.variable} lang="en">
       <body>{children}</body>
     </html>
   );

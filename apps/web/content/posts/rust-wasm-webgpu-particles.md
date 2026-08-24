@@ -75,6 +75,47 @@ Rust does not send millions of particle positions. It sends a fixed-size descrip
 
 The shader then runs the same simulation logic across many particle indexes in parallel.
 
+### A 64-byte command instead of a particle array
+
+The command is 16 words, and every word is four bytes. Some words represent `u32` counts or flags; others carry the bit pattern of an `f32` value. Rust stores both in one `[u32; 16]` so the packet has a fixed address, fixed size, and no heap allocation per frame.
+
+The important part is that `to_bits` does not numerically convert a float into an integer. It preserves the float's exact 32-bit representation:
+
+~~~rust
+const COMMAND_WORDS: usize = 16;
+const SIMULATION_DELTA_SECONDS: usize = 8;
+const ACTIVE_PARTICLE_COUNT: usize = 10;
+
+fn write_f32(command: &mut [u32; COMMAND_WORDS], index: usize, value: f32) {
+    command[index] = value.to_bits();
+}
+
+write_f32(&mut command, SIMULATION_DELTA_SECONDS, delta_seconds);
+command[ACTIVE_PARTICLE_COUNT] = active_particles;
+~~~
+
+The same 64 bytes are therefore valid as raw upload bytes and as 16 integer words. JavaScript keeps both views over the same WASM memory:
+
+~~~ts
+const commandBytes = new Uint8Array(
+  engine.memory.buffer,
+  commandAddress,
+  64,
+);
+
+const commandWords = new Uint32Array(
+  engine.memory.buffer,
+  commandAddress,
+  16,
+);
+
+device.queue.writeBuffer(uniformBuffer, 0, commandBytes);
+~~~
+
+`commandBytes` is used for the GPU upload. `commandWords` lets JavaScript read the update count needed to dispatch the compute pass. Neither view copies the command; each is a window onto the same WASM linear memory.
+
+The WGSL uniform struct declares the fields in the same order. The renderer checks that Rust still reports a 64-byte command before it creates any pipeline. That size check cannot prove that every field has the right meaning, but it catches accidental layout growth immediately.
+
 The simplified GPU state is only two vectors:
 
 ~~~wgsl
@@ -106,6 +147,24 @@ fn compute_main(
 }
 ~~~
 
+There are three indexes worth keeping separate:
+
+- `global_id.x` is the invocation number created by the compute dispatch.
+- `invocation_index` is that same number after the shader names it.
+- `index` is the actual location in the particle storage buffer after applying the cohort stride and offset.
+
+For a four-way cohort, frame offsets rotate through `0`, `1`, `2`, and `3`. Offset `0` updates particle indexes `0, 4, 8, 12...`; offset `1` updates `1, 5, 9, 13...`. After four display frames, every active particle has advanced exactly once.
+
+The CPU dispatch is sized from the update count rather than the total particle count:
+
+~~~ts
+const updateCount = commandWords[11];
+const workgroupCount = Math.ceil(updateCount / 256);
+computePass.dispatchWorkgroups(workgroupCount);
+~~~
+
+Each workgroup contains 256 shader invocations. The bounds check at the top of `compute_main` handles the final partially filled workgroup, so the dispatch can round up without touching a particle outside the selected cohort.
+
 This is still programmatic logic, but it is logic designed for massive parallelism. Shaders can branch and do math, but they are less comfortable than Rust for dynamic data structures, irregular control flow, allocation, strings, networking, or coordinating application state.
 
 That is why the hybrid is useful: Rust decides what should happen; the GPU repeats the expensive part at scale.
@@ -132,6 +191,16 @@ Simulation cohorts introduce one additional detail. At eight-way interleaving, o
 Resizing is also a frame command, not a CPU rewrite of the particle array. Rust records the previous and next dimensions, then the compute shader scales every stored position. Initialization and resize frames deliberately process the full device capacity with a stride of one so every particle is valid before it can become active.
 
 Trail animation uses a separate wall-clock calculation. The reference fade removes 20 percent at 60 FPS, and the actual alpha is exponentiated from the real frame delta. Two 120 FPS fades therefore retain the same amount as one 60 FPS fade.
+
+The policy is small enough to show in full:
+
+~~~rust
+fn trail_alpha(delta_seconds: f32) -> f32 {
+    1.0 - (1.0 - 0.2).powf(delta_seconds * 60.0)
+}
+~~~
+
+At 60 FPS, `delta_seconds * 60` is `1`, so the result is the original `0.2` fade. At 120 FPS the exponent is `0.5`, producing a smaller per-frame fade. Applying that smaller fade twice leaves the same retained trail energy as one 60 FPS frame. Simulation speed is deliberately absent from this function: playback speed changes motion, not the wall-clock lifetime of the trail.
 
 ## The first useful target: 100,000
 
@@ -164,6 +233,26 @@ The GPU now stores only position and velocity: 16 bytes per particle, or 67.2 MB
 
 Phase is derived deterministically from the particle index. Size and opacity are derived from velocity in the render shader. Recomputing those small values is cheaper than carrying twice as much state through the simulation and rendering passes.
 
+Initialization uses the same idea. A small integer hash turns the particle index plus a stream number into repeatable pseudo-random values:
+
+~~~wgsl
+fn random(index: u32, stream: u32) -> f32 {
+  let mixed = index ^ (stream * 0x9e3779b9u) ^ 0x5eed1234u;
+  return f32(hash_u32(mixed)) / 4294967295.0;
+}
+
+particle.position = vec2<f32>(
+  random(index, 0u) * frame.dimensions.x,
+  random(index, 1u) * frame.dimensions.y,
+);
+particle.velocity = vec2<f32>(
+  (random(index, 2u) - 0.5) * 18.0,
+  (random(index, 3u) - 0.5) * 18.0,
+);
+~~~
+
+The `stream` argument gives position and velocity independent deterministic sequences without storing a random seed per particle. Initialization still touches the whole capacity once, but JavaScript does not allocate a 67.2 MB staging array or upload one across the CPU-to-GPU boundary.
+
 ### Cheaper geometry
 
 At lower densities, soft particles use one triangle instead of a two-triangle quad, cutting vertex work in half.
@@ -191,6 +280,33 @@ At 4.2 million, the eight-way policy keeps that per-frame compute count at the s
 
 Because a different, evenly distributed cohort moves each frame, the field as a whole still changes every frame.
 
+The policy itself is ordinary Rust and intentionally uses strict threshold comparisons:
+
+~~~rust
+fn simulation_update_stride(particle_count: u32) -> u32 {
+    if particle_count > 2_400_000 {
+        8
+    } else if particle_count > 1_200_000 {
+        4
+    } else if particle_count > 450_000 {
+        2
+    } else {
+        1
+    }
+}
+~~~
+
+That makes the boundary behavior explicit: exactly `2,400,000` particles still use four cohorts, while `2,400,001` switches to eight. On ordinary frames, the current 2.35-million-particle article header therefore updates `587,500` particles with stride four. At 4.2 million, stride eight brings the update count back down to `525,000`.
+
+The shader compensates for the less frequent update by multiplying the simulation delta by the stride:
+
+~~~wgsl
+let delta =
+  frame.simulation_delta_seconds * f32(frame.update_particle_stride);
+~~~
+
+Without that multiplication, an eight-way cohort would move each particle using only one frame's worth of time every eight frames. The simulation would slow to one eighth speed as density increased.
+
 ### Rotating render cohorts
 
 At 2.1 million, drawing one point for every particle was still enough to hold the experiment near 30 FPS rather than 60.
@@ -199,9 +315,60 @@ The final step caps each render cohort at 1.05 million particles. The 2.1-millio
 
 This works because the trail texture is persistent. While one cohort is drawn, the previous cohort remains visible and fades naturally. The next frame swaps them.
 
+The render cohort is contiguous rather than interleaved. WebGPU's first-instance argument selects the starting particle, and `@builtin(instance_index)` becomes the storage-buffer index in the point vertex shader:
+
+~~~ts
+const cohortCount = Math.ceil(
+  activeParticleCount / 1_050_000,
+);
+const cohortSize = Math.ceil(
+  activeParticleCount / cohortCount,
+);
+const firstParticle = renderPhase * cohortSize;
+const renderedCount = Math.min(
+  cohortSize,
+  activeParticleCount - firstParticle,
+);
+
+particlePass.draw(1, renderedCount, 0, firstParticle);
+renderPhase = (renderPhase + 1) % cohortCount;
+~~~
+
+The first argument is one vertex per point. The second is the number of particle instances. The fourth is the first instance, which lets the shader read a different contiguous range without rebuilding a bind group or copying particle data.
+
+For 2.35 million particles, `ceil(2,350,000 / 1,050,000)` produces three render cohorts of at most 783,334 particles. For 4.2 million, it produces four cohorts of exactly 1.05 million.
+
 The field contains 4.2 million particle states, but it simulates only 525,000 and rasterizes at most 1.05 million on each refresh.
 
 That is the central performance tradeoff.
+
+### One submitted frame contains four pieces of work
+
+The browser packages the GPU work into one command encoder and submits it once:
+
+1. **Compute:** update the selected simulation cohort in the storage buffer.
+2. **Fade:** sample the previous trail texture into the next texture while mixing it toward the background color.
+3. **Draw:** add the selected particle render cohort into that next trail texture.
+4. **Composite:** draw the completed trail texture to the current canvas texture.
+
+The trail textures alternate roles each frame. If texture A is the previous frame, the fade and particle passes write texture B, the composite pass presents B, and then B becomes the previous frame for the next iteration. This avoids sampling from and rendering into the same texture at once.
+
+The fade shader is only a texture sample and a time-corrected mix:
+
+~~~wgsl
+@fragment
+fn fade_fragment(input: VertexOutput) -> @location(0) vec4<f32> {
+  let previous = textureSample(
+    trail_texture,
+    trail_sampler,
+    input.uv,
+  ).rgb;
+  let background = vec3<f32>(5.0 / 255.0, 7.0 / 255.0, 13.0 / 255.0);
+  return vec4<f32>(mix(previous, background, frame.trail_alpha), 1.0);
+}
+~~~
+
+Because old cohorts remain in the trail texture for multiple frames, render cohorts can rotate without making most of the field disappear between draws.
 
 ### The 4.2 million ceiling is device-aware
 
@@ -210,6 +377,23 @@ That is the central performance tradeoff.
 - the application cap
 - the device's maximum storage-buffer binding size divided by the 16-byte particle stride
 - the device's maximum compute workgroups multiplied by the 256-thread workgroup size
+
+In the renderer, that negotiation is a direct minimum across independent limits:
+
+~~~ts
+const maxParticleCount = Math.max(
+  1,
+  Math.min(
+    4_200_000,
+    Math.floor(
+      device.limits.maxStorageBufferBindingSize / 16,
+    ),
+    device.limits.maxComputeWorkgroupsPerDimension * 256,
+  ),
+);
+~~~
+
+The storage-buffer calculation divides bytes by the 16-byte particle stride. The workgroup calculation asks how many particles can be reached by the maximum one-dimensional dispatch. The outer `Math.max` ensures the controller always receives a usable positive capacity, even on an unexpectedly constrained implementation.
 
 Rust receives that negotiated capacity and clamps active counts against it. The React slider is then updated to the renderer's actual maximum. If WebGPU is unavailable or initialization fails, the page retains the original Rust/WASM and Canvas 2D renderer with a deliberately smaller 2,400-particle ceiling.
 

@@ -18,7 +18,10 @@ const withMDX = createMDX({
   extension: /\.(md|mdx)$/,
   options: {
     remarkPlugins: ["remark-frontmatter", "remark-gfm"],
-    rehypePlugins: ["rehype-slug"],
+    rehypePlugins: [
+      "rehype-slug",
+      ["@shikijs/rehype", { theme: "github-dark-dimmed" }],
+    ],
   },
 });
 

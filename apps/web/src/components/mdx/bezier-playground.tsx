@@ -9,7 +9,7 @@ export function BezierPlayground() {
   const path = `M 20 100 C 70 ${controlY}, 150 ${controlY}, 200 100`;
 
   return (
-    <section aria-labelledby={`${inputId}-title`}>
+    <section aria-labelledby={`${inputId}-title`} data-mdx-interactive>
       <div>
         <h3 id={`${inputId}-title`}>Bezier curve playground</h3>
         <output htmlFor={inputId}>{bend}% bend</output>
