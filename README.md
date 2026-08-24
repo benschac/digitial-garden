@@ -11,6 +11,42 @@ bun run dev
 
 The site runs at [http://localhost:3000](http://localhost:3000).
 
+## WebGPU and WebAssembly experiment
+
+The particle field at `/experiments/wasm-canvas` keeps its simulation state on
+the GPU. Rust/WASM turns the current controls, dimensions, and timing into a
+64-byte frame command. A WGSL compute shader uses that command to advance up to
+4.2 million particles, an instanced render pass draws them, and ping-pong
+textures preserve their trails without particle readback. The experiment starts
+at 100,000 particles and exposes the larger range as an explicit stress test.
+
+Above 450,000 particles, the renderer switches to one-pixel GPU points, a 1x
+internal render target, and rotating simulation cohorts. Rust uses four
+simulation cohorts above 1.2 million and eight above 2.4 million. Each render
+cohort is capped at 1.05 million particles, so the 4.2-million-particle ceiling
+rotates through four draws while the trail texture preserves the other cohorts.
+
+Initial particle state is seeded by the compute shader directly in GPU memory.
+After startup, the browser only copies the small Rust command to WebGPU each
+frame; it never copies the particle array between WASM and the GPU.
+
+Browsers without WebGPU use the original dependency-free Rust engine. The
+browser loads `apps/web/public/wasm/particle-engine.wasm`, then Canvas 2D renders
+the engine's shared-memory output.
+
+The compiled module is committed so normal Next.js and Vercel builds do not
+need a Rust toolchain. The available commands are:
+
+```bash
+bun run wasm:setup # install the Rust WASM target once
+bun run wasm:build # compile once
+bun run wasm:watch # recompile whenever the Rust source changes
+bun run wasm:dev   # watch Rust and run Next.js together
+```
+
+The watch commands use a focused, dependency-free Bun watcher and require no
+additional global watch utility.
+
 ## Blog content
 
 Published blog posts live in `apps/web/content/posts` as Markdown or MDX files.

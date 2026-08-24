@@ -6,6 +6,30 @@
       "sourceType": "github",
       "skillPath": "skills/nestjs-best-practices/SKILL.md",
       "computedHash": "58f8a630637be3acce1f118c747d68160346ada8a43d76cb52a5b4c4edaa2d37"
+    },
+    "rust-best-practices": {
+      "source": "apollographql/skills",
+      "sourceType": "github",
+      "skillPath": "skills/rust-best-practices/SKILL.md",
+      "computedHash": "0ac6606adb27e64a31bdc8c1ed34e446ae0c14bff1c7648867c46e106adc048f"
+    },
+    "rust-patterns": {
+      "source": "affaan-m/ecc",
+      "sourceType": "github",
+      "skillPath": "skills/rust-patterns/SKILL.md",
+      "computedHash": "7119b88682b5773ef83ac6d01153ac2a0683be28b01ea46a2b0512fe74b30420"
+    },
+    "shader-dev": {
+      "source": "minimax-ai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/shader-dev/SKILL.md",
+      "computedHash": "169d2cc594e0962e37f1cc58aef6d2efcf78f3408627bd909383d8724a133cd9"
+    },
+    "zod": {
+      "source": "pproenca/dot-skills",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/zod/SKILL.md",
+      "computedHash": "c69b5133b65643317236707f2cd3e521b4fc6e5ee5fd6c6c00cf62a37dfd0144"
     }
   }
 }

@@ -1,0 +1,24 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+.next/
+out/
+dist/
+target/
+
+# Turborepo
+.turbo/
+
+# local environment files
+.env*
+!.env.example
+
+# logs and local tooling
+*.log
+.DS_Store
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
