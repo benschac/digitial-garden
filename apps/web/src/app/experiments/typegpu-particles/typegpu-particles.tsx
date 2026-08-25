@@ -3,15 +3,15 @@
 import { useRef, useState } from "react";
 import { useAbortableEffect } from "@/lib/hooks/use-abortable-effect";
 import { useAnimationFrame } from "@/lib/hooks/use-animation-frame";
-import { frameDeltaSeconds } from "./animation-timing";
-import type { ParticleRenderer } from "./particle-renderer";
-import styles from "./wasm-canvas.module.css";
-import { createWasmParticleRenderer } from "./wasm-particle-renderer";
-import { createWebGpuParticleRenderer } from "./webgpu-particle-renderer";
+import { frameDeltaSeconds } from "../wasm-canvas/animation-timing";
+import type { ParticleRenderer } from "../wasm-canvas/particle-renderer";
+import styles from "../wasm-canvas/wasm-canvas.module.css";
+import { createWasmParticleRenderer } from "../wasm-canvas/wasm-particle-renderer";
+import { createTypeGpuParticleRenderer } from "./typegpu-particle-renderer";
 
 const DEFAULT_PARTICLE_COUNT = 100_000;
 const DEFAULT_SIMULATION_SPEED = 2.5;
-const GPU_PARTICLE_LIMIT = 4_200_000;
+const GPU_PARTICLE_LIMIT = 32_000_000;
 const GPU_PARTICLE_MINIMUM = 10_000;
 const GPU_PARTICLE_STEP = 10_000;
 
@@ -19,7 +19,7 @@ function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === "AbortError";
 }
 
-export function WasmCanvas() {
+export function TypeGpuParticles() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<ParticleRenderer | null>(null);
   const fpsRef = useRef<HTMLOutputElement>(null);
@@ -136,7 +136,7 @@ export function WasmCanvas() {
       let renderer: ParticleRenderer | null = null;
 
       try {
-        renderer = await createWebGpuParticleRenderer(
+        renderer = await createTypeGpuParticleRenderer(
           canvas,
           signal,
           densityRef.current,
@@ -158,7 +158,7 @@ export function WasmCanvas() {
           return;
         }
         console.warn(
-          "WebGPU initialization failed; using WASM fallback.",
+          "TypeGPU initialization failed; using WASM fallback.",
           error,
         );
       }
@@ -199,7 +199,7 @@ export function WasmCanvas() {
       setParticleLimit(renderer.maxParticleCount);
       setStatus(
         renderer.kind === "Rust/WASM + WebGPU"
-          ? "Rust/WASM control + WebGPU compute online"
+          ? "Rust/WASM control + TypeGPU compute online"
           : "Rust/WASM fallback online",
       );
       requestFrame();
@@ -244,8 +244,11 @@ export function WasmCanvas() {
   };
 
   return (
-    <section className={styles.experiment} aria-label="Particle field controls">
-      <div className={styles.canvasFrame}>
+    <section
+      className={`${styles.experiment} ${styles.fullWidthExperiment}`}
+      aria-label="Particle field controls"
+    >
+      <div className={`${styles.canvasFrame} ${styles.tallCanvasFrame}`}>
         <canvas
           aria-label="An interactive GPU-accelerated particle field"
           className={styles.canvas}

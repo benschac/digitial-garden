@@ -9,6 +9,8 @@ export default function Home() {
       <nav aria-label="Primary" className={styles.links}>
         <Link href="/blog">Read the blog →</Link>
         <Link href="/experiments/wasm-canvas">Explore WebGPU particles →</Link>
+        <Link href="/experiments/perlin-noise">Compare Perlin noise →</Link>
+        <Link href="/experiments/vector-math">Play with vector math →</Link>
       </nav>
     </main>
   );

@@ -23,6 +23,7 @@
     "@types/mdx": "2.0.14",
     "gray-matter": "4.0.3",
     "next": "16.3.2",
+    "pts": "^0.12.9",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "rehype-slug": "6.0.0",
@@ -30,6 +31,7 @@
     "remark-gfm": "4.0.1",
     "server-only": "0.0.1",
     "three": "^0.185.1",
+    "typegpu": "^0.12.3",
     "zod": "4.4.3"
   },
   "devDependencies": {
@@ -38,6 +40,8 @@
     "@types/node": "22.20.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
-    "typescript": "7.0.2"
+    "@webgpu/types": "^0.1.72",
+    "typescript": "7.0.2",
+    "unplugin-typegpu": "0.12.2"
   }
 }

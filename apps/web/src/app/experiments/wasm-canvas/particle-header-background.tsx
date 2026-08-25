@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffectEvent, useId, useRef, useState } from "react";
+import { useAbortableEffect } from "@/lib/hooks/use-abortable-effect";
+import { useAnimationFrame } from "@/lib/hooks/use-animation-frame";
+import {
+  useDocumentEvent,
+  useIntersectionObserver,
+  useMediaQuery,
+  useResizeObserver,
+  useWindowEvent,
+} from "@/lib/hooks/use-browser-lifecycle";
 import { frameDeltaSeconds } from "./animation-timing";
 import type { ParticleRenderer } from "./particle-renderer";
-import { useAnimationFrame } from "./use-animation-frame";
 import { createWasmParticleRenderer } from "./wasm-particle-renderer";
 import { createWebGpuParticleRenderer } from "./webgpu-particle-renderer";
 
@@ -14,6 +22,7 @@ const GPU_PARTICLE_LIMIT = 4_200_000;
 const GPU_PARTICLE_MINIMUM = 10_000;
 const GPU_PARTICLE_STEP = 10_000;
 const PARTICLE_NUMBER_FORMATTER = new Intl.NumberFormat("en-US");
+const PASSIVE_EVENT_LISTENER = { passive: true };
 
 type HeaderControlStatus = "loading" | "ready" | "unavailable";
 
@@ -34,13 +43,13 @@ export function ParticleHeaderBackground({
   const gravityInputId = useId();
   const speedInputId = useId();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasSizeRef = useRef({ height: 1, pixelRatio: 1, width: 1 });
   const rendererRef = useRef<ParticleRenderer | null>(null);
   const densityRef = useRef(HEADER_PARTICLE_COUNT);
   const gravityRef = useRef(HEADER_GRAVITY);
   const isVisibleRef = useRef(true);
   const pointerRef = useRef({ active: false, x: 0, y: 0 });
   const reducedMotionRef = useRef(false);
-  const renderStaticFrameRef = useRef<() => void>(() => undefined);
   const speedRef = useRef(HEADER_SIMULATION_SPEED);
   const previousFrameTimeRef = useRef<number | null>(null);
   const [density, setDensity] = useState(HEADER_PARTICLE_COUNT);
@@ -77,74 +86,82 @@ export function ParticleHeaderBackground({
     return true;
   });
 
-  useEffect(() => {
+  const renderStaticFrame = () => {
+    const renderer = rendererRef.current;
+    if (!renderer) {
+      return;
+    }
+
+    const milliseconds = performance.now();
+    renderer.render({
+      deltaSeconds: frameDeltaSeconds(null, milliseconds),
+      elapsedSeconds: milliseconds / 1_000,
+      interaction: gravityRef.current,
+      pointerX: pointerRef.current.x,
+      pointerY: pointerRef.current.y,
+      simulationSpeed: speedRef.current,
+    });
+  };
+
+  const resizeCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) {
       return;
     }
 
-    const abortController = new AbortController();
-    const canvasSize = { height: 1, pixelRatio: 1, width: 1 };
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    reducedMotionRef.current = reducedMotion.matches;
+    const canvasSize = canvasSizeRef.current;
+    const bounds = canvas.getBoundingClientRect();
+    canvasSize.width = Math.max(bounds.width, 1);
+    canvasSize.height = Math.max(bounds.height, 1);
+    canvasSize.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    if (!pointerRef.current.active) {
+      pointerRef.current.x = canvasSize.width / 2;
+      pointerRef.current.y = canvasSize.height / 2;
+    }
+    rendererRef.current?.resize(
+      canvasSize.width,
+      canvasSize.height,
+      canvasSize.pixelRatio,
+    );
 
-    const renderStaticFrame = () => {
-      const renderer = rendererRef.current;
-      if (!renderer) {
+    if (reducedMotionRef.current) {
+      renderStaticFrame();
+    }
+  };
+
+  const resumeWhenEligible = () => {
+    if (document.hidden || !isVisibleRef.current || reducedMotionRef.current) {
+      cancelFrame();
+      return;
+    }
+
+    previousFrameTimeRef.current = null;
+    requestFrame();
+  };
+
+  useMediaQuery("(prefers-reduced-motion: reduce)", (matches) => {
+    reducedMotionRef.current = matches;
+    resumeWhenEligible();
+    if (matches) {
+      renderStaticFrame();
+    }
+  });
+  useResizeObserver(canvasRef, resizeCanvas);
+  useIntersectionObserver(canvasRef, (isIntersecting) => {
+    isVisibleRef.current = isIntersecting;
+    resumeWhenEligible();
+  });
+  useDocumentEvent("visibilitychange", resumeWhenEligible);
+  useWindowEvent(
+    "pointermove",
+    (event) => {
+      const canvas = canvasRef.current;
+      if (!canvas) {
         return;
       }
 
-      const milliseconds = performance.now();
-      renderer.render({
-        deltaSeconds: frameDeltaSeconds(null, milliseconds),
-        elapsedSeconds: milliseconds / 1_000,
-        interaction: gravityRef.current,
-        pointerX: pointerRef.current.x,
-        pointerY: pointerRef.current.y,
-        simulationSpeed: speedRef.current,
-      });
-    };
-    renderStaticFrameRef.current = renderStaticFrame;
-
-    const resizeCanvas = () => {
       const bounds = canvas.getBoundingClientRect();
-      canvasSize.width = Math.max(bounds.width, 1);
-      canvasSize.height = Math.max(bounds.height, 1);
-      canvasSize.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-      if (!pointerRef.current.active) {
-        pointerRef.current.x = canvasSize.width / 2;
-        pointerRef.current.y = canvasSize.height / 2;
-      }
-      rendererRef.current?.resize(
-        canvasSize.width,
-        canvasSize.height,
-        canvasSize.pixelRatio,
-      );
-
-      if (reducedMotionRef.current) {
-        renderStaticFrame();
-      }
-    };
-
-    const resumeWhenEligible = () => {
-      if (
-        document.hidden ||
-        !isVisibleRef.current ||
-        reducedMotionRef.current
-      ) {
-        cancelFrame();
-        return;
-      }
-
-      previousFrameTimeRef.current = null;
-      requestFrame();
-    };
-
-    const handleVisibility = () => {
-      resumeWhenEligible();
-    };
-    const handlePointerMove = (event: PointerEvent) => {
-      const bounds = canvas.getBoundingClientRect();
+      const canvasSize = canvasSizeRef.current;
       const isInside =
         event.clientX >= bounds.left &&
         event.clientX <= bounds.right &&
@@ -158,31 +175,25 @@ export function ParticleHeaderBackground({
       pointerRef.current.y = isInside
         ? event.clientY - bounds.top
         : canvasSize.height / 2;
-    };
-    const handleReducedMotion = (event: MediaQueryListEvent) => {
-      reducedMotionRef.current = event.matches;
-      resumeWhenEligible();
-    };
-    const handleIntersection: IntersectionObserverCallback = (entries) => {
-      const entry = entries[0];
-      if (!entry) {
-        return;
-      }
+    },
+    PASSIVE_EVENT_LISTENER,
+  );
 
-      isVisibleRef.current = entry.isIntersecting;
+  const onRendererLoaded = useEffectEvent(() => {
+    if (reducedMotionRef.current) {
+      renderStaticFrame();
+    } else {
       resumeWhenEligible();
-    };
+    }
+  });
 
-    const resizeObserver = new ResizeObserver(resizeCanvas);
-    const intersectionObserver = new IntersectionObserver(handleIntersection);
-    resizeObserver.observe(canvas);
-    intersectionObserver.observe(canvas);
-    reducedMotion.addEventListener("change", handleReducedMotion);
-    document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("pointermove", handlePointerMove, {
-      passive: true,
-    });
-    resizeCanvas();
+  useAbortableEffect((signal) => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    const canvasSize = canvasSizeRef.current;
 
     const loadRenderer = async () => {
       let renderer: ParticleRenderer | null = null;
@@ -190,13 +201,13 @@ export function ParticleHeaderBackground({
       try {
         renderer = await createWebGpuParticleRenderer(
           canvas,
-          abortController.signal,
+          signal,
           HEADER_PARTICLE_COUNT,
           canvasSize.width,
           canvasSize.height,
           canvasSize.pixelRatio,
           () => {
-            if (!abortController.signal.aborted) {
+            if (!signal.aborted) {
               cancelFrame();
               setControlStatus("unavailable");
             }
@@ -212,11 +223,11 @@ export function ParticleHeaderBackground({
         );
       }
 
-      if (!renderer && !abortController.signal.aborted) {
+      if (!renderer && !signal.aborted) {
         try {
           renderer = await createWasmParticleRenderer(
             canvas,
-            abortController.signal,
+            signal,
             HEADER_PARTICLE_COUNT,
             canvasSize.width,
             canvasSize.height,
@@ -231,7 +242,7 @@ export function ParticleHeaderBackground({
         }
       }
 
-      if (!renderer || abortController.signal.aborted) {
+      if (!renderer || signal.aborted) {
         renderer?.destroy();
         return;
       }
@@ -248,32 +259,21 @@ export function ParticleHeaderBackground({
       setParticleLimit(renderer.maxParticleCount);
       setControlStatus("ready");
 
-      if (reducedMotionRef.current) {
-        renderStaticFrame();
-      } else {
-        resumeWhenEligible();
-      }
+      onRendererLoaded();
     };
 
     void loadRenderer();
 
     return () => {
-      abortController.abort();
-      resizeObserver.disconnect();
-      intersectionObserver.disconnect();
-      reducedMotion.removeEventListener("change", handleReducedMotion);
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("pointermove", handlePointerMove);
       cancelFrame();
       rendererRef.current?.destroy();
       rendererRef.current = null;
-      renderStaticFrameRef.current = () => undefined;
     };
-  }, [cancelFrame, requestFrame]);
+  });
 
   const renderReducedMotionFrame = () => {
     if (reducedMotionRef.current) {
-      renderStaticFrameRef.current();
+      renderStaticFrame();
     }
   };
 
