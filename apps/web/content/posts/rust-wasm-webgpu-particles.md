@@ -1,13 +1,14 @@
 ---
-title: "How Rust, WebAssembly, and WebGPU Pushed a Particle Field to 4.2 Million"
+title: "How Rust, WebAssembly, TypeGPU, and WebGPU Pushed a Particle Field to 16 Million"
 slug: "rust-wasm-webgpu-particles"
-summary: "The complete path from a Rust/WASM Canvas prototype to a time-based WebGPU simulation holding 4.2 million GPU-resident particles."
+summary: "The complete path from a Rust/WASM Canvas prototype to a time-based, TypeGPU-authored WebGPU simulation holding 16 million GPU-resident particles."
 publishedAt: "2026-08-23"
 status: "published"
 tags:
   - "Rust"
   - "WebAssembly"
   - "WebGPU"
+  - "TypeGPU"
   - "performance"
 featured: false
 ---
@@ -16,15 +17,16 @@ I started with a small particle experiment powered by Rust and WebAssembly. Rust
 
 That architecture was useful, but it had a hard scaling problem: every frame, every particle had to cross from CPU-owned memory into browser drawing commands. Making the Rust computation faster did not remove the cost of transferring and drawing the result.
 
-The current version takes a different approach. Rust still decides what a frame should do, but WebGPU owns the particle data, simulation, trails, and rendering. That shift let the experiment move from a few thousand CPU-rendered particles to a field containing 4.2 million GPU-resident particles.
+The current version takes a different approach. Rust still decides what a frame should do, but WebGPU owns the particle data, simulation, trails, and rendering. That shift first moved the experiment from a few thousand CPU-rendered particles to 4.2 million GPU-resident particles. A second TypeGPU implementation then made the GPU contracts explicit, moved the shaders into TypeScript-authored GPU functions, split particle state across bounded storage chunks, and reached 16 million active particles on the development machine.
 
-[Open the live particle experiment](/experiments/wasm-canvas).
+[Open the 16-million-particle TypeGPU experiment](/experiments/typegpu-particles), or [compare it with the original raw WebGPU version](/experiments/wasm-canvas).
 
 ## The important distinction
 
 WebAssembly and WebGPU are not competing rendering technologies.
 
 - Rust/WASM is good at application logic, validation, control policy, and compact state transitions.
+- TypeGPU describes GPU data, bindings, and shader functions in TypeScript, then produces ordinary WGSL and WebGPU-compatible resources.
 - WebGPU is the browser API that creates GPU buffers, pipelines, textures, and command passes.
 - WGSL shaders are small programs that run inside those WebGPU pipelines.
 
@@ -44,7 +46,7 @@ The flow for one frame is:
 
 The full particle array never comes back to JavaScript or WASM.
 
-## The complete path to 4.2 million
+## The complete path to 16 million
 
 In condensed form, this was the full progression:
 
@@ -66,6 +68,78 @@ In condensed form, this was the full progression:
 16. Fix boundary wrapping so particles preserve their overshoot instead of snapping onto identical edge coordinates and creating bright bands.
 17. Raise the TypeScript, UI, and Rust ceilings together, while still clamping the exposed slider to the current WebGPU device's storage-buffer and workgroup limits.
 18. Rebuild the release WASM artifact, run Rust and browser-side policy tests, compile every shader with validation enabled, build the production site, and stress-test the live 4.2-million-particle path at both 2.5x and 8x speed.
+19. Copy the raw WebGPU renderer into a separate comparison route so the migration could preserve behavior instead of changing the abstraction and the visual system at the same time.
+20. Introduce TypeGPU schemas for particle state, the 64-byte frame command, chunk metadata, textures, samplers, and bind-group layouts.
+21. Move compute, vertex, fragment, trail-fade, and composite shaders from handwritten WGSL strings into TypeScript functions marked with `"use gpu"`, then resolve them into WGSL when the renderer initializes.
+22. Request a larger storage-buffer binding limit only when the adapter reports support for a 256,000,000-byte particle chunk.
+23. Split the field into chunks of at most 16 million particles, carrying a global base index into each compute dispatch so deterministic initialization and cohort rotation remain continuous across buffers.
+24. Add 16-way and 32-way simulation cohorts above 8 million and 16 million particles. At exactly 16 million, the renderer keeps compute and drawing near one million particles per submitted frame even though all 16 million states remain resident.
+
+## What TypeGPU changed—and what it did not
+
+TypeGPU does not make the underlying GPU work inherently faster. The TypeGPU route still requests a WebGPU adapter and device, creates storage buffers and textures, records one compute pass and three render passes, and submits one command buffer per animation frame. The browser still compiles and executes WGSL on the same GPU.
+
+What changed was the contract around that work.
+
+The raw renderer described particle state with a handwritten WGSL struct and repeated its size as a TypeScript constant. The TypeGPU renderer defines the layout once as data:
+
+~~~ts
+export const Particle = d.struct({
+  position: d.vec2f,
+  velocity: d.vec2f,
+});
+
+export const FrameUniforms = d.struct({
+  dimensions: d.vec2f,
+  previousDimensions: d.vec2f,
+  pointer: d.vec2f,
+  // Timing, interaction, counts, flags, and cohort policy...
+});
+
+const PARTICLE_STRIDE = d.sizeOf(Particle);
+const UNIFORM_SIZE = d.sizeOf(FrameUniforms);
+~~~
+
+[`d.sizeOf` applies WGSL memory-layout rules](https://docs.swmansion.com/TypeGPU/integration/webgpu-interoperability/), so the renderer no longer relies on parallel magic numbers for the 16-byte particle and 64-byte frame command. It still asks Rust for the exported command size before pipeline creation, preserving an early failure if the cross-language protocol grows unexpectedly.
+
+Bindings also became named and typed:
+
+~~~ts
+export const computeLayout = tgpu.bindGroupLayout({
+  particles: {
+    access: "mutable",
+    storage: d.arrayOf(Particle),
+    visibility: ["compute"],
+  },
+  chunk: { uniform: ParticleChunk, visibility: ["compute"] },
+  frame: { uniform: FrameUniforms, visibility: ["compute"] },
+});
+~~~
+
+That replaces fragile numeric entries with `particles`, `chunk`, and `frame`, while recording whether each resource is a mutable storage buffer or a uniform and which shader stage can see it. [TypeGPU bind groups](https://docs.swmansion.com/TypeGPU/apis/bind-groups/) are then unwrapped into normal `GPUBindGroup` objects for the existing WebGPU passes.
+
+The shader implementation moved too. Functions such as `computeMain`, `wrapCoordinate`, `spriteVertexMain`, and `fadeFragment` are ordinary TypeScript modules with a `"use gpu"` directive. [`tgpu.resolve(...)` turns the reachable function graph into WGSL](https://docs.swmansion.com/TypeGPU/apis/functions/) at renderer initialization:
+
+~~~ts
+export const shaderSource = {
+  compute: () => tgpu.resolve([computeMain]),
+  fullscreen: () =>
+    tgpu.resolve([fullscreenVertexMain, fadeFragment, compositeFragment]),
+  particles: () =>
+    tgpu.resolve([
+      spriteVertexMain,
+      spriteFragmentMain,
+      pointVertexMain,
+      pointFragmentMain,
+    ]),
+};
+~~~
+
+This gives the shader code TypeScript-level composition and makes resource dependencies visible in the same module as their schemas. The generated result remains inspectable WGSL, and the renderer still checks its shader compilation messages and WebGPU validation scope.
+
+The project enables `unplugin-typegpu/babel` in `.babelrc`. That build step recognizes the `"use gpu"` functions and stores a compact representation in the JavaScript bundle; TypeGPU uses that metadata to generate the equivalent WGSL at runtime. This is an additional build-tool dependency, but it moves shader parsing out of the animation loop and makes unsupported shader-side TypeScript fail during build or renderer initialization instead of halfway through a frame.
+
+The performance distinction matters: TypeGPU made the larger renderer easier to describe and change safely, but chunked storage and temporal cohorts are what made 16 million practical. The abstraction is mostly involved during initialization. The hot loop still uploads one 64-byte command and submits the same four stages of GPU work.
 
 ## Where the WASM-to-shader boundary lives
 
@@ -208,7 +282,7 @@ At 100,000 particles, the GPU architecture held the browser's 60 FPS cadence and
 
 The experiment intentionally defaults to 100,000. It is visually rich, leaves room for other page work, and keeps the higher values opt-in.
 
-The slider first grew to 2.1 million so I could find the real limits instead of guessing at them. Once that path held 60 FPS, I doubled the ceiling again to 4.2 million.
+The slider first grew to 2.1 million so I could find the real limits instead of guessing at them. Once that path held 60 FPS, I doubled the raw WebGPU ceiling again to 4.2 million. The TypeGPU branch preserved that renderer as a reference, then raised the demonstrated milestone to 16 million by changing how storage and temporal work were partitioned.
 
 ## Why 2.1 million was initially slow
 
@@ -229,7 +303,7 @@ The final renderer changes strategy as density increases.
 
 ### Smaller particle state
 
-The GPU now stores only position and velocity: 16 bytes per particle, or 67.2 MB for 4.2 million particles.
+The GPU now stores only position and velocity: 16 bytes per particle. That is 67.2 MB for 4.2 million particles and 256 MB for 16 million.
 
 Phase is derived deterministically from the particle index. Size and opacity are derived from velocity in the render shader. Recomputing those small values is cheaper than carrying twice as much state through the simulation and rendering passes.
 
@@ -251,7 +325,7 @@ particle.velocity = vec2<f32>(
 );
 ~~~
 
-The `stream` argument gives position and velocity independent deterministic sequences without storing a random seed per particle. Initialization still touches the whole capacity once, but JavaScript does not allocate a 67.2 MB staging array or upload one across the CPU-to-GPU boundary.
+The `stream` argument gives position and velocity independent deterministic sequences without storing a random seed per particle. Initialization still touches the whole negotiated capacity once, but JavaScript does not allocate a multi-million-particle staging array or upload one across the CPU-to-GPU boundary.
 
 ### Cheaper geometry
 
@@ -273,10 +347,14 @@ The biggest compute improvement came from not updating every particle on every d
 - Above 450,000, Rust alternates between two simulation cohorts.
 - Above 1.2 million, Rust rotates through four cohorts.
 - Above 2.4 million, Rust rotates through eight cohorts.
+- Above 8 million, Rust rotates through 16 cohorts.
+- Above 16 million, Rust rotates through 32 cohorts.
 
 At 2.1 million, the compute shader advances 525,000 particles per frame. Every particle is still alive in GPU memory, but each individual particle advances once every four frames with a correspondingly larger time step.
 
 At 4.2 million, the eight-way policy keeps that per-frame compute count at the same 525,000 particles. Each particle advances once every eight frames, while a different evenly distributed cohort moves on every display frame.
+
+At exactly 16 million, the strict threshold policy uses 16 cohorts, so each frame advances one million particles. The next threshold does not activate until `16,000,001`; above that boundary, 32 cohorts prevent the per-frame update count from doubling with the resident field.
 
 Because a different, evenly distributed cohort moves each frame, the field as a whole still changes every frame.
 
@@ -284,7 +362,11 @@ The policy itself is ordinary Rust and intentionally uses strict threshold compa
 
 ~~~rust
 fn simulation_update_stride(particle_count: u32) -> u32 {
-    if particle_count > 2_400_000 {
+    if particle_count > 16_000_000 {
+        32
+    } else if particle_count > 8_000_000 {
+        16
+    } else if particle_count > 2_400_000 {
         8
     } else if particle_count > 1_200_000 {
         4
@@ -296,7 +378,7 @@ fn simulation_update_stride(particle_count: u32) -> u32 {
 }
 ~~~
 
-That makes the boundary behavior explicit: exactly `2,400,000` particles still use four cohorts, while `2,400,001` switches to eight. On ordinary frames, the current 2.35-million-particle article header therefore updates `587,500` particles with stride four. At 4.2 million, stride eight brings the update count back down to `525,000`.
+That makes the boundary behavior explicit: exactly `2,400,000` particles still use four cohorts, while `2,400,001` switches to eight. The same strict comparison means exactly 8 million uses stride eight, exactly 16 million uses stride 16, and only counts above 16 million use stride 32. On ordinary frames, the current 2.35-million-particle article header updates `587,500` particles with stride four. At 4.2 million, stride eight brings the update count down to `525,000`; at 16 million, stride 16 makes it exactly one million.
 
 The shader compensates for the less frequent update by multiplying the simulation delta by the stride:
 
@@ -311,7 +393,7 @@ Without that multiplication, an eight-way cohort would move each particle using 
 
 At 2.1 million, drawing one point for every particle was still enough to hold the experiment near 30 FPS rather than 60.
 
-The final step caps each render cohort at 1.05 million particles. The 2.1-million-particle field alternates between two halves of the particle buffer; the 4.2-million-particle field rotates through four quarters. The point shader scales contribution by the active render-cohort count so doubling the number of cohorts does not make the accumulated field look half as dense.
+The final step caps each render cohort at 1.05 million particles. The 2.1-million-particle field alternates between two halves of the particle buffer; the 4.2-million-particle field rotates through four quarters; and the 16-million-particle field rotates through 16 cohorts of one million particles. The point shader scales contribution by the active render-cohort count so adding more cohorts does not make the accumulated field look proportionally dimmer.
 
 This works because the trail texture is persistent. While one cohort is drawn, the previous cohort remains visible and fades naturally. The next frame swaps them.
 
@@ -336,9 +418,9 @@ renderPhase = (renderPhase + 1) % cohortCount;
 
 The first argument is one vertex per point. The second is the number of particle instances. The fourth is the first instance, which lets the shader read a different contiguous range without rebuilding a bind group or copying particle data.
 
-For 2.35 million particles, `ceil(2,350,000 / 1,050,000)` produces three render cohorts of at most 783,334 particles. For 4.2 million, it produces four cohorts of exactly 1.05 million.
+For 2.35 million particles, `ceil(2,350,000 / 1,050,000)` produces three render cohorts of at most 783,334 particles. For 4.2 million, it produces four cohorts of exactly 1.05 million. For 16 million, the calculation produces 16 cohorts of exactly one million.
 
-The field contains 4.2 million particle states, but it simulates only 525,000 and rasterizes at most 1.05 million on each refresh.
+The 16-million field contains 16 million particle states, but it simulates and rasterizes only one million of them on each refresh.
 
 That is the central performance tradeoff.
 
@@ -370,36 +452,52 @@ fn fade_fragment(input: VertexOutput) -> @location(0) vec4<f32> {
 
 Because old cohorts remain in the trail texture for multiple frames, render cohorts can rotate without making most of the field disappear between draws.
 
-### The 4.2 million ceiling is device-aware
+### Reaching 16 million required chunked, device-aware storage
 
-`4,200,000` is the experiment's requested ceiling, not a promise made to every GPU. The browser chooses the smallest of:
+One WebGPU storage binding cannot be assumed to hold an arbitrarily large array. Sixteen million particles at 16 bytes each require a 256,000,000-byte buffer, and the compute pass also needs enough one-dimensional workgroups to address the selected indexes.
 
-- the application cap
-- the device's maximum storage-buffer binding size divided by the 16-byte particle stride
-- the device's maximum compute workgroups multiplied by the 256-thread workgroup size
-
-In the renderer, that negotiation is a direct minimum across independent limits:
+The TypeGPU renderer checks the adapter before asking the device for that larger binding limit:
 
 ~~~ts
-const maxParticleCount = Math.max(
-  1,
-  Math.min(
-    4_200_000,
-    Math.floor(
-      device.limits.maxStorageBufferBindingSize / 16,
-    ),
-    device.limits.maxComputeWorkgroupsPerDimension * 256,
-  ),
-);
+const PARTICLES_PER_CHUNK = 16_000_000;
+const TARGET_PARTICLE_BUFFER_SIZE =
+  PARTICLES_PER_CHUNK * d.sizeOf(Particle);
+
+const supportsExtendedParticleBuffer =
+  adapter.limits.maxBufferSize >= TARGET_PARTICLE_BUFFER_SIZE &&
+  adapter.limits.maxStorageBufferBindingSize >= TARGET_PARTICLE_BUFFER_SIZE &&
+  adapter.limits.maxComputeWorkgroupsPerDimension * 256 >=
+    PARTICLES_PER_CHUNK;
+
+const device = await adapter.requestDevice({
+  requiredLimits: supportsExtendedParticleBuffer
+    ? { maxStorageBufferBindingSize: TARGET_PARTICLE_BUFFER_SIZE }
+    : undefined,
+});
 ~~~
 
-The storage-buffer calculation divides bytes by the 16-byte particle stride. The workgroup calculation asks how many particles can be reached by the maximum one-dimensional dispatch. The outer `Math.max` ensures the controller always receives a usable positive capacity, even on an unexpectedly constrained implementation.
+This matters because `adapter.limits` describes what the adapter can support, while `device.limits` describes what was actually granted to this device. The renderer requests the 256 MB storage binding only after proving the adapter advertises it. Otherwise, it takes a portable path capped at 8 million particles.
 
-Rust receives that negotiated capacity and clamps active counts against it. The React slider is then updated to the renderer's actual maximum. If WebGPU is unavailable or initialization fails, the page retains the original Rust/WASM and Canvas 2D renderer with a deliberately smaller 2,400-particle ceiling.
+Even on the extended path, one storage buffer is not treated as the whole world. The renderer creates chunks of at most 16 million particles and gives each one a small uniform containing its global base index and local count:
 
-The current WebGPU path eagerly allocates and initializes its maximum capacity even though the experiment starts at 100,000 active particles. At 4.2 million, the particle storage buffer alone is 67.2 MB. The two RGBA trail textures add memory based on viewport dimensions, while the uniform command remains 64 bytes.
+~~~ts
+export const ParticleChunk = d.struct({
+  baseParticleIndex: d.u32,
+  particleCount: d.u32,
+  padding0: d.u32,
+  padding1: d.u32,
+});
+~~~
 
-That eager allocation keeps density changes immediate and makes every particle valid before the slider exposes it, but it is also the clearest remaining architectural cost. A future version could grow capacity and initialize newly exposed ranges on demand.
+The shader converts a chunk-local invocation into a stable global particle index. That global index feeds deterministic initialization, phase generation, active-count bounds, and simulation-cohort selection. Particle zero in the second buffer therefore behaves like particle 16,000,000, not like another particle zero.
+
+Compute and rendering still use one pass each. JavaScript changes the bind group and dispatches or draws only the overlap belonging to each chunk, all inside the same command encoder. The chunk boundary adds resource bookkeeping, not an extra frame submission.
+
+The current application policy allows at most two chunks, producing a theoretical 32-million-particle ceiling on a capable adapter. That is deliberately separate from the demonstrated result: 16 million is the milestone exercised in the browser for this article. On the development adapter, the route exposed the full 32-million negotiated slider range; a more constrained adapter can expose 8 million or another device-derived value instead.
+
+Rust receives the negotiated total capacity and clamps active counts against it. The React slider is then updated to the renderer's actual maximum. If WebGPU or TypeGPU initialization fails, the page retains the original Rust/WASM and Canvas 2D renderer with a deliberately smaller 2,400-particle ceiling.
+
+The current TypeGPU path eagerly allocates and initializes its negotiated capacity even though the experiment starts at 100,000 active particles. One full 16-million-particle chunk consumes 256 MB, and two consume 512 MB before trail textures and small uniform buffers. That eager allocation keeps density changes immediate and makes every particle valid before the slider exposes it, but it is now the clearest architectural cost. A future version should grow capacity and initialize newly exposed ranges on demand.
 
 ## The boundary bug that looked like a density bug
 
@@ -441,9 +539,10 @@ The Rust Canvas fallback uses the same rule with `rem_euclid`, backed by tests f
 
 The browser's FPS counter was the final behavioral measurement, not the only check.
 
-- Rust tests cover full-capacity initialization, active-count clamping, ordinary frames, four-way and eight-way cohort rotation, exact density thresholds, speed scaling, speed-independent trail decay, long-frame clamping, and boundary wrapping in both directions.
+- Rust tests cover full-capacity initialization, active-count clamping, ordinary frames, four-way, eight-way, 16-way, and 32-way cohort policy, exact density thresholds, speed scaling, speed-independent trail decay, long-frame clamping, and boundary wrapping in both directions.
 - Browser-side tests cover first-frame timing, long-gap clamping, the 60 FPS trail reference, and equivalent trail retention at 60 and 120 FPS.
-- The renderer checks that Rust still exports exactly the 64-byte command layout expected by WGSL before creating pipelines.
+- Both renderers check that Rust still exports exactly the 64-byte command layout expected by WGSL before creating pipelines; the TypeGPU version derives its expected size from `FrameUniforms`.
+- TypeScript checks the TypeGPU schemas, named bind groups, and shader function inputs and outputs. TypeGPU resolution and WebGPU compilation catch generated-shader problems during renderer initialization.
 - WebGPU shader compilation messages and a pipeline validation error scope turn shader or binding failures into explicit initialization errors.
 - Device-loss handling stops animation and surfaces the failure instead of silently continuing with a dead canvas.
 - The release WASM module is rebuilt and committed so production does not require a Rust toolchain during the Next.js build.
@@ -463,10 +562,11 @@ These are development measurements from one browser and machine, using the exper
 | Point rendering and simulation cohorts at 2.1 million | about 30 FPS |
 | Simulation and render cohorts at 2.1 million | 60 FPS |
 | Eight simulation cohorts and four render cohorts at 4.2 million | 60 FPS |
+| TypeGPU path with 16 simulation and 16 render cohorts at 16 million | 60 FPS |
 
 For the 4.2-million-particle run, six samples taken five seconds apart all reported 60 FPS at the default 2.5x simulation speed. Four more samples taken three seconds apart also reported 60 FPS at the slider's 8x maximum. The canvas remained active and visually coherent through both runs.
 
-The browser was returned to the 100,000-particle default after testing.
+For the TypeGPU revision, I selected exactly 16,000,000 active particles and observed the route for eight seconds at the default 2.5x speed. The on-page counter reported 60 FPS, the TypeGPU renderer remained online, and the control still reported all 16 million particles active. I then returned the field to its 100,000-particle default.
 
 The 60 FPS result also needs context. A page driven by requestAnimationFrame normally runs at the display's refresh cadence. On a 60 Hz display, doing the work in less than 16.7 milliseconds creates headroom, but it does not produce more than 60 visible frames per second. A high-refresh display can request frames more frequently if the browser and GPU keep up.
 
@@ -483,6 +583,7 @@ Rust still owns:
 - resize and initialization flags
 - trail-decay policy
 - simulation cohort stride and offset
+- 16-way and 32-way density thresholds for the larger TypeGPU capacity
 - the stable binary layout shared with WGSL
 
 That policy has ordinary Rust unit tests, including checks that boundary wrapping preserves overshoot in both directions. The browser renderer separately checks the exported command size before creating the GPU pipelines, so a Rust/WGSL layout mismatch fails early.
@@ -501,15 +602,15 @@ The current FPS display measures frame submission cadence, not individual comput
 
 That would make it possible to tune thresholds per device instead of using fixed values.
 
-Other useful follow-ups would be lazy initialization of newly exposed particle ranges, automatic quality adjustment around a target frame time, and separate presets for battery life, visual fidelity, and maximum density.
+Other useful follow-ups would be lazy allocation and initialization of newly exposed particle chunks, automatic quality adjustment around a target frame time, and separate presets for battery life, visual fidelity, and maximum density. The negotiated 32-million ceiling should also remain described as capacity until it receives the same explicit browser stress run as 16 million.
 
 ## The durable takeaway
 
 Rust/WASM made the original simulation fast, but the architecture still moved too much particle data through the CPU side of the browser.
 
-WebGPU made the larger jump possible because particle state stayed where it was simulated and drawn. Reaching 4.2 million smoothly required another change in thinking: at very high density, the viewer cannot resolve every particle update independently, so temporal cohorts can exchange invisible precision for visible smoothness.
+WebGPU made the larger jump possible because particle state stayed where it was simulated and drawn. Reaching 4.2 million smoothly required another change in thinking: at very high density, the viewer cannot resolve every particle update independently, so temporal cohorts can exchange invisible precision for visible smoothness. Reaching 16 million required applying the same idea to resource ownership: one logical field can span multiple bounded storage buffers as long as global indexing and the frame protocol remain coherent.
 
-The result is not "WASM versus WebGPU." It is Rust controlling a small, testable frame protocol while WebGPU performs and renders the parallel work without a per-particle boundary crossing.
+TypeGPU made those layouts, bindings, and shaders easier to compose and check, but it did not replace WebGPU or create the performance result by itself. The result is not "WASM versus WebGPU," and it is not "TypeGPU instead of WebGPU." It is Rust controlling a small, testable frame protocol; TypeGPU describing the GPU program; and WebGPU performing and rendering the parallel work without a per-particle boundary crossing.
 
 ## Implementation map
 
@@ -517,6 +618,10 @@ The main pieces live in:
 
 - `packages/wasm-canvas-engine/src/gpu_controller.rs`: Rust frame policy and cohort selection
 - `packages/wasm-canvas-engine/src/lib.rs`: WASM exports and Canvas fallback
-- `apps/web/src/app/experiments/wasm-canvas/webgpu-particle-renderer.ts`: WebGPU setup, WGSL, buffers, passes, and adaptive rendering
+- `apps/web/src/app/experiments/wasm-canvas/webgpu-particle-renderer.ts`: the raw WebGPU reference renderer, handwritten WGSL, and 4.2-million cap
 - `apps/web/src/app/experiments/wasm-canvas/wasm-canvas.tsx`: React controls and animation lifecycle
+- `apps/web/src/app/experiments/typegpu-particles/typegpu-particle-shaders.ts`: TypeGPU schemas, named bind-group layouts, and TypeScript-authored GPU functions
+- `apps/web/src/app/experiments/typegpu-particles/typegpu-particle-renderer.ts`: device-limit negotiation, chunked particle buffers, WebGPU pipelines, passes, and the 16-million demonstrated path
+- `apps/web/src/app/experiments/typegpu-particles/typegpu-particles.tsx`: the TypeGPU comparison route's controls and animation lifecycle
+- `apps/web/.babelrc`: the TypeGPU shader-function build transform
 - `apps/web/src/app/experiments/wasm-canvas/wasm-canvas.module.css`: the responsive experiment viewport

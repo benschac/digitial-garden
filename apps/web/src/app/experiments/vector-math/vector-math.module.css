@@ -1,0 +1,462 @@
+.page {
+  --ink: #20211d;
+  --muted: #716d64;
+  --line: #d8d0c2;
+  min-height: 100vh;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+  color: var(--ink);
+  background: #f4efe4;
+  font-family: var(--font-ui);
+}
+
+.nav,
+.header,
+.notes {
+  width: min(100%, 76rem);
+  margin-inline: auto;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-family: var(--font-code);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.nav a {
+  min-height: 44px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.header {
+  padding-block: clamp(4rem, 10vw, 8rem) clamp(2.75rem, 6vw, 5rem);
+}
+
+.eyebrow,
+.kicker {
+  margin: 0 0 1rem;
+  color: #a33f2b;
+  font-family: var(--font-code);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  max-width: 10ch;
+  margin: 0;
+  font-family: var(--font-editorial);
+  font-size: clamp(3.7rem, 9vw, 8rem);
+  font-weight: 430;
+  letter-spacing: -0.06em;
+  line-height: 0.88;
+  text-wrap: balance;
+}
+
+.intro {
+  max-width: 43rem;
+  margin: 2rem 0 0;
+  color: var(--muted);
+  font-family: var(--font-editorial);
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  line-height: 1.45;
+}
+
+.experiment {
+  width: min(100%, 92rem);
+  margin-inline: auto;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #faf7f0;
+  box-shadow: 0 2rem 6rem rgb(65 50 30 / 13%);
+}
+
+.experimentHeader {
+  display: flex;
+  gap: 2rem;
+  align-items: end;
+  justify-content: space-between;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.experimentHeader h2 {
+  max-width: 18ch;
+  margin: 0;
+  font-family: var(--font-editorial);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 450;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.methodCount {
+  margin: 0;
+  color: #386547;
+  font-family: var(--font-code);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.methodGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+}
+
+.methodGrid button {
+  display: grid;
+  gap: 0.4rem;
+  min-height: 6rem;
+  padding: 1rem;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  background: #faf7f0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.methodGrid button:nth-child(6n) {
+  border-right: 0;
+}
+
+.methodGrid button[aria-current="true"] {
+  color: #f8f2e8;
+  background: #20221e;
+}
+
+.methodGrid strong {
+  font-family: var(--font-code);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.methodGrid span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.methodGrid button[aria-current="true"] span {
+  color: #aaa99f;
+}
+
+.activeMethod {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) minmax(16rem, 1.5fr) auto;
+  gap: 2rem;
+  align-items: center;
+  padding: 1.25rem clamp(1.5rem, 3vw, 2.5rem);
+  border-bottom: 1px solid var(--line);
+  background: #eee7da;
+}
+
+.activeMethod > div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  align-items: baseline;
+}
+
+.activeMethod > div span,
+.activeMethod label span {
+  color: var(--muted);
+  font-family: var(--font-code);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.activeMethod > div strong {
+  font-family: var(--font-code);
+}
+
+.activeMethodDescription {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.activeMethod label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 1rem;
+}
+
+.activeMethod input {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  accent-color: #a33f2b;
+}
+
+.activeMethod output {
+  font-family: var(--font-code);
+}
+
+.activeMethod button,
+.footerBar button {
+  min-height: 44px;
+  padding-inline: 1rem;
+  border: 1px solid #94897a;
+  border-radius: 999px;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(18rem, 0.8fr);
+  min-height: 42rem;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+  min-height: 42rem;
+  cursor: grab;
+  touch-action: none;
+}
+
+.canvas:active {
+  cursor: grabbing;
+}
+
+.readout {
+  display: grid;
+  align-content: start;
+  border-left: 1px solid #3c3e38;
+  color: #eee8dc;
+  background: #20221e;
+}
+
+.vectorCard,
+.resultCard {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1.5rem;
+  border-bottom: 1px solid #3c3e38;
+}
+
+.vectorCard span,
+.resultCard span {
+  color: #9f9f95;
+  font-family: var(--font-code);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vectorCard strong,
+.resultCard strong {
+  font-family: var(--font-editorial);
+  font-size: 2rem;
+  font-weight: 450;
+}
+
+.vectorCard small,
+.resultCard small {
+  color: #aaa99f;
+  font-family: var(--font-code);
+}
+
+.vectorCard[data-color="yellow"] strong {
+  color: #f1b84b;
+}
+.vectorCard[data-color="blue"] strong {
+  color: #62b6cb;
+}
+
+.resultCard {
+  margin-top: auto;
+  border-bottom: 0;
+  line-height: 1.5;
+}
+
+.resultCard strong {
+  color: #f4eee0;
+}
+
+.resultCard .warning {
+  color: #ef9a82;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.footerBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.footerBar p {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-code);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.footerBar button {
+  border: 1px solid #94897a;
+}
+
+.keyboardControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+}
+
+.keyboardControls fieldset {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 1.25rem 1.5rem 1.5rem;
+  border: 0;
+  border-right: 1px solid var(--line);
+}
+
+.keyboardControls fieldset:last-child {
+  border-right: 0;
+}
+
+.keyboardControls fieldset:only-child {
+  grid-column: 1 / -1;
+}
+
+.keyboardControls legend {
+  padding-top: 1.25rem;
+  font-family: var(--font-code);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.keyboardControls label {
+  display: grid;
+  grid-template-columns: 1rem 1fr 2.5rem;
+  gap: 0.75rem;
+  align-items: center;
+  color: var(--muted);
+  font-family: var(--font-code);
+  font-size: 0.75rem;
+}
+
+.keyboardControls input {
+  min-height: 44px;
+  accent-color: #a33f2b;
+}
+
+.keyboardControls output {
+  color: var(--ink);
+  text-align: right;
+}
+
+.nav a:focus-visible,
+.methodGrid button:focus-visible,
+.activeMethod button:focus-visible,
+.activeMethod input:focus-visible,
+.footerBar button:focus-visible,
+.keyboardControls input:focus-visible,
+.canvas:focus-visible {
+  outline: 3px solid #a33f2b;
+  outline-offset: 3px;
+}
+
+.notes {
+  padding-block: 2rem 5rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.notes p {
+  max-width: 48rem;
+  margin: 0;
+}
+
+@media (max-width: 800px) {
+  .experimentHeader {
+    align-items: start;
+    flex-direction: column;
+  }
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+  .methodGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .methodGrid button:nth-child(6n) {
+    border-right: 1px solid var(--line);
+  }
+  .methodGrid button:nth-child(3n) {
+    border-right: 0;
+  }
+  .activeMethod {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .canvas {
+    min-height: 30rem;
+  }
+  .readout {
+    grid-template-columns: repeat(2, 1fr);
+    border-top: 1px solid #3c3e38;
+    border-left: 0;
+  }
+  .resultCard {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .methodGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .methodGrid button:nth-child(3n) {
+    border-right: 1px solid var(--line);
+  }
+  .methodGrid button:nth-child(2n) {
+    border-right: 0;
+  }
+  .readout {
+    grid-template-columns: 1fr;
+  }
+  .canvas {
+    min-height: 25rem;
+  }
+  .keyboardControls {
+    grid-template-columns: 1fr;
+  }
+  .keyboardControls fieldset {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .keyboardControls fieldset:last-child {
+    border-bottom: 0;
+  }
+  .footerBar {
+    align-items: start;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas {
+    scroll-behavior: auto;
+  }
+}

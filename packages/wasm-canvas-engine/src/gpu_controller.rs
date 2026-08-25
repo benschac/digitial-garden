@@ -27,9 +27,11 @@ const UPDATE_PARTICLE_OFFSET: usize = 15;
 const TWO_WAY_INTERLEAVE_THRESHOLD: u32 = 450_000;
 const FOUR_WAY_INTERLEAVE_THRESHOLD: u32 = 1_200_000;
 const EIGHT_WAY_INTERLEAVE_THRESHOLD: u32 = 2_400_000;
+const SIXTEEN_WAY_INTERLEAVE_THRESHOLD: u32 = 8_000_000;
+const THIRTY_TWO_WAY_INTERLEAVE_THRESHOLD: u32 = 16_000_000;
 
 pub(crate) const FRAME_COMMAND_BYTE_LENGTH: u32 = (COMMAND_WORDS * size_of::<u32>()) as u32;
-pub(crate) const MAX_GPU_PARTICLES: u32 = 4_200_000;
+pub(crate) const MAX_GPU_PARTICLES: u32 = 32_000_000;
 pub(crate) const COMMAND_FLAG_INITIALIZE: u32 = 1;
 pub(crate) const COMMAND_FLAG_RESIZE: u32 = 1 << 1;
 
@@ -180,7 +182,11 @@ fn trail_alpha(delta_seconds: f32) -> f32 {
 }
 
 fn simulation_update_stride(particle_count: u32) -> u32 {
-    if particle_count > EIGHT_WAY_INTERLEAVE_THRESHOLD {
+    if particle_count > THIRTY_TWO_WAY_INTERLEAVE_THRESHOLD {
+        32
+    } else if particle_count > SIXTEEN_WAY_INTERLEAVE_THRESHOLD {
+        16
+    } else if particle_count > EIGHT_WAY_INTERLEAVE_THRESHOLD {
         8
     } else if particle_count > FOUR_WAY_INTERLEAVE_THRESHOLD {
         4
@@ -202,7 +208,12 @@ mod tests {
     #[test]
     fn first_frame_should_initialize_the_full_device_capacity() {
         let mut controller = GpuFrameController::new();
-        controller.initialize(5_000_000, 5_000_000, 800.0, 600.0);
+        controller.initialize(
+            MAX_GPU_PARTICLES.saturating_add(1),
+            MAX_GPU_PARTICLES.saturating_add(1),
+            800.0,
+            600.0,
+        );
 
         controller.prepare_frame(1.0, 1.0 / 60.0, 0.0, 0.0, 0.0, 1.0);
 
@@ -285,12 +296,12 @@ mod tests {
     }
 
     #[test]
-    fn maximum_density_frames_should_rotate_through_eight_update_cohorts() {
+    fn maximum_density_frames_should_rotate_through_thirty_two_update_cohorts() {
         let mut controller = GpuFrameController::new();
-        controller.initialize(4_200_000, 4_200_000, 800.0, 600.0);
+        controller.initialize(MAX_GPU_PARTICLES, MAX_GPU_PARTICLES, 800.0, 600.0);
         controller.prepare_frame(1.0, 1.0 / 60.0, 0.0, 0.0, 0.0, 1.0);
 
-        for expected_offset in 0..8 {
+        for expected_offset in 0..32 {
             controller.prepare_frame(2.0, 1.0 / 60.0, 0.0, 0.0, 0.0, 1.0);
             assert_eq!(
                 (
@@ -298,7 +309,7 @@ mod tests {
                     controller.command[UPDATE_PARTICLE_STRIDE],
                     controller.command[UPDATE_PARTICLE_OFFSET],
                 ),
-                (525_000, 8, expected_offset),
+                (1_000_000, 32, expected_offset),
             );
         }
     }
@@ -311,6 +322,10 @@ mod tests {
         assert_eq!(simulation_update_stride(1_200_001), 4);
         assert_eq!(simulation_update_stride(2_400_000), 4);
         assert_eq!(simulation_update_stride(2_400_001), 8);
+        assert_eq!(simulation_update_stride(8_000_000), 8);
+        assert_eq!(simulation_update_stride(8_000_001), 16);
+        assert_eq!(simulation_update_stride(16_000_000), 16);
+        assert_eq!(simulation_update_stride(16_000_001), 32);
     }
 
     #[test]

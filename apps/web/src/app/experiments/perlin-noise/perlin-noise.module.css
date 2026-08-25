@@ -1,0 +1,543 @@
+.page {
+  --experiment-ink: #211f1b;
+  --experiment-muted: #70695f;
+  --experiment-line: #d8d0c2;
+  min-height: 100vh;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+  color: var(--experiment-ink);
+  background:
+    linear-gradient(
+      90deg,
+      transparent 49.9%,
+      rgb(91 77 56 / 8%) 50%,
+      transparent 50.1%
+    ),
+    #f4efe4;
+  font-family: var(--font-ui);
+}
+
+.nav,
+.header,
+.notes {
+  width: min(100%, 76rem);
+  margin-inline: auto;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--experiment-muted);
+  font-family: var(--font-code);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.nav a {
+  color: inherit;
+  min-height: 44px;
+  text-decoration: none;
+}
+
+.nav a:hover {
+  color: var(--experiment-ink);
+}
+
+.header {
+  padding-block: clamp(4rem, 10vw, 8rem) clamp(2.75rem, 6vw, 5rem);
+}
+
+.eyebrow,
+.kicker {
+  margin: 0 0 1rem;
+  color: #a33f2b;
+  font-family: var(--font-code);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  max-width: 11ch;
+  margin: 0;
+  font-family: var(--font-editorial);
+  font-size: clamp(3.6rem, 9vw, 8rem);
+  font-optical-sizing: auto;
+  font-weight: 430;
+  letter-spacing: -0.06em;
+  line-height: 0.88;
+  text-wrap: balance;
+}
+
+.intro {
+  max-width: 42rem;
+  margin: 2rem 0 0;
+  color: var(--experiment-muted);
+  font-family: var(--font-editorial);
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  font-optical-sizing: auto;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.experiment {
+  width: min(100%, 92rem);
+  margin-inline: auto;
+  overflow: hidden;
+  border: 1px solid var(--experiment-line);
+  background: #faf7f0;
+  box-shadow: 0 2rem 6rem rgb(65 50 30 / 13%);
+}
+
+.experimentHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  border-bottom: 1px solid var(--experiment-line);
+}
+
+.experimentHeader h2 {
+  max-width: 18ch;
+  margin: 0;
+  font-family: var(--font-editorial);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-optical-sizing: auto;
+  font-weight: 450;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.runtimeStatus {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  margin: 0;
+  color: #386547;
+  font-family: var(--font-code);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.runtimeStatus::before {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.runtimeStatus[data-status="loading"] {
+  color: var(--experiment-muted);
+}
+
+.runtimeStatus[data-status="error"] {
+  color: #a33f2b;
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid var(--experiment-line);
+}
+
+.panel {
+  min-width: 0;
+  margin: 0;
+  padding: clamp(0.75rem, 2vw, 1.25rem);
+  border-right: 1px solid var(--experiment-line);
+}
+
+.panel:last-child {
+  border-right: 0;
+}
+
+.panel canvas {
+  width: 100%;
+  aspect-ratio: 1;
+  background: #131618;
+  image-rendering: auto;
+}
+
+.panel figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.9rem;
+  font-family: var(--font-code);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.panelDetail {
+  color: var(--experiment-muted);
+  text-align: right;
+}
+
+.readout {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: clamp(1.5rem, 4vw, 4rem);
+  align-items: center;
+  padding: 1.25rem clamp(1.5rem, 3vw, 2.5rem);
+  border-bottom: 1px solid var(--experiment-line);
+}
+
+.readout div {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.metricLabel,
+.metricValue {
+  font-family: var(--font-code);
+}
+
+.metricLabel {
+  color: var(--experiment-muted);
+  font-size: 0.65rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.metricValue {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.readout p {
+  margin: 0;
+  color: #386547;
+  font-family: var(--font-editorial);
+  font-size: 1.1rem;
+  font-style: italic;
+  text-align: right;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 1.5rem;
+  align-items: end;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.controls label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.7rem 1rem;
+  color: var(--experiment-muted);
+  font-size: 0.78rem;
+}
+
+.controls output {
+  color: #a33f2b;
+  font-family: var(--font-code);
+}
+
+.controls input {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 2.75rem;
+  accent-color: #a33f2b;
+  cursor: pointer;
+}
+
+.controls button {
+  min-height: 2.75rem;
+  padding-inline: 1.1rem;
+  border: 1px solid #94897a;
+  border-radius: 999px;
+  color: var(--experiment-ink);
+  background: transparent;
+  cursor: pointer;
+}
+
+.controls button:hover:not(:disabled) {
+  border-color: #a33f2b;
+  color: #a33f2b;
+}
+
+.controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.errorMessage {
+  margin: 0;
+  padding: 1rem clamp(1.5rem, 3vw, 2.5rem);
+  border-bottom: 1px solid var(--experiment-line);
+  color: #8d2f20;
+  background: #f7dfd6;
+}
+
+.controls button:focus-visible,
+.controls input:focus-visible,
+.nav a:focus-visible {
+  outline: 3px solid #a33f2b;
+  outline-offset: 3px;
+}
+
+.notes {
+  padding-block: 2rem 5rem;
+  color: var(--experiment-muted);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.notes p {
+  max-width: 46rem;
+  margin: 0;
+}
+
+.threeExperiment {
+  width: min(100%, 92rem);
+  margin: clamp(3rem, 8vw, 7rem) auto 0;
+  overflow: hidden;
+  border: 1px solid var(--experiment-line);
+  background: #faf7f0;
+  box-shadow: 0 2rem 6rem rgb(65 50 30 / 13%);
+}
+
+.threeHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2rem;
+  align-items: end;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  border-bottom: 1px solid var(--experiment-line);
+}
+
+.threeHeader h2 {
+  max-width: 15ch;
+  margin: 0;
+  font-family: var(--font-editorial);
+  font-size: clamp(2.4rem, 5vw, 4.5rem);
+  font-optical-sizing: auto;
+  font-weight: 450;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+.threeHeader > div > p:last-child {
+  max-width: 42rem;
+  margin: 1.25rem 0 0;
+  color: var(--experiment-muted);
+  line-height: 1.55;
+}
+
+.threeMetric {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: end;
+  font-family: var(--font-code);
+  text-align: right;
+}
+
+.threeMetric span,
+.threeMetric small {
+  color: var(--experiment-muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.threeMetric strong {
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+.threeMetric small[data-status="ready"] {
+  color: #386547;
+}
+
+.threeMetric small[data-status="error"] {
+  color: #a33f2b;
+}
+
+.threeCanvasFrame {
+  position: relative;
+  height: min(68vw, 46rem);
+  min-height: 32rem;
+  background: #111517;
+}
+
+.threeCanvas {
+  width: 100%;
+  height: 100%;
+}
+
+.threeLegend {
+  position: absolute;
+  right: 1.5rem;
+  bottom: 1.25rem;
+  left: 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  color: #e5dbc8;
+  font-family: var(--font-code);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  pointer-events: none;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.threeControls {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+  gap: 1.25rem;
+  align-items: end;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.threeControls label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.65rem 1rem;
+  color: var(--experiment-muted);
+  font-size: 0.76rem;
+}
+
+.threeControls output {
+  color: #a33f2b;
+  font-family: var(--font-code);
+}
+
+.threeControls input {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 2.75rem;
+  accent-color: #a33f2b;
+  cursor: pointer;
+}
+
+.threeControls input:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.threeControlActions {
+  display: flex;
+  gap: 0.65rem;
+}
+
+.threeControls button {
+  min-height: 2.75rem;
+  padding-inline: 1.1rem;
+  border: 1px solid #94897a;
+  border-radius: 999px;
+  color: var(--experiment-ink);
+  background: transparent;
+  cursor: pointer;
+}
+
+.threeControls button:hover:not(:disabled) {
+  border-color: #a33f2b;
+  color: #a33f2b;
+}
+
+.threeControls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.threeControls button:focus-visible,
+.threeControls input:focus-visible {
+  outline: 3px solid #a33f2b;
+  outline-offset: 3px;
+}
+
+.threeLoading {
+  display: grid;
+  min-height: 32rem;
+  place-items: center;
+  color: var(--experiment-muted);
+  font-family: var(--font-code);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 980px) {
+  .panels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .panel:nth-child(2) {
+    border-right: 0;
+  }
+
+  .panel:last-child {
+    grid-column: 1 / -1;
+    width: 50%;
+    border-top: 1px solid var(--experiment-line);
+    border-right: 1px solid var(--experiment-line);
+  }
+
+  .controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .threeControls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .header h1 {
+    font-size: clamp(3.4rem, 18vw, 5.2rem);
+  }
+
+  .experimentHeader {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .panels,
+  .controls,
+  .readout {
+    grid-template-columns: 1fr;
+  }
+
+  .panel,
+  .panel:nth-child(2),
+  .panel:last-child {
+    grid-column: auto;
+    width: auto;
+    border-top: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--experiment-line);
+  }
+
+  .panel:last-child {
+    border-bottom: 0;
+  }
+
+  .readout {
+    gap: 1.25rem;
+  }
+
+  .readout p {
+    text-align: left;
+  }
+
+  .threeHeader,
+  .threeControls {
+    grid-template-columns: 1fr;
+  }
+
+  .threeMetric {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .threeCanvasFrame {
+    height: 32rem;
+    min-height: 0;
+  }
+}

@@ -1,4 +1,5 @@
 mod gpu_controller;
+pub mod perlin_noise;
 mod simulation;
 
 use std::cell::RefCell;
@@ -204,6 +205,16 @@ pub extern "C" fn set_particle_count(count: u32) {
 #[no_mangle]
 pub extern "C" fn particle_count() -> u32 {
     with_engine(|engine| engine.simulation().active_particles as u32)
+}
+
+#[no_mangle]
+pub extern "C" fn perlin_noise_2d(x: f64, y: f64) -> f64 {
+    perlin_noise::perlin_noise_2d(x, y)
+}
+
+#[no_mangle]
+pub extern "C" fn perlin_noise_3d(x: f64, y: f64, z: f64) -> f64 {
+    perlin_noise::perlin_noise_3d(x, y, z)
 }
 
 #[no_mangle]

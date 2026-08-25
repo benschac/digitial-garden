@@ -1,8 +1,9 @@
 .page {
   --ink: #eaf1ff;
   --muted: #8b97aa;
+  --page-gutter: clamp(1.25rem, 3vw, 2.5rem);
   min-height: 100vh;
-  padding: clamp(1.25rem, 3vw, 2.5rem);
+  padding: var(--page-gutter);
   color: var(--ink);
   background:
     radial-gradient(circle at 70% -10%, #16344d 0, transparent 34rem), #080a10;
@@ -21,6 +22,15 @@
 .experiment {
   width: min(100%, 92rem);
   margin-inline: auto;
+}
+
+.fullWidthExperiment {
+  width: calc(100% + var(--page-gutter) + var(--page-gutter));
+  max-width: none;
+  margin-inline: calc(0px - var(--page-gutter));
+  border-right: 0;
+  border-left: 0;
+  border-radius: 0;
 }
 
 .nav {
@@ -87,6 +97,10 @@
   overflow: hidden;
   border-bottom: 1px solid #253040;
   background: #05070d;
+}
+
+.tallCanvasFrame {
+  min-height: calc(min(72vh, 52rem) + 150px);
 }
 
 .canvas {
@@ -186,6 +200,10 @@
 
   .canvasFrame {
     min-height: 58vh;
+  }
+
+  .tallCanvasFrame {
+    min-height: calc(58vh + 150px);
   }
 }
 

@@ -15,7 +15,7 @@ export default function WasmCanvasPage() {
     <main className={styles.page}>
       <nav className={styles.nav}>
         <Link href="/">← Workbench</Link>
-        <span>Experiment 001</span>
+        <Link href="/experiments/typegpu-particles">TypeGPU copy →</Link>
       </nav>
       <header className={styles.header}>
         <p className={styles.eyebrow}>Rust/WASM · WebGPU · WGSL</p>
