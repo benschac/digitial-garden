@@ -1,9 +1,9 @@
 "use client";
 
+import { useAbortableEffect } from "@personal-site/react-hooks";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { ElementRef, Ref } from "react";
 import { useEffect, useRef, useState } from "react";
-import { useAbortableEffect } from "@/lib/hooks/use-abortable-effect";
 import { perlinNoise3D } from "@/lib/perlin-noise";
 import { loadParticleEngine } from "../wasm-canvas/wasm-engine";
 import styles from "./perlin-noise.module.css";

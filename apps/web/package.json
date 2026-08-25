@@ -15,6 +15,7 @@
     "wasm:watch": "bun run scripts/watch-wasm.ts"
   },
   "dependencies": {
+    "@personal-site/react-hooks": "workspace:*",
     "@mdx-js/loader": "3.1.1",
     "@mdx-js/mdx": "3.1.1",
     "@mdx-js/react": "3.1.1",

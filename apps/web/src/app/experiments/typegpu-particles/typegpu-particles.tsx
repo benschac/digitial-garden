@@ -1,8 +1,10 @@
 "use client";
 
+import {
+  useAbortableEffect,
+  useAnimationFrame,
+} from "@personal-site/react-hooks";
 import { useRef, useState } from "react";
-import { useAbortableEffect } from "@/lib/hooks/use-abortable-effect";
-import { useAnimationFrame } from "@/lib/hooks/use-animation-frame";
 import { frameDeltaSeconds } from "../wasm-canvas/animation-timing";
 import type { ParticleRenderer } from "../wasm-canvas/particle-renderer";
 import styles from "../wasm-canvas/wasm-canvas.module.css";

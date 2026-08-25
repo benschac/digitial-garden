@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffectEvent, useId, useRef, useState } from "react";
-import { useAbortableEffect } from "@/lib/hooks/use-abortable-effect";
-import { useAnimationFrame } from "@/lib/hooks/use-animation-frame";
 import {
+  useAbortableEffect,
+  useAnimationFrame,
   useDocumentEvent,
   useIntersectionObserver,
   useMediaQuery,
   useResizeObserver,
   useWindowEvent,
-} from "@/lib/hooks/use-browser-lifecycle";
+} from "@personal-site/react-hooks";
+import { useEffectEvent, useId, useRef, useState } from "react";
 import { frameDeltaSeconds } from "./animation-timing";
 import type { ParticleRenderer } from "./particle-renderer";
 import { createWasmParticleRenderer } from "./wasm-particle-renderer";
