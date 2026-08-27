@@ -61,11 +61,13 @@
 .header h1 {
   max-width: 11ch;
   margin: 0;
-  font-family: var(--font-editorial);
+  font-family: var(--font-editorial-display);
   font-size: clamp(3.6rem, 9vw, 8rem);
   font-optical-sizing: auto;
   font-weight: 430;
-  letter-spacing: -0.06em;
+  letter-spacing: calc(
+    -0.06em + var(--font-editorial-display-tracking-adjustment)
+  );
   line-height: 0.88;
   text-wrap: balance;
 }
@@ -74,7 +76,7 @@
   max-width: 42rem;
   margin: 2rem 0 0;
   color: var(--experiment-muted);
-  font-family: var(--font-editorial);
+  font-family: var(--font-editorial-reading);
   font-size: clamp(1.2rem, 2vw, 1.55rem);
   font-optical-sizing: auto;
   line-height: 1.45;
@@ -102,11 +104,13 @@
 .experimentHeader h2 {
   max-width: 18ch;
   margin: 0;
-  font-family: var(--font-editorial);
+  font-family: var(--font-editorial-display);
   font-size: clamp(2rem, 4vw, 3.5rem);
   font-optical-sizing: auto;
   font-weight: 450;
-  letter-spacing: -0.035em;
+  letter-spacing: calc(
+    -0.035em + var(--font-editorial-display-tracking-adjustment)
+  );
   line-height: 1;
 }
 
@@ -212,7 +216,7 @@
 .readout p {
   margin: 0;
   color: #386547;
-  font-family: var(--font-editorial);
+  font-family: var(--font-editorial-reading);
   font-size: 1.1rem;
   font-style: italic;
   text-align: right;
@@ -315,11 +319,13 @@
 .threeHeader h2 {
   max-width: 15ch;
   margin: 0;
-  font-family: var(--font-editorial);
+  font-family: var(--font-editorial-display);
   font-size: clamp(2.4rem, 5vw, 4.5rem);
   font-optical-sizing: auto;
   font-weight: 450;
-  letter-spacing: -0.045em;
+  letter-spacing: calc(
+    -0.045em + var(--font-editorial-display-tracking-adjustment)
+  );
   line-height: 0.95;
 }
 

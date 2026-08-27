@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "better-typography": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/better-typography/SKILL.md",
+      "computedHash": "a086b39083c13d39ffde800e42d898a7f6780f8d28dcf7677897bb65ae4baac5"
+    },
     "codebase-design": {
       "source": "mattpocock/skills",
       "sourceType": "github",

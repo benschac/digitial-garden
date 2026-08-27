@@ -6,11 +6,13 @@
 }
 
 .page h1 {
-  font-family: var(--font-editorial);
+  font-family: var(--font-editorial-display);
   font-size: clamp(3rem, 8vw, 6rem);
   font-optical-sizing: auto;
   font-weight: 450;
-  letter-spacing: -0.045em;
+  letter-spacing: calc(
+    -0.045em + var(--font-editorial-display-tracking-adjustment)
+  );
   line-height: 0.94;
   margin: 0;
   max-width: 12ch;
@@ -19,7 +21,7 @@
 
 .page p {
   color: var(--color-muted);
-  font-family: var(--font-editorial);
+  font-family: var(--font-editorial-reading);
   font-size: clamp(1.2rem, 1rem + 0.7vw, 1.6rem);
   font-optical-sizing: auto;
   line-height: 1.35;

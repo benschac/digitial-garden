@@ -5,7 +5,7 @@
  */
 @layer reset {
   :root {
-    --font-editorial: var(
+    --font-choice-newsreader: var(
       --font-newsreader,
       "Iowan Old Style",
       "Palatino Linotype",
@@ -13,6 +13,38 @@
       Georgia,
       serif
     );
+    --font-choice-sorts-mill-goudy: var(
+      --font-sorts-mill-goudy,
+      "Iowan Old Style",
+      "Palatino Linotype",
+      Palatino,
+      Georgia,
+      serif
+    );
+    --font-choice-superior-serif:
+      var(--font-superior-serif), "Iowan Old Style", Palatino, Georgia, serif;
+    --font-choice-bonbance:
+      var(--font-bonbance), "Iowan Old Style", Palatino, Georgia, serif;
+    --font-choice-goudy-bookletter:
+      var(--font-goudy-bookletter), "Iowan Old Style", Palatino, Georgia,
+      serif;
+    --font-choice-libre-caslon-condensed: var(
+      --font-libre-caslon-condensed,
+      "Iowan Old Style",
+      Palatino,
+      Georgia,
+      serif
+    );
+    --font-choice-tenderness:
+      var(--font-tenderness), "Iowan Old Style", Palatino, Georgia, serif;
+    --font-choice-iowan: "Iowan Old Style", Palatino, Georgia, serif;
+    --font-choice-palatino: "Palatino Linotype", Palatino, Georgia, serif;
+    --font-choice-georgia: Georgia, serif;
+    --font-editorial-display: var(--font-choice-tenderness);
+    --font-editorial-display-tracking-adjustment: 0em;
+    --font-editorial-display-secondary-tracking-adjustment: 0em;
+    --font-editorial-reading: var(--font-choice-newsreader);
+    --font-editorial: var(--font-editorial-reading);
     --font-ui:
       ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
       sans-serif;
@@ -21,6 +53,88 @@
     --color-muted: #6f6a61;
     --color-paper: #f8f5ee;
     --color-selection: #e8d8bd;
+  }
+
+  :root[data-editorial-display-font="newsreader"] {
+    --font-editorial-display: var(--font-choice-newsreader);
+  }
+
+  :root[data-editorial-display-font="sorts-mill-goudy"] {
+    --font-editorial-display: var(--font-choice-sorts-mill-goudy);
+  }
+
+  :root[data-editorial-display-font="superior-serif"] {
+    --font-editorial-display: var(--font-choice-superior-serif);
+  }
+
+  :root[data-editorial-display-font="bonbance"] {
+    --font-editorial-display: var(--font-choice-bonbance);
+    --font-editorial-display-tracking-adjustment: 0.06em;
+  }
+
+  :root[data-editorial-display-font="goudy-bookletter"] {
+    --font-editorial-display: var(--font-choice-goudy-bookletter);
+  }
+
+  :root[data-editorial-display-font="libre-caslon-condensed"] {
+    --font-editorial-display: var(--font-choice-libre-caslon-condensed);
+    --font-editorial-display-secondary-tracking-adjustment: 0.02em;
+  }
+
+  :root[data-editorial-display-font="tenderness"] {
+    --font-editorial-display: var(--font-choice-tenderness);
+  }
+
+  :root[data-editorial-display-font="iowan"] {
+    --font-editorial-display: var(--font-choice-iowan);
+  }
+
+  :root[data-editorial-display-font="palatino"] {
+    --font-editorial-display: var(--font-choice-palatino);
+  }
+
+  :root[data-editorial-display-font="georgia"] {
+    --font-editorial-display: var(--font-choice-georgia);
+  }
+
+  :root[data-editorial-reading-font="newsreader"] {
+    --font-editorial-reading: var(--font-choice-newsreader);
+  }
+
+  :root[data-editorial-reading-font="sorts-mill-goudy"] {
+    --font-editorial-reading: var(--font-choice-sorts-mill-goudy);
+  }
+
+  :root[data-editorial-reading-font="superior-serif"] {
+    --font-editorial-reading: var(--font-choice-superior-serif);
+  }
+
+  :root[data-editorial-reading-font="bonbance"] {
+    --font-editorial-reading: var(--font-choice-bonbance);
+  }
+
+  :root[data-editorial-reading-font="goudy-bookletter"] {
+    --font-editorial-reading: var(--font-choice-goudy-bookletter);
+  }
+
+  :root[data-editorial-reading-font="libre-caslon-condensed"] {
+    --font-editorial-reading: var(--font-choice-libre-caslon-condensed);
+  }
+
+  :root[data-editorial-reading-font="tenderness"] {
+    --font-editorial-reading: var(--font-choice-tenderness);
+  }
+
+  :root[data-editorial-reading-font="iowan"] {
+    --font-editorial-reading: var(--font-choice-iowan);
+  }
+
+  :root[data-editorial-reading-font="palatino"] {
+    --font-editorial-reading: var(--font-choice-palatino);
+  }
+
+  :root[data-editorial-reading-font="georgia"] {
+    --font-editorial-reading: var(--font-choice-georgia);
   }
 
   *,
