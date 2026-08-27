@@ -98,9 +98,7 @@ describe("file-based post registry", () => {
     });
 
     expect(posts.map((post) => post.slug)).toEqual([
-      "designing-a-bezier-system-map",
       "rust-wasm-webgpu-particles",
-      "why-i-built-this",
       "upload-to-pinata-ipfs",
       "persist-react-navigation-router-state",
       "animated-blog-post-background",

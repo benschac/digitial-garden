@@ -7,6 +7,9 @@ export default function Home() {
       <h1>Benjamin Schachter</h1>
       <p>A personal workbench for software, systems, and experiments.</p>
       <nav aria-label="Primary" className={styles.links}>
+        <a href="https://www.youtube.com/watch?v=UIBd0D4ny78&t=26s">
+          Watch my App.js Conf 2026 talk →
+        </a>
         <Link href="/blog">Read the blog →</Link>
         <Link href="/experiments/wasm-canvas">Explore WebGPU particles →</Link>
         <Link href="/experiments/perlin-noise">Compare Perlin noise →</Link>

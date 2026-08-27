@@ -1,7 +1,7 @@
 import { compile } from "@mdx-js/mdx";
 import remarkGfm from "remark-gfm";
 
-const allowedComponents = new Set(["BezierPlayground", "Callout"]);
+const allowedComponents = new Set(["Callout"]);
 
 interface MdxNode {
   attributes?: Array<{

@@ -1,8 +1,7 @@
 import type { MDXComponents } from "mdx/types";
 import Image from "next/image";
 import Link from "next/link";
-import type { ComponentPropsWithoutRef } from "react";
-import { BezierPlayground } from "./components/mdx/bezier-playground";
+import { isValidElement, type ComponentPropsWithoutRef } from "react";
 import { Callout } from "./components/mdx/callout";
 
 function MdxLink({ href = "", ...props }: ComponentPropsWithoutRef<"a">) {
@@ -20,7 +19,7 @@ function MdxLink({ href = "", ...props }: ComponentPropsWithoutRef<"a">) {
   );
 }
 
-function MdxImage({
+export function MdxImage({
   alt = "",
   src = "",
   title,
@@ -49,10 +48,21 @@ function MdxImage({
   );
 }
 
+export function MdxParagraph({
+  children,
+  ...props
+}: ComponentPropsWithoutRef<"p">) {
+  if (isValidElement(children) && children.type === MdxImage) {
+    return children;
+  }
+
+  return <p {...props}>{children}</p>;
+}
+
 const components = {
   a: MdxLink,
   img: MdxImage,
-  BezierPlayground,
+  p: MdxParagraph,
   Callout,
 } satisfies MDXComponents;
 
