@@ -42,7 +42,7 @@ export default function Home() {
         {process.env.NODE_ENV === "development" ? (
           <Link href="/s">Talk to the workbench analyst →</Link>
         ) : null}
-        <Link href="/blog">Read the blog →</Link>
+        <Link href="/blog">Blog →</Link>
         <Link href="/playground">Playground →</Link>
       </nav>
     </main>
