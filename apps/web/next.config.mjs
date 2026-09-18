@@ -1,4 +1,5 @@
 import createMDX from "@next/mdx";
+import { withEve } from "eve/next";
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
@@ -17,12 +18,13 @@ const nextConfig = {
 const withMDX = createMDX({
   extension: /\.(md|mdx)$/,
   options: {
-    remarkPlugins: ["remark-frontmatter", "remark-gfm"],
+    remarkPlugins: ["remark-frontmatter", "remark-gfm", "remark-math"],
     rehypePlugins: [
       "rehype-slug",
+      "rehype-katex",
       ["@shikijs/rehype", { theme: "github-dark-dimmed" }],
     ],
   },
 });
 
-export default withMDX(nextConfig);
+export default withEve(withMDX(nextConfig));

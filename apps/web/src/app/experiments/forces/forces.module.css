@@ -1,0 +1,398 @@
+.page {
+  --ink: #f6f0df;
+  --muted: #9ba4b3;
+  --line: #303846;
+  min-height: 100vh;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 75% 0%, rgb(37 99 235 / 18%), transparent 34rem),
+    #0b0e14;
+  font-family: var(--font-ui);
+}
+
+.nav,
+.header,
+.laws,
+.notes {
+  width: min(100%, 76rem);
+  margin-inline: auto;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-family: var(--font-code);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.nav a {
+  min-height: 44px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.nav a:hover {
+  color: var(--ink);
+}
+
+.header {
+  padding-block: clamp(4rem, 10vw, 8rem) clamp(3rem, 7vw, 6rem);
+}
+
+.eyebrow,
+.kicker {
+  margin: 0 0 1rem;
+  color: #86efac;
+  font-family: var(--font-code);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  max-width: 10ch;
+  margin: 0;
+  font-family: var(--font-editorial-display);
+  font-size: clamp(3.7rem, 9vw, 8rem);
+  font-weight: 430;
+  letter-spacing: calc(
+    -0.06em +
+    var(--font-editorial-display-tracking-adjustment)
+  );
+  line-height: 0.88;
+  text-wrap: balance;
+}
+
+.intro {
+  max-width: 44rem;
+  margin: 2rem 0 0;
+  color: #b8c1cf;
+  font-family: var(--font-editorial-reading);
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  line-height: 1.5;
+}
+
+.experiment {
+  width: min(100%, 92rem);
+  margin-inline: auto;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #11151d;
+  box-shadow: 0 2rem 7rem rgb(0 0 0 / 45%);
+}
+
+.experimentHeader {
+  display: flex;
+  gap: 2rem;
+  align-items: end;
+  justify-content: space-between;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.experimentHeader h2 {
+  max-width: 19ch;
+  margin: 0;
+  font-family: var(--font-editorial-display);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 450;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.status {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  margin: 0;
+  color: #86efac;
+  font-family: var(--font-code);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.status::before {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid var(--line);
+}
+
+.tabs button {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  min-height: 4.75rem;
+  padding-inline: clamp(1rem, 3vw, 2rem);
+  border: 0;
+  border-right: 1px solid var(--line);
+  color: var(--muted);
+  background: #11151d;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.tabs button:last-child {
+  border-right: 0;
+}
+.tabs button[aria-selected="true"] {
+  color: var(--ink);
+  background: #1a202b;
+}
+.tabs span {
+  color: #86efac;
+  font-family: var(--font-code);
+  font-size: 0.7rem;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(19rem, 0.75fr);
+  min-height: 36rem;
+}
+
+.canvasFrame {
+  position: relative;
+  min-height: 36rem;
+}
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.telemetry {
+  position: absolute;
+  right: 1.25rem;
+  bottom: 1rem;
+  left: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  color: #8994a6;
+  font-family: var(--font-code);
+  font-size: 0.68rem;
+  letter-spacing: 0.07em;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+.controls {
+  display: grid;
+  gap: 1.4rem;
+  align-content: start;
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  border-left: 1px solid var(--line);
+  background: #171c25;
+}
+
+.controlCopy > span {
+  color: #86efac;
+  font-family: var(--font-code);
+  font-size: 0.68rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.controlCopy h3 {
+  margin: 0.65rem 0 0.8rem;
+  font-family: var(--font-editorial-display);
+  font-size: 2rem;
+  font-weight: 450;
+}
+
+.controlCopy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.rangeControl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.55rem 1rem;
+  color: #bac3d0;
+  font-size: 0.78rem;
+}
+
+.rangeControl output {
+  color: #86efac;
+  font-family: var(--font-code);
+}
+.rangeControl input {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  accent-color: #86efac;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: auto;
+}
+.actions button,
+.primaryButton {
+  min-height: 44px;
+  padding-inline: 1rem;
+  border: 1px solid #465164;
+  border-radius: 999px;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.primaryButton {
+  width: 100%;
+  border-color: #86efac;
+  background: #86efac;
+  color: #0b1610;
+}
+.primaryButton:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.laws {
+  padding-block: clamp(5rem, 10vw, 9rem) 3rem;
+}
+.laws > h2 {
+  max-width: 12ch;
+  margin: 0 0 3rem;
+  font-family: var(--font-editorial-display);
+  font-size: clamp(2.6rem, 5vw, 4.75rem);
+  font-weight: 450;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+}
+
+.lawGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  max-width: 100%;
+  border-top: 1px solid var(--line);
+}
+.lawGrid article {
+  min-width: 0;
+  padding: 1.5rem 1.5rem 1.5rem 0;
+  border-right: 1px solid var(--line);
+}
+.lawGrid article + article {
+  padding-left: 1.5rem;
+}
+.lawGrid article:last-child {
+  border-right: 0;
+}
+.lawGrid article > span {
+  color: #86efac;
+  font-family: var(--font-code);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lawGrid h3 {
+  min-height: 3.4em;
+  margin: 1rem 0;
+  font-family: var(--font-editorial-reading);
+  font-size: 1.3rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.lawGrid p {
+  margin-block: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.equation {
+  min-width: 0;
+  margin-top: 1.25rem;
+  overflow-x: auto;
+  color: #c7cfdb;
+  font-size: clamp(0.9rem, 1.25vw, 1.05rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.notes {
+  padding-block: 0 5rem;
+  color: #778294;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+.notes p {
+  max-width: 48rem;
+  margin: 0;
+}
+
+.nav a:focus-visible,
+.tabs button:focus-visible,
+.actions button:focus-visible,
+.primaryButton:focus-visible,
+.rangeControl input:focus-visible {
+  outline: 3px solid #86efac;
+  outline-offset: 3px;
+}
+
+@media (max-width: 850px) {
+  .experimentHeader {
+    align-items: start;
+    flex-direction: column;
+  }
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+  .canvasFrame {
+    min-height: 28rem;
+  }
+  .controls {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+  .lawGrid {
+    grid-template-columns: 1fr;
+  }
+  .lawGrid article,
+  .lawGrid article + article {
+    padding: 1.5rem 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .lawGrid h3 {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 540px) {
+  .tabs button {
+    align-items: start;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .canvasFrame {
+    min-height: 22rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status::before {
+    opacity: 0.7;
+  }
+}

@@ -11,6 +11,38 @@ bun run dev
 
 The site runs at [http://localhost:3000](http://localhost:3000).
 
+## Eve agent
+
+The Next.js app includes a minimal [Eve](https://eve.dev) agent under
+`apps/web/agent`. Eve requires Node.js 24 or newer; this repository declares
+that requirement in its package manifests.
+
+Use Node.js 24 or newer. With nvm, run `nvm install` and `nvm use` from the
+project root to select the version pinned in `.nvmrc`.
+
+Configure model access with `AI_GATEWAY_API_KEY` in `apps/web/.env.local`, or
+link the app to a Vercel project with Eve. Then run either the site and agent on
+one origin or the standalone terminal client:
+
+```bash
+bun run dev
+bun --cwd apps/web run eve:dev
+```
+
+Use `bun --cwd apps/web run eve:info` to inspect the discovered agent surface.
+The default browser channel accepts local development traffic but remains
+fail-closed in production until an explicit authentication policy is added.
+
+The agent includes Eve's introductory in-memory analytics example. Try asking:
+
+```text
+Which customer has spent the most, and how much?
+How much revenue came from each customer plan in May 2026?
+```
+
+The `run_sql` tool queries a throwaway SQLite database seeded with four orders
+and three customers. It does not connect to production data.
+
 ## WebGPU and WebAssembly experiment
 
 The particle field at `/experiments/wasm-canvas` keeps its simulation state on

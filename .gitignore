@@ -11,6 +11,12 @@ target/
 # Turborepo
 .turbo/
 
+# Eve local runtime state
+.eve/
+.nitro/
+.output/
+.vercel/
+
 # local environment files
 .env*
 !.env.example

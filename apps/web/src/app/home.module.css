@@ -11,7 +11,8 @@
   font-optical-sizing: auto;
   font-weight: 450;
   letter-spacing: calc(
-    -0.045em + var(--font-editorial-display-tracking-adjustment)
+    -0.045em +
+    var(--font-editorial-display-tracking-adjustment)
   );
   line-height: 0.94;
   margin: 0;
@@ -28,6 +29,19 @@
   margin: 1.25rem 0 2rem;
   max-width: 36ch;
   text-wrap: pretty;
+}
+
+.playground {
+  margin-top: 2.5rem;
+}
+
+.playground h2 {
+  font-family: var(--font-editorial-display);
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-optical-sizing: auto;
+  font-weight: 450;
+  line-height: 1.1;
+  margin: 0 0 1.25rem;
 }
 
 .links {

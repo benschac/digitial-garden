@@ -1,0 +1,81 @@
+import Link from "next/link";
+import { ForcesExperiment } from "./forces-experiment";
+import styles from "./forces.module.css";
+
+export const metadata = {
+  title: "Newton's Laws, in Motion",
+  description: "An interactive canvas laboratory for Newton's three laws of motion.",
+  alternates: { canonical: "/experiments/forces" },
+};
+
+<main className={styles.page}>
+  <nav className={styles.nav}>
+    <Link href="/">← Workbench</Link>
+    <span>Experiment 004</span>
+  </nav>
+
+  <header className={styles.header}>
+    <p className={styles.eyebrow}>Classical mechanics · Canvas · MDX + LaTeX</p>
+    <h1>Every motion has an account.</h1>
+    <p className={styles.intro}>
+      {"Change the conditions and watch the bookkeeping update. Velocity persists, force changes momentum, and every push returns an equal push."}
+    </p>
+  </header>
+
+  <ForcesExperiment />
+
+  <section className={styles.laws} aria-labelledby="field-notes">
+    <p className={styles.eyebrow}>Field notes</p>
+    <h2 id="field-notes">Three laws, one system.</h2>
+
+    <div className={styles.lawGrid}>
+      <article>
+        <span>01 / Inertia</span>
+        <h3>No net force, no change in motion.</h3>
+        <p>
+          {"An object at rest stays at rest, and a moving object keeps a constant velocity, unless a net external force acts on it."}
+        </p>
+
+        <div className={styles.equation}>
+          $$
+          \sum \vec{F} = 0 \quad \Longrightarrow \quad \frac{d\vec{v}}{dt} = 0
+          $$
+        </div>
+      </article>
+
+      <article>
+        <span>02 / Acceleration</span>
+        <h3>Force changes momentum.</h3>
+        <p>
+          {"For constant mass, acceleration points with the net force. Double the force and acceleration doubles; double the mass and it halves."}
+        </p>
+
+        <div className={styles.equation}>
+          $$
+          \sum \vec{F} = \frac{d\vec{p}}{dt} = m\vec{a}
+          $$
+        </div>
+      </article>
+
+      <article>
+        <span>03 / Interaction</span>
+        <h3>Forces arrive in pairs.</h3>
+        <p>
+          {"When body A pushes body B, body B pushes body A with the same magnitude in the opposite direction. The forces act on different bodies."}
+        </p>
+
+        <div className={styles.equation}>
+          $$
+          \vec{F}_{A \to B} = -\vec{F}_{B \to A}
+          $$
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <aside className={styles.notes}>
+    <p>
+      {"This is an idealized, frictionless model. The values are internally consistent, but the canvas maps simulation units to pixels for legibility."}
+    </p>
+  </aside>
+</main>

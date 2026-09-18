@@ -7,6 +7,8 @@ import { getSiteUrl } from "@/lib/site";
 import { EditorialFontPreference } from "./editorial-font-preference";
 import { EditorialFontSwitcher } from "./editorial-font-switcher";
 import { editorialFontPreferenceInitScript } from "./editorial-fonts";
+import "katex/dist/katex.min.css";
+import "./globals.css";
 import "./reset.css";
 
 const newsreader = Newsreader({
@@ -111,7 +113,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <Script id="editorial-font-preference-init" strategy="beforeInteractive">
+        <Script
+          id="editorial-font-preference-init"
+          strategy="beforeInteractive"
+        >
           {editorialFontPreferenceInitScript}
         </Script>
       </head>
