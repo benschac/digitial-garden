@@ -1,6 +1,49 @@
 import Link from "next/link";
 import styles from "./home.module.css";
 
+const pastWork = [
+  {
+    company: "Treasure It",
+    role: "Founder / Software Engineer",
+    dates: "March 2025 – Present",
+  },
+  {
+    company: "Freelance Software Engineer",
+    role: "Tenfold, Zora, OpenBlock Labs",
+    dates: "June 2022 – Present",
+  },
+  {
+    company: "Entropy Cryptography",
+    role: "Software Engineer",
+    dates: "December 2023 – January 2024",
+  },
+  {
+    company: "Comm",
+    role: "Software Engineer",
+    dates: "October 2021 – June 2022",
+  },
+  {
+    company: "Maple",
+    role: "Software Engineer",
+    dates: "October 2020 – September 2021",
+  },
+  {
+    company: "WeWork",
+    role: "Software Engineer",
+    dates: "March 2019 – September 2020",
+  },
+  {
+    company: "Freelance Software Engineer",
+    role: "LedgerX, Zeel Networks, Rose Digital",
+    dates: "June 2018 – March 2019",
+  },
+  {
+    company: "Dexter",
+    role: "Software Engineer",
+    dates: "May 2017 – May 2018",
+  },
+];
+
 export default function Home() {
   return (
     <main className={styles.page}>
@@ -45,6 +88,18 @@ export default function Home() {
         <Link href="/blog">Blog →</Link>
         <Link href="/playground">Playground →</Link>
       </nav>
+      <section aria-labelledby="past-work-heading" className={styles.pastWork}>
+        <h2 id="past-work-heading">Past work</h2>
+        <ul className={styles.workList}>
+          {pastWork.map((work) => (
+            <li key={`${work.company}-${work.dates}`}>
+              <h3>{work.company}</h3>
+              <p className={styles.workRole}>{work.role}</p>
+              <p className={styles.workDates}>{work.dates}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
     </main>
   );
 }
