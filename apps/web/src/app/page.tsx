@@ -48,7 +48,6 @@ export default function Home() {
   return (
     <main className={styles.page}>
       <h1>Benjamin Schachter</h1>
-      <p>A code garden for software, systems, and experiments.</p>
       <nav aria-label="Social profiles" className={styles.socialLinks}>
         <a href="https://github.com/benschac">
           <span className={styles.srOnly}>GitHub</span>
