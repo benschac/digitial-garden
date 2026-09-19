@@ -6,19 +6,29 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "dev": "bun run storybook",
     "lint": "biome lint .",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "peerDependencies": {
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@storybook/addon-a11y": "^10.6.0",
+    "@storybook/addon-docs": "^10.6.0",
+    "@storybook/nextjs-vite": "^10.6.0",
+    "@types/node": "22.20.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
+    "next": "16.3.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "typescript": "7.0.2"
+    "storybook": "^10.6.0",
+    "typescript": "7.0.2",
+    "vite": "latest"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0"

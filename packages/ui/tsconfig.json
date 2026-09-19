@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2017",
+    "types": ["node", "vite/client"],
     "lib": ["dom", "dom.iterable", "esnext"],
     "strict": true,
     "noEmit": true,
@@ -11,6 +12,11 @@
     "jsx": "react-jsx",
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".storybook/**/*.ts",
+    ".storybook/**/*.tsx"
+  ],
   "exclude": ["node_modules"]
 }
