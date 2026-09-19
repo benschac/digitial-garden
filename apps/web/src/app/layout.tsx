@@ -120,13 +120,15 @@ export default function RootLayout({
           {editorialFontPreferenceInitScript}
         </Script>
       </head>
-      <body suppressHydrationWarning>
-        <EditorialFontPreference>
-          {children}
-          {process.env.NODE_ENV === "development" ? (
-            <EditorialFontSwitcher />
-          ) : null}
-        </EditorialFontPreference>
+      <body style={{ position: "relative" }} suppressHydrationWarning>
+        <div style={{ isolation: "isolate" }}>
+          <EditorialFontPreference>
+            {children}
+            {process.env.NODE_ENV === "development" ? (
+              <EditorialFontSwitcher />
+            ) : null}
+          </EditorialFontPreference>
+        </div>
       </body>
     </html>
   );

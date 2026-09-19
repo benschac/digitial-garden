@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@personal-site/ui/components/button";
+import { cn } from "@personal-site/ui/lib/utils";
 import type {
   EveAuthorizationPart,
   EveDynamicToolPart,
@@ -46,8 +48,6 @@ import {
   ToolInput,
   ToolOutput,
 } from "@/components/ai-elements/tool";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 export type AgentInputResponse = {
   readonly optionId?: string;
@@ -394,11 +394,19 @@ function AuthorizationPrompt({
             </div>
           ) : null}
           {part.state === "required" && part.authorization?.url ? (
-            <Button asChild size="sm">
-              <a href={part.authorization.url} rel="noreferrer" target="_blank">
-                <ExternalLinkIcon className="size-4" />
-                Sign in with {part.displayName}
-              </a>
+            <Button
+              size="sm"
+              nativeButton={false}
+              render={
+                <a
+                  href={part.authorization.url}
+                  rel="noreferrer"
+                  target="_blank"
+                />
+              }
+            >
+              <ExternalLinkIcon className="size-4" />
+              Sign in with {part.displayName}
             </Button>
           ) : null}
         </div>

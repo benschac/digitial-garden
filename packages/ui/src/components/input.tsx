@@ -1,10 +1,16 @@
-import type * as React from "react";
+"use client";
 
-import { cn } from "@/lib/utils";
+import { Input as InputPrimitive } from "@base-ui/react";
+import { cn } from "../lib/utils";
+import type { StyledComponentProps } from "./types";
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+function Input({
+  className,
+  type,
+  ...props
+}: StyledComponentProps<typeof InputPrimitive>) {
   return (
-    <input
+    <InputPrimitive
       type={type}
       data-slot="input"
       className={cn(

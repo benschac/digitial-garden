@@ -1,15 +1,15 @@
 "use client";
 
-import type { DynamicToolUIPart, ToolUIPart } from "ai";
-import { ChevronRightIcon, TerminalIcon, WrenchIcon } from "lucide-react";
-import type { ComponentProps, ReactNode } from "react";
-import { isValidElement } from "react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+} from "@personal-site/ui/components/collapsible";
+import { cn } from "@personal-site/ui/lib/utils";
+import type { DynamicToolUIPart, ToolUIPart } from "ai";
+import { ChevronRightIcon, TerminalIcon, WrenchIcon } from "lucide-react";
+import type { ComponentProps, ReactNode } from "react";
+import { isValidElement } from "react";
 
 import { CodeBlock } from "./code-block";
 
@@ -82,7 +82,7 @@ export const ToolHeader = ({
       )}
       <span className="text-sm">{displayName}</span>
       {getStatusIndicator(state)}
-      <ChevronRightIcon className="size-3.5 shrink-0 transition-transform group-data-[state=open]:rotate-90" />
+      <ChevronRightIcon className="size-3.5 shrink-0 transition-transform group-data-[open]:rotate-90" />
     </CollapsibleTrigger>
   );
 };
@@ -92,7 +92,7 @@ export type ToolContentProps = ComponentProps<typeof CollapsibleContent>;
 export const ToolContent = ({ className, ...props }: ToolContentProps) => (
   <CollapsibleContent
     className={cn(
-      "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 space-y-4 py-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+      "data-[closed]:fade-out-0 data-[closed]:slide-out-to-top-2 data-[open]:slide-in-from-top-2 space-y-4 py-2 text-popover-foreground outline-none data-[closed]:animate-out data-[open]:animate-in",
       className,
     )}
     {...props}

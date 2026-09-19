@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@personal-site/ui/components/button";
+import { cn } from "@personal-site/ui/lib/utils";
 import type { UserContent } from "ai";
 import { useEveAgent } from "eve/react";
 import { AlertCircleIcon, BrainIcon, PlusIcon, SquareIcon } from "lucide-react";
@@ -20,8 +22,6 @@ import {
   usePromptInputAttachments,
 } from "@/components/ai-elements/prompt-input";
 import { Shimmer } from "@/components/ai-elements/shimmer";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { AgentMessage } from "./agent-message";
 
 const AGENT_NAME = "Workbench analyst";

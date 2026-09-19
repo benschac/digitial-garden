@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@personal-site/ui/components/button";
+import { cn } from "@personal-site/ui/lib/utils";
 import type { UIMessage } from "ai";
 import { ArrowDownIcon, DownloadIcon } from "lucide-react";
 import type { ComponentProps } from "react";
@@ -11,8 +13,6 @@ import {
   useState,
 } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 export type ConversationProps = ComponentProps<typeof StickToBottom> & {
   scrollRestorationKey?: string;

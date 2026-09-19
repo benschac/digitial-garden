@@ -1,12 +1,14 @@
 "use client";
 
+import { Button } from "@personal-site/ui/components/button";
+import { Textarea } from "@personal-site/ui/components/textarea";
+import { cn } from "@personal-site/ui/lib/utils";
 import type {
   ChangeEvent,
   ComponentProps,
   FormEvent,
   HTMLAttributes,
   KeyboardEvent,
-  MouseEvent,
   ReactNode,
 } from "react";
 import {
@@ -16,9 +18,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 
 export interface QuestionValue {
   selectedValues: readonly string[];
@@ -233,8 +232,10 @@ export const QuestionOption = ({
   const question = useQuestion();
   const isSelected = question.selectedValues.includes(value);
   const role = question.selectionMode === "single" ? "radio" : "checkbox";
-  const handleClick = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
+  const handleClick = useCallback<
+    NonNullable<ComponentProps<typeof Button>["onClick"]>
+  >(
+    (event) => {
       question.toggleValue(value);
       onClick?.(event);
     },
