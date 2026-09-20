@@ -1,15 +1,12 @@
 import { Eyebrow } from "@personal-site/ui/components/eyebrow";
 import { PageNavigation } from "@personal-site/ui/components/page-navigation";
-import {
-  Typography,
-  typographyVariants,
-} from "@personal-site/ui/components/typography";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageTransition } from "@/app/_components/page-transition";
-import styles from "./perlin-noise.module.css";
+import { Typography, typographyVariants } from "@/components/page-typography";
 import { PerlinNoise3DExperiment } from "./perlin-noise-3d-loader";
 import { PerlinNoiseExperiment } from "./perlin-noise-experiment";
+import styles from "./perlin-noise-styles";
 
 export const metadata: Metadata = {
   title: "Perlin Noise, Twice",
@@ -37,17 +34,25 @@ export default function PerlinNoisePage() {
         })}
       >
         <PageNavigation className={styles.nav}>
-          <Link href="/" transitionTypes={["nav-back"]}>
+          <Link
+            className={styles.navLink}
+            href="/"
+            transitionTypes={["nav-back"]}
+          >
             ← Workbench
           </Link>
           <span>Experiment 002</span>
         </PageNavigation>
 
         <header className={styles.header}>
-          <Eyebrow className={styles.eyebrow}>
+          <Eyebrow className={`mb-4 ${styles.eyebrow}`}>
             TypeScript · Rust/WASM · Canvas
           </Eyebrow>
-          <Typography as="h1" variant="experimentNoiseDisplay">
+          <Typography
+            as="h1"
+            className={styles.title}
+            variant="experimentNoiseDisplay"
+          >
             Same field. Two runtimes.
           </Typography>
           <Typography
@@ -70,7 +75,7 @@ export default function PerlinNoisePage() {
             className: styles.notes,
           })}
         >
-          <p>
+          <p className={styles.note}>
             Every 2D pixel and 3D vertex samples the same coordinate from the
             same permutation table. Timing is measured in-browser and is
             deliberately approximate; the useful assertion is the numerical

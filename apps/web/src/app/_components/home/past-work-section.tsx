@@ -1,11 +1,8 @@
-import {
-  Heading,
-  Text,
-  Typography,
-} from "@personal-site/ui/components/typography";
+import { Heading, Text } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
+import { Typography } from "@/components/page-typography";
 import { featureLink, focusRing } from "./styles";
 
 const pastWork = [

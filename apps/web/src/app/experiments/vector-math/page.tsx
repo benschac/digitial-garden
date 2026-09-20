@@ -1,13 +1,10 @@
 import { Eyebrow } from "@personal-site/ui/components/eyebrow";
 import { PageNavigation } from "@personal-site/ui/components/page-navigation";
-import {
-  Typography,
-  typographyVariants,
-} from "@personal-site/ui/components/typography";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageTransition } from "@/app/_components/page-transition";
-import styles from "./vector-math.module.css";
+import { Typography, typographyVariants } from "@/components/page-typography";
+import styles from "./vector-math-styles";
 import { VectorPlayground } from "./vector-playground";
 
 export const metadata: Metadata = {
@@ -27,17 +24,25 @@ export default function VectorMathPage() {
         })}
       >
         <PageNavigation className={styles.nav}>
-          <Link href="/" transitionTypes={["nav-back"]}>
+          <Link
+            className={styles.navLink}
+            href="/"
+            transitionTypes={["nav-back"]}
+          >
             ← Workbench
           </Link>
           <span>Experiment 003</span>
         </PageNavigation>
 
         <header className={styles.header}>
-          <Eyebrow className={styles.eyebrow}>
+          <Eyebrow className={`mb-4 ${styles.eyebrow}`}>
             Pts.js · Linear algebra · Canvas
           </Eyebrow>
-          <Typography as="h1" variant="experimentDisplay">
+          <Typography
+            as="h1"
+            className={styles.title}
+            variant="experimentDisplay"
+          >
             Vectors, made tangible.
           </Typography>
           <Typography
@@ -59,7 +64,7 @@ export default function VectorMathPage() {
             className: styles.notes,
           })}
         >
-          <p>
+          <p className={styles.note}>
             The canvas is an XY projection; the controls and readout retain Z
             for the 3D methods. Pts.js supplies the points, canvas space, and
             drawing forms while the tested math layer computes every result.

@@ -4,11 +4,11 @@ import {
   useAbortableEffect,
   useAnimationFrame,
 } from "@personal-site/react-hooks";
-import { typographyVariants } from "@personal-site/ui/components/typography";
 import { useRef, useState } from "react";
+import { typographyVariants } from "@/components/page-typography";
 import { frameDeltaSeconds } from "../wasm-canvas/animation-timing";
 import type { ParticleRenderer } from "../wasm-canvas/particle-renderer";
-import styles from "../wasm-canvas/wasm-canvas.module.css";
+import styles from "../wasm-canvas/wasm-canvas-styles";
 import { createWasmParticleRenderer } from "../wasm-canvas/wasm-particle-renderer";
 import { createTypeGpuParticleRenderer } from "./typegpu-particle-renderer";
 
@@ -268,16 +268,14 @@ export function TypeGpuParticles() {
           <output ref={fpsRef}>— fps</output>
         </div>
       </div>
-      <div
-        className={typographyVariants({
-          variant: "experimentParticleControls",
-          className: styles.controls,
-        })}
-      >
-        <label>
+      <div className={styles.controls}>
+        <label className={styles.control}>
           <span>Particles</span>
-          <output>{density.toLocaleString()}</output>
+          <output className={styles.controlOutput}>
+            {density.toLocaleString()}
+          </output>
           <input
+            className={styles.controlInput}
             max={particleLimit}
             min={particleLimit > 2_400 ? GPU_PARTICLE_MINIMUM : 200}
             onChange={(event) =>
@@ -288,10 +286,13 @@ export function TypeGpuParticles() {
             value={density}
           />
         </label>
-        <label>
+        <label className={styles.control}>
           <span>Gravity</span>
-          <output>{Math.round(intensity * 100)}%</output>
+          <output className={styles.controlOutput}>
+            {Math.round(intensity * 100)}%
+          </output>
           <input
+            className={styles.controlInput}
             max="1.8"
             min="-1.2"
             onChange={(event) =>
@@ -302,10 +303,11 @@ export function TypeGpuParticles() {
             value={intensity}
           />
         </label>
-        <label>
+        <label className={styles.control}>
           <span>Simulation speed</span>
-          <output>{speed.toFixed(1)}×</output>
+          <output className={styles.controlOutput}>{speed.toFixed(1)}×</output>
           <input
+            className={styles.controlInput}
             max="8"
             min="0.5"
             onChange={(event) => updateSpeed(Number(event.currentTarget.value))}
@@ -314,7 +316,11 @@ export function TypeGpuParticles() {
             value={speed}
           />
         </label>
-        <button onClick={togglePaused} type="button">
+        <button
+          className={styles.controlButton}
+          onClick={togglePaused}
+          type="button"
+        >
           {paused ? "Resume field" : "Pause field"}
         </button>
       </div>

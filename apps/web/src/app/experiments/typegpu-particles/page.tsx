@@ -1,13 +1,10 @@
 import { Eyebrow } from "@personal-site/ui/components/eyebrow";
 import { PageNavigation } from "@personal-site/ui/components/page-navigation";
-import {
-  Typography,
-  typographyVariants,
-} from "@personal-site/ui/components/typography";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageTransition } from "@/app/_components/page-transition";
-import styles from "../wasm-canvas/wasm-canvas.module.css";
+import { Typography, typographyVariants } from "@/components/page-typography";
+import styles from "../wasm-canvas/wasm-canvas-styles";
 import { TypeGpuParticles } from "./typegpu-particles";
 
 export const metadata: Metadata = {
@@ -33,6 +30,7 @@ export default function TypeGpuParticlesPage() {
           })}
         >
           <Link
+            className={styles.navLink}
             href="/experiments/wasm-canvas"
             transitionTypes={["nav-lateral"]}
           >
@@ -44,12 +42,16 @@ export default function TypeGpuParticlesPage() {
           <Eyebrow
             className={typographyVariants({
               variant: "experimentParticleEyebrow",
-              className: styles.eyebrow,
+              className: `mb-5 ${styles.eyebrow}`,
             })}
           >
             Rust/WASM · TypeGPU · WGSL
           </Eyebrow>
-          <Typography as="h1" variant="experimentParticleDisplay">
+          <Typography
+            as="h1"
+            className={styles.title}
+            variant="experimentParticleDisplay"
+          >
             The same field, through TypeGPU.
           </Typography>
           <Typography
@@ -70,7 +72,7 @@ export default function TypeGpuParticlesPage() {
             className: styles.notes,
           })}
         >
-          <p>
+          <p className={styles.note}>
             Use the raw WebGPU link above to compare the two implementations.
             Both versions run the same visual system; the difference is how the
             browser-side GPU resources and bindings are described and wired.

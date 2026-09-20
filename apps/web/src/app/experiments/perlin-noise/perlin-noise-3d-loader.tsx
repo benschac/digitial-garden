@@ -1,8 +1,8 @@
 "use client";
 
-import { typographyVariants } from "@personal-site/ui/components/typography";
 import dynamic from "next/dynamic";
-import styles from "./perlin-noise.module.css";
+import { typographyVariants } from "@/components/page-typography";
+import styles from "./perlin-noise-styles";
 
 /**
  * Displays a stable placeholder while the route-local Three.js bundle loads.

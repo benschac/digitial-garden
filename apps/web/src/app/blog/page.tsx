@@ -1,11 +1,11 @@
-import { Typography } from "@personal-site/ui/components/typography";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ViewTransition } from "react";
+import { Typography } from "@/components/page-typography";
 import { getPublishedPosts } from "@/lib/content";
 import { ArticleSurface } from "./article-surface";
 import { BlogTransition } from "./blog-transition";
-import styles from "./index.module.css";
+import styles from "./index-styles";
 
 export const metadata: Metadata = {
   title: "Blog",
@@ -19,13 +19,17 @@ export default async function BlogIndexPage() {
   return (
     <BlogTransition view="index">
       <Typography as="main" variant="journalReading" className={styles.page}>
-        <a className={styles.skipLink} href="#posts">
+        <a className={`${styles.link} ${styles.skipLink}`} href="#posts">
           Skip to articles
         </a>
         <div className={styles.shell}>
           <div className={styles.layout}>
-            <div className={styles.introduction}>
-              <Typography as="h1" variant="journalTitle">
+            <div>
+              <Typography
+                as="h1"
+                variant="journalTitle"
+                className={styles.title}
+              >
                 Blog
               </Typography>
             </div>
@@ -36,16 +40,21 @@ export default async function BlogIndexPage() {
               aria-label="Articles"
             >
               {posts.map((post) => (
-                <li key={post.slug}>
+                <li key={post.slug} className={styles.postItem}>
                   <ArticleSurface slug={post.slug} className={styles.surface} />
-                  <article>
+                  <article className={styles.post}>
                     <ViewTransition
                       name={`post-title-${post.slug}`}
                       default="none"
                       share="blog-title"
                     >
-                      <Typography as="h2" variant="journalPostTitle">
+                      <Typography
+                        as="h2"
+                        variant="journalPostTitle"
+                        className={styles.postTitle}
+                      >
                         <Link
+                          className={`${styles.link} ${styles.postLink}`}
                           href={`/blog/${post.slug}`}
                           transitionTypes={["blog-open"]}
                         >

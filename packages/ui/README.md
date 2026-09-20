@@ -7,6 +7,7 @@ used by `apps/web`. Their implementations live in `src/components`; the root
 
 Use `@personal-site/ui/lib/utils` for the shared `cn` class-name helper.
 Use `tv` and `VariantProps` from `tailwind-variants` for typed component variants.
+App consumers can import them alongside `cn` from `@personal-site/ui/lib/utils`.
 Pass caller `className` into the recipe after its variant props; the default build
 resolves Tailwind conflicts. Keep `cn()` for conditional classes without variants.
 Use slots when one variant needs to style multiple parts together. Variant values
@@ -33,6 +34,7 @@ Storybook also uses the PostCSS integration through its Vite configuration.
 @import "tailwindcss";
 @import "@personal-site/ui/styles/theme.css";
 @import "@personal-site/ui/styles/defaults.css";
+@import "@personal-site/ui/styles/baseline.css";
 @source "../../../../packages/ui/src";
 ```
 
@@ -71,20 +73,20 @@ client components without adding wrapper DOM or a client boundary.
 - `Text` provides editorial body, small, caption, date, and metadata paragraphs.
   `Heading` and `Text` reset margins; consumers supply spacing and measure.
 - `Typography` accepts a native HTML `as` element (default `span`) and a named
-  role from `typographyVariants`. Roles cover UI/chat, code, journal/articles,
-  layout studies, and experiments. It has no implicit font or margin reset;
+  role from `typographyVariants`. Shared roles cover UI text and code. It has no implicit font or margin reset;
   omitting `variant` preserves inherited styles, including authored MDX.
 - Use `headingVariants()`, `textVariants()`, or `typographyVariants()` on
   existing components such as Next.js links, inputs, and interactive controls.
-  Keep the caller's `className` last. Do not add local font sizes, weights,
-  leading, or tracking when a shared role fits; add a missing role here.
-- Container recipes preserve contextual typography in composite experiment
-  controls. `styles/prose.css` owns the article scale and descendant rules for
-  authored MDX and embedded controls; import it alongside `styles/editorial.css`.
-- Font loading, font preferences, page layout, colors, and interaction styles
-  remain with the consumer. `canvasTypography` supplies font shorthands for
-  canvas text, which cannot render React components. Syntax highlighting still
-  derives bold/italic styles from the highlighter's token data.
+  Keep the caller's `className` last. Page-specific roles belong in the app.
+- `apps/web/src/components/page-typography.tsx` owns journal, article, experiment,
+  playground, and layout-study recipes plus canvas font shorthands. It composes
+  shared roles without making the UI package depend on app markup.
+- Authored Markdown typography lives in `apps/web/src/app/blog/prose.css`.
+  Embedded components opt out of prose selectors with `data-prose-exclude` on
+  their root. This excludes the root and descendants; normal CSS inheritance
+  still applies, so embedded UI can explicitly choose `font-sans`.
+- Font loading, preferences, and syntax-highlighter token styling remain with
+  the consumer.
 
 ```tsx
 import { Heading, Typography, typographyVariants } from "@personal-site/ui/components/typography";
@@ -168,3 +170,37 @@ Before using portaled popups, follow the Base UI quick start: wrap the applicati
 contents in an element with `isolation: isolate`, leaving portals outside that
 element. For iOS 26+ Safari backdrops, use `position: relative` on the body and
 `position: absolute` on the backdrop. These layout styles belong to the consuming app.
+
+## Style ownership
+
+Shared components own appearance and internal layout: padding, icon gaps,
+control dimensions, typography, and states. Pages own composition: placement,
+available width, grid tracks, and spacing between components. `Eyebrow` has no
+external spacing; callers supply `mb-4`, a parent gap, or another explicit value.
+`PageNavigation` supplies layout and inherited typography; callers style links.
+
+Use Tailwind for shared UI and ordinary page composition. Use app CSS Modules
+when complex grids, animation, or authored prose are clearer in CSS. Apply
+classes to owned elements instead of reaching into children with `.controls
+button`, `.page p`, or Tailwind equivalents such as `[&_button]`. Direct-child
+placement is appropriate when a container deliberately owns those child slots.
+Reserve shared semantic names (`--muted`, `--accent`, `--border`, etc.) for the
+UI theme. Prefix page tokens, for example `--blog-accent` or `--experiment-muted`.
+
+App-local `*-styles.ts` recipes compose utilities with the remaining CSS Module
+layout classes. Keep these recipes in the owning app rather than exporting page
+designs from this package. Variants belong on the elements they style.
+
+Both web and Storybook import `styles/baseline.css` and declare cascade order
+`theme, base, reset, components, utilities`. App component CSS lives in
+`@layer components`; explicit caller utilities can override it. Each component
+stylesheet repeats the order declaration before its layer block because Next
+may load a module before globals. Layers control
+precedence, not isolation: selectors must still respect component ownership.
+
+Run the web app and open `/style-boundaries` for the development-only integration
+fixture. It compares computed styles of real shared components inside article,
+journal, and experiment wrappers with an isolated reference, and checks that
+normal authored prose keeps its spacing. It rechecks on viewport resize. Test
+both desktop and mobile widths. Storybook covers isolated component behavior;
+the app fixture covers composition under the actual web reset and styles.

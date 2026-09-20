@@ -1,13 +1,10 @@
 "use client";
 
-import {
-  Typography,
-  typographyVariants,
-} from "@personal-site/ui/components/typography";
 import { usePathname } from "next/navigation";
 import { useId, useState } from "react";
+import { Typography, typographyVariants } from "@/components/page-typography";
 import { useEditorialFontPreference } from "./editorial-font-preference";
-import styles from "./editorial-font-switcher.module.css";
+import styles from "./editorial-font-switcher-styles";
 import { type EditorialFontId, editorialFontOptions } from "./editorial-fonts";
 
 export function EditorialFontSwitcher() {
@@ -34,6 +31,7 @@ export function EditorialFontSwitcher() {
       style={{ viewTransitionName: "typography-preview" }}
     >
       <button
+        className={styles.toggle}
         type="button"
         aria-expanded={isOpen}
         aria-controls={panelId}
@@ -42,10 +40,16 @@ export function EditorialFontSwitcher() {
         {isOpen ? "Close typography" : "Typography"}
       </button>
       <div id={panelId} className={styles.controls} hidden={!isOpen}>
-        <Typography as="label" variant="previewLabel" htmlFor={displaySelectId}>
+        <Typography
+          as="label"
+          variant="previewLabel"
+          className={styles.label}
+          htmlFor={displaySelectId}
+        >
           Display
         </Typography>
         <select
+          className={styles.select}
           id={displaySelectId}
           onChange={(event) =>
             selectDisplayFont(event.currentTarget.value as EditorialFontId)
@@ -58,10 +62,16 @@ export function EditorialFontSwitcher() {
             </option>
           ))}
         </select>
-        <Typography as="label" variant="previewLabel" htmlFor={readingSelectId}>
+        <Typography
+          as="label"
+          variant="previewLabel"
+          className={styles.label}
+          htmlFor={readingSelectId}
+        >
           Reading
         </Typography>
         <select
+          className={styles.select}
           id={readingSelectId}
           onChange={(event) =>
             selectReadingFont(event.currentTarget.value as EditorialFontId)

@@ -37,10 +37,13 @@ values; update this guide if an intentional design change supersedes them.
 | Shared editorial palette | `packages/ui/src/styles/editorial.css` |
 | Editorial font roles and reset | `apps/web/src/app/reset.css` |
 | Font loading and initial preference application | `apps/web/src/app/layout.tsx`, `apps/web/src/app/editorial-fonts.ts` |
-| Homepage and Playground composition | `apps/web/src/app/home.module.css`, `apps/web/src/app/page.tsx`, `apps/web/src/app/playground/page.tsx` |
-| Blog index composition | `apps/web/src/app/blog/index.module.css` |
-| Blog article layout, type scale, media, and prose | `apps/web/src/app/blog/blog.module.css` |
-| Tailwind imports, sources, and editorial font utilities | `apps/web/src/app/globals.css` |
+| Homepage composition (Tailwind) | `apps/web/src/app/page.tsx`, `apps/web/src/app/_components/home/` |
+| Playground composition (Tailwind) | `apps/web/src/app/playground/page.tsx` |
+| Blog index composition | `apps/web/src/app/blog/index-styles.ts`, `index.module.css` |
+| Blog article layout and prose | `apps/web/src/app/blog/[slug]/article-styles.ts`, `article.module.css`, `apps/web/src/app/blog/prose.css` |
+| Tailwind imports and sources | `apps/web/src/app/globals.css` |
+| App typography recipes | `apps/web/src/components/page-typography.tsx` |
+| Shared editorial typography and font utilities | `packages/ui/src/components/typography.tsx`, `packages/ui/src/styles/editorial.css` |
 | Shared UI semantic utilities and opt-in theme values | `packages/ui/src/styles/theme.css`, `packages/ui/src/styles/defaults.css` |
 | Unstyled primitives | `packages/ui/src/index.ts` |
 | Styled shared components and consumer setup | `packages/ui/src/components`, `packages/ui/README.md` |
@@ -51,9 +54,13 @@ scoped to its `.page`; do not assume they are globally available.
 
 The system has two visual families: editorial pages and application controls.
 Share tokens and components where their roles match. Keep route composition,
-content, and experiment-specific art direction in the app. CSS Modules and
-Tailwind utilities may consume the same tokens; a CSS Module does not need to
-be rewritten in utilities to participate in the system.
+content, and experiment-specific art direction in the app. The homepage composes
+local `Hero`, `SpeakingSection`, and `PastWorkSection` Server Components. They use
+shared `Heading` and `Text` typography; page-specific link styling stays in
+`_components/home/styles.ts`. Promote components to
+`packages/ui` when multiple pages need the same structure and visual rules.
+CSS Modules and Tailwind utilities may consume the same tokens; a CSS Module
+does not need to be rewritten in utilities to participate in the system.
 
 ## Color
 
@@ -84,6 +91,14 @@ text uses `text-editorial-muted`. The editorial palette stays light in every UI
 mode and does not replace the application control tokens.
 
 ## Typography
+
+Use `Heading` and `Text` from `@personal-site/ui/components/typography` for the
+shared editorial styles. Choose the semantic heading level with `as` independently
+of the visual `variant`. The exported recipes also style existing elements such
+as the ink heading and navigation links. Keep page spacing, reading measure,
+breakpoint overrides, and grid placement with the consumer. Page-specific roles
+live in `apps/web/src/components/page-typography.tsx`; shared UI retains reusable
+editorial, control, and code roles.
 
 Use the font-role variables so persisted font choices keep working:
 
@@ -138,8 +153,9 @@ sentence case. When asked for darker text, adjust color without changing weight.
 ## Layout and spacing
 
 The base page used by Playground has a `48rem` maximum width and
-`clamp(1.5rem, 4vw, 3rem)` padding. The homepage overrides its width to `80rem`
-and uses a shared grid: one column below `48rem`, three from `48rem`, then four
+`clamp(1.5rem, 4vw, 3rem)` padding. The homepage has an `80rem` maximum width,
+centered horizontally on wider viewports, and uses a shared grid: one column below
+`48rem`, three from `48rem`, then four
 including an `8rem` section-label column from `72rem`. Sections and work entries
 align through subgrid. The homepage hero has its own single-column grid with
 a large name centered vertically and availability and social links along the
@@ -214,6 +230,20 @@ regions; avoid horizontal scrolling of the whole page.
 - Tailwind scans `packages/ui/src` through the app's stylesheet. Write complete
   class strings, and use Base UI state attributes for hover-independent states
   such as disabled, checked, highlighted, and open.
+- Use `@theme` for established reusable values that need utilities, with
+  `@theme inline` when a token must resolve another variable on the styled element.
+  Reuse local class recipes for values shared within app typography. Before adding
+  named utilities, verify that `cn()` preserves caller color, size, and tracking
+  overrides. Keep one-off values local and complex motion, grids, and prose in app CSS.
+- Add `@utility` or `@custom-variant` only for repeated styling primitives or
+  selector logic missing from built-ins. Prefer utility composition and `tv()`
+  over `@apply`; use `@reference` only when a CSS Module needs Tailwind directives
+  such as `@apply` or `@variant`. Ordinary `var()` usage needs no reference import.
+- Local `*-styles.ts` files compose utility recipes and explicitly expose the
+  CSS Module classes still needed for container grids, responsive canvas layouts,
+  motion, and authored prose. Apply variants to the element they own; do not
+  select descendants through an ancestor's visual variant. The layout study uses
+  `tv()` for its reading, archive, and featured compositions.
 - Follow the UI README's portal isolation and backdrop guidance when adding
   popups. Verify focus, dismissal, and keyboard behavior in the consuming app.
 - Use Storybook's `Shared UI/Theme` for application states, `Shared UI/Page chrome`

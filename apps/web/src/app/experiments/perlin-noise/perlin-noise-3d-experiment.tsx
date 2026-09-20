@@ -1,16 +1,13 @@
 "use client";
 
 import { useAbortableEffect } from "@personal-site/react-hooks";
-import {
-  Typography,
-  typographyVariants,
-} from "@personal-site/ui/components/typography";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { ElementRef, Ref } from "react";
 import { useEffect, useRef, useState } from "react";
+import { Typography, typographyVariants } from "@/components/page-typography";
 import { perlinNoise3D } from "@/lib/perlin-noise";
 import { loadParticleEngine } from "../wasm-canvas/wasm-engine";
-import styles from "./perlin-noise.module.css";
+import styles from "./perlin-noise-styles";
 
 const SURFACE_SEGMENTS = 64;
 const SURFACE_SIZE = 2.8;
@@ -188,12 +185,7 @@ export function PerlinNoise3DExperiment() {
       className={styles.threeExperiment}
       aria-labelledby="noise-3d-title"
     >
-      <div
-        className={typographyVariants({
-          variant: "experimentNoiseThreeHeader",
-          className: styles.threeHeader,
-        })}
-      >
+      <div className={styles.threeHeader}>
         <div>
           <Typography
             as="p"
@@ -202,22 +194,20 @@ export function PerlinNoise3DExperiment() {
           >
             First 3D pass
           </Typography>
-          <h2 id="noise-3d-title">A volume, viewed as terrain.</h2>
-          <p>
+          <h2 className={styles.threeTitle} id="noise-3d-title">
+            A volume, viewed as terrain.
+          </h2>
+          <p className={styles.threeDescription}>
             Each surface displaces the same 64 × 64 grid. XOFF and YOFF move
             across a slice; ZOFF moves deeper into the noise volume.
           </p>
         </div>
-        <div
-          className={typographyVariants({
-            variant: "experimentNoiseThreeMetric",
-            className: styles.threeMetric,
-          })}
-          aria-live="polite"
-        >
-          <span>Maximum difference</span>
-          <strong>{formatDifference(maxDifference)}</strong>
-          <small data-status={status}>
+        <div className={styles.threeMetric} aria-live="polite">
+          <span className={styles.threeMetricLabel}>Maximum difference</span>
+          <strong className={styles.threeMetricValue}>
+            {formatDifference(maxDifference)}
+          </strong>
+          <small className={styles.threeMetricStatus} data-status={status}>
             {status === "loading" ? "Loading Rust/WASM…" : null}
             {status === "ready" ? "Surfaces agree" : null}
             {status === "error" ? "Rust/WASM unavailable" : null}
@@ -269,12 +259,7 @@ export function PerlinNoise3DExperiment() {
         </p>
       ) : null}
 
-      <div
-        className={typographyVariants({
-          variant: "experimentNoiseThreeControls",
-          className: styles.threeControls,
-        })}
-      >
+      <div className={styles.threeControls}>
         <NoiseSlider
           label="Frequency"
           max={3}
@@ -320,13 +305,19 @@ export function PerlinNoise3DExperiment() {
         />
         <div className={styles.threeControlActions}>
           <button
+            className={styles.threeControlButton}
             aria-pressed={isPlaying}
             onClick={toggleAnimation}
             type="button"
           >
             {isPlaying ? "Pause loop" : "Play loop"}
           </button>
-          <button disabled={isDefaultView} onClick={resetView} type="button">
+          <button
+            className={styles.threeControlButton}
+            disabled={isDefaultView}
+            onClick={resetView}
+            type="button"
+          >
             Reset 3D view
           </button>
         </div>
@@ -489,10 +480,13 @@ function NoiseSlider({
   value: number;
 }) {
   return (
-    <label>
+    <label className={styles.threeControl}>
       <span>{label}</span>
-      <output ref={outputRef}>{value.toFixed(2)}</output>
+      <output className={styles.threeControlOutput} ref={outputRef}>
+        {value.toFixed(2)}
+      </output>
       <input
+        className={styles.threeControlInput}
         disabled={disabled}
         ref={inputRef}
         max={max}

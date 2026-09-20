@@ -1,5 +1,5 @@
-import { typographyVariants } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
+import { typographyVariants } from "@/components/page-typography";
 
 // Presentation shared by homepage sections; keep these page-specific rules local.
 export const focusRing =

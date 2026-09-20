@@ -1,3 +1,5 @@
+@layer theme, base, reset, components, utilities;
+
 @property --name-ink-x {
   syntax: "<length>";
   inherits: false;
@@ -16,112 +18,103 @@
   initial-value: #211f1b;
 }
 
-.hoverArea {
-  position: relative;
-}
-
-.filterDefinitions {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-}
-
-.ink {
-  position: relative;
-  display: inline-block;
-  max-width: 100%;
-  /* Extend the painted area beyond the tight line box for serif descenders. */
-  padding-block: 0.15em;
-  margin-block: -0.15em;
-  /* Include the final glyph's overhang in the clipped background. */
-  padding-inline-end: 0.15em;
-  margin-inline-end: -0.15em;
-  color: var(--color-ink);
-}
-
-/* Fine ink grain sits inside the glyphs, beneath the fixed inset shading. */
-@media (forced-colors: none) {
+@layer components {
   .ink {
-    color: color-mix(in srgb, var(--color-ink) 92%, var(--color-paper));
-    filter: var(--name-letterpress-filter);
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    /* Extend the painted area beyond the tight line box for serif descenders. */
+    padding-block: 0.15em;
+    margin-block: -0.15em;
+    /* Include the final glyph's overhang in the clipped background. */
+    padding-inline-end: 0.15em;
+    margin-inline-end: -0.15em;
+    color: var(--color-ink);
   }
 
-  @supports (background-clip: text) {
+  /* Fine ink grain sits inside the glyphs, beneath the fixed inset shading. */
+  @media (forced-colors: none) {
     .ink {
-      --name-ink-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Cpath fill='%23fff' opacity='.28' filter='url(%23grain)' d='M0 0h160v160H0z'/%3E%3C/svg%3E");
-      background-color: var(--color-ink);
-      background-image: var(--name-ink-grain);
-      background-size: 160px 160px;
-      background-clip: text;
-      color: transparent;
+      color: color-mix(in srgb, var(--color-ink) 92%, var(--color-paper));
+      filter: var(--name-letterpress-filter);
+    }
+
+    @supports (background-clip: text) {
+      .ink {
+        --name-ink-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Cpath fill='%23fff' opacity='.28' filter='url(%23grain)' d='M0 0h160v160H0z'/%3E%3C/svg%3E");
+        background-color: var(--color-ink);
+        background-image: var(--name-ink-grain);
+        background-size: 160px 160px;
+        background-clip: text;
+        color: transparent;
+      }
     }
   }
-}
 
-.ink::selection {
-  color: var(--color-ink);
-  background: var(--color-selection);
-}
-
-@media (hover: hover) and (pointer: fine) and (
-    prefers-reduced-motion: no-preference
-  ) and (forced-colors: none) {
-  /* A transparent hit area gives the light room to travel beyond the letters
-     without changing layout or moving the gradient's coordinate origin. */
-  .hoverArea::before {
-    content: "";
-    position: absolute;
-    inset: calc(-1 * clamp(1rem, 3vw, 2.5rem));
+  .ink::selection {
+    color: var(--color-ink);
+    background: var(--color-selection);
   }
 
-  @supports (background-clip: text) {
-    .ink {
-      --name-ink-color: var(--color-ink);
-      background-image:
-        var(--name-ink-grain),
-        radial-gradient(
-          ellipse 2.4em 1.5em at var(--name-ink-x) var(--name-ink-y),
-          var(--name-ink-color) 0%,
-          color-mix(in srgb, var(--name-ink-color) 55%, var(--color-ink)) 38%,
-          color-mix(in srgb, var(--name-ink-color) 12%, var(--color-ink)) 72%,
-          var(--color-ink) 100%
-        );
-      background-clip: text;
-      color: transparent;
-      background-size:
-        160px 160px,
-        auto;
-      transition: --name-ink-color var(--name-ink-fade-out, 500ms)
-        cubic-bezier(0.77, 0, 0.175, 1);
+  @media (hover: hover) and (pointer: fine) and (
+      prefers-reduced-motion: no-preference
+    ) and (forced-colors: none) {
+    /* A transparent hit area gives the light room to travel beyond the letters
+       without changing layout or moving the gradient's coordinate origin. */
+    .hoverArea::before {
+      content: "";
+      position: absolute;
+      inset: calc(-1 * clamp(1rem, 3vw, 2.5rem));
     }
 
-    .ink[data-ink-active] {
-      --name-ink-color: #965b3d;
-      transition-duration: 160ms;
-      transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
-    }
+    @supports (background-clip: text) {
+      .ink {
+        --name-ink-color: var(--color-ink);
+        background-image:
+          var(--name-ink-grain),
+          radial-gradient(
+            ellipse 2.4em 1.5em at var(--name-ink-x) var(--name-ink-y),
+            var(--name-ink-color) 0%,
+            color-mix(in srgb, var(--name-ink-color) 55%, var(--color-ink)) 38%,
+            color-mix(in srgb, var(--name-ink-color) 12%, var(--color-ink)) 72%,
+            var(--color-ink) 100%
+          );
+        background-clip: text;
+        color: transparent;
+        background-size:
+          160px 160px,
+          auto;
+        transition: --name-ink-color var(--name-ink-fade-out, 500ms)
+          cubic-bezier(0.77, 0, 0.175, 1);
+      }
 
-    .ink::selection {
-      color: var(--color-ink);
-      background: var(--color-selection);
+      .ink[data-ink-active] {
+        --name-ink-color: #965b3d;
+        transition-duration: 160ms;
+        transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+      }
+
+      .ink::selection {
+        color: var(--color-ink);
+        background: var(--color-selection);
+      }
     }
   }
-}
 
-.sheen {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  display: none;
-}
-
-@media (hover: hover) and (pointer: fine) and (
-    prefers-reduced-motion: no-preference
-  ) and (forced-colors: none) {
   .sheen {
-    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) and (
+      prefers-reduced-motion: no-preference
+    ) and (forced-colors: none) {
+    .sheen {
+      display: block;
+    }
   }
 }

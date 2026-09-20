@@ -1,22 +1,19 @@
-import {
-  Typography,
-  typographyVariants,
-} from "@personal-site/ui/components/typography";
+import { cn } from "@personal-site/ui/lib/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ViewTransition } from "react";
 import { ParticleHeaderBackground } from "@/app/experiments/wasm-canvas/particle-header-background";
+import { Typography, typographyVariants } from "@/components/page-typography";
 import {
   getAdjacentPosts,
   getAllPostSlugs,
   getPostBySlug,
 } from "@/lib/content";
 import { ArticleSurface } from "../article-surface";
-import styles from "./article.module.css";
 import { BlogTransition } from "../blog-transition";
 import { ColorfulSVGPattern } from "../colorful-svg-pattern";
-import patternStyles from "../colorful-svg-pattern.module.css";
+import styles from "./article-styles";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -88,14 +85,16 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <header
             className={`${styles.postHeader}${
               hasParticleHeader ? ` ${styles.particlePostHeader}` : ""
-            }${hasSvgHeader ? ` ${patternStyles.header}` : ""}`}
+            }${hasSvgHeader ? " relative isolate" : ""}`}
           >
-            {hasSvgHeader ? <ColorfulSVGPattern /> : null}
+            {hasSvgHeader ? (
+              <ColorfulSVGPattern className="[grid-column:wide-start/wide-end]" />
+            ) : null}
             <Link
               aria-label="All posts"
               className={typographyVariants({
                 variant: "articleBackLink",
-                className: styles.backLink,
+                className: `${styles.link} ${styles.backLink}`,
               })}
               href="/blog"
               transitionTypes={["blog-close"]}
@@ -107,11 +106,22 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               default="none"
               share="blog-title"
             >
-              <Typography as="h1" variant="articleTitle">
+              <Typography
+                as="h1"
+                variant="articleTitle"
+                className={styles.title}
+              >
                 {post.title}
               </Typography>
             </ViewTransition>
-            <Typography as="p" variant="articleDeck" className={styles.summary}>
+            <Typography
+              as="p"
+              variant="articleDeck"
+              className={cn(
+                styles.summary,
+                hasParticleHeader && "text-[#c3ccd9]",
+              )}
+            >
               {post.summary}
             </Typography>
             <Typography
@@ -131,10 +141,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             {hasParticleHeader ? (
               <ParticleHeaderBackground
                 canvasClassName={styles.particleHeaderCanvas}
-                controlsClassName={typographyVariants({
-                  variant: "articleControls",
-                  className: styles.particleHeaderControls,
-                })}
+                controlsClassName={styles.particleHeaderControls}
               />
             ) : null}
           </header>
@@ -148,27 +155,37 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               <Link
                 className={typographyVariants({
                   variant: "articleNavigationTitle",
+                  className: `${styles.link} ${styles.navigationLink}`,
                 })}
                 href={`/blog/${adjacentPosts.previous.slug}`}
                 transitionTypes={["nav-back"]}
               >
-                <Typography variant="articleNavigationLabel">
+                <Typography
+                  variant="articleNavigationLabel"
+                  className={styles.navigationLabel}
+                >
                   Previous
                 </Typography>
                 {adjacentPosts.previous.title}
               </Link>
             ) : null}
           </div>
-          <div>
+          <div className={styles.nextPost}>
             {adjacentPosts.next ? (
               <Link
                 className={typographyVariants({
                   variant: "articleNavigationTitle",
+                  className: `${styles.link} ${styles.navigationLink}`,
                 })}
                 href={`/blog/${adjacentPosts.next.slug}`}
                 transitionTypes={["nav-forward"]}
               >
-                <Typography variant="articleNavigationLabel">Next</Typography>
+                <Typography
+                  variant="articleNavigationLabel"
+                  className={styles.navigationLabel}
+                >
+                  Next
+                </Typography>
                 {adjacentPosts.next.title}
               </Link>
             ) : null}

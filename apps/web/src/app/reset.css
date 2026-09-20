@@ -132,45 +132,13 @@
     --font-editorial-reading: var(--font-choice-georgia);
   }
 
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
-  }
-
-  html {
-    -moz-text-size-adjust: none;
-    -webkit-text-size-adjust: none;
-    text-size-adjust: none;
-  }
-
   body {
     background: var(--color-paper);
     color: var(--color-ink);
     font-family: var(--font-ui);
-    margin: 0;
-    min-height: 100svh;
   }
 
   ::selection {
     background: var(--color-selection);
-  }
-
-  :where(img, picture, video, canvas, svg) {
-    display: block;
-    max-inline-size: 100%;
-  }
-
-  :where(button, input, textarea, select) {
-    color: inherit;
-    font: inherit;
-  }
-
-  :where(p, h1, h2, h3, h4, h5, h6) {
-    overflow-wrap: break-word;
-  }
-
-  :target {
-    scroll-margin-block: 5ex;
   }
 }

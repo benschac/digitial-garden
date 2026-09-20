@@ -1,17 +1,17 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
   canvasTypography,
   Typography,
   typographyVariants,
-} from "@personal-site/ui/components/typography";
-import { useEffect, useRef, useState } from "react";
-import styles from "./forces.module.css";
+} from "@/components/page-typography";
 import {
   acceleration,
   advancePosition,
   velocitiesAfterImpulse,
 } from "./forces-model";
+import styles from "./forces-styles";
 
 type Law = "first" | "second" | "third";
 
@@ -195,7 +195,12 @@ export function ForcesExperiment() {
           >
             Interactive laboratory
           </Typography>
-          <Typography as="h2" variant="experimentForcesHeading" id="lab-title">
+          <Typography
+            as="h2"
+            className={styles.experimentTitle}
+            variant="experimentForcesHeading"
+            id="lab-title"
+          >
             Change one thing. Watch what follows.
           </Typography>
         </div>
@@ -208,23 +213,17 @@ export function ForcesExperiment() {
         </Typography>
       </div>
 
-      <div
-        aria-label="Newton's laws"
-        className={typographyVariants({
-          variant: "experimentForcesTabs",
-          className: styles.tabs,
-        })}
-        role="tablist"
-      >
+      <div aria-label="Newton's laws" className={styles.tabs} role="tablist">
         {(Object.keys(LAW_LABELS) as Law[]).map((item, index) => (
           <button
+            className={styles.tab}
             aria-selected={law === item}
             key={item}
             onClick={() => chooseLaw(item)}
             role="tab"
             type="button"
           >
-            <span>0{index + 1}</span>
+            <span className={styles.tabNumber}>0{index + 1}</span>
             {LAW_LABELS[item]}
           </button>
         ))}
@@ -251,15 +250,10 @@ export function ForcesExperiment() {
         </div>
 
         <div className={styles.controls}>
-          <div
-            className={typographyVariants({
-              variant: "experimentForcesControlCopy",
-              className: styles.controlCopy,
-            })}
-          >
-            <span>{LAW_LABELS[law]}</span>
-            <h3>{lawTitle(law)}</h3>
-            <p>{lawDescription(law)}</p>
+          <div>
+            <span className={styles.controlLabel}>{LAW_LABELS[law]}</span>
+            <h3 className={styles.controlTitle}>{lawTitle(law)}</h3>
+            <p className={styles.controlDescription}>{lawDescription(law)}</p>
           </div>
 
           {law === "first" ? (
@@ -337,16 +331,19 @@ export function ForcesExperiment() {
             </>
           ) : null}
 
-          <div
-            className={typographyVariants({
-              variant: "experimentForcesActions",
-              className: styles.actions,
-            })}
-          >
-            <button onClick={() => setPaused((value) => !value)} type="button">
+          <div className={styles.actions}>
+            <button
+              className={styles.actionButton}
+              onClick={() => setPaused((value) => !value)}
+              type="button"
+            >
               {paused ? "Resume" : "Pause"}
             </button>
-            <button onClick={reset} type="button">
+            <button
+              className={styles.actionButton}
+              onClick={reset}
+              type="button"
+            >
               Reset
             </button>
           </div>
@@ -374,17 +371,13 @@ function RangeControl({
   value: number;
 }) {
   return (
-    <label
-      className={typographyVariants({
-        variant: "experimentForcesRangeControl",
-        className: styles.rangeControl,
-      })}
-    >
+    <label className={styles.rangeControl}>
       <span>{label}</span>
-      <output>
+      <output className={styles.controlOutput}>
         {value} {unit}
       </output>
       <input
+        className={styles.controlInput}
         max={max}
         min={min}
         onChange={(event) => onChange(Number(event.currentTarget.value))}

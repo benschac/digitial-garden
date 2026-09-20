@@ -1,14 +1,11 @@
 "use client";
 
 import { useAbortableEffect } from "@personal-site/react-hooks";
-import {
-  Typography,
-  typographyVariants,
-} from "@personal-site/ui/components/typography";
 import { useEffect, useRef, useState } from "react";
+import { Typography } from "@/components/page-typography";
 import { perlinNoise2D } from "@/lib/perlin-noise";
 import { loadParticleEngine } from "../wasm-canvas/wasm-engine";
-import styles from "./perlin-noise.module.css";
+import styles from "./perlin-noise-styles";
 
 const SAMPLE_SIZE = 256;
 const DEFAULT_FREQUENCY = 5;
@@ -120,6 +117,7 @@ export function PerlinNoiseExperiment() {
           </Typography>
           <Typography
             as="h2"
+            className={styles.experimentTitle}
             variant="experimentNoiseHeading"
             id="comparison-title"
           >
@@ -164,14 +162,8 @@ export function PerlinNoiseExperiment() {
         </p>
       ) : null}
 
-      <div
-        className={typographyVariants({
-          variant: "experimentNoiseReadout",
-          className: styles.readout,
-        })}
-        aria-live="polite"
-      >
-        <div>
+      <div className={styles.readout} aria-live="polite">
+        <div className={styles.metric}>
           <Typography
             as="span"
             variant="experimentNoiseMetricLabel"
@@ -183,7 +175,7 @@ export function PerlinNoiseExperiment() {
             {formatDifference(metrics.maxDifference)}
           </Typography>
         </div>
-        <div>
+        <div className={styles.metric}>
           <Typography
             as="span"
             variant="experimentNoiseMetricLabel"
@@ -195,23 +187,21 @@ export function PerlinNoiseExperiment() {
             {formatDifference(metrics.meanDifference)}
           </Typography>
         </div>
-        <p>
+        <p className={styles.readoutNote}>
           {status === "ready" && metrics.maxDifference === 0
             ? "Pixel-perfect agreement at this view."
             : "Any disagreement appears as light in the delta panel."}
         </p>
       </div>
 
-      <div
-        className={typographyVariants({
-          variant: "experimentNoiseControls",
-          className: styles.controls,
-        })}
-      >
-        <label>
+      <div className={styles.controls}>
+        <label className={styles.control}>
           <span>Scale</span>
-          <output>{frequency.toFixed(2)}</output>
+          <output className={styles.controlOutput}>
+            {frequency.toFixed(2)}
+          </output>
           <input
+            className={styles.controlInput}
             max="16"
             min="1"
             onChange={(event) =>
@@ -222,10 +212,11 @@ export function PerlinNoiseExperiment() {
             value={frequency}
           />
         </label>
-        <label>
+        <label className={styles.control}>
           <span>Horizontal offset</span>
-          <output>{offsetX.toFixed(2)}</output>
+          <output className={styles.controlOutput}>{offsetX.toFixed(2)}</output>
           <input
+            className={styles.controlInput}
             max="32"
             min="-32"
             onChange={(event) => setOffsetX(Number(event.currentTarget.value))}
@@ -234,10 +225,11 @@ export function PerlinNoiseExperiment() {
             value={offsetX}
           />
         </label>
-        <label>
+        <label className={styles.control}>
           <span>Vertical offset</span>
-          <output>{offsetY.toFixed(2)}</output>
+          <output className={styles.controlOutput}>{offsetY.toFixed(2)}</output>
           <input
+            className={styles.controlInput}
             max="32"
             min="-32"
             onChange={(event) => setOffsetY(Number(event.currentTarget.value))}
@@ -246,7 +238,12 @@ export function PerlinNoiseExperiment() {
             value={offsetY}
           />
         </label>
-        <button disabled={isDefaultView} onClick={resetView} type="button">
+        <button
+          className={styles.controlButton}
+          disabled={isDefaultView}
+          onClick={resetView}
+          type="button"
+        >
           Reset view
         </button>
       </div>
@@ -278,20 +275,16 @@ function NoisePanel({
   label: string;
 }) {
   return (
-    <figure
-      className={typographyVariants({
-        variant: "experimentNoisePanel",
-        className: styles.panel,
-      })}
-    >
+    <figure className={styles.panel}>
       <canvas
+        className={styles.panelCanvas}
         aria-label={`${label} Perlin noise field`}
         height={SAMPLE_SIZE}
         ref={canvasRef}
         role="img"
         width={SAMPLE_SIZE}
       />
-      <figcaption>
+      <figcaption className={styles.panelCaption}>
         <strong>{label}</strong>
         <span className={styles.panelDetail}>{detail}</span>
       </figcaption>

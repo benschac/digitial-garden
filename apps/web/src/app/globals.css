@@ -3,7 +3,8 @@
 @import "@personal-site/ui/styles/theme.css";
 @import "@personal-site/ui/styles/defaults.css";
 @import "@personal-site/ui/styles/editorial.css";
-@import "@personal-site/ui/styles/prose.css";
+@import "@personal-site/ui/styles/baseline.css";
+@import "./blog/prose.css";
 @import "./reset.css";
 @import "./view-transitions.css";
 @source "../../../../packages/ui/src";

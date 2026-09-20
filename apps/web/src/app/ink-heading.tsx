@@ -155,14 +155,14 @@ export function InkHeading({ className }: { className?: string }) {
     <Heading
       as="h1"
       variant="display"
-      className={cn(styles.hoverArea, className)}
+      className={cn("relative", styles.hoverArea, className)}
       onPointerEnter={moveInk}
       onPointerMove={moveInk}
       onPointerLeave={resetInk}
       onPointerCancel={resetInk}
     >
       <svg
-        className={styles.filterDefinitions}
+        className="absolute h-0 w-0 overflow-hidden"
         aria-hidden="true"
         focusable="false"
       >

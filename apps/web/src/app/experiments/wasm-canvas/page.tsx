@@ -1,14 +1,11 @@
 import { Eyebrow } from "@personal-site/ui/components/eyebrow";
 import { PageNavigation } from "@personal-site/ui/components/page-navigation";
-import {
-  Typography,
-  typographyVariants,
-} from "@personal-site/ui/components/typography";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageTransition } from "@/app/_components/page-transition";
+import { Typography, typographyVariants } from "@/components/page-typography";
 import { WasmCanvas } from "./wasm-canvas";
-import styles from "./wasm-canvas.module.css";
+import styles from "./wasm-canvas-styles";
 
 export const metadata: Metadata = {
   title: "WebGPU Particle Field",
@@ -32,10 +29,15 @@ export default function WasmCanvasPage() {
             className: styles.nav,
           })}
         >
-          <Link href="/" transitionTypes={["nav-back"]}>
+          <Link
+            className={styles.navLink}
+            href="/"
+            transitionTypes={["nav-back"]}
+          >
             ← Workbench
           </Link>
           <Link
+            className={styles.navLink}
             href="/experiments/typegpu-particles"
             transitionTypes={["nav-lateral"]}
           >
@@ -46,12 +48,16 @@ export default function WasmCanvasPage() {
           <Eyebrow
             className={typographyVariants({
               variant: "experimentParticleEyebrow",
-              className: styles.eyebrow,
+              className: `mb-5 ${styles.eyebrow}`,
             })}
           >
             Rust/WASM · WebGPU · WGSL
           </Eyebrow>
-          <Typography as="h1" variant="experimentParticleDisplay">
+          <Typography
+            as="h1"
+            className={styles.title}
+            variant="experimentParticleDisplay"
+          >
             A particle field that lives on the GPU.
           </Typography>
           <Typography
@@ -72,7 +78,7 @@ export default function WasmCanvasPage() {
             className: styles.notes,
           })}
         >
-          <p>
+          <p className={styles.note}>
             Move across the field to bend its flow. React owns the controls
             while Rust/WASM owns frame policy and WebGPU owns particle state,
             simulation, trails, and drawing. Browsers without WebGPU retain the

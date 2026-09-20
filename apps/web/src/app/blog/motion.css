@@ -1,220 +1,224 @@
-/* Keep these tokens on the snapshot groups so other routes retain their motion. */
-::view-transition-group(.blog-forward),
-::view-transition-group(.blog-back),
-::view-transition-group(.blog-title) {
-  --blog-motion-duration: 320ms;
-  --blog-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --blog-motion-distance: clamp(16px, 3vw, 40px);
-  animation-duration: var(--blog-motion-duration);
-  animation-timing-function: var(--blog-motion-ease);
-}
+@layer theme, base, reset, components, utilities;
 
-::view-transition-old(.blog-forward),
-::view-transition-new(.blog-back) {
-  --blog-motion-offset: calc(-1 * var(--blog-motion-distance));
-}
-
-::view-transition-new(.blog-forward),
-::view-transition-old(.blog-back) {
-  --blog-motion-offset: var(--blog-motion-distance);
-}
-
-::view-transition-old(.blog-forward),
-::view-transition-old(.blog-back) {
-  animation: blog-depart var(--blog-motion-duration) var(--blog-motion-ease)
-    both;
-  mix-blend-mode: normal;
-}
-
-::view-transition-new(.blog-forward),
-::view-transition-new(.blog-back) {
-  animation: blog-arrive var(--blog-motion-duration) var(--blog-motion-ease)
-    both;
-  mix-blend-mode: normal;
-}
-
-@keyframes blog-arrive {
-  from {
-    opacity: 0;
-    transform: translateX(var(--blog-motion-offset));
+@layer components {
+  /* Keep these tokens on the snapshot groups so other routes retain their motion. */
+  ::view-transition-group(.blog-forward),
+  ::view-transition-group(.blog-back),
+  ::view-transition-group(.blog-title) {
+    --blog-motion-duration: 320ms;
+    --blog-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --blog-motion-distance: clamp(16px, 3vw, 40px);
+    animation-duration: var(--blog-motion-duration);
+    animation-timing-function: var(--blog-motion-ease);
   }
-  to {
-    opacity: 1;
-    transform: translateX(0);
+
+  ::view-transition-old(.blog-forward),
+  ::view-transition-new(.blog-back) {
+    --blog-motion-offset: calc(-1 * var(--blog-motion-distance));
   }
-}
 
-@keyframes blog-depart {
-  from {
-    opacity: 1;
-    transform: translateX(0);
+  ::view-transition-new(.blog-forward),
+  ::view-transition-old(.blog-back) {
+    --blog-motion-offset: var(--blog-motion-distance);
   }
-  to {
-    opacity: 0;
-    transform: translateX(var(--blog-motion-offset));
+
+  ::view-transition-old(.blog-forward),
+  ::view-transition-old(.blog-back) {
+    animation: blog-depart var(--blog-motion-duration) var(--blog-motion-ease)
+      both;
+    mix-blend-mode: normal;
   }
-}
 
-/* Preserve sharp destination text and allow its new line breaks to breathe. */
-::view-transition-group(.blog-title) {
-  animation-duration: 420ms;
-  z-index: 4;
-  overflow: visible;
-}
-
-::view-transition-old(.blog-title) {
-  display: none;
-}
-
-::view-transition-new(.blog-title) {
-  animation: none;
-  object-fit: none;
-  object-position: left top;
-}
-
-/* The card's paper grows to the viewport; text lives in separate snapshots. */
-::view-transition-group(.blog-surface),
-::view-transition-group(.blog-surface-open),
-::view-transition-group(.blog-surface-close),
-::view-transition-group(.blog-underlay),
-::view-transition-group(.blog-content) {
-  --blog-expansion-duration: 420ms;
-  --blog-expansion-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  animation-duration: var(--blog-expansion-duration);
-  animation-timing-function: var(--blog-expansion-ease);
-}
-
-::view-transition-group(.blog-surface),
-::view-transition-group(.blog-surface-open),
-::view-transition-group(.blog-surface-close) {
-  z-index: 2;
-}
-
-::view-transition-image-pair(.blog-surface),
-::view-transition-image-pair(.blog-surface-open),
-::view-transition-image-pair(.blog-surface-close) {
-  height: 100%;
-  overflow: clip;
-  background: var(--color-paper);
-}
-
-::view-transition-image-pair(.blog-surface-open) {
-  animation: blog-surface-expand var(--blog-expansion-duration)
-    var(--blog-expansion-ease) both;
-}
-
-::view-transition-image-pair(.blog-surface-close) {
-  animation: blog-surface-collapse var(--blog-expansion-duration)
-    var(--blog-expansion-ease) both;
-}
-
-::view-transition-old(.blog-surface),
-::view-transition-old(.blog-surface-open),
-::view-transition-old(.blog-surface-close) {
-  display: none;
-}
-
-::view-transition-new(.blog-surface),
-::view-transition-new(.blog-surface-open),
-::view-transition-new(.blog-surface-close) {
-  animation: none;
-  height: 100%;
-}
-
-::view-transition-group(.blog-underlay) {
-  z-index: 1;
-}
-
-::view-transition-old(.blog-underlay) {
-  transform-origin: 50% 25%;
-  animation: blog-recede var(--blog-expansion-duration)
-    var(--blog-expansion-ease) both;
-}
-
-::view-transition-new(.blog-underlay) {
-  transform-origin: 50% 25%;
-  animation: blog-restore var(--blog-expansion-duration)
-    var(--blog-expansion-ease) both;
-}
-
-::view-transition-group(.blog-content) {
-  z-index: 3;
-}
-
-::view-transition-new(.blog-content) {
-  animation: blog-content-in 260ms ease-out 100ms both;
-}
-
-::view-transition-old(.blog-content) {
-  animation: blog-content-out 140ms ease-out both;
-}
-
-@keyframes blog-surface-expand {
-  from {
-    border-radius: 20px;
-    box-shadow: 0 16px 64px rgb(30 25 18 / 16%);
+  ::view-transition-new(.blog-forward),
+  ::view-transition-new(.blog-back) {
+    animation: blog-arrive var(--blog-motion-duration) var(--blog-motion-ease)
+      both;
+    mix-blend-mode: normal;
   }
-  to {
-    border-radius: 0;
-    box-shadow: 0 0 0 rgb(30 25 18 / 0%);
-  }
-}
 
-@keyframes blog-surface-collapse {
-  from {
-    border-radius: 0;
+  @keyframes blog-arrive {
+    from {
+      opacity: 0;
+      transform: translateX(var(--blog-motion-offset));
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
-  60% {
-    box-shadow: 0 16px 64px rgb(30 25 18 / 12%);
-  }
-  to {
-    border-radius: 20px;
-    box-shadow: 0 0 0 rgb(30 25 18 / 0%);
-  }
-}
 
-@keyframes blog-recede {
-  to {
-    opacity: 0.5;
-    transform: scale(0.985);
+  @keyframes blog-depart {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(var(--blog-motion-offset));
+    }
   }
-}
 
-@keyframes blog-restore {
-  from {
-    opacity: 0.5;
-    transform: scale(0.985);
+  /* Preserve sharp destination text and allow its new line breaks to breathe. */
+  ::view-transition-group(.blog-title) {
+    animation-duration: 420ms;
+    z-index: 4;
+    overflow: visible;
   }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
 
-@keyframes blog-content-in {
-  from {
-    opacity: 0;
+  ::view-transition-old(.blog-title) {
+    display: none;
   }
-  to {
-    opacity: 1;
-  }
-}
 
-@keyframes blog-content-out {
-  to {
-    opacity: 0;
+  ::view-transition-new(.blog-title) {
+    animation: none;
+    object-fit: none;
+    object-position: left top;
   }
-}
 
-/* The global reduced-motion rule removes snapshot durations and delays. */
-@media (prefers-reduced-motion: reduce) {
+  /* The card's paper grows to the viewport; text lives in separate snapshots. */
+  ::view-transition-group(.blog-surface),
+  ::view-transition-group(.blog-surface-open),
+  ::view-transition-group(.blog-surface-close),
+  ::view-transition-group(.blog-underlay),
+  ::view-transition-group(.blog-content) {
+    --blog-expansion-duration: 420ms;
+    --blog-expansion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-duration: var(--blog-expansion-duration);
+    animation-timing-function: var(--blog-expansion-ease);
+  }
+
+  ::view-transition-group(.blog-surface),
+  ::view-transition-group(.blog-surface-open),
+  ::view-transition-group(.blog-surface-close) {
+    z-index: 2;
+  }
+
+  ::view-transition-image-pair(.blog-surface),
   ::view-transition-image-pair(.blog-surface-open),
   ::view-transition-image-pair(.blog-surface-close) {
-    animation: none;
+    height: 100%;
+    overflow: clip;
+    background: var(--color-paper);
   }
 
-  ::view-transition-group(.blog-forward),
-  ::view-transition-group(.blog-back) {
-    --blog-motion-distance: 0px;
+  ::view-transition-image-pair(.blog-surface-open) {
+    animation: blog-surface-expand var(--blog-expansion-duration)
+      var(--blog-expansion-ease) both;
+  }
+
+  ::view-transition-image-pair(.blog-surface-close) {
+    animation: blog-surface-collapse var(--blog-expansion-duration)
+      var(--blog-expansion-ease) both;
+  }
+
+  ::view-transition-old(.blog-surface),
+  ::view-transition-old(.blog-surface-open),
+  ::view-transition-old(.blog-surface-close) {
+    display: none;
+  }
+
+  ::view-transition-new(.blog-surface),
+  ::view-transition-new(.blog-surface-open),
+  ::view-transition-new(.blog-surface-close) {
+    animation: none;
+    height: 100%;
+  }
+
+  ::view-transition-group(.blog-underlay) {
+    z-index: 1;
+  }
+
+  ::view-transition-old(.blog-underlay) {
+    transform-origin: 50% 25%;
+    animation: blog-recede var(--blog-expansion-duration)
+      var(--blog-expansion-ease) both;
+  }
+
+  ::view-transition-new(.blog-underlay) {
+    transform-origin: 50% 25%;
+    animation: blog-restore var(--blog-expansion-duration)
+      var(--blog-expansion-ease) both;
+  }
+
+  ::view-transition-group(.blog-content) {
+    z-index: 3;
+  }
+
+  ::view-transition-new(.blog-content) {
+    animation: blog-content-in 260ms ease-out 100ms both;
+  }
+
+  ::view-transition-old(.blog-content) {
+    animation: blog-content-out 140ms ease-out both;
+  }
+
+  @keyframes blog-surface-expand {
+    from {
+      border-radius: 20px;
+      box-shadow: 0 16px 64px rgb(30 25 18 / 16%);
+    }
+    to {
+      border-radius: 0;
+      box-shadow: 0 0 0 rgb(30 25 18 / 0%);
+    }
+  }
+
+  @keyframes blog-surface-collapse {
+    from {
+      border-radius: 0;
+    }
+    60% {
+      box-shadow: 0 16px 64px rgb(30 25 18 / 12%);
+    }
+    to {
+      border-radius: 20px;
+      box-shadow: 0 0 0 rgb(30 25 18 / 0%);
+    }
+  }
+
+  @keyframes blog-recede {
+    to {
+      opacity: 0.5;
+      transform: scale(0.985);
+    }
+  }
+
+  @keyframes blog-restore {
+    from {
+      opacity: 0.5;
+      transform: scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes blog-content-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes blog-content-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  /* The global reduced-motion rule removes snapshot durations and delays. */
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-image-pair(.blog-surface-open),
+    ::view-transition-image-pair(.blog-surface-close) {
+      animation: none;
+    }
+
+    ::view-transition-group(.blog-forward),
+    ::view-transition-group(.blog-back) {
+      --blog-motion-distance: 0px;
+    }
   }
 }

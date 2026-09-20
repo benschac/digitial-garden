@@ -1,11 +1,10 @@
 "use client";
 
-import {
-  Typography,
-  typographyVariants,
-} from "@personal-site/ui/components/typography";
+import { cn } from "@personal-site/ui/lib/utils";
+
 import { CanvasSpace, Group, Pt } from "pts";
 import { useEffect, useRef, useState } from "react";
+import { Typography } from "@/components/page-typography";
 import {
   addVectors,
   angleBetweenVectors,
@@ -26,7 +25,7 @@ import {
   vectorHeading,
   vectorMagnitude,
 } from "./vector-math";
-import styles from "./vector-math.module.css";
+import styles from "./vector-math-styles";
 
 type OperationId =
   | "add"
@@ -275,7 +274,12 @@ export function VectorPlayground() {
           >
             p5.Vector method atlas
           </Typography>
-          <Typography as="h2" variant="experimentHeading" id="playground-title">
+          <Typography
+            as="h2"
+            className={styles.experimentTitle}
+            variant="experimentHeading"
+            id="playground-title"
+          >
             One vector. Seventeen ways to see it.
           </Typography>
         </div>
@@ -288,35 +292,32 @@ export function VectorPlayground() {
         </Typography>
       </div>
 
-      <nav
-        aria-label="Vector methods"
-        className={typographyVariants({
-          variant: "experimentVectorMethodGrid",
-          className: styles.methodGrid,
-        })}
-      >
+      <nav aria-label="Vector methods" className={styles.methodGrid}>
         {OPERATIONS.map((item) => (
           <button
+            className={styles.methodButton}
             aria-current={operation === item.id ? "true" : undefined}
             key={item.id}
             onClick={() => chooseOperation(item.id)}
             type="button"
           >
-            <strong>{item.label}</strong>
-            <span>{item.description}</span>
+            <strong className={styles.methodName}>{item.label}</strong>
+            <span
+              className={cn(
+                styles.methodDescription,
+                operation === item.id && styles.methodDescriptionSelected,
+              )}
+            >
+              {item.description}
+            </span>
           </button>
         ))}
       </nav>
 
-      <div
-        className={typographyVariants({
-          variant: "experimentVectorActiveMethod",
-          className: styles.activeMethod,
-        })}
-      >
-        <div>
-          <span>Selected method</span>
-          <strong>{operationMeta.label}</strong>
+      <div className={styles.activeMethod}>
+        <div className={styles.activeSummary}>
+          <span className={styles.activeLabel}>Selected method</span>
+          <strong className={styles.activeName}>{operationMeta.label}</strong>
           <Typography
             as="p"
             variant="experimentVectorActiveMethodDescription"
@@ -326,9 +327,12 @@ export function VectorPlayground() {
           </Typography>
         </div>
         {operationMeta.parameter ? (
-          <label>
-            <span>{operationMeta.parameter.label}</span>
+          <label className={styles.activeControl}>
+            <span className={styles.activeLabel}>
+              {operationMeta.parameter.label}
+            </span>
             <input
+              className={styles.activeInput}
               max={operationMeta.parameter.max}
               min={operationMeta.parameter.min}
               onChange={(event) =>
@@ -338,53 +342,59 @@ export function VectorPlayground() {
               type="range"
               value={parameter}
             />
-            <output>
+            <output className={styles.activeOutput}>
               {format(parameter)}
               {operationMeta.parameter.suffix}
             </output>
           </label>
         ) : null}
         {operation.startsWith("random") ? (
-          <button onClick={() => chooseOperation(operation)} type="button">
+          <button
+            className={styles.actionButton}
+            onClick={() => chooseOperation(operation)}
+            type="button"
+          >
             Generate again
           </button>
         ) : null}
       </div>
 
       <div className={styles.workspace}>
-        <canvas
-          aria-label="Interactive XY projection of vectors u and v"
-          className={styles.canvas}
-          onPointerDown={(event) => {
-            const bounds = event.currentTarget.getBoundingClientRect();
-            const scale = Math.min(bounds.width / 16, bounds.height / 12);
-            const pointer = {
-              x: (event.clientX - bounds.left - bounds.width / 2) / scale,
-              y: -(event.clientY - bounds.top - bounds.height / 2) / scale,
-            };
-            const firstDistance = Math.hypot(
-              pointer.x - first.x,
-              pointer.y - first.y,
-            );
-            const secondDistance = Math.hypot(
-              pointer.x - second.x,
-              pointer.y - second.y,
-            );
-            draggingRef.current =
-              operationMeta.usesSecond && secondDistance < firstDistance
-                ? "second"
-                : "first";
-            event.currentTarget.setPointerCapture(event.pointerId);
-            updateFromPointer(event);
-          }}
-          onPointerMove={updateFromPointer}
-          onPointerUp={(event) => {
-            draggingRef.current = null;
-            if (event.currentTarget.hasPointerCapture(event.pointerId))
-              event.currentTarget.releasePointerCapture(event.pointerId);
-          }}
-          ref={canvasRef}
-        />
+        <div className={styles.canvasFrame}>
+          <canvas
+            aria-label="Interactive XY projection of vectors u and v"
+            className={styles.canvas}
+            onPointerDown={(event) => {
+              const bounds = event.currentTarget.getBoundingClientRect();
+              const scale = Math.min(bounds.width / 16, bounds.height / 12);
+              const pointer = {
+                x: (event.clientX - bounds.left - bounds.width / 2) / scale,
+                y: -(event.clientY - bounds.top - bounds.height / 2) / scale,
+              };
+              const firstDistance = Math.hypot(
+                pointer.x - first.x,
+                pointer.y - first.y,
+              );
+              const secondDistance = Math.hypot(
+                pointer.x - second.x,
+                pointer.y - second.y,
+              );
+              draggingRef.current =
+                operationMeta.usesSecond && secondDistance < firstDistance
+                  ? "second"
+                  : "first";
+              event.currentTarget.setPointerCapture(event.pointerId);
+              updateFromPointer(event);
+            }}
+            onPointerMove={updateFromPointer}
+            onPointerUp={(event) => {
+              draggingRef.current = null;
+              if (event.currentTarget.hasPointerCapture(event.pointerId))
+                event.currentTarget.releasePointerCapture(event.pointerId);
+            }}
+            ref={canvasRef}
+          />
+        </div>
 
         <div className={styles.readout} aria-live="polite">
           <VectorCard color="yellow" label="u" vector={first} />
@@ -395,12 +405,7 @@ export function VectorPlayground() {
         </div>
       </div>
 
-      <div
-        className={typographyVariants({
-          variant: "experimentVectorKeyboardControls",
-          className: styles.keyboardControls,
-        })}
-      >
+      <div className={styles.keyboardControls}>
         <VectorControls label="Vector u" setVector={setFirst} vector={first} />
         {operationMeta.usesSecond ? (
           <VectorControls
@@ -411,14 +416,12 @@ export function VectorPlayground() {
         ) : null}
       </div>
 
-      <div
-        className={typographyVariants({
-          variant: "experimentVectorFooterBar",
-          className: styles.footerBar,
-        })}
-      >
-        <p>Canvas shows the XY projection · sliders include Z</p>
+      <div className={styles.footerBar}>
+        <p className={styles.footerNote}>
+          Canvas shows the XY projection · sliders include Z
+        </p>
         <button
+          className={styles.actionButton}
           onClick={() => {
             setFirst(DEFAULT_FIRST);
             setSecond(DEFAULT_SECOND);
@@ -522,18 +525,15 @@ function ResultCard({
   result: OperationResult;
 }) {
   return (
-    <article
-      className={typographyVariants({
-        variant: "experimentVectorResultCard",
-        className: styles.resultCard,
-      })}
-    >
-      <span>{method} result</span>
+    <article className={styles.resultCard}>
+      <span className={styles.cardLabel}>{method} result</span>
       {result.kind === "vector" ? (
-        <strong>{formatVector(result.value)}</strong>
+        <strong className={styles.resultValue}>
+          {formatVector(result.value)}
+        </strong>
       ) : null}
       {result.kind === "scalar" ? (
-        <strong>
+        <strong className={styles.resultValue}>
           {result.value.toFixed(2)}
           {result.unit}
         </strong>
@@ -547,9 +547,11 @@ function ResultCard({
           {result.value}
         </Typography>
       ) : null}
-      <small>{result.expression}</small>
+      <small className={styles.cardDetail}>{result.expression}</small>
       {result.kind === "vector" ? (
-        <small>magnitude {vectorMagnitude(result.value).toFixed(2)}</small>
+        <small className={styles.cardDetail}>
+          magnitude {vectorMagnitude(result.value).toFixed(2)}
+        </small>
       ) : null}
     </article>
   );
@@ -565,12 +567,13 @@ function VectorControls({
   vector: Vector;
 }) {
   return (
-    <fieldset>
-      <legend>{label}</legend>
+    <fieldset className={styles.keyboardGroup}>
+      <legend className={styles.keyboardLegend}>{label}</legend>
       {(["x", "y", "z"] as const).map((axis) => (
-        <label key={axis}>
+        <label className={styles.keyboardControl} key={axis}>
           <span>{axis}</span>
           <input
+            className={styles.keyboardInput}
             max="7"
             min="-7"
             onChange={(event) => {
@@ -581,7 +584,9 @@ function VectorControls({
             type="range"
             value={vector[axis]}
           />
-          <output>{format(vector[axis])}</output>
+          <output className={styles.keyboardOutput}>
+            {format(vector[axis])}
+          </output>
         </label>
       ))}
     </fieldset>
@@ -598,16 +603,16 @@ function VectorCard({
   vector: Vector;
 }) {
   return (
-    <article
-      className={typographyVariants({
-        variant: "experimentVectorCard",
-        className: styles.vectorCard,
-      })}
-      data-color={color}
-    >
-      <span>{label}</span>
-      <strong>{formatVector(vector)}</strong>
-      <small>
+    <article className={styles.vectorCard} data-color={color}>
+      <span className={styles.cardLabel}>{label}</span>
+      <strong
+        className={
+          color === "yellow" ? styles.vectorValueYellow : styles.vectorValueBlue
+        }
+      >
+        {formatVector(vector)}
+      </strong>
+      <small className={styles.cardDetail}>
         |{label}| {vectorMagnitude(vector).toFixed(2)} · XY heading{" "}
         {vectorHeading(vector).toFixed(0)}°
       </small>

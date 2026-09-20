@@ -1,7 +1,9 @@
+@layer theme, base, reset, components, utilities;
 @import "tailwindcss";
 @import "../src/styles/theme.css";
 @import "../src/styles/defaults.css";
 @import "../src/styles/editorial.css";
+@import "../src/styles/baseline.css";
 @source "../src";
 
 @layer base {

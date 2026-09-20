@@ -9,8 +9,10 @@ import {
   useResizeObserver,
   useWindowEvent,
 } from "@personal-site/react-hooks";
+import { cn } from "@personal-site/ui/lib/utils";
 import { useEffectEvent, useId, useRef, useState } from "react";
 import { frameDeltaSeconds } from "./animation-timing";
+import styles from "./particle-header-background-styles";
 import type { ParticleRenderer } from "./particle-renderer";
 import { createWasmParticleRenderer } from "./wasm-particle-renderer";
 import { createWebGpuParticleRenderer } from "./webgpu-particle-renderer";
@@ -301,14 +303,18 @@ export function ParticleHeaderBackground({
   return (
     <>
       <canvas className={canvasClassName} ref={canvasRef} />
-      <fieldset className={controlsClassName} disabled={!isReady}>
-        <legend>Field controls</legend>
-        <label htmlFor={particleInputId}>
+      <fieldset
+        className={cn(styles.controls, controlsClassName)}
+        disabled={!isReady}
+      >
+        <legend className={styles.legend}>Field controls</legend>
+        <label className={styles.label} htmlFor={particleInputId}>
           <span>Particles</span>
-          <output htmlFor={particleInputId}>
+          <output className={styles.output} htmlFor={particleInputId}>
             {PARTICLE_NUMBER_FORMATTER.format(density)}
           </output>
           <input
+            className={styles.input}
             aria-valuetext={PARTICLE_NUMBER_FORMATTER.format(density)}
             id={particleInputId}
             max={particleLimit}
@@ -321,10 +327,13 @@ export function ParticleHeaderBackground({
             value={density}
           />
         </label>
-        <label htmlFor={gravityInputId}>
+        <label className={styles.label} htmlFor={gravityInputId}>
           <span>Gravity</span>
-          <output htmlFor={gravityInputId}>{Math.round(gravity * 100)}%</output>
+          <output className={styles.output} htmlFor={gravityInputId}>
+            {Math.round(gravity * 100)}%
+          </output>
           <input
+            className={styles.input}
             aria-valuetext={`${Math.round(gravity * 100)}%`}
             id={gravityInputId}
             max="1.8"
@@ -337,10 +346,13 @@ export function ParticleHeaderBackground({
             value={gravity}
           />
         </label>
-        <label htmlFor={speedInputId}>
+        <label className={styles.label} htmlFor={speedInputId}>
           <span>Speed</span>
-          <output htmlFor={speedInputId}>{speed.toFixed(1)}×</output>
+          <output className={styles.output} htmlFor={speedInputId}>
+            {speed.toFixed(1)}×
+          </output>
           <input
+            className={styles.input}
             aria-valuetext={`${speed.toFixed(1)} times`}
             id={speedInputId}
             max="8"
@@ -351,7 +363,7 @@ export function ParticleHeaderBackground({
             value={speed}
           />
         </label>
-        <span aria-live="polite" data-particle-status>
+        <span className={styles.status} aria-live="polite" data-particle-status>
           {controlStatus === "ready"
             ? "Controls ready"
             : controlStatus === "unavailable"

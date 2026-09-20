@@ -4,11 +4,11 @@ import {
   useAbortableEffect,
   useAnimationFrame,
 } from "@personal-site/react-hooks";
-import { typographyVariants } from "@personal-site/ui/components/typography";
 import { useRef, useState } from "react";
+import { typographyVariants } from "@/components/page-typography";
 import { frameDeltaSeconds } from "./animation-timing";
 import type { ParticleRenderer } from "./particle-renderer";
-import styles from "./wasm-canvas.module.css";
+import styles from "./wasm-canvas-styles";
 import { createWasmParticleRenderer } from "./wasm-particle-renderer";
 import { createWebGpuParticleRenderer } from "./webgpu-particle-renderer";
 
@@ -265,16 +265,14 @@ export function WasmCanvas() {
           <output ref={fpsRef}>— fps</output>
         </div>
       </div>
-      <div
-        className={typographyVariants({
-          variant: "experimentParticleControls",
-          className: styles.controls,
-        })}
-      >
-        <label>
+      <div className={styles.controls}>
+        <label className={styles.control}>
           <span>Particles</span>
-          <output>{density.toLocaleString()}</output>
+          <output className={styles.controlOutput}>
+            {density.toLocaleString()}
+          </output>
           <input
+            className={styles.controlInput}
             max={particleLimit}
             min={particleLimit > 2_400 ? GPU_PARTICLE_MINIMUM : 200}
             onChange={(event) =>
@@ -285,10 +283,13 @@ export function WasmCanvas() {
             value={density}
           />
         </label>
-        <label>
+        <label className={styles.control}>
           <span>Gravity</span>
-          <output>{Math.round(intensity * 100)}%</output>
+          <output className={styles.controlOutput}>
+            {Math.round(intensity * 100)}%
+          </output>
           <input
+            className={styles.controlInput}
             max="1.8"
             min="-1.2"
             onChange={(event) =>
@@ -299,10 +300,11 @@ export function WasmCanvas() {
             value={intensity}
           />
         </label>
-        <label>
+        <label className={styles.control}>
           <span>Simulation speed</span>
-          <output>{speed.toFixed(1)}×</output>
+          <output className={styles.controlOutput}>{speed.toFixed(1)}×</output>
           <input
+            className={styles.controlInput}
             max="8"
             min="0.5"
             onChange={(event) => updateSpeed(Number(event.currentTarget.value))}
@@ -311,7 +313,11 @@ export function WasmCanvas() {
             value={speed}
           />
         </label>
-        <button onClick={togglePaused} type="button">
+        <button
+          className={styles.controlButton}
+          onClick={togglePaused}
+          type="button"
+        >
           {paused ? "Resume field" : "Pause field"}
         </button>
       </div>

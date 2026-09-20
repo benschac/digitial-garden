@@ -111,22 +111,6 @@ export const SharedRoles: Story = {
   render: () => (
     <div className="grid max-w-[65ch] gap-8">
       <div className="grid gap-2">
-        <Typography as="h2" variant="journalTitle">
-          From the journal
-        </Typography>
-        <Typography as="h3" variant="journalPostTitle">
-          How Rust, WebAssembly, TypeGPU, and WebGPU Pushed a Particle Field to
-          16 Million
-        </Typography>
-        <Typography as="p" variant="journalSummary">
-          A longer description shows how the shared reading styles wrap across
-          narrow and wide containers.
-        </Typography>
-        <Typography as="p" variant="journalDate">
-          August 23, 2026
-        </Typography>
-      </div>
-      <div className="grid gap-2">
         <Typography as="h2" variant="uiLabel">
           Workbench controls
         </Typography>
@@ -138,17 +122,6 @@ export const SharedRoles: Story = {
         </Typography>
         <Typography as="code" variant="code">
           const speed = 16;
-        </Typography>
-      </div>
-      <div className="grid gap-2">
-        <Typography as="p" variant="experimentKicker">
-          Interactive experiments
-        </Typography>
-        <Typography as="h2" variant="experimentHeading">
-          Vector math
-        </Typography>
-        <Typography as="p" variant="experimentNotes">
-          Drag a vector and watch its magnitude and direction change.
         </Typography>
       </div>
     </div>

@@ -1,0 +1,8 @@
+@layer theme, base, reset, components, utilities;
+
+@layer components {
+  .content
+    > :last-child:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    margin-bottom: 0;
+  }
+}

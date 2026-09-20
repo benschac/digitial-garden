@@ -1,10 +1,10 @@
 "use client";
 
+import { cn } from "@personal-site/ui/lib/utils";
 import { useEffect, useId, useRef } from "react";
-import styles from "./colorful-svg-pattern.module.css";
 
 // Ported from benschac-new/packages/ui/src/PostLayout.tsx.
-export function ColorfulSVGPattern() {
+export function ColorfulSVGPattern({ className }: { className?: string }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const id = useId();
 
@@ -137,7 +137,10 @@ export function ColorfulSVGPattern() {
   return (
     <svg
       ref={svgRef}
-      className={styles.pattern}
+      className={cn(
+        "pointer-events-none absolute inset-0 z-[-1] h-full w-full opacity-[0.65]",
+        className,
+      )}
       aria-hidden="true"
       focusable="false"
     >

@@ -1,0 +1,128 @@
+@layer theme, base, reset, components, utilities;
+
+@layer components {
+  /* Authored Markdown only. Embedded components opt out with data-prose-exclude. */
+  .ui-article-typography {
+    --blog-sans: var(--font-ui);
+    --blog-display: var(--font-editorial-display);
+    --blog-reading: var(--font-editorial-reading);
+    --blog-text-display: clamp(4rem, 2.35rem + 6.5vw, 7.5rem);
+    --blog-text-title: clamp(3.25rem, 2rem + 5vw, 6.75rem);
+    --blog-text-heading-2: clamp(2rem, 1.55rem + 1.8vw, 3rem);
+    --blog-text-heading-3: clamp(1.45rem, 1.25rem + 0.8vw, 1.9rem);
+    --blog-text-deck: clamp(1.3rem, 1.12rem + 0.7vw, 1.75rem);
+    --blog-text-body: clamp(1.1875rem, 1.15rem + 0.2vw, 1.25rem);
+    --blog-text-caption: 0.875rem;
+    --blog-text-meta: 0.78rem;
+    --blog-leading-display: 0.9;
+    --blog-leading-title: 1;
+    --blog-leading-heading: 1.06;
+    --blog-leading-deck: 1.32;
+    --blog-leading-body: 1.6;
+  }
+
+  .ui-article-prose
+    :where(h2, h3, h4):not(
+      :where([data-prose-exclude], [data-prose-exclude] *)
+    ) {
+    text-wrap: balance;
+  }
+
+  .ui-article-prose
+    p:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    font-family: var(--blog-reading);
+    text-wrap: pretty;
+  }
+
+  .ui-article-prose
+    :where(h2, h3, h4):not(
+      :where([data-prose-exclude], [data-prose-exclude] *)
+    ) {
+    font-weight: 550;
+    line-height: var(--blog-leading-heading);
+  }
+
+  .ui-article-prose
+    :where(h2, h3):not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    font-family: var(--blog-display);
+  }
+
+  .ui-article-prose
+    h2:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    font-size: var(--blog-text-heading-2);
+    letter-spacing: -0.025em;
+  }
+
+  .ui-article-prose
+    h3:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    font-size: var(--blog-text-heading-3);
+    letter-spacing: -0.018em;
+  }
+
+  .ui-article-prose
+    h4:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    font-family: var(--blog-sans);
+    font-size: 0.85em;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .ui-article-prose
+    strong:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    font-weight: 650;
+  }
+
+  .ui-article-prose
+    blockquote:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    font-size: 1.2em;
+    font-style: italic;
+    hanging-punctuation: first last;
+    line-height: 1.48;
+  }
+
+  .ui-article-prose
+    :where(code, pre):not(
+      :where([data-prose-exclude], [data-prose-exclude] *)
+    ) {
+    font-family: var(--font-code);
+  }
+
+  .ui-article-prose
+    :not(pre)
+    > code:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    font-size: 0.82em;
+  }
+
+  .ui-article-prose
+    pre:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    font-size: 0.78em;
+    line-height: 1.65;
+  }
+
+  .ui-article-prose
+    [data-mdx-media]
+    figcaption:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    font-family: var(--blog-sans);
+    font-size: var(--blog-text-caption);
+    letter-spacing: 0.015em;
+    line-height: 1.5;
+  }
+
+  .ui-article-prose
+    :where(table):not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    font-size: 0.88em;
+  }
+
+  .ui-article-prose
+    :where(th, td):not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    overflow-wrap: break-word;
+  }
+
+  .ui-article-prose
+    th:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    font-family: var(--blog-sans);
+    font-size: var(--blog-text-meta);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+}

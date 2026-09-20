@@ -5,10 +5,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@personal-site/ui/components/collapsible";
-import {
-  Typography,
-  typographyVariants,
-} from "@personal-site/ui/components/typography";
+import { Typography } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import type { DynamicToolUIPart, ToolUIPart } from "ai";
 import { ChevronRightIcon, TerminalIcon, WrenchIcon } from "lucide-react";
@@ -19,7 +16,7 @@ import { CodeBlock } from "./code-block";
 
 const compactCodeBlockClassName = cn(
   "rounded-none border-0 bg-transparent [&_pre]:!bg-transparent [&_pre]:px-3 [&_pre]:pt-2 [&_pre]:pb-3",
-  typographyVariants({ variant: "codeDescendantsCompact" }),
+  "[&_pre]:text-xs [&_code]:text-xs",
 );
 
 export type ToolProps = ComponentProps<typeof Collapsible>;
