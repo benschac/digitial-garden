@@ -6,28 +6,82 @@
 }
 
 .homePage {
+  isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   column-gap: 2rem;
   max-width: 80rem;
 }
 
+div:has(> .homePage) {
+  overflow-x: clip;
+}
+
 .masthead {
+  position: relative;
   display: grid;
-  grid-template-columns: subgrid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
   grid-column: 1 / -1;
-  row-gap: 2rem;
+  min-height: clamp(32rem, 75svh, 50rem);
+  row-gap: 3rem;
+}
+
+.mastheadArtwork {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  /* Let the portrait bleed above and sideways, but stop before navigation. */
+  clip-path: inset(-100vmax -100vmax 0);
+  pointer-events: none;
+}
+
+.mastheadArtwork::before {
+  content: "";
+  position: absolute;
+  width: clamp(64rem, 115vw, 100rem);
+  aspect-ratio: 1;
+  top: 50%;
+  left: 72%;
+  transform: translate(-50%, -46%) rotate(-12deg);
+  background: var(--color-ink);
+  mask: url("/images/benschac-outline.svg") center / contain no-repeat;
+  opacity: 0.22;
+}
+
+.homePage .mastheadLinks {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  margin-top: 0;
+  padding-block: 1.5rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.mastheadLinks a {
+  display: inline-flex;
+  align-items: center;
 }
 
 .profileDetails {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem 2rem;
 }
 
-.profileDetails .roleStatus {
+.heroHeading {
+  align-self: center;
+}
+
+.heroHeading .roleStatus {
+  font-family: var(--font-editorial-reading);
   font-size: 1.2rem;
-  margin: 0;
+  font-weight: 400;
+  line-height: 1.35;
+  margin: 1.25rem 0 0;
 }
 
 .page h1 {
@@ -46,10 +100,10 @@
 }
 
 .masthead h1 {
-  grid-column: 1 / -1;
-  max-width: none;
-  padding-bottom: 2rem;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  align-self: center;
+  font-size: clamp(3.5rem, 11vw, 9rem);
+  line-height: 1.02;
+  max-width: 9ch;
 }
 
 .page p {
@@ -126,6 +180,11 @@
   padding-top: 1.5rem;
 }
 
+.mastheadLinks + .featuredTalk {
+  margin-top: 0;
+}
+
+.mastheadLinks a,
 .pastWork h2,
 .featuredTalk h2 {
   font-family: var(--font-editorial-display);
@@ -134,6 +193,10 @@
   font-optical-sizing: auto;
   font-weight: 450;
   line-height: 1.1;
+}
+
+.pastWork h2,
+.featuredTalk h2 {
   margin: 0 0 1rem;
 }
 
@@ -248,6 +311,14 @@
   text-decoration-color: currentColor;
 }
 
+.homePage .mastheadLinks a {
+  text-decoration-thickness: max(1px, 0.04em);
+  text-underline-offset: 0.3em;
+  text-decoration-skip-ink: none;
+  /* biome-ignore lint/correctness/noUnknownProperty: CSS Text Decoration Level 4; unsupported browsers retain the standard underline. */
+  text-decoration-inset: 0.06em;
+}
+
 .projectDetail {
   align-items: center;
   padding-block: 1.25rem 0.5rem;
@@ -308,19 +379,6 @@
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .masthead .mastheadLinks {
-    display: grid;
-    grid-template-columns: subgrid;
-    grid-column: 2 / -1;
-    column-gap: inherit;
-    row-gap: 1rem;
-  }
-
-  .mastheadLinks a:first-child,
-  .mastheadLinks a[href="/s"] {
-    grid-column: 1 / -1;
-  }
-
   .pastWork h2,
   .featuredTalk h2 {
     grid-column: 1 / -1;
@@ -356,15 +414,6 @@
 
   .pastWork {
     align-items: baseline;
-  }
-
-  .masthead h1 {
-    font-size: clamp(6rem, 9vw, 8rem);
-    padding-block: 1rem 3rem;
-  }
-
-  .mastheadLinks a:first-child {
-    grid-column: auto;
   }
 
   .pastWork h2,

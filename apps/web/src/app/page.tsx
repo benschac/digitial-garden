@@ -52,7 +52,13 @@ export default function Home() {
     <PageTransition>
       <main className={`${styles.page} ${styles.homePage}`}>
         <header className={styles.masthead}>
-          <InkHeading />
+          <div className={styles.mastheadArtwork} aria-hidden="true" />
+          <div className={styles.heroHeading}>
+            <InkHeading />
+            <h2 className={styles.roleStatus}>
+              <em>looking for my next role</em>
+            </h2>
+          </div>
           <div className={styles.profileDetails}>
             <nav aria-label="Social profiles" className={styles.socialLinks}>
               <a href="https://github.com/benschac">
@@ -80,28 +86,25 @@ export default function Home() {
                 </svg>
               </a>
             </nav>
-            <p className={styles.roleStatus}>
-              <em>looking for my next role</em>
-            </p>
           </div>
-          <nav
-            aria-label="Primary"
-            className={`${styles.links} ${styles.mastheadLinks}`}
-          >
-            <a href="#featured-talk">Speaking</a>
-            <Link href="/blog" transitionTypes={["nav-forward"]}>
-              Blog
-            </Link>
-            <Link href="/playground" transitionTypes={["nav-forward"]}>
-              Playground
-            </Link>
-            {process.env.NODE_ENV === "development" ? (
-              <Link href="/s" transitionTypes={["nav-forward"]}>
-                Talk to the workbench analyst
-              </Link>
-            ) : null}
-          </nav>
         </header>
+        <nav
+          aria-label="Primary"
+          className={`${styles.links} ${styles.mastheadLinks}`}
+        >
+          <a href="#featured-talk">Speaking</a>
+          <Link href="/blog" transitionTypes={["nav-forward"]}>
+            Blog
+          </Link>
+          <Link href="/playground" transitionTypes={["nav-forward"]}>
+            Playground
+          </Link>
+          {process.env.NODE_ENV === "development" ? (
+            <Link href="/s" transitionTypes={["nav-forward"]}>
+              Talk to the workbench analyst
+            </Link>
+          ) : null}
+        </nav>
         <section
           id="featured-talk"
           aria-labelledby="featured-talk-heading"

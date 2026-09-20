@@ -100,9 +100,9 @@ another font loader or hard-code a font that bypasses these roles.
 
 Reference scales:
 
-- Base homepage/Playground title: `clamp(3rem, 8vw, 6rem)`, line-height `0.94`,
-  maximum `12ch`. The homepage masthead removes that measure and, from `72rem`,
-  uses `clamp(6rem, 9vw, 8rem)`.
+- Base homepage/Playground title: `clamp(3rem, 8vw, 6rem)`, line-height `1.15`,
+  maximum `12ch`. The homepage hero uses `clamp(3.5rem, 11vw, 9rem)`,
+  line-height `1.02`, and a `9ch` measure for a two-line name.
 - Base homepage/Playground prose: `clamp(1.2rem, 1rem + 0.7vw, 1.6rem)`,
   line-height `1.35`, maximum `36ch`. Homepage role status is `1.2rem` ink;
   project description is `1.125rem` with line-height `1.5`.
@@ -120,6 +120,17 @@ Reference scales:
   maximum `60ch`.
 - Blog captions: `0.875rem`; compact metadata: `0.78rem` system sans.
 
+The homepage name uses a subtle letterpress treatment in `ink-heading.module.css`:
+fine ink grain, a tight 1.4px inset shadow, and a subdued 0.6px interior highlight.
+Clip blurred shading back to the glyph alpha; no outer drop shadow or duplicated paper edge.
+The contour lighting uses an SVG filter defined by `ink-heading.tsx`. Fine-pointer
+hover restores the warm orange-brown radial light (`#965b3d`) inside the letters,
+using registered CSS custom properties, a text-clipped gradient, and spring-driven
+pointer tracking. A transparent hover area extends 1–2.5rem around the heading;
+the light fades out over 500ms after leaving that area. Inset offsets and the stronger edge highlight stay
+constant across hover and rest to avoid a depth change. Keep the fine printed texture and inset shading constant. The heading stays stationary: no tilt or translation. Touch and
+reduced motion retain static letterpress; forced colors use plain text.
+
 Balance display headings and use pretty wrapping for prose where supported.
 Reserve uppercase and tracking for short blog metadata labels. Keep long text in
 sentence case. When asked for darker text, adjust color without changing weight.
@@ -130,11 +141,32 @@ The base page used by Playground has a `48rem` maximum width and
 `clamp(1.5rem, 4vw, 3rem)` padding. The homepage overrides its width to `80rem`
 and uses a shared grid: one column below `48rem`, three from `48rem`, then four
 including an `8rem` section-label column from `72rem`. Sections and work entries
-align through subgrid. Homepage navigation changes from a vertical list to the
-masthead grid at `48rem`; Playground retains the vertical list.
+align through subgrid. The homepage hero has its own single-column grid with
+a large name centered vertically and availability and social links along the
+bottom. Primary navigation sits below the hero, separated by a thin rule. Its minimum height is `clamp(32rem, 75svh,
+50rem)` and grows with content. Navigation and profile details wrap on narrow
+screens; Playground retains its vertical navigation list.
 
-Speaking and Past work begin after a thin rule, `3rem` top margin, and `1.5rem`
-top padding. Work entries have `1.25rem` block padding and subtle separators;
+Homepage navigation links share the section `h2` serif/italic typography while
+remaining semantic links. The row has equal `1.5rem` block padding between its
+top rule and the Speaking section's rule, with no extra section margin between
+them. Navigation underlines use `0.3em` offset, continuous strokes
+(`text-decoration-skip-ink: none`), a minimum 1px thickness, and
+`0.06em` end insets where supported; other browsers retain ordinary underlines.
+
+The homepage masthead layers an oversized, rotated portrait outline behind its
+content, overflowing above and into the page margins. The artwork clips only at
+the header's bottom edge; horizontal overflow at the page surface is clipped to
+prevent sideways scrolling.
+`benschac-outline.svg` is a static, fill-free
+Rough.js derivative of `public/images/benschac.svg`, with 1.6-unit strokes and
+subtle hand-drawn irregularity (roughness 0.4, fixed seeds). The source paths are
+normalized to the 460-unit viewBox before sketching. A CSS mask applies the ink
+token at 22% opacity; no Rough.js runtime is shipped to the browser.
+The artwork is decorative and does not intercept pointer input.
+
+Speaking and Past work begin after a thin rule and `1.5rem` top padding. Past
+work also has a `3rem` top margin. Work entries have `1.25rem` block padding and subtle separators;
 the first entry loses top padding from `72rem`. The project detail uses its own
 two-column grid from `48rem` and preserves the screenshot's aspect ratio at up
 to `18.75rem` wide. Keep these composition rules local to the homepage.
