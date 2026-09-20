@@ -1,0 +1,188 @@
+:root {
+  --page-motion-duration: 360ms;
+  --page-motion-ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.page-transition-surface {
+  min-height: 100svh;
+  background: var(--color-paper);
+}
+
+/* Keep unnamed, persistent UI live while page-owned snapshots move. */
+::view-transition-old(root) {
+  display: none;
+}
+
+::view-transition-new(root) {
+  animation: none;
+}
+
+::view-transition {
+  pointer-events: none;
+}
+
+/* Push a foreground page over a slower background page; pop reverses it. */
+::view-transition-group(.page-forward-enter),
+::view-transition-group(.page-back-exit) {
+  z-index: 2;
+}
+
+::view-transition-group(.page-forward-exit),
+::view-transition-group(.page-back-enter) {
+  z-index: 1;
+}
+
+::view-transition-group(.page-forward),
+::view-transition-group(.page-back),
+::view-transition-group(.page-forward-enter),
+::view-transition-group(.page-forward-exit),
+::view-transition-group(.page-back-enter),
+::view-transition-group(.page-back-exit) {
+  animation-duration: var(--page-motion-duration);
+  animation-timing-function: var(--page-motion-ease);
+  overflow: clip;
+}
+
+::view-transition-old(.page-forward),
+::view-transition-old(.page-forward-exit),
+::view-transition-new(.page-back),
+::view-transition-new(.page-back-enter) {
+  z-index: 1;
+  background: var(--color-paper);
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(.page-forward),
+::view-transition-new(.page-forward-enter),
+::view-transition-old(.page-back),
+::view-transition-old(.page-back-exit) {
+  z-index: 2;
+  background: var(--color-paper);
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(.page-forward),
+::view-transition-old(.page-forward-exit) {
+  animation: page-recede var(--page-motion-duration) var(--page-motion-ease)
+    both;
+}
+
+::view-transition-new(.page-forward),
+::view-transition-new(.page-forward-enter) {
+  animation: page-push var(--page-motion-duration) var(--page-motion-ease) both;
+}
+
+::view-transition-old(.page-back),
+::view-transition-old(.page-back-exit) {
+  animation: page-pop var(--page-motion-duration) var(--page-motion-ease) both;
+}
+
+::view-transition-new(.page-back),
+::view-transition-new(.page-back-enter) {
+  animation: page-return var(--page-motion-duration) var(--page-motion-ease)
+    both;
+}
+
+::view-transition-group(.page-crossfade) {
+  animation-duration: 160ms;
+}
+
+::view-transition-old(.page-crossfade) {
+  animation: page-fade-out 160ms ease-out both;
+}
+
+::view-transition-new(.page-crossfade) {
+  animation: page-fade-in 160ms ease-out both;
+}
+
+@keyframes page-push {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes page-pop {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes page-recede {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-20%);
+  }
+}
+
+@keyframes page-return {
+  from {
+    transform: translateX(-20%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes page-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Render incoming type at full resolution instead of scaling the old title. */
+::view-transition-group(.title-morph) {
+  animation-duration: var(--page-motion-duration);
+  animation-timing-function: var(--page-motion-ease);
+  z-index: 3;
+}
+
+::view-transition-old(.title-morph) {
+  display: none;
+}
+
+::view-transition-new(.title-morph) {
+  animation: none;
+  object-fit: none;
+  object-position: left top;
+}
+
+::view-transition-group(typography-preview) {
+  animation: none;
+  z-index: 100;
+}
+
+::view-transition-old(typography-preview) {
+  display: none;
+}
+
+::view-transition-new(typography-preview) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    /* biome-ignore lint/complexity/noImportantStyles: override every snapshot animation for reduced motion. */
+    animation-duration: 0s !important;
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must also remove entrance delays. */
+    animation-delay: 0s !important;
+  }
+}

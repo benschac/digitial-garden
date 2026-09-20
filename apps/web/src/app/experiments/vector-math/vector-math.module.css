@@ -17,27 +17,21 @@
 }
 
 .nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   color: var(--muted);
-  font-family: var(--font-code);
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
 }
 
 .nav a {
   min-height: 44px;
-  color: inherit;
-  text-decoration: none;
 }
 
 .header {
   padding-block: clamp(4rem, 10vw, 8rem) clamp(2.75rem, 6vw, 5rem);
 }
 
-.eyebrow,
+.eyebrow {
+  color: #a33f2b;
+}
+
 .kicker {
   margin: 0 0 1rem;
   color: #a33f2b;
@@ -54,7 +48,8 @@
   font-size: clamp(3.7rem, 9vw, 8rem);
   font-weight: 430;
   letter-spacing: calc(
-    -0.06em + var(--font-editorial-display-tracking-adjustment)
+    -0.06em +
+    var(--font-editorial-display-tracking-adjustment)
   );
   line-height: 0.88;
   text-wrap: balance;
@@ -94,7 +89,8 @@
   font-size: clamp(2rem, 4vw, 3.5rem);
   font-weight: 450;
   letter-spacing: calc(
-    -0.035em + var(--font-editorial-display-tracking-adjustment)
+    -0.035em +
+    var(--font-editorial-display-tracking-adjustment)
   );
   line-height: 1;
 }

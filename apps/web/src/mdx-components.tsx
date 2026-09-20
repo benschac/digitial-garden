@@ -1,12 +1,12 @@
 import type { MDXComponents } from "mdx/types";
 import Image from "next/image";
 import Link from "next/link";
-import { isValidElement, type ComponentPropsWithoutRef } from "react";
+import { type ComponentPropsWithoutRef, isValidElement } from "react";
 import { Callout } from "./components/mdx/callout";
 
 function MdxLink({ href = "", ...props }: ComponentPropsWithoutRef<"a">) {
   if (href.startsWith("/")) {
-    return <Link href={href} {...props} />;
+    return <Link href={href} transitionTypes={["nav-lateral"]} {...props} />;
   }
 
   const opensNewTab = props.target === "_blank";
@@ -38,7 +38,7 @@ export function MdxImage({
       <Image
         alt={alt}
         height={675}
-        sizes="(max-width: 672px) calc(100vw - 2rem), (max-width: 1280px) 90vw, 1152px"
+        sizes="(max-width: 672px) calc(100vw - 2rem), (max-width: 900px) 90vw, 768px"
         src={src}
         title={title}
         width={1200}

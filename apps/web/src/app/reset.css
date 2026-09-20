@@ -26,8 +26,7 @@
     --font-choice-bonbance:
       var(--font-bonbance), "Iowan Old Style", Palatino, Georgia, serif;
     --font-choice-goudy-bookletter:
-      var(--font-goudy-bookletter), "Iowan Old Style", Palatino, Georgia,
-      serif;
+      var(--font-goudy-bookletter), "Iowan Old Style", Palatino, Georgia, serif;
     --font-choice-libre-caslon-condensed: var(
       --font-libre-caslon-condensed,
       "Iowan Old Style",
@@ -49,10 +48,6 @@
       ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
       sans-serif;
     --font-code: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-    --color-ink: #211f1b;
-    --color-muted: #6f6a61;
-    --color-paper: #f8f5ee;
-    --color-selection: #e8d8bd;
   }
 
   :root[data-editorial-display-font="newsreader"] {

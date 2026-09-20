@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PageTransition } from "@/app/_components/page-transition";
 import styles from "../home.module.css";
 
 export const metadata: Metadata = {
@@ -11,16 +12,37 @@ export const metadata: Metadata = {
 
 export default function PlaygroundPage() {
   return (
-    <main className={styles.page}>
-      <h1>Playground</h1>
-      <p>Experiments to explore and play with.</p>
-      <nav aria-label="Playground" className={styles.links}>
-        <Link href="/experiments/wasm-canvas">Explore WebGPU particles →</Link>
-        <Link href="/experiments/perlin-noise">Compare Perlin noise →</Link>
-        <Link href="/experiments/vector-math">Play with vector math →</Link>
-        <Link href="/experiments/forces">Explore forces →</Link>
-        <Link href="/">← Back home</Link>
-      </nav>
-    </main>
+    <PageTransition>
+      <main className={styles.page}>
+        <h1>Playground</h1>
+        <p>Experiments to explore and play with.</p>
+        <nav aria-label="Playground" className={styles.links}>
+          <Link
+            href="/experiments/wasm-canvas"
+            transitionTypes={["nav-forward"]}
+          >
+            Explore WebGPU particles →
+          </Link>
+          <Link
+            href="/experiments/perlin-noise"
+            transitionTypes={["nav-forward"]}
+          >
+            Compare Perlin noise →
+          </Link>
+          <Link
+            href="/experiments/vector-math"
+            transitionTypes={["nav-forward"]}
+          >
+            Play with vector math →
+          </Link>
+          <Link href="/experiments/forces" transitionTypes={["nav-forward"]}>
+            Explore forces →
+          </Link>
+          <Link href="/" transitionTypes={["nav-back"]}>
+            ← Back home
+          </Link>
+        </nav>
+      </main>
+    </PageTransition>
   );
 }

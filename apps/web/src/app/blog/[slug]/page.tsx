@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ViewTransition } from "react";
 import { ParticleHeaderBackground } from "@/app/experiments/wasm-canvas/particle-header-background";
 import {
   getAdjacentPosts,
   getAllPostSlugs,
   getPostBySlug,
 } from "@/lib/content";
+import { ArticleSurface } from "../article-surface";
 import styles from "../blog.module.css";
+import { BlogTransition } from "../blog-transition";
+import { ColorfulSVGPattern } from "../colorful-svg-pattern";
+import patternStyles from "../colorful-svg-pattern.module.css";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -69,59 +74,81 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   const { Content } = post;
   const hasParticleHeader = post.slug === "rust-wasm-webgpu-particles";
+  const hasSvgHeader = post.slug === "animated-blog-post-background";
 
   return (
-    <main className={styles.page}>
-      <article>
-        <header
-          className={`${styles.postHeader}${
-            hasParticleHeader ? ` ${styles.particlePostHeader}` : ""
-          }`}
-        >
-          <Link className={styles.backLink} href="/blog">
-            ← All posts
-          </Link>
-          <h1>{post.title}</h1>
-          <p className={styles.summary}>{post.summary}</p>
-          <p className={styles.metadata}>
-            Published{" "}
-            <time dateTime={post.publishedAt}>{post.publishedAt}</time>
-            {post.updatedAt ? (
-              <>
-                {" · Updated "}
-                <time dateTime={post.updatedAt}>{post.updatedAt}</time>
-              </>
+    <BlogTransition key={slug} name="blog-post-page" view="article">
+      <main className={styles.page}>
+        <ArticleSurface slug={post.slug} className={styles.surface} expanded />
+        <article>
+          <header
+            className={`${styles.postHeader}${
+              hasParticleHeader ? ` ${styles.particlePostHeader}` : ""
+            }${hasSvgHeader ? ` ${patternStyles.header}` : ""}`}
+          >
+            {hasSvgHeader ? <ColorfulSVGPattern /> : null}
+            <Link
+              aria-label="All posts"
+              className={styles.backLink}
+              href="/blog"
+              transitionTypes={["blog-close"]}
+            >
+              <span aria-hidden="true">←</span>
+            </Link>
+            <ViewTransition
+              name={`post-title-${post.slug}`}
+              default="none"
+              share="blog-title"
+            >
+              <h1>{post.title}</h1>
+            </ViewTransition>
+            <p className={styles.summary}>{post.summary}</p>
+            <p className={styles.metadata}>
+              Published{" "}
+              <time dateTime={post.publishedAt}>{post.publishedAt}</time>
+              {post.updatedAt ? (
+                <>
+                  {" · Updated "}
+                  <time dateTime={post.updatedAt}>{post.updatedAt}</time>
+                </>
+              ) : null}
+            </p>
+            {hasParticleHeader ? (
+              <ParticleHeaderBackground
+                canvasClassName={styles.particleHeaderCanvas}
+                controlsClassName={styles.particleHeaderControls}
+              />
             ) : null}
-          </p>
-          {hasParticleHeader ? (
-            <ParticleHeaderBackground
-              canvasClassName={styles.particleHeaderCanvas}
-              controlsClassName={styles.particleHeaderControls}
-            />
-          ) : null}
-        </header>
-        <div className={styles.prose}>
-          <Content />
-        </div>
-      </article>
-      <nav aria-label="Adjacent posts" className={styles.postNavigation}>
-        <div>
-          {adjacentPosts.previous ? (
-            <Link href={`/blog/${adjacentPosts.previous.slug}`}>
-              <span>Previous</span>
-              {adjacentPosts.previous.title}
-            </Link>
-          ) : null}
-        </div>
-        <div>
-          {adjacentPosts.next ? (
-            <Link href={`/blog/${adjacentPosts.next.slug}`}>
-              <span>Next</span>
-              {adjacentPosts.next.title}
-            </Link>
-          ) : null}
-        </div>
-      </nav>
-    </main>
+          </header>
+          <div className={styles.prose}>
+            <Content />
+          </div>
+        </article>
+        <nav aria-label="Adjacent posts" className={styles.postNavigation}>
+          <div>
+            {adjacentPosts.previous ? (
+              <Link
+                href={`/blog/${adjacentPosts.previous.slug}`}
+                transitionTypes={["nav-back"]}
+              >
+                <span>Previous</span>
+                {adjacentPosts.previous.title}
+              </Link>
+            ) : null}
+          </div>
+          <div>
+            {adjacentPosts.next ? (
+              <Link
+                href={`/blog/${adjacentPosts.next.slug}`}
+                transitionTypes={["nav-forward"]}
+              >
+                <span>Next</span>
+                {adjacentPosts.next.title}
+              </Link>
+            ) : null}
+          </div>
+        </nav>
+      </main>
+    </BlogTransition>
   );
 }

@@ -1,7 +1,9 @@
 .page {
+  position: relative;
+  isolation: isolate;
   --blog-ink: var(--color-ink);
-  --blog-muted: var(--color-muted);
-  --blog-paper: #f8f5ee;
+  --blog-muted: var(--color-editorial-muted);
+  --blog-paper: var(--color-paper);
   --blog-rule: #d9d2c5;
   --blog-accent: #8b3a2a;
   --blog-sans: var(--font-ui);
@@ -62,17 +64,33 @@
     var(--space-section-xl)
   );
   min-height: 100svh;
-  background: var(--blog-paper);
   color: var(--blog-ink);
   font-family: var(--blog-reading);
   font-optical-sizing: auto;
   padding: var(--page-block-padding) var(--page-inline-padding);
 }
 
+.surface {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--blog-paper);
+}
+
 .page :where(a) {
   color: inherit;
   text-decoration-color: color-mix(in srgb, currentColor 38%, transparent);
   text-underline-offset: 0.16em;
+  transition:
+    color 160ms ease-out,
+    opacity 160ms ease-out,
+    text-decoration-color 160ms ease-out;
+}
+
+.page :where(a:active) {
+  opacity: 0.7;
+  transition-duration: 0s;
 }
 
 .page :where(a:hover) {
@@ -113,7 +131,7 @@
 }
 
 .postHeader > :where(.backLink, h1),
-.prose > :where([data-mdx-media], [data-mdx-interactive]) {
+.prose > [data-mdx-interactive] {
   grid-column: wide-start / wide-end;
 }
 
@@ -144,6 +162,12 @@
   min-height: 44px;
   padding-block: var(--space-stack-sm);
   text-decoration: none;
+}
+
+.backLink {
+  font-size: 2rem;
+  letter-spacing: 0;
+  line-height: 1;
 }
 
 .masthead h1 {
@@ -442,7 +466,7 @@
 }
 
 .prose :where(h2, h3) {
-  font-family: var(--blog-reading);
+  font-family: var(--blog-display);
 }
 
 .prose h2 {
@@ -530,7 +554,9 @@
 }
 
 .prose [data-mdx-media] img {
-  border: 1px solid var(--blog-rule);
+  max-height: 32rem;
+  object-fit: contain;
+  width: 100%;
 }
 
 .prose [data-mdx-media] figcaption {

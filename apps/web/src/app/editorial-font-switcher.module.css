@@ -3,20 +3,45 @@
   background: color-mix(in srgb, var(--color-paper) 94%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-ink) 18%, transparent);
   bottom: max(0.75rem, env(safe-area-inset-bottom));
-  box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, var(--color-ink) 10%, transparent);
+  box-shadow: 0 0.5rem 1.5rem
+    color-mix(in srgb, var(--color-ink) 10%, transparent);
   color: var(--color-ink);
   display: grid;
   font-family: var(--font-ui);
   gap: 0.65rem;
-  grid-template-columns: auto minmax(11rem, 1fr);
   padding: 0.35rem 0.45rem 0.35rem 0.7rem;
   position: fixed;
   right: max(0.75rem, env(safe-area-inset-right));
   z-index: 100;
+  max-width: calc(100vw - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
+  overflow-y: auto;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: auto minmax(11rem, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.controls[hidden] {
+  display: none;
+}
+
+.switcher button {
+  justify-self: end;
+  min-height: 44px;
+  padding: 0.5rem 0.65rem;
+  background: var(--color-paper);
+  color: inherit;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
 }
 
 .switcher label {
-  color: var(--color-muted);
+  color: var(--color-editorial-muted);
   font-size: 0.68rem;
   font-weight: 650;
   letter-spacing: 0.085em;
@@ -38,16 +63,16 @@
   border-color: currentColor;
 }
 
-.switcher select:focus-visible {
+.switcher select:focus-visible,
+.switcher button:focus-visible {
   outline: 3px solid currentColor;
   outline-offset: 2px;
 }
 
 @media (max-width: 32rem) {
-  .switcher {
+  .controls {
     align-items: stretch;
     grid-template-columns: minmax(0, 1fr);
-    left: max(0.75rem, env(safe-area-inset-left));
   }
 
   .switcher select {

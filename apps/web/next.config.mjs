@@ -1,8 +1,10 @@
+import { withContentCollections } from "@content-collections/next";
 import createMDX from "@next/mdx";
 import { withEve } from "eve/next";
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
+  allowedDevOrigins: ["127.0.0.1"],
   images: {
     remotePatterns: [
       { hostname: "a.media-amazon.com", protocol: "https" },
@@ -27,4 +29,4 @@ const withMDX = createMDX({
   },
 });
 
-export default withEve(withMDX(nextConfig));
+export default withEve(() => withContentCollections(withMDX(nextConfig)));

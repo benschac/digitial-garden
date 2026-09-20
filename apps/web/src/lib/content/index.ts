@@ -1,45 +1,27 @@
 import "server-only";
 
-import path from "node:path";
-import type { ComponentType } from "react";
-import type { PostRecord, PostSummary } from "./schema";
+import { MDXContent } from "@content-collections/mdx/react";
+import { allPosts } from "content-collections";
+import { type ComponentType, createElement } from "react";
+import { useMDXComponents } from "@/mdx-components";
+import { type PostSummary, sortPostsNewestFirst } from "./schema";
 import {
+  asSummary,
   getPostSummariesByTag,
   getPublishedPostSummaries,
-  loadPostRegistry,
 } from "./source";
 
-const contentDirectory = path.join(process.cwd(), "content", "posts");
-const publicDirectory = path.join(process.cwd(), "public");
-
-let registryPromise: Promise<PostRecord[]> | undefined;
-
-function getRegistry(): Promise<PostRecord[]> {
-  registryPromise ??= loadPostRegistry({ contentDirectory, publicDirectory });
-  return registryPromise;
-}
-
-async function loadPostComponent(
-  post: PostRecord,
-): Promise<ComponentType<Record<string, never>>> {
-  if (post.extension === ".md") {
-    const module = await import(`../../../content/posts/${post.sourceStem}.md`);
-    return module.default;
-  }
-
-  const module = await import(`../../../content/posts/${post.sourceStem}.mdx`);
-  return module.default;
+function getRegistry() {
+  return sortPostsNewestFirst(allPosts);
 }
 
 export async function getAllPosts(): Promise<PostSummary[]> {
-  const posts = await getRegistry();
-  return posts.map(
-    ({ extension: _, sourceFile: __, sourceStem: ___, ...summary }) => summary,
-  );
+  const posts = getRegistry();
+  return posts.map(asSummary);
 }
 
 export async function getPublishedPosts(): Promise<PostSummary[]> {
-  return getPublishedPostSummaries(await getRegistry());
+  return getPublishedPostSummaries(getRegistry());
 }
 
 export async function getPostBySlug(slug: string): Promise<
@@ -48,19 +30,26 @@ export async function getPostBySlug(slug: string): Promise<
     })
   | undefined
 > {
-  const posts = await getRegistry();
+  const posts = getRegistry();
   const post = posts.find((candidate) => candidate.slug === slug);
 
   if (!post || !getPublishedPostSummaries([post]).length) {
     return undefined;
   }
 
-  const { extension: _, sourceFile: __, sourceStem: ___, ...summary } = post;
-  return { ...summary, Content: await loadPostComponent(post) };
+  const code = post.mdx;
+  function Content() {
+    return createElement(MDXContent, {
+      code,
+      components: useMDXComponents(),
+    });
+  }
+
+  return { ...asSummary(post), Content };
 }
 
 export async function getPostsByTag(tag: string): Promise<PostSummary[]> {
-  return getPostSummariesByTag(await getRegistry(), tag);
+  return getPostSummariesByTag(getRegistry(), tag);
 }
 
 export async function getAllPostSlugs(): Promise<string[]> {

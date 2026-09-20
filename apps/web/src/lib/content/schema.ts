@@ -55,15 +55,11 @@ export const postMetadataSchema = z
 export type PostMetadata = z.infer<typeof postMetadataSchema>;
 
 export interface PostRecord extends PostMetadata {
-  extension: ".md" | ".mdx";
+  mdx: string;
   sourceFile: string;
-  sourceStem: string;
 }
 
-export type PostSummary = Omit<
-  PostRecord,
-  "extension" | "sourceFile" | "sourceStem"
->;
+export type PostSummary = PostMetadata;
 
 export function normalizeTagSlug(tag: string): string {
   return tag

@@ -502,6 +502,7 @@ export const CodeBlockCopyButton = ({
     <Button
       className={cn("shrink-0", className)}
       onClick={copyToClipboard}
+      pressFeedback
       size="icon"
       variant="ghost"
       {...props}

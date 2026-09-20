@@ -1,4 +1,4 @@
-/* Semantic utilities; consumers supply the CSS variable values. */
+/* Semantic utilities. Import defaults.css for the opt-in UI theme. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -22,6 +22,26 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+  --font-sans: var(--font-ui, ui-sans-serif, system-ui, sans-serif);
+  --font-mono: var(--font-code, ui-monospace, monospace);
+}
+
+/* Keep dark utilities aligned with explicit and system token modes, including portals. */
+@custom-variant dark {
+  &:where(
+    [data-ui-theme="dark"],
+    [data-ui-theme="dark"] *,
+    body:has([data-ui-theme="dark"]) *
+  ) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(
+        [data-ui-theme="system"],
+        [data-ui-theme="system"] *,
+        body:has([data-ui-theme="system"]) *
+      ) {
+      @slot;
+    }
+  }
 }

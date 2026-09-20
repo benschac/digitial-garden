@@ -1,0 +1,45 @@
+/* One UI theme per document. Mirror the scope onto body for portaled popups. */
+@layer base {
+  :where([data-ui-theme], body:has([data-ui-theme])) {
+    color-scheme: light;
+    --background: light-dark(oklch(0.971 0 0), oklch(0.145 0 0));
+    --foreground: light-dark(oklch(0.16 0 0), oklch(0.985 0 0));
+    --card: light-dark(oklch(1 0 0), oklch(0.205 0 0));
+    --card-foreground: light-dark(oklch(0.16 0 0), oklch(0.985 0 0));
+    --popover: light-dark(oklch(1 0 0), oklch(0.205 0 0));
+    --popover-foreground: light-dark(oklch(0.16 0 0), oklch(0.985 0 0));
+    --primary: light-dark(oklch(0.19 0 0), oklch(0.922 0 0));
+    --primary-foreground: light-dark(oklch(0.985 0 0), oklch(0.205 0 0));
+    --secondary: light-dark(oklch(0.94 0 0), oklch(0.269 0 0));
+    --secondary-foreground: light-dark(oklch(0.19 0 0), oklch(0.985 0 0));
+    --muted: light-dark(oklch(0.94 0 0), oklch(0.269 0 0));
+    --muted-foreground: light-dark(oklch(0.6 0 0), oklch(0.708 0 0));
+    --accent: light-dark(oklch(0.94 0 0), oklch(0.269 0 0));
+    --accent-foreground: light-dark(oklch(0.19 0 0), oklch(0.985 0 0));
+    --destructive: light-dark(
+      oklch(0.55 0.245 27.325),
+      oklch(0.704 0.191 22.216)
+    );
+    --border: light-dark(oklch(0.916 0 0), oklch(1 0 0 / 10%));
+    --input: light-dark(oklch(0.916 0 0), oklch(1 0 0 / 15%));
+    --ring: light-dark(oklch(0.708 0 0), oklch(0.556 0 0));
+    --radius: 0.625rem;
+  }
+
+  :where([data-ui-theme="dark"], body:has([data-ui-theme="dark"])) {
+    color-scheme: dark;
+  }
+
+  :where([data-ui-theme="system"], body:has([data-ui-theme="system"])) {
+    color-scheme: light dark;
+  }
+
+  :where([data-ui-theme], body:has([data-ui-theme])) {
+    &,
+    *,
+    *::before,
+    *::after {
+      border-color: var(--border);
+    }
+  }
+}

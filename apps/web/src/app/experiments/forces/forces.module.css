@@ -20,20 +20,11 @@
 }
 
 .nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   color: var(--muted);
-  font-family: var(--font-code);
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
 }
 
 .nav a {
   min-height: 44px;
-  color: inherit;
-  text-decoration: none;
 }
 
 .nav a:hover {
@@ -44,7 +35,10 @@
   padding-block: clamp(4rem, 10vw, 8rem) clamp(3rem, 7vw, 6rem);
 }
 
-.eyebrow,
+.eyebrow {
+  color: #86efac;
+}
+
 .kicker {
   margin: 0 0 1rem;
   color: #86efac;

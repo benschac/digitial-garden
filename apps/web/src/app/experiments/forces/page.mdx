@@ -1,3 +1,6 @@
+import { PageTransition } from "@/app/_components/page-transition";
+import { Eyebrow } from "@personal-site/ui/components/eyebrow";
+import { PageNavigation } from "@personal-site/ui/components/page-navigation";
 import Link from "next/link";
 import { ForcesExperiment } from "./forces-experiment";
 import styles from "./forces.module.css";
@@ -8,14 +11,15 @@ export const metadata = {
   alternates: { canonical: "/experiments/forces" },
 };
 
+<PageTransition>
 <main className={styles.page}>
-  <nav className={styles.nav}>
-    <Link href="/">← Workbench</Link>
+  <PageNavigation className={styles.nav}>
+    <Link href="/" transitionTypes={["nav-back"]}>← Workbench</Link>
     <span>Experiment 004</span>
-  </nav>
+  </PageNavigation>
 
   <header className={styles.header}>
-    <p className={styles.eyebrow}>Classical mechanics · Canvas · MDX + LaTeX</p>
+    <Eyebrow className={styles.eyebrow}>Classical mechanics · Canvas · MDX + LaTeX</Eyebrow>
     <h1>Every motion has an account.</h1>
     <p className={styles.intro}>
       {"Change the conditions and watch the bookkeeping update. Velocity persists, force changes momentum, and every push returns an equal push."}
@@ -25,7 +29,7 @@ export const metadata = {
   <ForcesExperiment />
 
   <section className={styles.laws} aria-labelledby="field-notes">
-    <p className={styles.eyebrow}>Field notes</p>
+    <Eyebrow className={styles.eyebrow}>Field notes</Eyebrow>
     <h2 id="field-notes">Three laws, one system.</h2>
 
     <div className={styles.lawGrid}>
@@ -79,3 +83,4 @@ export const metadata = {
     </p>
   </aside>
 </main>
+</PageTransition>

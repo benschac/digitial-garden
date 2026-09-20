@@ -132,7 +132,10 @@ export function AgentChat({
   );
 
   return (
-    <main className="chat-theme flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+    <main
+      data-ui-theme="system"
+      className="flex h-dvh flex-col overflow-hidden bg-background text-foreground"
+    >
       {showConversationLayout ? (
         <ChatHeader canStartNewChat={activeSessionId !== undefined} />
       ) : null}

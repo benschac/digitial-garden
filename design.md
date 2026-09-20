@@ -4,10 +4,11 @@ Use this guide when building or changing Benjamin Schachter's personal site and
 shared UI. Start with the reader's task, then reuse the relevant existing page's
 composition and styles. Explicit task instructions take precedence over this guide.
 
-This first version records the current source as of September 19, 2026. It has not
-been validated through screenshot comparisons or generation evaluations. The
-visual direction below is inferred from the implementation, not a separate brand
-brief. Suggested review practices are guidance for future work.
+This guide records the current implementation as of September 20, 2026. Its
+visual direction comes from the site's source, not a separate brand brief or a
+generation evaluation. Browser checks for a particular change establish only
+that change's validation scope; they do not make this guide a visual acceptance
+baseline.
 
 ## Identity and purpose
 
@@ -16,7 +17,8 @@ Its public editorial surfaces use warm paper, dark ink, expressive serif heading
 readable serif prose, and restrained system-sans navigation. Hierarchy comes from
 type size, whitespace, and thin rules.
 
-- Home: identify Benjamin, expose a few useful destinations, and show past work.
+- Home: identify Benjamin, expose a few useful destinations, feature speaking,
+  and show past work with a selected-project detail.
 - Blog: help readers choose an article and comfortably read technical writing.
 - Playground: provide a short index into hands-on experiments.
 - Experiments: give the visualization and its controls the space they need.
@@ -32,15 +34,26 @@ values; update this guide if an intentional design change supersedes them.
 
 | Concern | Owning source |
 | --- | --- |
-| Editorial colors, fonts, reset | `apps/web/src/app/reset.css` |
+| Shared editorial palette | `packages/ui/src/styles/editorial.css` |
+| Editorial font roles and reset | `apps/web/src/app/reset.css` |
 | Font loading and initial preference application | `apps/web/src/app/layout.tsx`, `apps/web/src/app/editorial-fonts.ts` |
 | Homepage and Playground composition | `apps/web/src/app/home.module.css`, `apps/web/src/app/page.tsx`, `apps/web/src/app/playground/page.tsx` |
-| Blog layout, type scale, media, and prose | `apps/web/src/app/blog/blog.module.css` |
-| Tailwind sources and scoped chat theme | `apps/web/src/app/globals.css` |
-| Shared primitives and consumer setup | `packages/ui/src/index.ts`, `packages/ui/README.md` |
+| Blog index composition | `apps/web/src/app/blog/index.module.css` |
+| Blog article layout, type scale, media, and prose | `apps/web/src/app/blog/blog.module.css` |
+| Tailwind imports, sources, and editorial font utilities | `apps/web/src/app/globals.css` |
+| Shared UI semantic utilities and opt-in theme values | `packages/ui/src/styles/theme.css`, `packages/ui/src/styles/defaults.css` |
+| Unstyled primitives | `packages/ui/src/index.ts` |
+| Styled shared components and consumer setup | `packages/ui/src/components`, `packages/ui/README.md` |
+| Shared UI and editorial palette references | `packages/ui/src/stories/SharedUI.stories.tsx`, `PageChrome.stories.tsx`, `Editorial.stories.tsx` |
 
 CSS Module classes are local to their module. The blog's custom properties are
 scoped to its `.page`; do not assume they are globally available.
+
+The system has two visual families: editorial pages and application controls.
+Share tokens and components where their roles match. Keep route composition,
+content, and experiment-specific art direction in the app. CSS Modules and
+Tailwind utilities may consume the same tokens; a CSS Module does not need to
+be rewritten in utilities to participate in the system.
 
 ## Color
 
@@ -48,7 +61,7 @@ scoped to its `.page`; do not assume they are globally available.
 | --- | --- | --- |
 | Page background | `--color-paper` | `#f8f5ee` |
 | Primary text | `--color-ink` | `#211f1b` |
-| Secondary editorial text | `--color-muted` in `reset.css` | `#6f6a61` |
+| Secondary editorial text | `--color-editorial-muted` | `#6f6a61` |
 | Text selection | `--color-selection` | `#e8d8bd` |
 | Blog separators | `--blog-rule` | `#d9d2c5` |
 | Blog accent and focus | `--blog-accent` | `#8b3a2a` |
@@ -57,11 +70,18 @@ Use ink for primary content and muted text for supporting metadata. Use the blog
 accent sparingly for interaction and emphasis. The homepage divider mixes ink at
 18% opacity; social-link hover backgrounds mix the current color at 8%.
 
-Chat has a separate light/dark neutral palette scoped through `.chat-theme` and
-`body:has(.chat-theme)`. Its Tailwind `--color-muted` mapping represents a surface,
-while the editorial reset uses that name for text. Check scope and the computed
-value before reusing it. Do not treat chat tokens as universal editorial tokens.
-The editorial surfaces currently have no equivalent automatic dark palette.
+`editorial.css` emits its four tokens with `@theme static` so CSS Modules can
+always read them, even when no matching utility appears in markup. Utilities
+include `bg-paper`, `text-ink`, `text-editorial-muted`, and `selection:bg-selection`.
+Blog paper and text roles alias these tokens; its rule and accent remain local.
+
+Application controls use a separate neutral palette from `defaults.css`, enabled
+by `data-ui-theme="light"`, `"dark"`, or `"system"`. The mode is mirrored to
+`body` for portals; use one mode per document, not nested or simultaneous modes.
+The shared `--color-muted` / `bg-muted` role is a surface; use
+`text-muted-foreground` for application supporting text. Editorial supporting
+text uses `text-editorial-muted`. The editorial palette stays light in every UI
+mode and does not replace the application control tokens.
 
 ## Typography
 
@@ -80,11 +100,20 @@ another font loader or hard-code a font that bypasses these roles.
 
 Reference scales:
 
-- Homepage title: `clamp(3rem, 8vw, 6rem)`, line-height `0.94`, maximum `12ch`.
-- Homepage introductory text: `clamp(1.2rem, 1rem + 0.7vw, 1.6rem)`, line-height
-  `1.35`, maximum `36ch`.
-- Past-work names: `1.125rem` system sans, weight `500`; roles and dates:
-  `0.875rem`, line-height `1.5`.
+- Base homepage/Playground title: `clamp(3rem, 8vw, 6rem)`, line-height `0.94`,
+  maximum `12ch`. The homepage masthead removes that measure and, from `72rem`,
+  uses `clamp(6rem, 9vw, 8rem)`.
+- Base homepage/Playground prose: `clamp(1.2rem, 1rem + 0.7vw, 1.6rem)`,
+  line-height `1.35`, maximum `36ch`. Homepage role status is `1.2rem` ink;
+  project description is `1.125rem` with line-height `1.5`.
+- Homepage section headings: italic display face,
+  `clamp(1.75rem, 4vw, 2.25rem)`, line-height `1.1`, weight `450`.
+  Speaking uses `1.75rem` from `72rem`.
+- Past-work names: `1.25rem` system sans, weight `550`; roles: `0.875rem`;
+  dates: `0.8125rem`. Roles and dates use line-height `1.5`.
+- Homepage feature metadata: `0.75rem` system sans, `0.08em` tracking,
+  uppercase. This differs from experiment `Eyebrow` (monospace, `0.72rem`,
+  `0.12em` tracking) and blog metadata; do not substitute them unchanged.
 - Blog article title: `clamp(3.25rem, 2rem + 5vw, 6.75rem)`, line-height `1`,
   maximum `17ch`, with a smaller mobile override.
 - Blog body: `clamp(1.1875rem, 1.15rem + 0.2vw, 1.25rem)`, line-height `1.6`,
@@ -97,15 +126,30 @@ sentence case. When asked for darker text, adjust color without changing weight.
 
 ## Layout and spacing
 
-The homepage and Playground share a left-aligned page with a `48rem` maximum width
-and `clamp(1.5rem, 4vw, 3rem)` padding. Navigation is a vertical list with `0.75rem`
-gaps. Past work begins after a thin rule, `3rem` top margin, and `1.5rem` top
-padding; entries are separated by `2rem`.
+The base page used by Playground has a `48rem` maximum width and
+`clamp(1.5rem, 4vw, 3rem)` padding. The homepage overrides its width to `80rem`
+and uses a shared grid: one column below `48rem`, three from `48rem`, then four
+including an `8rem` section-label column from `72rem`. Sections and work entries
+align through subgrid. Homepage navigation changes from a vertical list to the
+masthead grid at `48rem`; Playground retains the vertical list.
 
-The blog uses a centered outer width of `72rem` and a `60ch` reading column.
+Speaking and Past work begin after a thin rule, `3rem` top margin, and `1.5rem`
+top padding. Work entries have `1.25rem` block padding and subtle separators;
+the first entry loses top padding from `72rem`. The project detail uses its own
+two-column grid from `48rem` and preserves the screenshot's aspect ratio at up
+to `18.75rem` wide. Keep these composition rules local to the homepage.
+
+The blog index uses a `68rem` shell with a compact masthead and one chronological
+reading list, capped at `42rem`. A named inline-size container places the
+introduction beside the list from `56rem`; narrower layouts stack it above.
+Each entry flows naturally as title, summary, then date, with consistent title
+sizing and subtle separators. The index omits decorative numbering and tags;
+there is no special lead treatment. Keep these styles in `index.module.css`.
+
+Blog articles use a centered outer width of `72rem` and a `60ch` reading column.
 Article titles, media marked `data-mdx-media`, and interactive content marked
-`data-mdx-interactive` can span the wide grid. At `42rem` and below, the blog
-masthead and listing become single-column layouts.
+`data-mdx-interactive` can span the wide grid. At `42rem` and below, the article
+reading grid becomes a single column.
 
 Reuse the blog's existing spacing steps when extending that surface:
 `0.25`, `0.5`, `0.75`, `1`, `1.5`, `2`, `2.5`, `3`, `4`, `5`, `6`, and `8rem`.
@@ -118,22 +162,33 @@ regions; avoid horizontal scrolling of the whole page.
 ## Components and interaction
 
 - Use text links for navigation and buttons for actions. Homepage destination
-  links use short labels with a trailing arrow; return links use a leading arrow.
+  links use short labels with muted underlines that darken on hover or focus;
+  return links use a leading arrow.
 - Keep social icons visually small, with accessible names and at least `44px`
   square targets. Hide decorative SVGs from assistive technology.
 - Preserve visible keyboard focus. Existing editorial links use a `3px` outline
   with a `4px` offset, colored with ink or the blog accent.
 - Prefer lists and rules for editorial indexes and work history. Use containers,
   borders, and backgrounds when they communicate grouping or interaction.
-- Shared `@personal-site/ui` exports Base UI primitives. These are unstyled;
-  importing them does not supply this site's visual treatment. Add reusable
-  styling and compositions there when a real use case requires them.
+- Root `@personal-site/ui` exports unstyled Base UI primitives. Import styled
+  controls from `@personal-site/ui/components/*` and `cn` from
+  `@personal-site/ui/lib/utils`. The styled layer provides buttons, fields,
+  popups, and other shared controls; app-specific compositions remain local.
+- Use Tailwind Variants (`tv`) for genuine variants. Group long utility lists by concern in `cn()`
+  without changing class order, and keep caller `className` last. Follow the
+  repository's Biome setup.
+- `Eyebrow` and `PageNavigation` supply structural experiment defaults; page
+  colors, spacing, focus treatment, and headings remain with the consumer.
 - Tailwind scans `packages/ui/src` through the app's stylesheet. Write complete
   class strings, and use Base UI state attributes for hover-independent states
   such as disabled, checked, highlighted, and open.
 - Follow the UI README's portal isolation and backdrop guidance when adding
   popups. Verify focus, dismissal, and keyboard behavior in the consuming app.
-- Treat generated Storybook examples as demonstrations, not brand references.
+- Use Storybook's `Shared UI/Theme` for application states, `Shared UI/Page chrome`
+  for structural components, and `Editorial/Palette` for the shared colors,
+  including their independence from dark UI mode. The palette story uses system
+  sans; check actual Tenderness/Newsreader typography and persisted font choices
+  in the web app. Generated starter examples are not brand references.
 
 Editorial pages should remain readable without animation. For new motion, use it
 to explain state changes, respect reduced-motion preferences, and provide a way

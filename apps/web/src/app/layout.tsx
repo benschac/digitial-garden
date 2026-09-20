@@ -9,7 +9,6 @@ import { EditorialFontSwitcher } from "./editorial-font-switcher";
 import { editorialFontPreferenceInitScript } from "./editorial-fonts";
 import "katex/dist/katex.min.css";
 import "./globals.css";
-import "./reset.css";
 
 const newsreader = Newsreader({
   axes: ["opsz"],

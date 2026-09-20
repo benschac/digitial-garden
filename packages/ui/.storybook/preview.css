@@ -1,0 +1,17 @@
+@import "tailwindcss";
+@import "../src/styles/theme.css";
+@import "../src/styles/defaults.css";
+@import "../src/styles/editorial.css";
+@source "../src";
+
+@layer base {
+  body {
+    position: relative;
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+  #storybook-root {
+    isolation: isolate;
+  }
+}

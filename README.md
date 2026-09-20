@@ -84,7 +84,21 @@ additional global watch utility.
 Published blog posts live in `apps/web/content/posts` as Markdown or MDX files.
 Markdown is the default; use MDX only when a post needs one of the explicitly
 allowlisted components from `apps/web/src/mdx-components.tsx`. YAML frontmatter
-is parsed once by the server-only content loader and validated with Zod.
+is validated with Zod by `apps/web/content-collections.ts`. Content Collections
+compiles the post bodies to MDX and generates typed data in
+`apps/web/.content-collections` (ignored by Git). The server-only content helpers
+serve that collection to the blog, RSS, sitemap, and tag routes.
+
+`next dev` generates the collection and watches for post changes; `next build`
+generates it before building routes. Run `bun run content:validate` to generate
+and validate content independently. Typechecking and tests also generate it, so
+they work on a fresh checkout. Invalid posts, duplicate slugs, missing cover
+images, and disallowed MDX fail validation. Draft, archived, and future posts
+remain excluded from public routes.
+
+Blog compilation preserves GFM, math, heading IDs, syntax highlighting, and the
+shared MDX components. `@next/mdx` remains for MDX experiment routes outside the
+blog.
 
 Set `SITE_URL` to the canonical production origin when building for deployment.
 Local builds default to `http://localhost:3000`.

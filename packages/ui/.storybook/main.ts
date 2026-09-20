@@ -16,5 +16,12 @@ const config: StorybookConfig = {
     getAbsolutePath("@storybook/addon-docs"),
   ],
   framework: getAbsolutePath("@storybook/nextjs-vite"),
+  viteFinal: async (config) => ({
+    ...config,
+    css: {
+      ...config.css,
+      postcss: fileURLToPath(new URL("..", import.meta.url)),
+    },
+  }),
 };
 export default config;

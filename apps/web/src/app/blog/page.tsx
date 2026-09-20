@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ViewTransition } from "react";
 import { getPublishedPosts } from "@/lib/content";
-import styles from "./blog.module.css";
+import { ArticleSurface } from "./article-surface";
+import { BlogTransition } from "./blog-transition";
+import styles from "./index.module.css";
 
 export const metadata: Metadata = {
   title: "Blog",
@@ -13,39 +16,59 @@ export default async function BlogIndexPage() {
   const posts = await getPublishedPosts();
 
   return (
-    <main className={styles.page}>
-      <header className={styles.masthead}>
-        <Link className={styles.siteLink} href="/">
-          Benjamin Schachter
-        </Link>
-        <div>
-          <p className={styles.eyebrow}>Selected writing</p>
-          <h1>Blog</h1>
-          <p className={styles.mastheadDeck}>
-            Notes from the workbench: software, systems, and interaction.
-          </p>
+    <BlogTransition view="index">
+      <main className={styles.page}>
+        <a className={styles.skipLink} href="#posts">
+          Skip to articles
+        </a>
+        <div className={styles.shell}>
+          <div className={styles.layout}>
+            <div className={styles.introduction}>
+              <h1>Blog</h1>
+            </div>
+            <ol
+              className={styles.postList}
+              id="posts"
+              tabIndex={-1}
+              aria-label="Articles"
+            >
+              {posts.map((post) => (
+                <li key={post.slug}>
+                  <ArticleSurface slug={post.slug} className={styles.surface} />
+                  <article>
+                    <ViewTransition
+                      name={`post-title-${post.slug}`}
+                      default="none"
+                      share="blog-title"
+                    >
+                      <h2>
+                        <Link
+                          href={`/blog/${post.slug}`}
+                          transitionTypes={["blog-open"]}
+                        >
+                          {post.title}
+                        </Link>
+                      </h2>
+                    </ViewTransition>
+                    <p className={styles.postSummary}>{post.summary}</p>
+                    <p className={styles.postDate}>
+                      <time dateTime={post.publishedAt}>
+                        {new Intl.DateTimeFormat("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          timeZone: "UTC",
+                        }).format(new Date(`${post.publishedAt}T00:00:00Z`))}
+                      </time>
+                    </p>
+                  </article>
+                </li>
+              ))}
+            </ol>
+            {posts.length === 0 ? <p>No articles published yet.</p> : null}
+          </div>
         </div>
-      </header>
-      <ol className={styles.postList}>
-        {posts.map((post) => (
-          <li key={post.slug}>
-            <article>
-              <p className={styles.postDate}>
-                <time dateTime={post.publishedAt}>{post.publishedAt}</time>
-              </p>
-              <h2>
-                <Link href={`/blog/${post.slug}`}>{post.title}</Link>
-              </h2>
-              <p className={styles.postSummary}>{post.summary}</p>
-              <ul aria-label="Tags" className={styles.tags}>
-                {post.tags.map((tag) => (
-                  <li key={tag}>{tag}</li>
-                ))}
-              </ul>
-            </article>
-          </li>
-        ))}
-      </ol>
-    </main>
+      </main>
+    </BlogTransition>
   );
 }

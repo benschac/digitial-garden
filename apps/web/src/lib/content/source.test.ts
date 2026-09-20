@@ -2,12 +2,18 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { postMetadataSchema } from "./schema";
+import { pathToFileURL } from "node:url";
+import { createBuilder } from "@content-collections/core";
+import { MDXContent } from "@content-collections/mdx/react";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { useMDXComponents } from "../../mdx-components";
 import {
-  getPostSummariesByTag,
-  getPublishedPostSummaries,
-  loadPostRegistry,
-} from "./source";
+  type PostRecord,
+  postMetadataSchema,
+  sortPostsNewestFirst,
+} from "./schema";
+import { getPostSummariesByTag, getPublishedPostSummaries } from "./source";
 
 const temporaryDirectories: string[] = [];
 
@@ -27,6 +33,47 @@ async function createFixture() {
   await mkdir(contentDirectory, { recursive: true });
   await mkdir(publicDirectory, { recursive: true });
   return { contentDirectory, publicDirectory };
+}
+
+async function loadPostRegistry(paths: {
+  contentDirectory: string;
+  publicDirectory: string;
+}) {
+  const root = path.dirname(paths.publicDirectory);
+  await mkdir(path.join(process.cwd(), ".content-collections"), {
+    recursive: true,
+  });
+  const buildDirectory = await mkdtemp(
+    path.join(process.cwd(), ".content-collections/test-"),
+  );
+  temporaryDirectories.push(buildDirectory);
+  const configPath = path.join(buildDirectory, "content-collections.ts");
+  const collectionPath = path.join(
+    process.cwd(),
+    "src/lib/content/collection.ts",
+  );
+  await writeFile(
+    configPath,
+    `import { createPostsCollection } from ${JSON.stringify(collectionPath)};
+export default { content: [createPostsCollection(${JSON.stringify(root)}, ${JSON.stringify(path.relative(buildDirectory, paths.contentDirectory))})] };`,
+  );
+  const builder = await createBuilder(configPath);
+  const errors: string[] = [];
+  builder.on("_error", (event) => {
+    errors.push(event.error.message);
+  });
+  try {
+    await builder.build();
+  } catch (error) {
+    if (!errors.length) throw error;
+  }
+  if (errors.length) throw new Error(errors.join("\n"));
+  const generatedPath = path.join(
+    buildDirectory,
+    ".content-collections/generated/index.js",
+  );
+  const { allPosts } = await import(pathToFileURL(generatedPath).href);
+  return sortPostsNewestFirst(allPosts as PostRecord[]);
 }
 
 function postSource({
@@ -113,6 +160,46 @@ describe("file-based post registry", () => {
     ]);
   });
 
+  test("renders compiled MDX with the existing plugins and components", async () => {
+    const paths = await createFixture();
+    await writeFile(
+      path.join(paths.contentDirectory, "rendering.mdx"),
+      `${postSource({ slug: "rendering" })}
+
+<Callout title="Tip">A useful note.</Callout>
+
+| Name | Value |
+| --- | --- |
+| Example | 42 |
+
+$E = mc^2$
+
+\`\`\`ts
+const answer = 42;
+\`\`\`
+
+![Example](https://example.com/image.png "Caption")
+`,
+    );
+    const posts = await loadPostRegistry(paths);
+    const post = posts[0];
+    if (!post) throw new Error("Expected a compiled fixture post");
+    const html = renderToStaticMarkup(
+      createElement(MDXContent, {
+        code: post.mdx,
+        components: useMDXComponents(),
+      }),
+    );
+    expect(html).toContain('id="body"');
+    expect(html).toContain("data-mdx-callout");
+    expect(html).toContain("<table>");
+    expect(html).toContain("katex");
+    expect(html).toContain("shiki");
+    expect(html).toContain("<figcaption>Caption</figcaption>");
+    expect(html).not.toContain("<p><figure");
+    expect(getPublishedPostSummaries(posts)[0]).not.toHaveProperty("mdx");
+  });
+
   test("sorts deterministically and excludes private or future posts", async () => {
     const paths = await createFixture();
     await Promise.all([
@@ -189,9 +276,7 @@ describe("file-based post registry", () => {
       source,
     );
 
-    await expect(loadPostRegistry(paths)).rejects.toThrow(
-      "Invalid post metadata",
-    );
+    await expect(loadPostRegistry(paths)).rejects.toThrow("title");
   });
 
   test("rejects arbitrary MDX imports", async () => {

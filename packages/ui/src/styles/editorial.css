@@ -1,0 +1,9 @@
+/* Editorial palette shared by web and Storybook. No element styles or UI mode overrides.
+ * Static emission keeps these variables available to CSS Modules as well as utilities.
+ */
+@theme static {
+  --color-ink: #211f1b;
+  --color-editorial-muted: #6f6a61;
+  --color-paper: #f8f5ee;
+  --color-selection: #e8d8bd;
+}
