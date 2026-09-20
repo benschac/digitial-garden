@@ -1,5 +1,6 @@
 "use client";
 
+import { typographyVariants } from "@personal-site/ui/components/typography";
 import dynamic from "next/dynamic";
 import styles from "./perlin-noise.module.css";
 
@@ -11,7 +12,14 @@ import styles from "./perlin-noise.module.css";
 function Noise3DLoading() {
   return (
     <section className={styles.threeExperiment} aria-busy="true">
-      <div className={styles.threeLoading}>Loading the 3D comparison…</div>
+      <div
+        className={typographyVariants({
+          variant: "experimentNoiseThreeLoading",
+          className: styles.threeLoading,
+        })}
+      >
+        Loading the 3D comparison…
+      </div>
     </section>
   );
 }

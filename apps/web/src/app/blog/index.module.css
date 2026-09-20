@@ -6,8 +6,6 @@
   padding: clamp(1.25rem, 4vw, 3.5rem);
   background: var(--color-paper);
   color: var(--color-ink);
-  font-family: var(--font-editorial-reading);
-  font-optical-sizing: auto;
 }
 
 .shell {
@@ -63,21 +61,17 @@
   gap: 0.5rem 2rem;
   border-bottom: 1px solid var(--color-ink);
   padding-block-end: 1rem;
-  font-family: var(--font-ui);
-  font-size: 0.8125rem;
 }
 
 .siteLink {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  font-weight: 600;
 }
 
 .edition {
   margin: 0;
   color: var(--supporting-text);
-  font-variant-numeric: tabular-nums;
 }
 
 .layout {
@@ -88,23 +82,12 @@
 
 .introduction h1 {
   margin: 0;
-  font-family: var(--font-editorial-display);
-  font-size: clamp(3rem, 2rem + 3cqi, 4.5rem);
-  font-weight: 400;
-  line-height: 1;
-  letter-spacing: calc(
-    -0.04em +
-    var(--font-editorial-display-tracking-adjustment)
-  );
 }
 
 .mastheadDeck {
   max-width: 26ch;
   margin-block: 1.25rem 0;
   color: var(--supporting-text);
-  font-size: 1.125rem;
-  line-height: 1.6;
-  text-wrap: pretty;
 }
 
 .postList {
@@ -141,24 +124,10 @@
 .postDate {
   margin: 0.25rem 0 0;
   color: var(--supporting-text);
-  font-family: var(--font-ui);
-  font-size: 0.8125rem;
-  font-variant-numeric: tabular-nums;
 }
 
 .postList h2 {
   margin: 0;
-  font-family: var(--font-editorial-display);
-  font-size: clamp(1.5rem, 1.25rem + 0.7cqi, 1.875rem);
-  font-weight: 450;
-  line-height: 1.22;
-  letter-spacing: calc(
-    -0.015em +
-    var(--font-editorial-display-tracking-adjustment) +
-    var(--font-editorial-display-secondary-tracking-adjustment)
-  );
-  text-wrap: balance;
-  overflow-wrap: anywhere;
 }
 
 .postList h2 a:hover {
@@ -170,10 +139,6 @@
 .postSummary {
   margin: 0;
   color: var(--supporting-text);
-  font-size: 1.125rem;
-  line-height: 1.65;
-  text-wrap: pretty;
-  overflow-wrap: anywhere;
 }
 
 .postList > li:first-child {

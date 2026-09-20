@@ -6,7 +6,6 @@
   padding: clamp(1.25rem, 3vw, 2.5rem);
   color: var(--ink);
   background: #f4efe4;
-  font-family: var(--font-ui);
 }
 
 .nav,
@@ -35,33 +34,17 @@
 .kicker {
   margin: 0 0 1rem;
   color: #a33f2b;
-  font-family: var(--font-code);
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .header h1 {
   max-width: 10ch;
   margin: 0;
-  font-family: var(--font-editorial-display);
-  font-size: clamp(3.7rem, 9vw, 8rem);
-  font-weight: 430;
-  letter-spacing: calc(
-    -0.06em +
-    var(--font-editorial-display-tracking-adjustment)
-  );
-  line-height: 0.88;
-  text-wrap: balance;
 }
 
 .intro {
   max-width: 43rem;
   margin: 2rem 0 0;
   color: var(--muted);
-  font-family: var(--font-editorial-reading);
-  font-size: clamp(1.2rem, 2vw, 1.55rem);
-  line-height: 1.45;
 }
 
 .experiment {
@@ -85,23 +68,11 @@
 .experimentHeader h2 {
   max-width: 18ch;
   margin: 0;
-  font-family: var(--font-editorial-display);
-  font-size: clamp(2rem, 4vw, 3.5rem);
-  font-weight: 450;
-  letter-spacing: calc(
-    -0.035em +
-    var(--font-editorial-display-tracking-adjustment)
-  );
-  line-height: 1;
 }
 
 .methodCount {
   margin: 0;
   color: #386547;
-  font-family: var(--font-code);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .methodGrid {
@@ -133,16 +104,8 @@
   background: #20221e;
 }
 
-.methodGrid strong {
-  font-family: var(--font-code);
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
 .methodGrid span {
   color: var(--muted);
-  font-size: 0.72rem;
-  line-height: 1.35;
 }
 
 .methodGrid button[aria-current="true"] span {
@@ -169,21 +132,12 @@
 .activeMethod > div span,
 .activeMethod label span {
   color: var(--muted);
-  font-family: var(--font-code);
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.activeMethod > div strong {
-  font-family: var(--font-code);
 }
 
 .activeMethodDescription {
   grid-column: 1 / -1;
   margin: 0;
   color: var(--muted);
-  font-size: 0.8rem;
 }
 
 .activeMethod label {
@@ -196,10 +150,6 @@
   grid-column: 1 / -1;
   min-height: 44px;
   accent-color: #a33f2b;
-}
-
-.activeMethod output {
-  font-family: var(--font-code);
 }
 
 .activeMethod button,
@@ -250,23 +200,11 @@
 .vectorCard span,
 .resultCard span {
   color: #9f9f95;
-  font-family: var(--font-code);
-  font-size: 0.7rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.vectorCard strong,
-.resultCard strong {
-  font-family: var(--font-editorial-display);
-  font-size: 2rem;
-  font-weight: 450;
 }
 
 .vectorCard small,
 .resultCard small {
   color: #aaa99f;
-  font-family: var(--font-code);
 }
 
 .vectorCard[data-color="yellow"] strong {
@@ -279,7 +217,6 @@
 .resultCard {
   margin-top: auto;
   border-bottom: 0;
-  line-height: 1.5;
 }
 
 .resultCard strong {
@@ -288,9 +225,6 @@
 
 .resultCard .warning {
   color: #ef9a82;
-  font-family: var(--font-ui);
-  font-size: 1rem;
-  line-height: 1.4;
 }
 
 .footerBar {
@@ -304,10 +238,6 @@
 .footerBar p {
   margin: 0;
   color: var(--muted);
-  font-family: var(--font-code);
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .footerBar button {
@@ -339,10 +269,6 @@
 
 .keyboardControls legend {
   padding-top: 1.25rem;
-  font-family: var(--font-code);
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .keyboardControls label {
@@ -351,8 +277,6 @@
   gap: 0.75rem;
   align-items: center;
   color: var(--muted);
-  font-family: var(--font-code);
-  font-size: 0.75rem;
 }
 
 .keyboardControls input {
@@ -379,8 +303,6 @@
 .notes {
   padding-block: 2rem 5rem;
   color: var(--muted);
-  font-size: 0.88rem;
-  line-height: 1.6;
 }
 
 .notes p {

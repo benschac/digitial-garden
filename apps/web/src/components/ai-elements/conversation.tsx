@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@personal-site/ui/components/button";
+import { Typography } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import type { UIMessage } from "ai";
 import { ArrowDownIcon, DownloadIcon } from "lucide-react";
@@ -216,9 +217,17 @@ export const ConversationEmptyState = ({
       <>
         {icon && <div className="text-muted-foreground">{icon}</div>}
         <div className="space-y-1">
-          <h3 className="font-medium text-sm">{title}</h3>
+          <Typography as="h3" variant="uiLabel">
+            {title}
+          </Typography>
           {description && (
-            <p className="text-muted-foreground text-sm">{description}</p>
+            <Typography
+              as="p"
+              variant="uiBody"
+              className="text-muted-foreground"
+            >
+              {description}
+            </Typography>
           )}
         </div>
       </>

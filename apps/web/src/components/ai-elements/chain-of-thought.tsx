@@ -6,6 +6,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@personal-site/ui/components/collapsible";
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import type { LucideIcon } from "lucide-react";
@@ -80,7 +84,8 @@ export const ChainOfThoughtHeader = memo(
       <Collapsible onOpenChange={setIsOpen} open={isOpen}>
         <CollapsibleTrigger
           className={cn(
-            "flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
+            "flex w-full items-center gap-2 text-muted-foreground transition-colors hover:text-foreground",
+            typographyVariants({ variant: "uiBody" }),
             className,
           )}
           {...props}
@@ -124,9 +129,11 @@ export const ChainOfThoughtStep = memo(
     children,
     ...props
   }: ChainOfThoughtStepProps) => (
-    <div
+    <Typography
+      as="div"
+      variant="uiBody"
       className={cn(
-        "flex gap-2 text-sm",
+        "flex gap-2",
         stepStatusStyles[status],
         "fade-in-0 slide-in-from-top-2 animate-in",
         className,
@@ -140,11 +147,17 @@ export const ChainOfThoughtStep = memo(
       <div className="flex-1 space-y-2 overflow-hidden">
         <div>{label}</div>
         {description && (
-          <div className="text-muted-foreground text-xs">{description}</div>
+          <Typography
+            as="div"
+            variant="uiCaption"
+            className="text-muted-foreground"
+          >
+            {description}
+          </Typography>
         )}
         {children}
       </div>
-    </div>
+    </Typography>
   ),
 );
 
@@ -164,7 +177,11 @@ export type ChainOfThoughtSearchResultProps = ComponentProps<typeof Badge>;
 export const ChainOfThoughtSearchResult = memo(
   ({ className, children, ...props }: ChainOfThoughtSearchResultProps) => (
     <Badge
-      className={cn("gap-1 px-2 py-0.5 font-normal text-xs", className)}
+      className={cn(
+        "gap-1 px-2 py-0.5",
+        typographyVariants({ variant: "uiCaptionNormal" }),
+        className,
+      )}
       variant="secondary"
       {...props}
     >
@@ -208,7 +225,15 @@ export const ChainOfThoughtImage = memo(
       <div className="relative flex max-h-[22rem] items-center justify-center overflow-hidden rounded-lg bg-muted p-3">
         {children}
       </div>
-      {caption && <p className="text-muted-foreground text-xs">{caption}</p>}
+      {caption && (
+        <Typography
+          as="p"
+          variant="uiCaption"
+          className="text-muted-foreground"
+        >
+          {caption}
+        </Typography>
+      )}
     </div>
   ),
 );

@@ -1,3 +1,4 @@
+import { Typography } from "@personal-site/ui/components/typography";
 import type { MDXComponents } from "mdx/types";
 import Image from "next/image";
 import Link from "next/link";
@@ -43,7 +44,7 @@ export function MdxImage({
         title={title}
         width={1200}
       />
-      {title ? <figcaption>{title}</figcaption> : null}
+      {title ? <Typography as="figcaption">{title}</Typography> : null}
     </figure>
   );
 }
@@ -56,13 +57,28 @@ export function MdxParagraph({
     return children;
   }
 
-  return <p {...props}>{children}</p>;
+  return (
+    <Typography as="p" {...props}>
+      {children}
+    </Typography>
+  );
 }
 
 const components = {
   a: MdxLink,
   img: MdxImage,
   p: MdxParagraph,
+  h1: (props) => <Typography as="h1" {...props} />,
+  h2: (props) => <Typography as="h2" {...props} />,
+  h3: (props) => <Typography as="h3" {...props} />,
+  h4: (props) => <Typography as="h4" {...props} />,
+  h5: (props) => <Typography as="h5" {...props} />,
+  h6: (props) => <Typography as="h6" {...props} />,
+  strong: (props) => <Typography as="strong" {...props} />,
+  em: (props) => <Typography as="em" {...props} />,
+  blockquote: (props) => <Typography as="blockquote" {...props} />,
+  code: (props) => <Typography as="code" {...props} />,
+  pre: (props) => <Typography as="pre" {...props} />,
   Callout,
 } satisfies MDXComponents;
 

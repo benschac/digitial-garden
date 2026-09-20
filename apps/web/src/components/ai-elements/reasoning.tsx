@@ -5,6 +5,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@personal-site/ui/components/collapsible";
+import { typographyVariants } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import { cjk } from "@streamdown/cjk";
@@ -170,7 +171,8 @@ export const ReasoningTrigger = memo(
     return (
       <CollapsibleTrigger
         className={cn(
-          "flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
+          "flex w-full items-center gap-2 text-muted-foreground transition-colors hover:text-foreground",
+          typographyVariants({ variant: "uiBody" }),
           className,
         )}
         {...props}
@@ -204,7 +206,8 @@ export const ReasoningContent = memo(
   ({ className, children, ...props }: ReasoningContentProps) => (
     <CollapsibleContent
       className={cn(
-        "mt-4 text-sm",
+        "mt-4",
+        typographyVariants({ variant: "uiBody" }),
         "data-[closed]:fade-out-0 data-[closed]:slide-out-to-top-2 data-[open]:slide-in-from-top-2 text-muted-foreground outline-none data-[closed]:animate-out data-[open]:animate-in",
         className,
       )}

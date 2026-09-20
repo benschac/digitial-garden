@@ -4,6 +4,7 @@ import {
   useAbortableEffect,
   useAnimationFrame,
 } from "@personal-site/react-hooks";
+import { typographyVariants } from "@personal-site/ui/components/typography";
 import { useRef, useState } from "react";
 import { frameDeltaSeconds } from "../wasm-canvas/animation-timing";
 import type { ParticleRenderer } from "../wasm-canvas/particle-renderer";
@@ -257,12 +258,22 @@ export function TypeGpuParticles() {
           ref={canvasRef}
           role="img"
         />
-        <div className={styles.telemetry}>
+        <div
+          className={typographyVariants({
+            variant: "experimentParticleTelemetry",
+            className: styles.telemetry,
+          })}
+        >
           <span aria-live="polite">{status}</span>
           <output ref={fpsRef}>— fps</output>
         </div>
       </div>
-      <div className={styles.controls}>
+      <div
+        className={typographyVariants({
+          variant: "experimentParticleControls",
+          className: styles.controls,
+        })}
+      >
         <label>
           <span>Particles</span>
           <output>{density.toLocaleString()}</output>

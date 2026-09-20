@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@personal-site/ui/components/button";
+import { Typography } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import type {
   EveAuthorizationPart,
@@ -248,20 +249,32 @@ function QuestionRequest({
               value={option.id}
             >
               <span className="min-w-0 flex-1">
-                <span className="block text-foreground text-sm leading-tight">
+                <Typography
+                  as="span"
+                  variant="uiBodyTight"
+                  className="block text-foreground"
+                >
                   {option.label}
-                </span>
+                </Typography>
                 {option.description ? (
-                  <span className="block text-sm text-muted-foreground leading-tight">
+                  <Typography
+                    as="span"
+                    variant="uiBodyTight"
+                    className="block text-muted-foreground"
+                  >
                     {option.description}
-                  </span>
+                  </Typography>
                 ) : null}
               </span>
               {inputResponse === undefined ? (
                 <span aria-hidden="true" className="relative size-6 shrink-0">
-                  <span className="absolute inset-0 flex items-center justify-center rounded-full bg-foreground/8 text-xs text-muted-foreground transition-opacity group-hover/option:opacity-0 group-focus-visible/option:opacity-0">
+                  <Typography
+                    as="span"
+                    variant="uiCaption"
+                    className="absolute inset-0 flex items-center justify-center rounded-full bg-foreground/8 text-muted-foreground transition-opacity group-hover/option:opacity-0 group-focus-visible/option:opacity-0"
+                  >
                     {index + 1}
-                  </span>
+                  </Typography>
                   <ArrowRightIcon className="absolute top-1/2 left-1/2 size-4 -translate-x-1/2 -translate-y-1/2 text-muted-foreground opacity-0 transition-[color,opacity] group-hover/option:text-foreground group-hover/option:opacity-100 group-focus-visible/option:opacity-100" />
                 </span>
               ) : (
@@ -302,7 +315,11 @@ function AttachmentPart({ part }: { readonly part: EveFilePart }) {
   const isImage = part.mediaType.startsWith("image/") && part.url !== undefined;
   const Icon = isImage ? ImageIcon : FileIcon;
   const body = (
-    <span className="flex max-w-sm items-center gap-3 rounded-md border bg-background/60 p-2 text-sm">
+    <Typography
+      as="span"
+      variant="uiBody"
+      className="flex max-w-sm items-center gap-3 rounded-md border bg-background/60 p-2"
+    >
       {isImage ? (
         // biome-ignore lint/performance/noImgElement: Attachments may use arbitrary or temporary browser URLs that Next Image cannot safely optimize.
         <img
@@ -316,7 +333,9 @@ function AttachmentPart({ part }: { readonly part: EveFilePart }) {
         </span>
       )}
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium">{label}</span>
+        <Typography as="span" variant="medium" className="block truncate">
+          {label}
+        </Typography>
         {detail ? (
           <span className="block truncate text-muted-foreground">{detail}</span>
         ) : null}
@@ -324,7 +343,7 @@ function AttachmentPart({ part }: { readonly part: EveFilePart }) {
       {part.url ? (
         <ExternalLinkIcon className="size-4 shrink-0 text-muted-foreground" />
       ) : null}
-    </span>
+    </Typography>
   );
 
   return part.url ? (
@@ -378,20 +397,36 @@ function AuthorizationPrompt({
           <Icon className="size-4" />
         </span>
         <div className="min-w-0 flex-1 space-y-2">
-          <p className="font-medium text-sm">{authorizationTitle(part)}</p>
-          <p className="text-muted-foreground text-sm">
+          <Typography as="p" variant="uiLabel">
+            {authorizationTitle(part)}
+          </Typography>
+          <Typography as="p" variant="uiBody" className="text-muted-foreground">
             {authorizationDescription(part)}
-          </p>
+          </Typography>
           {shouldShowInstructions ? (
-            <p className="text-muted-foreground text-sm">{instructions}</p>
+            <Typography
+              as="p"
+              variant="uiBody"
+              className="text-muted-foreground"
+            >
+              {instructions}
+            </Typography>
           ) : null}
           {part.state === "required" && part.authorization?.userCode ? (
-            <div className="flex flex-wrap items-center gap-2 text-sm">
+            <Typography
+              as="div"
+              variant="uiBody"
+              className="flex flex-wrap items-center gap-2"
+            >
               <span className="text-muted-foreground">Code</span>
-              <code className="rounded-md bg-background px-2 py-1 font-mono">
+              <Typography
+                as="code"
+                variant="mono"
+                className="rounded-md bg-background px-2 py-1"
+              >
                 {part.authorization.userCode}
-              </code>
-            </div>
+              </Typography>
+            </Typography>
           ) : null}
           {part.state === "required" && part.authorization?.url ? (
             <Button
@@ -487,14 +522,16 @@ function InputRequestActions({
 
   return (
     <div className="space-y-3 rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3">
-      <p className="text-muted-foreground text-sm">{inputRequest.prompt}</p>
+      <Typography as="p" variant="uiBody" className="text-muted-foreground">
+        {inputRequest.prompt}
+      </Typography>
       {inputResponse ? (
-        <p className="font-medium text-sm">
+        <Typography as="p" variant="uiLabel">
           Responded:{" "}
           {selectedOption?.label ??
             inputResponse.text ??
             inputResponse.optionId}
-        </p>
+        </Typography>
       ) : (
         <div className="flex flex-wrap gap-2">
           {inputRequest.options?.map((option) => (

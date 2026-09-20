@@ -1,3 +1,4 @@
+import { cn } from "@personal-site/ui/lib/utils";
 import { type ReactNode, ViewTransition } from "react";
 
 const sharedNavigation = {
@@ -22,9 +23,11 @@ const exiting = {
 /** Page-owned boundary: updates and untyped background work stay silent. */
 export function PageTransition({
   children,
+  className,
   name,
 }: {
   children: ReactNode;
+  className?: string;
   name?: string;
 }) {
   return (
@@ -35,7 +38,7 @@ export function PageTransition({
       exit={exiting}
       share={sharedNavigation}
     >
-      <div className="page-transition-surface">{children}</div>
+      <div className={cn("page-transition-surface", className)}>{children}</div>
     </ViewTransition>
   );
 }

@@ -1,3 +1,7 @@
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,7 +13,7 @@ import {
   getPostBySlug,
 } from "@/lib/content";
 import { ArticleSurface } from "../article-surface";
-import styles from "../blog.module.css";
+import styles from "./article.module.css";
 import { BlogTransition } from "../blog-transition";
 import { ColorfulSVGPattern } from "../colorful-svg-pattern";
 import patternStyles from "../colorful-svg-pattern.module.css";
@@ -78,7 +82,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   return (
     <BlogTransition key={slug} name="blog-post-page" view="article">
-      <main className={styles.page}>
+      <Typography as="main" variant="articleReading" className={styles.page}>
         <ArticleSurface slug={post.slug} className={styles.surface} expanded />
         <article>
           <header
@@ -89,7 +93,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             {hasSvgHeader ? <ColorfulSVGPattern /> : null}
             <Link
               aria-label="All posts"
-              className={styles.backLink}
+              className={typographyVariants({
+                variant: "articleBackLink",
+                className: styles.backLink,
+              })}
               href="/blog"
               transitionTypes={["blog-close"]}
             >
@@ -100,10 +107,18 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               default="none"
               share="blog-title"
             >
-              <h1>{post.title}</h1>
+              <Typography as="h1" variant="articleTitle">
+                {post.title}
+              </Typography>
             </ViewTransition>
-            <p className={styles.summary}>{post.summary}</p>
-            <p className={styles.metadata}>
+            <Typography as="p" variant="articleDeck" className={styles.summary}>
+              {post.summary}
+            </Typography>
+            <Typography
+              as="p"
+              variant="articleMetadata"
+              className={styles.metadata}
+            >
               Published{" "}
               <time dateTime={post.publishedAt}>{post.publishedAt}</time>
               {post.updatedAt ? (
@@ -112,26 +127,34 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   <time dateTime={post.updatedAt}>{post.updatedAt}</time>
                 </>
               ) : null}
-            </p>
+            </Typography>
             {hasParticleHeader ? (
               <ParticleHeaderBackground
                 canvasClassName={styles.particleHeaderCanvas}
-                controlsClassName={styles.particleHeaderControls}
+                controlsClassName={typographyVariants({
+                  variant: "articleControls",
+                  className: styles.particleHeaderControls,
+                })}
               />
             ) : null}
           </header>
-          <div className={styles.prose}>
+          <Typography as="div" variant="articleProse" className={styles.prose}>
             <Content />
-          </div>
+          </Typography>
         </article>
         <nav aria-label="Adjacent posts" className={styles.postNavigation}>
           <div>
             {adjacentPosts.previous ? (
               <Link
+                className={typographyVariants({
+                  variant: "articleNavigationTitle",
+                })}
                 href={`/blog/${adjacentPosts.previous.slug}`}
                 transitionTypes={["nav-back"]}
               >
-                <span>Previous</span>
+                <Typography variant="articleNavigationLabel">
+                  Previous
+                </Typography>
                 {adjacentPosts.previous.title}
               </Link>
             ) : null}
@@ -139,16 +162,19 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <div>
             {adjacentPosts.next ? (
               <Link
+                className={typographyVariants({
+                  variant: "articleNavigationTitle",
+                })}
                 href={`/blog/${adjacentPosts.next.slug}`}
                 transitionTypes={["nav-forward"]}
               >
-                <span>Next</span>
+                <Typography variant="articleNavigationLabel">Next</Typography>
                 {adjacentPosts.next.title}
               </Link>
             ) : null}
           </div>
         </nav>
-      </main>
+      </Typography>
     </BlogTransition>
   );
 }

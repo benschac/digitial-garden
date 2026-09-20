@@ -39,6 +39,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@personal-site/ui/components/tooltip";
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "ai";
 import { ArrowUpIcon, ImageIcon, Monitor, PlusIcon, XIcon } from "lucide-react";
@@ -1050,7 +1054,8 @@ export const PromptInputTextarea = ({
   return (
     <InputGroupTextarea
       className={cn(
-        "field-sizing-content max-h-48 min-h-18 text-sm!",
+        "field-sizing-content max-h-48 min-h-18",
+        typographyVariants({ variant: "inputCompact" }),
         className,
       )}
       name="message"
@@ -1281,7 +1286,8 @@ export const PromptInputSelectTrigger = ({
 }: PromptInputSelectTriggerProps) => (
   <SelectTrigger
     className={cn(
-      "border-none bg-transparent font-medium text-muted-foreground shadow-none transition-colors",
+      "border-none bg-transparent text-muted-foreground shadow-none transition-colors",
+      typographyVariants({ variant: "medium" }),
       "hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground",
       className,
     )}
@@ -1365,11 +1371,10 @@ export const PromptInputTabLabel = ({
 }: PromptInputTabLabelProps) => (
   // Content provided via children in props
   // oxlint-disable-next-line eslint-plugin-jsx-a11y(heading-has-content)
-  <h3
-    className={cn(
-      "mb-2 px-3 font-medium text-muted-foreground text-xs",
-      className,
-    )}
+  <Typography
+    as="h3"
+    variant="uiCaptionLabel"
+    className={cn("mb-2 px-3 text-muted-foreground", className)}
     {...props}
   />
 );
@@ -1389,9 +1394,11 @@ export const PromptInputTabItem = ({
   className,
   ...props
 }: PromptInputTabItemProps) => (
-  <div
+  <Typography
+    as="div"
+    variant="uiCaption"
     className={cn(
-      "flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent",
+      "flex items-center gap-2 px-3 py-2 hover:bg-accent",
       className,
     )}
     {...props}

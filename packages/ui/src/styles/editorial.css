@@ -7,3 +7,9 @@
   --color-paper: #f8f5ee;
   --color-selection: #e8d8bd;
 }
+
+/* Consumers own font loading and preferences; previews can use serif fallbacks. */
+@theme inline {
+  --font-display: var(--font-editorial-display, Georgia, serif);
+  --font-reading: var(--font-editorial-reading, Georgia, serif);
+}

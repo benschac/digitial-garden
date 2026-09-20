@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import { usePathname } from "next/navigation";
 import { useId, useState } from "react";
 import { useEditorialFontPreference } from "./editorial-font-preference";
@@ -23,7 +27,10 @@ export function EditorialFontSwitcher() {
   return (
     <aside
       aria-label="Typography preview"
-      className={styles.switcher}
+      className={typographyVariants({
+        variant: "ui",
+        className: styles.switcher,
+      })}
       style={{ viewTransitionName: "typography-preview" }}
     >
       <button
@@ -35,7 +42,9 @@ export function EditorialFontSwitcher() {
         {isOpen ? "Close typography" : "Typography"}
       </button>
       <div id={panelId} className={styles.controls} hidden={!isOpen}>
-        <label htmlFor={displaySelectId}>Display</label>
+        <Typography as="label" variant="previewLabel" htmlFor={displaySelectId}>
+          Display
+        </Typography>
         <select
           id={displaySelectId}
           onChange={(event) =>
@@ -49,7 +58,9 @@ export function EditorialFontSwitcher() {
             </option>
           ))}
         </select>
-        <label htmlFor={readingSelectId}>Reading</label>
+        <Typography as="label" variant="previewLabel" htmlFor={readingSelectId}>
+          Reading
+        </Typography>
         <select
           id={readingSelectId}
           onChange={(event) =>

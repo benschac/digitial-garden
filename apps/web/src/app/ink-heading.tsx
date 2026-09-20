@@ -1,5 +1,7 @@
 "use client";
 
+import { Heading } from "@personal-site/ui/components/typography";
+import { cn } from "@personal-site/ui/lib/utils";
 import { useMotionValueEvent, useSpring } from "motion/react";
 import {
   type CSSProperties,
@@ -16,7 +18,7 @@ const interactionQuery =
 const spring = { duration: 0.3, bounce: 0 };
 const fadeOutMs = 500;
 
-export function InkHeading() {
+export function InkHeading({ className }: { className?: string }) {
   const impressionId = useId();
   const ink = useRef<HTMLSpanElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -150,8 +152,10 @@ export function InkHeading() {
   }
 
   return (
-    <h1
-      className={styles.hoverArea}
+    <Heading
+      as="h1"
+      variant="display"
+      className={cn(styles.hoverArea, className)}
       onPointerEnter={moveInk}
       onPointerMove={moveInk}
       onPointerLeave={resetInk}
@@ -236,6 +240,6 @@ export function InkHeading() {
           tabIndex={-1}
         />
       </span>
-    </h1>
+    </Heading>
   );
 }

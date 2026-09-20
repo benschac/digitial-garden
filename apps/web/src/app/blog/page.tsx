@@ -1,3 +1,4 @@
+import { Typography } from "@personal-site/ui/components/typography";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ViewTransition } from "react";
@@ -17,14 +18,16 @@ export default async function BlogIndexPage() {
 
   return (
     <BlogTransition view="index">
-      <main className={styles.page}>
+      <Typography as="main" variant="journalReading" className={styles.page}>
         <a className={styles.skipLink} href="#posts">
           Skip to articles
         </a>
         <div className={styles.shell}>
           <div className={styles.layout}>
             <div className={styles.introduction}>
-              <h1>Blog</h1>
+              <Typography as="h1" variant="journalTitle">
+                Blog
+              </Typography>
             </div>
             <ol
               className={styles.postList}
@@ -41,17 +44,27 @@ export default async function BlogIndexPage() {
                       default="none"
                       share="blog-title"
                     >
-                      <h2>
+                      <Typography as="h2" variant="journalPostTitle">
                         <Link
                           href={`/blog/${post.slug}`}
                           transitionTypes={["blog-open"]}
                         >
                           {post.title}
                         </Link>
-                      </h2>
+                      </Typography>
                     </ViewTransition>
-                    <p className={styles.postSummary}>{post.summary}</p>
-                    <p className={styles.postDate}>
+                    <Typography
+                      as="p"
+                      variant="journalSummary"
+                      className={styles.postSummary}
+                    >
+                      {post.summary}
+                    </Typography>
+                    <Typography
+                      as="p"
+                      variant="journalDate"
+                      className={styles.postDate}
+                    >
                       <time dateTime={post.publishedAt}>
                         {new Intl.DateTimeFormat("en-US", {
                           month: "short",
@@ -60,7 +73,7 @@ export default async function BlogIndexPage() {
                           timeZone: "UTC",
                         }).format(new Date(`${post.publishedAt}T00:00:00Z`))}
                       </time>
-                    </p>
+                    </Typography>
                   </article>
                 </li>
               ))}
@@ -68,7 +81,7 @@ export default async function BlogIndexPage() {
             {posts.length === 0 ? <p>No articles published yet.</p> : null}
           </div>
         </div>
-      </main>
+      </Typography>
     </BlogTransition>
   );
 }

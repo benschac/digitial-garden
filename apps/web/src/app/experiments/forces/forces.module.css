@@ -8,7 +8,6 @@
   background:
     radial-gradient(circle at 75% 0%, rgb(37 99 235 / 18%), transparent 34rem),
     #0b0e14;
-  font-family: var(--font-ui);
 }
 
 .nav,
@@ -42,33 +41,17 @@
 .kicker {
   margin: 0 0 1rem;
   color: #86efac;
-  font-family: var(--font-code);
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .header h1 {
   max-width: 10ch;
   margin: 0;
-  font-family: var(--font-editorial-display);
-  font-size: clamp(3.7rem, 9vw, 8rem);
-  font-weight: 430;
-  letter-spacing: calc(
-    -0.06em +
-    var(--font-editorial-display-tracking-adjustment)
-  );
-  line-height: 0.88;
-  text-wrap: balance;
 }
 
 .intro {
   max-width: 44rem;
   margin: 2rem 0 0;
   color: #b8c1cf;
-  font-family: var(--font-editorial-reading);
-  font-size: clamp(1.2rem, 2vw, 1.55rem);
-  line-height: 1.5;
 }
 
 .experiment {
@@ -92,11 +75,6 @@
 .experimentHeader h2 {
   max-width: 19ch;
   margin: 0;
-  font-family: var(--font-editorial-display);
-  font-size: clamp(2rem, 4vw, 3.5rem);
-  font-weight: 450;
-  letter-spacing: -0.035em;
-  line-height: 1;
 }
 
 .status {
@@ -105,10 +83,6 @@
   align-items: center;
   margin: 0;
   color: #86efac;
-  font-family: var(--font-code);
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .status::before {
@@ -136,7 +110,6 @@
   color: var(--muted);
   background: #11151d;
   cursor: pointer;
-  font: inherit;
   text-align: left;
 }
 
@@ -149,8 +122,6 @@
 }
 .tabs span {
   color: #86efac;
-  font-family: var(--font-code);
-  font-size: 0.7rem;
 }
 
 .workspace {
@@ -177,11 +148,7 @@
   display: flex;
   justify-content: space-between;
   color: #8994a6;
-  font-family: var(--font-code);
-  font-size: 0.68rem;
-  letter-spacing: 0.07em;
   pointer-events: none;
-  text-transform: uppercase;
 }
 
 .controls {
@@ -195,24 +162,15 @@
 
 .controlCopy > span {
   color: #86efac;
-  font-family: var(--font-code);
-  font-size: 0.68rem;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
 }
 
 .controlCopy h3 {
   margin: 0.65rem 0 0.8rem;
-  font-family: var(--font-editorial-display);
-  font-size: 2rem;
-  font-weight: 450;
 }
 
 .controlCopy p {
   margin: 0;
   color: var(--muted);
-  font-size: 0.88rem;
-  line-height: 1.6;
 }
 
 .rangeControl {
@@ -220,12 +178,10 @@
   grid-template-columns: 1fr auto;
   gap: 0.55rem 1rem;
   color: #bac3d0;
-  font-size: 0.78rem;
 }
 
 .rangeControl output {
   color: #86efac;
-  font-family: var(--font-code);
 }
 .rangeControl input {
   grid-column: 1 / -1;
@@ -247,8 +203,6 @@
   color: var(--ink);
   background: transparent;
   cursor: pointer;
-  font: inherit;
-  font-size: 0.8rem;
 }
 
 .primaryButton {
@@ -268,11 +222,6 @@
 .laws > h2 {
   max-width: 12ch;
   margin: 0 0 3rem;
-  font-family: var(--font-editorial-display);
-  font-size: clamp(2.6rem, 5vw, 4.75rem);
-  font-weight: 450;
-  letter-spacing: -0.04em;
-  line-height: 0.95;
 }
 
 .lawGrid {
@@ -295,25 +244,14 @@
 }
 .lawGrid article > span {
   color: #86efac;
-  font-family: var(--font-code);
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 .lawGrid h3 {
   min-height: 3.4em;
   margin: 1rem 0;
-  font-family: var(--font-editorial-reading);
-  font-size: 1.3rem;
-  font-weight: 500;
-  line-height: 1.25;
 }
 .lawGrid p {
   margin-block: 0;
   color: var(--muted);
-  font-size: 0.88rem;
-  line-height: 1.65;
-  text-wrap: pretty;
 }
 
 .equation {
@@ -321,15 +259,11 @@
   margin-top: 1.25rem;
   overflow-x: auto;
   color: #c7cfdb;
-  font-size: clamp(0.9rem, 1.25vw, 1.05rem);
-  font-variant-numeric: tabular-nums;
 }
 
 .notes {
   padding-block: 0 5rem;
   color: #778294;
-  font-size: 0.82rem;
-  line-height: 1.6;
 }
 .notes p {
   max-width: 48rem;

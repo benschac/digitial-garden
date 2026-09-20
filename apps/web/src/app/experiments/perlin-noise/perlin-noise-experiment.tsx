@@ -1,6 +1,10 @@
 "use client";
 
 import { useAbortableEffect } from "@personal-site/react-hooks";
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import { useEffect, useRef, useState } from "react";
 import { perlinNoise2D } from "@/lib/perlin-noise";
 import { loadParticleEngine } from "../wasm-canvas/wasm-engine";
@@ -107,10 +111,24 @@ export function PerlinNoiseExperiment() {
     <section className={styles.experiment} aria-labelledby="comparison-title">
       <div className={styles.experimentHeader}>
         <div>
-          <p className={styles.kicker}>Live comparison</p>
-          <h2 id="comparison-title">One coordinate grid, sampled twice.</h2>
+          <Typography
+            as="p"
+            variant="experimentKicker"
+            className={styles.kicker}
+          >
+            Live comparison
+          </Typography>
+          <Typography
+            as="h2"
+            variant="experimentNoiseHeading"
+            id="comparison-title"
+          >
+            One coordinate grid, sampled twice.
+          </Typography>
         </div>
-        <p
+        <Typography
+          as="p"
+          variant="experimentStatus"
           aria-live="polite"
           className={styles.runtimeStatus}
           data-status={status}
@@ -118,7 +136,7 @@ export function PerlinNoiseExperiment() {
           {status === "loading" ? "Loading Rust/WASM…" : null}
           {status === "ready" ? "Rust/WASM ready" : null}
           {status === "error" ? "Rust/WASM failed to load" : null}
-        </p>
+        </Typography>
       </div>
 
       <div className={styles.panels}>
@@ -146,18 +164,36 @@ export function PerlinNoiseExperiment() {
         </p>
       ) : null}
 
-      <div className={styles.readout} aria-live="polite">
+      <div
+        className={typographyVariants({
+          variant: "experimentNoiseReadout",
+          className: styles.readout,
+        })}
+        aria-live="polite"
+      >
         <div>
-          <span className={styles.metricLabel}>Maximum difference</span>
-          <strong className={styles.metricValue}>
+          <Typography
+            as="span"
+            variant="experimentNoiseMetricLabel"
+            className={styles.metricLabel}
+          >
+            Maximum difference
+          </Typography>
+          <Typography as="strong" variant="experimentNoiseMetricValue">
             {formatDifference(metrics.maxDifference)}
-          </strong>
+          </Typography>
         </div>
         <div>
-          <span className={styles.metricLabel}>Mean difference</span>
-          <strong className={styles.metricValue}>
+          <Typography
+            as="span"
+            variant="experimentNoiseMetricLabel"
+            className={styles.metricLabel}
+          >
+            Mean difference
+          </Typography>
+          <Typography as="strong" variant="experimentNoiseMetricValue">
             {formatDifference(metrics.meanDifference)}
-          </strong>
+          </Typography>
         </div>
         <p>
           {status === "ready" && metrics.maxDifference === 0
@@ -166,7 +202,12 @@ export function PerlinNoiseExperiment() {
         </p>
       </div>
 
-      <div className={styles.controls}>
+      <div
+        className={typographyVariants({
+          variant: "experimentNoiseControls",
+          className: styles.controls,
+        })}
+      >
         <label>
           <span>Scale</span>
           <output>{frequency.toFixed(2)}</output>
@@ -237,7 +278,12 @@ function NoisePanel({
   label: string;
 }) {
   return (
-    <figure className={styles.panel}>
+    <figure
+      className={typographyVariants({
+        variant: "experimentNoisePanel",
+        className: styles.panel,
+      })}
+    >
       <canvas
         aria-label={`${label} Perlin noise field`}
         height={SAMPLE_SIZE}

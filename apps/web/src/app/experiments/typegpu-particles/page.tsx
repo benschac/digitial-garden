@@ -1,5 +1,9 @@
 import { Eyebrow } from "@personal-site/ui/components/eyebrow";
 import { PageNavigation } from "@personal-site/ui/components/page-navigation";
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageTransition } from "@/app/_components/page-transition";
@@ -16,8 +20,18 @@ export const metadata: Metadata = {
 export default function TypeGpuParticlesPage() {
   return (
     <PageTransition>
-      <main className={styles.page}>
-        <PageNavigation className={styles.nav}>
+      <main
+        className={typographyVariants({
+          variant: "experimentParticlePage",
+          className: styles.page,
+        })}
+      >
+        <PageNavigation
+          className={typographyVariants({
+            variant: "experimentParticleNav",
+            className: styles.nav,
+          })}
+        >
           <Link
             href="/experiments/wasm-canvas"
             transitionTypes={["nav-lateral"]}
@@ -27,19 +41,35 @@ export default function TypeGpuParticlesPage() {
           <span>Experiment 001B</span>
         </PageNavigation>
         <header className={styles.header}>
-          <Eyebrow className={styles.eyebrow}>
+          <Eyebrow
+            className={typographyVariants({
+              variant: "experimentParticleEyebrow",
+              className: styles.eyebrow,
+            })}
+          >
             Rust/WASM · TypeGPU · WGSL
           </Eyebrow>
-          <h1>The same field, through TypeGPU.</h1>
-          <p className={styles.intro}>
+          <Typography as="h1" variant="experimentParticleDisplay">
+            The same field, through TypeGPU.
+          </Typography>
+          <Typography
+            as="p"
+            variant="experimentParticleIntro"
+            className={styles.intro}
+          >
             This is a behavioral copy of the raw WebGPU particle experiment. It
             keeps the same Rust frame protocol, GPU-resident state, controls,
             and Canvas fallback while TypeGPU owns the typed resource and layout
             layer.
-          </p>
+          </Typography>
         </header>
         <TypeGpuParticles />
-        <aside className={styles.notes}>
+        <aside
+          className={typographyVariants({
+            variant: "experimentNotes",
+            className: styles.notes,
+          })}
+        >
           <p>
             Use the raw WebGPU link above to compare the two implementations.
             Both versions run the same visual system; the difference is how the

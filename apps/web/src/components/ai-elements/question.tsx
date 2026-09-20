@@ -2,6 +2,10 @@
 
 import { Button } from "@personal-site/ui/components/button";
 import { Textarea } from "@personal-site/ui/components/textarea";
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import type {
   ChangeEvent,
@@ -184,7 +188,7 @@ export const QuestionPrompt = ({
   className,
   ...props
 }: QuestionPromptProps) => (
-  <p className={cn("font-medium text-sm leading-snug", className)} {...props} />
+  <Typography as="p" variant="uiPrompt" className={className} {...props} />
 );
 
 export type QuestionDescriptionProps = HTMLAttributes<HTMLParagraphElement>;
@@ -193,7 +197,12 @@ export const QuestionDescription = ({
   className,
   ...props
 }: QuestionDescriptionProps) => (
-  <p className={cn("text-muted-foreground text-sm", className)} {...props} />
+  <Typography
+    as="p"
+    variant="uiBody"
+    className={cn("text-muted-foreground", className)}
+    {...props}
+  />
 );
 
 export type QuestionOptionsProps = HTMLAttributes<HTMLDivElement>;
@@ -248,7 +257,8 @@ export const QuestionOption = ({
       // Selection only changes colors: the border is always present so the
       // layout never shifts when an option is picked.
       className={cn(
-        "group/option h-auto whitespace-normal border border-input font-normal shadow-none transition-colors",
+        "group/option h-auto whitespace-normal border border-input shadow-none transition-colors",
+        typographyVariants({ variant: "normal" }),
         isSelected
           ? "border-foreground/20 bg-accent text-accent-foreground disabled:opacity-100"
           : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
@@ -308,7 +318,8 @@ export const QuestionInput = ({
   return (
     <Textarea
       className={cn(
-        "min-h-16 resize-none rounded-lg text-sm shadow-none focus-visible:border-foreground!",
+        "min-h-16 resize-none rounded-lg shadow-none focus-visible:border-foreground!",
+        typographyVariants({ variant: "uiBody" }),
         className,
       )}
       disabled={question.disabled || disabled}
@@ -349,7 +360,11 @@ export const QuestionSubmit = ({
 
   return (
     <Button
-      className={cn("text-sm! shadow-none", className)}
+      className={cn(
+        "shadow-none",
+        typographyVariants({ variant: "inputCompact" }),
+        className,
+      )}
       disabled={question.disabled || disabled || !hasResponse}
       size={size}
       type="submit"

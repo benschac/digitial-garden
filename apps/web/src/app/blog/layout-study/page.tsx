@@ -1,3 +1,7 @@
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -36,16 +40,35 @@ const dateFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
-function Post({ post }: { post: PostSummary }) {
+function Post({
+  post,
+  direction,
+  featured,
+}: {
+  post: PostSummary;
+  direction: Direction;
+  featured: boolean;
+}) {
   return (
     <article className={styles.post}>
-      <time dateTime={post.publishedAt}>
+      <Typography as="time" variant="studyDate" dateTime={post.publishedAt}>
         {dateFormat.format(new Date(`${post.publishedAt}T00:00:00Z`))}
-      </time>
-      <h3>
+      </Typography>
+      <Typography
+        as="h3"
+        variant={
+          direction === "feature"
+            ? featured
+              ? "studyFeaturedTitle"
+              : "studyCardTitle"
+            : "studyPostTitle"
+        }
+      >
         <Link href={`/blog/${post.slug}`}>{post.title}</Link>
-      </h3>
-      <p>{post.summary}</p>
+      </Typography>
+      <Typography as="p" variant="studySummary">
+        {post.summary}
+      </Typography>
     </article>
   );
 }
@@ -61,13 +84,26 @@ function Prototype({
   return (
     <div className={`${styles.prototype} ${styles[direction]}`}>
       <div className={styles.sheet}>
-        <header className={styles.masthead}>
-          <Link href="/">Benjamin Schachter</Link>
+        <Typography
+          as="header"
+          variant="studyMasthead"
+          className={styles.masthead}
+        >
+          <Link
+            className={typographyVariants({ variant: "studySiteLink" })}
+            href="/"
+          >
+            Benjamin Schachter
+          </Link>
           <span>Writing</span>
-        </header>
+        </Typography>
         <div className={styles.intro}>
-          <h2>Blog</h2>
-          <p>Notes on software, systems, and interaction.</p>
+          <Typography as="h2" variant="studyBlogTitle">
+            Blog
+          </Typography>
+          <Typography as="p" variant="studyIntroduction">
+            Notes on software, systems, and interaction.
+          </Typography>
         </div>
         {direction === "archive" ? (
           <div className={styles.years}>
@@ -77,21 +113,32 @@ function Prototype({
                 key={year}
                 aria-label={`Articles from ${year}`}
               >
-                <h3>{year}</h3>
+                <Typography as="h3" variant="studyYear">
+                  {year}
+                </Typography>
                 <ul>
                   {posts
                     .filter((post) => post.publishedAt.startsWith(year))
                     .map((post) => (
                       <li key={post.slug}>
-                        <Link href={`/blog/${post.slug}`}>
+                        <Link
+                          className={typographyVariants({
+                            variant: "studyArchiveTitle",
+                          })}
+                          href={`/blog/${post.slug}`}
+                        >
                           {post.title}
                           <span aria-hidden="true">↗</span>
                         </Link>
-                        <time dateTime={post.publishedAt}>
+                        <Typography
+                          as="time"
+                          variant="studyDate"
+                          dateTime={post.publishedAt}
+                        >
                           {dateFormat
                             .format(new Date(`${post.publishedAt}T00:00:00Z`))
                             .replace(`, ${year}`, "")}
-                        </time>
+                        </Typography>
                       </li>
                     ))}
                 </ul>
@@ -100,9 +147,13 @@ function Prototype({
           </div>
         ) : (
           <ol className={styles.posts} aria-label="Articles, newest first">
-            {posts.map((post) => (
+            {posts.map((post, index) => (
               <li key={post.slug}>
-                <Post post={post} />
+                <Post
+                  post={post}
+                  direction={direction}
+                  featured={index === 0}
+                />
               </li>
             ))}
           </ol>
@@ -121,17 +172,22 @@ export default async function LayoutStudy({
   const [posts, query] = await Promise.all([getPublishedPosts(), searchParams]);
   const selected = directions.find((direction) => direction.id === query.view);
   return (
-    <main className={styles.study}>
+    <Typography as="main" variant="studyInterface" className={styles.study}>
       <header className={styles.studyHeader}>
         <div>
-          <h1>{selected ? selected.label : "Three ways into the writing"}</h1>
-          <p>
+          <Typography as="h1" variant="studyTitle">
+            {selected ? selected.label : "Three ways into the writing"}
+          </Typography>
+          <Typography as="p" variant="studyDescription">
             {selected
               ? selected.note
               : "Same posts, different reading structures. Open each layout to judge it at full width."}
-          </p>
+          </Typography>
         </div>
-        <Link href={selected ? "/blog/layout-study" : "/blog"}>
+        <Link
+          className={typographyVariants({ variant: "studyNavigation" })}
+          href={selected ? "/blog/layout-study" : "/blog"}
+        >
           {selected ? "Compare all three" : "Current blog"}
         </Link>
       </header>
@@ -146,18 +202,20 @@ export default async function LayoutStudy({
               aria-label={direction.label}
             >
               <header className={styles.optionHeader}>
-                <h2>
+                <Typography as="h2" variant="studyOptionTitle">
                   <Link href={`/blog/layout-study?view=${direction.id}`}>
                     {direction.label} <span aria-hidden="true">↗</span>
                   </Link>
-                </h2>
-                <p>{direction.note}</p>
+                </Typography>
+                <Typography as="p" variant="studyDescription">
+                  {direction.note}
+                </Typography>
               </header>
               <Prototype direction={direction.id} posts={posts} />
             </section>
           ))}
         </div>
       )}
-    </main>
+    </Typography>
   );
 }

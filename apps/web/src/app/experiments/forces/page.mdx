@@ -1,3 +1,4 @@
+import { Typography, typographyVariants } from "@personal-site/ui/components/typography";
 import { PageTransition } from "@/app/_components/page-transition";
 import { Eyebrow } from "@personal-site/ui/components/eyebrow";
 import { PageNavigation } from "@personal-site/ui/components/page-navigation";
@@ -12,7 +13,7 @@ export const metadata = {
 };
 
 <PageTransition>
-<main className={styles.page}>
+<main className={typographyVariants({ variant: "experimentPage", className: styles.page })}>
   <PageNavigation className={styles.nav}>
     <Link href="/" transitionTypes={["nav-back"]}>← Workbench</Link>
     <span>Experiment 004</span>
@@ -20,19 +21,19 @@ export const metadata = {
 
   <header className={styles.header}>
     <Eyebrow className={styles.eyebrow}>Classical mechanics · Canvas · MDX + LaTeX</Eyebrow>
-    <h1>Every motion has an account.</h1>
-    <p className={styles.intro}>
+    <Typography as="h1" variant="experimentDisplay">Every motion has an account.</Typography>
+    <Typography as="p" variant="experimentForcesIntro" className={styles.intro}>
       {"Change the conditions and watch the bookkeeping update. Velocity persists, force changes momentum, and every push returns an equal push."}
-    </p>
+    </Typography>
   </header>
 
   <ForcesExperiment />
 
   <section className={styles.laws} aria-labelledby="field-notes">
     <Eyebrow className={styles.eyebrow}>Field notes</Eyebrow>
-    <h2 id="field-notes">Three laws, one system.</h2>
+    <Typography as="h2" variant="experimentForcesSectionHeading" id="field-notes">Three laws, one system.</Typography>
 
-    <div className={styles.lawGrid}>
+    <div className={typographyVariants({ variant: "experimentForcesLawGrid", className: styles.lawGrid })}>
       <article>
         <span>01 / Inertia</span>
         <h3>No net force, no change in motion.</h3>
@@ -40,7 +41,7 @@ export const metadata = {
           {"An object at rest stays at rest, and a moving object keeps a constant velocity, unless a net external force acts on it."}
         </p>
 
-        <div className={styles.equation}>
+        <div className={typographyVariants({ variant: "experimentForcesEquation", className: styles.equation })}>
           $$
           \sum \vec{F} = 0 \quad \Longrightarrow \quad \frac{d\vec{v}}{dt} = 0
           $$
@@ -54,7 +55,7 @@ export const metadata = {
           {"For constant mass, acceleration points with the net force. Double the force and acceleration doubles; double the mass and it halves."}
         </p>
 
-        <div className={styles.equation}>
+        <div className={typographyVariants({ variant: "experimentForcesEquation", className: styles.equation })}>
           $$
           \sum \vec{F} = \frac{d\vec{p}}{dt} = m\vec{a}
           $$
@@ -68,7 +69,7 @@ export const metadata = {
           {"When body A pushes body B, body B pushes body A with the same magnitude in the opposite direction. The forces act on different bodies."}
         </p>
 
-        <div className={styles.equation}>
+        <div className={typographyVariants({ variant: "experimentForcesEquation", className: styles.equation })}>
           $$
           \vec{F}_{A \to B} = -\vec{F}_{B \to A}
           $$
@@ -77,7 +78,7 @@ export const metadata = {
     </div>
   </section>
 
-  <aside className={styles.notes}>
+  <aside className={typographyVariants({ variant: "experimentForcesNotes", className: styles.notes })}>
     <p>
       {"This is an idealized, frictionless model. The values are internally consistent, but the canvas maps simulation units to pixels for legibility."}
     </p>

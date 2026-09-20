@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  canvasTypography,
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import { useEffect, useRef, useState } from "react";
 import styles from "./forces.module.css";
 import {
@@ -183,13 +188,34 @@ export function ForcesExperiment() {
     <section className={styles.experiment} aria-labelledby="lab-title">
       <div className={styles.experimentHeader}>
         <div>
-          <p className={styles.kicker}>Interactive laboratory</p>
-          <h2 id="lab-title">Change one thing. Watch what follows.</h2>
+          <Typography
+            as="p"
+            variant="experimentKicker"
+            className={styles.kicker}
+          >
+            Interactive laboratory
+          </Typography>
+          <Typography as="h2" variant="experimentForcesHeading" id="lab-title">
+            Change one thing. Watch what follows.
+          </Typography>
         </div>
-        <p className={styles.status}>{paused ? "Paused" : "Simulation live"}</p>
+        <Typography
+          as="p"
+          variant="experimentForcesStatus"
+          className={styles.status}
+        >
+          {paused ? "Paused" : "Simulation live"}
+        </Typography>
       </div>
 
-      <div aria-label="Newton's laws" className={styles.tabs} role="tablist">
+      <div
+        aria-label="Newton's laws"
+        className={typographyVariants({
+          variant: "experimentForcesTabs",
+          className: styles.tabs,
+        })}
+        role="tablist"
+      >
         {(Object.keys(LAW_LABELS) as Law[]).map((item, index) => (
           <button
             aria-selected={law === item}
@@ -212,14 +238,25 @@ export function ForcesExperiment() {
             ref={canvasRef}
             role="img"
           />
-          <div aria-live="polite" className={styles.telemetry}>
+          <div
+            aria-live="polite"
+            className={typographyVariants({
+              variant: "experimentForcesTelemetry",
+              className: styles.telemetry,
+            })}
+          >
             <span>{telemetry.primary}</span>
             <span>{telemetry.secondary}</span>
           </div>
         </div>
 
         <div className={styles.controls}>
-          <div className={styles.controlCopy}>
+          <div
+            className={typographyVariants({
+              variant: "experimentForcesControlCopy",
+              className: styles.controlCopy,
+            })}
+          >
             <span>{LAW_LABELS[law]}</span>
             <h3>{lawTitle(law)}</h3>
             <p>{lawDescription(law)}</p>
@@ -287,7 +324,10 @@ export function ForcesExperiment() {
                 value={secondMass}
               />
               <button
-                className={styles.primaryButton}
+                className={typographyVariants({
+                  variant: "experimentForcesPrimaryButton",
+                  className: styles.primaryButton,
+                })}
                 disabled={pushed}
                 onClick={() => setPushed(true)}
                 type="button"
@@ -297,7 +337,12 @@ export function ForcesExperiment() {
             </>
           ) : null}
 
-          <div className={styles.actions}>
+          <div
+            className={typographyVariants({
+              variant: "experimentForcesActions",
+              className: styles.actions,
+            })}
+          >
             <button onClick={() => setPaused((value) => !value)} type="button">
               {paused ? "Resume" : "Pause"}
             </button>
@@ -329,7 +374,12 @@ function RangeControl({
   value: number;
 }) {
   return (
-    <label className={styles.rangeControl}>
+    <label
+      className={typographyVariants({
+        variant: "experimentForcesRangeControl",
+        className: styles.rangeControl,
+      })}
+    >
       <span>{label}</span>
       <output>
         {value} {unit}
@@ -501,7 +551,7 @@ function drawBody(
   context.fill();
   context.restore();
   context.fillStyle = "#10141b";
-  context.font = "600 12px ui-monospace, monospace";
+  context.font = canvasTypography.forceLabel;
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillText(label, x, y);
@@ -536,7 +586,7 @@ function drawArrow(
   );
   context.closePath();
   context.fill();
-  context.font = "600 11px ui-monospace, monospace";
+  context.font = canvasTypography.forceReadout;
   context.textAlign = "center";
   context.fillText(label, (fromX + toX) / 2, fromY - 14);
 }
@@ -548,7 +598,7 @@ function drawVectorBalance(
   color: string,
 ) {
   context.fillStyle = color;
-  context.font = "500 15px ui-monospace, monospace";
+  context.font = canvasTypography.forceEquation;
   context.textAlign = "left";
   context.fillText(label, Math.max(24, width * 0.06), 42);
 }

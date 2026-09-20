@@ -1,5 +1,9 @@
 import { Eyebrow } from "@personal-site/ui/components/eyebrow";
 import { PageNavigation } from "@personal-site/ui/components/page-navigation";
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageTransition } from "@/app/_components/page-transition";
@@ -26,7 +30,12 @@ export const metadata: Metadata = {
 export default function PerlinNoisePage() {
   return (
     <PageTransition>
-      <main className={styles.page}>
+      <main
+        className={typographyVariants({
+          variant: "experimentPage",
+          className: styles.page,
+        })}
+      >
         <PageNavigation className={styles.nav}>
           <Link href="/" transitionTypes={["nav-back"]}>
             ← Workbench
@@ -38,18 +47,29 @@ export default function PerlinNoisePage() {
           <Eyebrow className={styles.eyebrow}>
             TypeScript · Rust/WASM · Canvas
           </Eyebrow>
-          <h1>Same field. Two runtimes.</h1>
-          <p className={styles.intro}>
+          <Typography as="h1" variant="experimentNoiseDisplay">
+            Same field. Two runtimes.
+          </Typography>
+          <Typography
+            as="p"
+            variant="experimentNoiseIntro"
+            className={styles.intro}
+          >
             Deterministic Perlin noise runs once in TypeScript and once in
             compiled Rust. Compare pixels in 2D, then move through the same
             field as two 3D surfaces.
-          </p>
+          </Typography>
         </header>
 
         <PerlinNoiseExperiment />
         <PerlinNoise3DExperiment />
 
-        <aside className={styles.notes}>
+        <aside
+          className={typographyVariants({
+            variant: "experimentNotes",
+            className: styles.notes,
+          })}
+        >
           <p>
             Every 2D pixel and 3D vertex samples the same coordinate from the
             same permutation table. Timing is measured in-browser and is

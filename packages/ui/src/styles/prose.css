@@ -1,0 +1,142 @@
+/* Contextual typography for authored MDX and embedded article controls. */
+.ui-article-typography {
+  --blog-sans: var(--font-ui);
+  --blog-display: var(--font-editorial-display);
+  --blog-reading: var(--font-editorial-reading);
+  --text-display: clamp(4rem, 2.35rem + 6.5vw, 7.5rem);
+  --text-title: clamp(3.25rem, 2rem + 5vw, 6.75rem);
+  --text-heading-2: clamp(2rem, 1.55rem + 1.8vw, 3rem);
+  --text-heading-3: clamp(1.45rem, 1.25rem + 0.8vw, 1.9rem);
+  --text-deck: clamp(1.3rem, 1.12rem + 0.7vw, 1.75rem);
+  --text-body: clamp(1.1875rem, 1.15rem + 0.2vw, 1.25rem);
+  --text-caption: 0.875rem;
+  --text-meta: 0.78rem;
+  --leading-display: 0.9;
+  --leading-title: 1;
+  --leading-heading: 1.06;
+  --leading-deck: 1.32;
+  --leading-body: 1.6;
+}
+
+.ui-article-prose :where(h2, h3, h4) {
+  text-wrap: balance;
+}
+
+.ui-article-controls legend,
+.ui-article-controls label,
+.ui-article-controls [data-particle-status] {
+  font-family: var(--blog-sans);
+}
+
+.ui-article-controls legend {
+  font-size: var(--text-meta);
+  font-weight: 650;
+  letter-spacing: 0.085em;
+  text-transform: uppercase;
+}
+
+.ui-article-controls label {
+  font-size: var(--text-caption);
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.ui-article-controls output {
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-article-controls [data-particle-status] {
+  font-size: var(--text-meta);
+  letter-spacing: 0.04em;
+}
+
+.ui-article-prose p {
+  font-family: var(--blog-reading);
+  text-wrap: pretty;
+}
+
+.ui-article-prose :where(h2, h3, h4) {
+  font-weight: 550;
+  line-height: var(--leading-heading);
+}
+
+.ui-article-prose :where(h2, h3) {
+  font-family: var(--blog-display);
+}
+
+.ui-article-prose h2 {
+  font-size: var(--text-heading-2);
+  letter-spacing: -0.025em;
+}
+
+.ui-article-prose h3 {
+  font-size: var(--text-heading-3);
+  letter-spacing: -0.018em;
+}
+
+.ui-article-prose h4 {
+  font-family: var(--blog-sans);
+  font-size: 0.85em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ui-article-prose strong {
+  font-weight: 650;
+}
+
+.ui-article-prose blockquote {
+  font-size: 1.2em;
+  font-style: italic;
+  hanging-punctuation: first last;
+  line-height: 1.48;
+}
+
+.ui-article-prose :where(code, pre) {
+  font-family: var(--font-code);
+}
+
+.ui-article-prose :not(pre) > code {
+  font-size: 0.82em;
+}
+
+.ui-article-prose pre {
+  font-size: 0.78em;
+  line-height: 1.65;
+}
+
+.ui-article-prose [data-mdx-media] figcaption {
+  font-family: var(--blog-sans);
+  font-size: var(--text-caption);
+  letter-spacing: 0.015em;
+  line-height: 1.5;
+}
+
+.ui-article-prose aside strong {
+  font-family: var(--blog-sans);
+  font-size: var(--text-meta);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ui-article-prose [data-mdx-interactive] output,
+.ui-article-prose [data-mdx-interactive] label {
+  font-family: var(--blog-sans);
+  font-size: var(--text-caption);
+  letter-spacing: 0.02em;
+}
+
+.ui-article-prose :where(table) {
+  font-size: 0.88em;
+}
+
+.ui-article-prose :where(th, td) {
+  overflow-wrap: break-word;
+}
+
+.ui-article-prose th {
+  font-family: var(--blog-sans);
+  font-size: var(--text-meta);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

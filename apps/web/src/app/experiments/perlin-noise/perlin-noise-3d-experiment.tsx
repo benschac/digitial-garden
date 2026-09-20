@@ -1,6 +1,10 @@
 "use client";
 
 import { useAbortableEffect } from "@personal-site/react-hooks";
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { ElementRef, Ref } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -184,16 +188,33 @@ export function PerlinNoise3DExperiment() {
       className={styles.threeExperiment}
       aria-labelledby="noise-3d-title"
     >
-      <div className={styles.threeHeader}>
+      <div
+        className={typographyVariants({
+          variant: "experimentNoiseThreeHeader",
+          className: styles.threeHeader,
+        })}
+      >
         <div>
-          <p className={styles.kicker}>First 3D pass</p>
+          <Typography
+            as="p"
+            variant="experimentKicker"
+            className={styles.kicker}
+          >
+            First 3D pass
+          </Typography>
           <h2 id="noise-3d-title">A volume, viewed as terrain.</h2>
           <p>
             Each surface displaces the same 64 × 64 grid. XOFF and YOFF move
             across a slice; ZOFF moves deeper into the noise volume.
           </p>
         </div>
-        <div className={styles.threeMetric} aria-live="polite">
+        <div
+          className={typographyVariants({
+            variant: "experimentNoiseThreeMetric",
+            className: styles.threeMetric,
+          })}
+          aria-live="polite"
+        >
           <span>Maximum difference</span>
           <strong>{formatDifference(maxDifference)}</strong>
           <small data-status={status}>
@@ -229,7 +250,13 @@ export function PerlinNoise3DExperiment() {
             rustNoise={rustNoise}
           />
         </Canvas>
-        <div className={styles.threeLegend} aria-hidden="true">
+        <div
+          className={typographyVariants({
+            variant: "experimentNoiseThreeLegend",
+            className: styles.threeLegend,
+          })}
+          aria-hidden="true"
+        >
           <span>TypeScript</span>
           <span>Rust / WASM</span>
         </div>
@@ -242,7 +269,12 @@ export function PerlinNoise3DExperiment() {
         </p>
       ) : null}
 
-      <div className={styles.threeControls}>
+      <div
+        className={typographyVariants({
+          variant: "experimentNoiseThreeControls",
+          className: styles.threeControls,
+        })}
+      >
         <NoiseSlider
           label="Frequency"
           max={3}

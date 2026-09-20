@@ -5,6 +5,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@personal-site/ui/components/collapsible";
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import type { DynamicToolUIPart, ToolUIPart } from "ai";
 import { ChevronRightIcon, TerminalIcon, WrenchIcon } from "lucide-react";
@@ -13,8 +17,10 @@ import { isValidElement } from "react";
 
 import { CodeBlock } from "./code-block";
 
-const compactCodeBlockClassName =
-  "rounded-none border-0 bg-transparent [&_pre]:!bg-transparent [&_pre]:px-3 [&_pre]:pt-2 [&_pre]:pb-3 [&_pre]:text-xs [&_code]:text-xs";
+const compactCodeBlockClassName = cn(
+  "rounded-none border-0 bg-transparent [&_pre]:!bg-transparent [&_pre]:px-3 [&_pre]:pt-2 [&_pre]:pb-3",
+  typographyVariants({ variant: "codeDescendantsCompact" }),
+);
 
 export type ToolProps = ComponentProps<typeof Collapsible>;
 
@@ -48,11 +54,13 @@ const statusLabels: Record<ToolPart["state"], string> = {
 
 export const getStatusIndicator = (status: ToolPart["state"]) =>
   status === "output-available" ? null : (
-    <span
-      className={cn("text-sm", status === "output-error" && "text-destructive")}
+    <Typography
+      as="span"
+      variant="uiBody"
+      className={cn(status === "output-error" && "text-destructive")}
     >
       {statusLabels[status]}
-    </span>
+    </Typography>
   );
 
 export const ToolHeader = ({
@@ -80,7 +88,9 @@ export const ToolHeader = ({
       ) : (
         <WrenchIcon className="size-4 shrink-0" />
       )}
-      <span className="text-sm">{displayName}</span>
+      <Typography as="span" variant="uiBody">
+        {displayName}
+      </Typography>
       {getStatusIndicator(state)}
       <ChevronRightIcon className="size-3.5 shrink-0 transition-transform group-data-[open]:rotate-90" />
     </CollapsibleTrigger>
@@ -124,18 +134,30 @@ export const BashToolContent = ({
 
   return (
     <div className={cn("space-y-2", className)} {...props}>
-      <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted/50 p-3 font-mono text-xs leading-relaxed">
+      <Typography
+        as="pre"
+        variant="codeCaption"
+        className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted/50 p-3"
+      >
         <code>
           <span className="text-muted-foreground">$ </span>
           {command ?? "…"}
         </code>
-      </pre>
+      </Typography>
       {hasResult ? (
-        <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted/50 p-3 font-mono text-xs leading-relaxed">
+        <Typography
+          as="pre"
+          variant="codeCaption"
+          className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted/50 p-3"
+        >
           <code>
-            <span className="mb-2 block font-sans text-[10px] text-muted-foreground uppercase tracking-wide">
+            <Typography
+              as="span"
+              variant="microLabel"
+              className="mb-2 block text-muted-foreground"
+            >
               Output
-            </span>
+            </Typography>
             {stdout ? (
               <span className="block">{String(stdout).trimEnd()}</span>
             ) : null}
@@ -150,7 +172,7 @@ export const BashToolContent = ({
               </span>
             ) : null}
           </code>
-        </pre>
+        </Typography>
       ) : null}
     </div>
   );
@@ -179,9 +201,13 @@ export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
     className={cn("overflow-hidden rounded-md bg-muted/50", className)}
     {...props}
   >
-    <span className="block px-3 pt-3 font-sans text-[10px] text-muted-foreground uppercase tracking-wide">
+    <Typography
+      as="span"
+      variant="microLabel"
+      className="block px-3 pt-3 text-muted-foreground"
+    >
       Parameters
-    </span>
+    </Typography>
     <div>
       <CodeBlock
         className={compactCodeBlockClassName}
@@ -228,9 +254,11 @@ export const ToolOutput = ({
   }
 
   return (
-    <div
+    <Typography
+      as="div"
+      variant="uiCaption"
       className={cn(
-        "overflow-x-auto rounded-md text-xs [&_table]:w-full",
+        "overflow-x-auto rounded-md [&_table]:w-full",
         errorText
           ? "bg-destructive/10 text-destructive"
           : "bg-muted/50 text-foreground",
@@ -238,11 +266,15 @@ export const ToolOutput = ({
       )}
       {...props}
     >
-      <span className="block px-3 pt-3 font-sans text-[10px] text-muted-foreground uppercase tracking-wide">
+      <Typography
+        as="span"
+        variant="microLabel"
+        className="block px-3 pt-3 text-muted-foreground"
+      >
         {errorText ? "Error" : "Result"}
-      </span>
+      </Typography>
       {errorText && <div className="px-3 pt-2 pb-3">{errorText}</div>}
       {Output}
-    </div>
+    </Typography>
   );
 };

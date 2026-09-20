@@ -1,5 +1,9 @@
 import { Eyebrow } from "@personal-site/ui/components/eyebrow";
 import { PageNavigation } from "@personal-site/ui/components/page-navigation";
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageTransition } from "@/app/_components/page-transition";
@@ -16,7 +20,12 @@ export const metadata: Metadata = {
 export default function VectorMathPage() {
   return (
     <PageTransition>
-      <main className={styles.page}>
+      <main
+        className={typographyVariants({
+          variant: "experimentPage",
+          className: styles.page,
+        })}
+      >
         <PageNavigation className={styles.nav}>
           <Link href="/" transitionTypes={["nav-back"]}>
             ← Workbench
@@ -28,17 +37,28 @@ export default function VectorMathPage() {
           <Eyebrow className={styles.eyebrow}>
             Pts.js · Linear algebra · Canvas
           </Eyebrow>
-          <h1>Vectors, made tangible.</h1>
-          <p className={styles.intro}>
+          <Typography as="h1" variant="experimentDisplay">
+            Vectors, made tangible.
+          </Typography>
+          <Typography
+            as="p"
+            variant="experimentVectorIntro"
+            className={styles.intro}
+          >
             Drag the arrowheads, choose a method, and tune its inputs. The
             diagram, formula, and result stay in step, so every gesture has a
             numerical explanation.
-          </p>
+          </Typography>
         </header>
 
         <VectorPlayground />
 
-        <aside className={styles.notes}>
+        <aside
+          className={typographyVariants({
+            variant: "experimentNotes",
+            className: styles.notes,
+          })}
+        >
           <p>
             The canvas is an XY projection; the controls and readout retain Z
             for the 3D methods. Pts.js supplies the points, canvas space, and

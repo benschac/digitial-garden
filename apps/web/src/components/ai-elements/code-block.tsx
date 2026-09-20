@@ -8,6 +8,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@personal-site/ui/components/select";
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import type { ComponentProps, CSSProperties, HTMLAttributes } from "react";
@@ -86,7 +90,7 @@ const LINE_NUMBER_CLASSES = cn(
   "before:mr-4",
   "before:text-right",
   "before:text-muted-foreground/50",
-  "before:font-mono",
+  typographyVariants({ variant: "codeLineNumber" }),
   "before:select-none",
 );
 
@@ -269,16 +273,19 @@ const CodeBlockBody = memo(
     );
 
     return (
-      <pre
+      <Typography
+        as="pre"
+        variant="uiBody"
         className={cn(
-          "dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)] m-0 p-4 text-sm",
+          "dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)] m-0 p-4",
           className,
         )}
         style={preStyle}
       >
-        <code
+        <Typography
+          as="code"
+          variant="code"
           className={cn(
-            "font-mono text-sm",
             showLineNumbers &&
               "[counter-increment:line_0] [counter-reset:line]",
           )}
@@ -290,8 +297,8 @@ const CodeBlockBody = memo(
               showLineNumbers={showLineNumbers}
             />
           ))}
-        </code>
-      </pre>
+        </Typography>
+      </Typography>
     );
   },
   (prevProps, nextProps) =>
@@ -328,15 +335,17 @@ export const CodeBlockHeader = ({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) => (
-  <div
+  <Typography
+    as="div"
+    variant="uiCaption"
     className={cn(
-      "flex items-center justify-between border-b bg-muted/80 px-3 py-2 text-muted-foreground text-xs",
+      "flex items-center justify-between border-b bg-muted/80 px-3 py-2 text-muted-foreground",
       className,
     )}
     {...props}
   >
     {children}
-  </div>
+  </Typography>
 );
 
 export const CodeBlockTitle = ({
@@ -354,9 +363,9 @@ export const CodeBlockFilename = ({
   className,
   ...props
 }: HTMLAttributes<HTMLSpanElement>) => (
-  <span className={cn("font-mono", className)} {...props}>
+  <Typography as="span" variant="mono" className={className} {...props}>
     {children}
-  </span>
+  </Typography>
 );
 
 export const CodeBlockActions = ({
@@ -528,7 +537,8 @@ export const CodeBlockLanguageSelectorTrigger = ({
 }: CodeBlockLanguageSelectorTriggerProps) => (
   <SelectTrigger
     className={cn(
-      "h-7 border-none bg-transparent px-2 text-xs shadow-none",
+      "h-7 border-none bg-transparent px-2 shadow-none",
+      typographyVariants({ variant: "uiCaption" }),
       className,
     )}
     size="sm"

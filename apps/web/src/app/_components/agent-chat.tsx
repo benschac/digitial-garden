@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@personal-site/ui/components/button";
+import { Typography } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import type { UserContent } from "ai";
 import { useEveAgent } from "eve/react";
@@ -189,9 +190,9 @@ export function AgentChat({
       >
         {showConversationLayout ? null : (
           <div className="flex flex-col items-center gap-3 text-center">
-            <h1 className="font-medium text-5xl tracking-tighter">
+            <Typography as="h1" variant="uiTitle">
               {AGENT_NAME}
-            </h1>
+            </Typography>
           </div>
         )}
         <div className="w-full">{composer}</div>
@@ -234,16 +235,20 @@ function ErrorMessage({ message }: { readonly message: string }) {
   return (
     <Message className="max-w-full" from="assistant">
       <MessageContent>
-        <div
-          className="flex w-full items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm"
+        <Typography
+          as="div"
+          variant="uiBody"
+          className="flex w-full items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5"
           role="alert"
         >
           <AlertCircleIcon className="mt-0.5 size-4 shrink-0 text-destructive" />
           <div>
-            <p className="font-medium">Request failed</p>
+            <Typography as="p" variant="medium">
+              Request failed
+            </Typography>
             <p className="mt-0.5 text-muted-foreground">{message}</p>
           </div>
-        </div>
+        </Typography>
       </MessageContent>
     </Message>
   );
@@ -257,9 +262,13 @@ function ChatHeader({
   return (
     <header className="pointer-events-none fixed top-0 right-0 left-0 z-20 h-14">
       <div className="relative mx-auto flex h-full w-full max-w-3xl items-center justify-center bg-background px-24">
-        <span className="truncate text-muted-foreground text-sm">
+        <Typography
+          as="span"
+          variant="uiBody"
+          className="truncate text-muted-foreground"
+        >
           {AGENT_NAME}
-        </span>
+        </Typography>
         {canStartNewChat ? (
           <Button
             aria-label="Start a new chat"
@@ -270,9 +279,13 @@ function ChatHeader({
             variant="ghost"
           >
             <PlusIcon className="size-4" />
-            <span className="hidden font-normal text-sm sm:inline">
+            <Typography
+              as="span"
+              variant="uiBodyNormal"
+              className="hidden sm:inline"
+            >
               New chat
-            </span>
+            </Typography>
           </Button>
         ) : null}
       </div>
@@ -284,10 +297,14 @@ function PendingThinking() {
   return (
     <Message aria-live="polite" from="assistant">
       <MessageContent>
-        <div className="mb-4 flex w-full items-center gap-2 text-muted-foreground text-sm">
+        <Typography
+          as="div"
+          variant="uiBody"
+          className="mb-4 flex w-full items-center gap-2 text-muted-foreground"
+        >
           <BrainIcon className="size-4" />
           <Shimmer duration={1}>Thinking</Shimmer>
-        </div>
+        </Typography>
       </MessageContent>
     </Message>
   );

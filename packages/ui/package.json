@@ -8,7 +8,8 @@
     "./lib/utils": "./src/lib/utils.ts",
     "./styles/theme.css": "./src/styles/theme.css",
     "./styles/defaults.css": "./src/styles/defaults.css",
-    "./styles/editorial.css": "./src/styles/editorial.css"
+    "./styles/editorial.css": "./src/styles/editorial.css",
+    "./styles/prose.css": "./src/styles/prose.css"
   },
   "scripts": {
     "dev": "bun run storybook",

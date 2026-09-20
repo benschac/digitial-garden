@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import { CanvasSpace, Group, Pt } from "pts";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -264,13 +268,33 @@ export function VectorPlayground() {
     <section className={styles.experiment} aria-labelledby="playground-title">
       <div className={styles.experimentHeader}>
         <div>
-          <p className={styles.kicker}>p5.Vector method atlas</p>
-          <h2 id="playground-title">One vector. Seventeen ways to see it.</h2>
+          <Typography
+            as="p"
+            variant="experimentKicker"
+            className={styles.kicker}
+          >
+            p5.Vector method atlas
+          </Typography>
+          <Typography as="h2" variant="experimentHeading" id="playground-title">
+            One vector. Seventeen ways to see it.
+          </Typography>
         </div>
-        <p className={styles.methodCount}>17 methods · live</p>
+        <Typography
+          as="p"
+          variant="experimentStatus"
+          className={styles.methodCount}
+        >
+          17 methods · live
+        </Typography>
       </div>
 
-      <nav aria-label="Vector methods" className={styles.methodGrid}>
+      <nav
+        aria-label="Vector methods"
+        className={typographyVariants({
+          variant: "experimentVectorMethodGrid",
+          className: styles.methodGrid,
+        })}
+      >
         {OPERATIONS.map((item) => (
           <button
             aria-current={operation === item.id ? "true" : undefined}
@@ -284,13 +308,22 @@ export function VectorPlayground() {
         ))}
       </nav>
 
-      <div className={styles.activeMethod}>
+      <div
+        className={typographyVariants({
+          variant: "experimentVectorActiveMethod",
+          className: styles.activeMethod,
+        })}
+      >
         <div>
           <span>Selected method</span>
           <strong>{operationMeta.label}</strong>
-          <p className={styles.activeMethodDescription}>
+          <Typography
+            as="p"
+            variant="experimentVectorActiveMethodDescription"
+            className={styles.activeMethodDescription}
+          >
             {operationMeta.description}
-          </p>
+          </Typography>
         </div>
         {operationMeta.parameter ? (
           <label>
@@ -362,7 +395,12 @@ export function VectorPlayground() {
         </div>
       </div>
 
-      <div className={styles.keyboardControls}>
+      <div
+        className={typographyVariants({
+          variant: "experimentVectorKeyboardControls",
+          className: styles.keyboardControls,
+        })}
+      >
         <VectorControls label="Vector u" setVector={setFirst} vector={first} />
         {operationMeta.usesSecond ? (
           <VectorControls
@@ -373,7 +411,12 @@ export function VectorPlayground() {
         ) : null}
       </div>
 
-      <div className={styles.footerBar}>
+      <div
+        className={typographyVariants({
+          variant: "experimentVectorFooterBar",
+          className: styles.footerBar,
+        })}
+      >
         <p>Canvas shows the XY projection · sliders include Z</p>
         <button
           onClick={() => {
@@ -479,7 +522,12 @@ function ResultCard({
   result: OperationResult;
 }) {
   return (
-    <article className={styles.resultCard}>
+    <article
+      className={typographyVariants({
+        variant: "experimentVectorResultCard",
+        className: styles.resultCard,
+      })}
+    >
       <span>{method} result</span>
       {result.kind === "vector" ? (
         <strong>{formatVector(result.value)}</strong>
@@ -491,7 +539,13 @@ function ResultCard({
         </strong>
       ) : null}
       {result.kind === "warning" ? (
-        <strong className={styles.warning}>{result.value}</strong>
+        <Typography
+          as="strong"
+          variant="experimentVectorWarning"
+          className={styles.warning}
+        >
+          {result.value}
+        </Typography>
       ) : null}
       <small>{result.expression}</small>
       {result.kind === "vector" ? (
@@ -544,7 +598,13 @@ function VectorCard({
   vector: Vector;
 }) {
   return (
-    <article className={styles.vectorCard} data-color={color}>
+    <article
+      className={typographyVariants({
+        variant: "experimentVectorCard",
+        className: styles.vectorCard,
+      })}
+      data-color={color}
+    >
       <span>{label}</span>
       <strong>{formatVector(vector)}</strong>
       <small>

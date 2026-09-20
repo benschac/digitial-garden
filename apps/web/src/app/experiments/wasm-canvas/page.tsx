@@ -1,5 +1,9 @@
 import { Eyebrow } from "@personal-site/ui/components/eyebrow";
 import { PageNavigation } from "@personal-site/ui/components/page-navigation";
+import {
+  Typography,
+  typographyVariants,
+} from "@personal-site/ui/components/typography";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageTransition } from "@/app/_components/page-transition";
@@ -16,8 +20,18 @@ export const metadata: Metadata = {
 export default function WasmCanvasPage() {
   return (
     <PageTransition>
-      <main className={styles.page}>
-        <PageNavigation className={styles.nav}>
+      <main
+        className={typographyVariants({
+          variant: "experimentParticlePage",
+          className: styles.page,
+        })}
+      >
+        <PageNavigation
+          className={typographyVariants({
+            variant: "experimentParticleNav",
+            className: styles.nav,
+          })}
+        >
           <Link href="/" transitionTypes={["nav-back"]}>
             ← Workbench
           </Link>
@@ -29,19 +43,35 @@ export default function WasmCanvasPage() {
           </Link>
         </PageNavigation>
         <header className={styles.header}>
-          <Eyebrow className={styles.eyebrow}>
+          <Eyebrow
+            className={typographyVariants({
+              variant: "experimentParticleEyebrow",
+              className: styles.eyebrow,
+            })}
+          >
             Rust/WASM · WebGPU · WGSL
           </Eyebrow>
-          <h1>A particle field that lives on the GPU.</h1>
-          <p className={styles.intro}>
+          <Typography as="h1" variant="experimentParticleDisplay">
+            A particle field that lives on the GPU.
+          </Typography>
+          <Typography
+            as="p"
+            variant="experimentParticleIntro"
+            className={styles.intro}
+          >
             Rust prepares one tiny frame command while a compute shader advances
             100,000 particles by default and can scale to 4.2 million. An
             instanced render pass draws them without reading their state back to
             JavaScript.
-          </p>
+          </Typography>
         </header>
         <WasmCanvas />
-        <aside className={styles.notes}>
+        <aside
+          className={typographyVariants({
+            variant: "experimentNotes",
+            className: styles.notes,
+          })}
+        >
           <p>
             Move across the field to bend its flow. React owns the controls
             while Rust/WASM owns frame policy and WebGPU owns particle state,

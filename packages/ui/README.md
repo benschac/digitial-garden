@@ -45,8 +45,9 @@ are not supported (Storybook isolates stories in its preview document).
 The `dark:` variant follows that same explicit/system mode. Defaults use
 `light-dark()` with `color-scheme`; no JavaScript theme initialization is needed.
 Consumers can override the semantic variables in their own CSS. Shared fonts
-use `--font-ui` and `--font-code`, with system fallbacks. The web app adds
-`font-display` and `font-reading` mappings to its selected editorial fonts.
+use `--font-ui` and `--font-code`, with system fallbacks. The editorial stylesheet
+maps `font-display` and `font-reading` to the consumer's editorial font variables,
+with Georgia/serif fallbacks.
 
 Web declares `theme, base, reset, components, utilities` in that order so its
 baseline cannot override utilities. Editorial colors, including
@@ -58,6 +59,50 @@ That stylesheet owns paper, ink, supporting-text, and selection colors using
 It does not style elements, load fonts, or change light/dark UI tokens. Font
 loading/preferences and page composition stay in `apps/web`; `design.md` at the
 repository root documents those boundaries and the current visual rules.
+
+## Typography
+
+Import `Heading`, `Text`, `Typography`, and their recipes from
+`@personal-site/ui/components/typography`. They work in Server Components and
+client components without adding wrapper DOM or a client boundary.
+
+- `Heading` provides editorial display, section, feature, item, and subtitle
+  styles. Its `as` prop selects `h1` through `h6` independently of visual style.
+- `Text` provides editorial body, small, caption, date, and metadata paragraphs.
+  `Heading` and `Text` reset margins; consumers supply spacing and measure.
+- `Typography` accepts a native HTML `as` element (default `span`) and a named
+  role from `typographyVariants`. Roles cover UI/chat, code, journal/articles,
+  layout studies, and experiments. It has no implicit font or margin reset;
+  omitting `variant` preserves inherited styles, including authored MDX.
+- Use `headingVariants()`, `textVariants()`, or `typographyVariants()` on
+  existing components such as Next.js links, inputs, and interactive controls.
+  Keep the caller's `className` last. Do not add local font sizes, weights,
+  leading, or tracking when a shared role fits; add a missing role here.
+- Container recipes preserve contextual typography in composite experiment
+  controls. `styles/prose.css` owns the article scale and descendant rules for
+  authored MDX and embedded controls; import it alongside `styles/editorial.css`.
+- Font loading, font preferences, page layout, colors, and interaction styles
+  remain with the consumer. `canvasTypography` supplies font shorthands for
+  canvas text, which cannot render React components. Syntax highlighting still
+  derives bold/italic styles from the highlighter's token data.
+
+```tsx
+import { Heading, Typography, typographyVariants } from "@personal-site/ui/components/typography";
+
+<section>
+  <Heading as="h3" variant="feature" className="mb-4">
+    A second life for good things.
+  </Heading>
+  <Typography as="p" variant="uiBody">Choose an option to continue.</Typography>
+  <button className={typographyVariants({ variant: "uiLabel" })}>
+    Continue
+  </button>
+</section>;
+```
+
+**Editorial/Typography** in Storybook covers editorial variants, representative
+shared roles, semantic elements, overrides, and font variables. It uses local
+serif fallbacks; review loaded fonts and persisted preferences in the web app.
 
 Popups use Base UI's `data-starting-style` / `data-ending-style` transitions,
 with `motion-reduce:transition-none`; no animation plugin is required.

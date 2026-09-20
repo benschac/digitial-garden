@@ -7,7 +7,6 @@
     color-mix(in srgb, var(--color-ink) 10%, transparent);
   color: var(--color-ink);
   display: grid;
-  font-family: var(--font-ui);
   gap: 0.65rem;
   padding: 0.35rem 0.45rem 0.35rem 0.7rem;
   position: fixed;
@@ -42,10 +41,6 @@
 
 .switcher label {
   color: var(--color-editorial-muted);
-  font-size: 0.68rem;
-  font-weight: 650;
-  letter-spacing: 0.085em;
-  text-transform: uppercase;
 }
 
 .switcher select {
