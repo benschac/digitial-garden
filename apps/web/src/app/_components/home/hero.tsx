@@ -35,8 +35,8 @@ export function Hero() {
           className={cn(
             "pointer-events-none absolute inset-0 -z-1 [clip-path:inset(-100vmax_-100vmax_0)]",
             "before:absolute before:top-1/2 before:left-[72%] before:aspect-square before:w-[clamp(64rem,115vw,100rem)] before:content-['']",
-            "before:bg-ink before:opacity-[0.22] before:[transform:translate(-50%,-46%)_rotate(-12deg)]",
-            "before:[mask:url('/images/benschac-outline.svg')_center/contain_no-repeat]",
+            "before:opacity-[0.22] before:[transform:translate(-50%,-46%)_rotate(-12deg)]",
+            "before:bg-[url('/images/benschac.svg')] before:bg-contain before:bg-center before:bg-no-repeat",
           )}
         />
         <div className="self-center">
