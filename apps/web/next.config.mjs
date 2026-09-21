@@ -5,6 +5,10 @@ import { withEve } from "eve/next";
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
+  experimental: {
+    // Restored production caches have served obsolete PostCSS output.
+    turbopackFileSystemCacheForBuild: false,
+  },
   images: {
     remotePatterns: [
       { hostname: "a.media-amazon.com", protocol: "https" },
