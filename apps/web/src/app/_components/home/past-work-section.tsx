@@ -1,9 +1,7 @@
 import { Heading, Text } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
-import Image from "next/image";
 import Link from "next/link";
-import { Typography } from "@/components/page-typography";
-import { featureLink, focusRing } from "./styles";
+import { featureLink } from "./styles";
 
 const pastWork = [
   {
@@ -89,62 +87,21 @@ export function PastWorkSection() {
               {work.dates}
             </Text>
             {work.company === "Treasure It" ? (
-              <div
-                className={cn(
-                  "col-span-full grid grid-cols-subgrid items-center gap-y-6 pt-5 pb-2",
-                  "md:grid-cols-[minmax(0,20.75rem)_minmax(0,1fr)] md:gap-x-8",
-                )}
-              >
-                <Link
-                  className={cn(
-                    "group/project flex flex-col items-center justify-center p-4",
-                    "bg-[color-mix(in_srgb,var(--color-ink)_5%,transparent)] text-inherit no-underline",
-                    focusRing,
-                  )}
-                  href="/images/treasure-it.png"
-                  prefetch={false}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Image
-                    className={cn(
-                      "block h-auto w-[18.75rem] max-w-full",
-                      "rounded-[0.75rem] object-contain",
-                    )}
-                    src="/images/treasure-it.png"
-                    alt="Treasure It app showing a local giveaway with available and taken items"
-                    width={403}
-                    height={874}
-                    sizes="(min-width: 72rem) 300px, (min-width: 48rem) 40vw, (max-width: 360px) 80vw, 300px"
-                  />
-                  <Typography
-                    variant="screenshotCaption"
-                    className={cn(
-                      "mt-2 flex min-h-11 items-center",
-                      "underline decoration-[color-mix(in_srgb,currentColor_40%,transparent)] decoration-1 underline-offset-[0.25em]",
-                      "group-hover/project:decoration-current group-focus-visible/project:decoration-current",
-                    )}
-                  >
-                    View full-size screenshot
-                    <span className="sr-only"> (opens in a new tab)</span>
-                  </Typography>
+              <div className="col-span-full pt-5 pb-2">
+                <Text variant="metadata" className="max-w-[36ch]">
+                  Selected work
+                </Text>
+                <Heading as="h4" variant="feature" className="mt-3 mb-6">
+                  A second life for good things.
+                </Heading>
+                <Text className="mb-4 max-w-[36ch]">
+                  A local marketplace for buying, selling, and giving things
+                  nearby. Listings, offers, and scheduled pickups bring the
+                  handoff into one place.
+                </Text>
+                <Link className={featureLink} href="https://treasureit.fun">
+                  Explore Treasure It
                 </Link>
-                <div>
-                  <Text variant="metadata" className="max-w-[36ch]">
-                    Selected work
-                  </Text>
-                  <Heading as="h4" variant="feature" className="mt-3 mb-6">
-                    A second life for good things.
-                  </Heading>
-                  <Text className="mb-4 max-w-[36ch]">
-                    A local marketplace for buying, selling, and giving things
-                    nearby. Listings, offers, and scheduled pickups bring the
-                    handoff into one place.
-                  </Text>
-                  <Link className={featureLink} href="https://treasureit.fun">
-                    Explore Treasure It
-                  </Link>
-                </div>
               </div>
             ) : null}
           </li>

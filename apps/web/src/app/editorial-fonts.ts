@@ -13,8 +13,8 @@ export const editorialFontOptions = [
 
 export type EditorialFontId = (typeof editorialFontOptions)[number]["id"];
 
-export const defaultDisplayFont: EditorialFontId = "tenderness";
-export const defaultReadingFont: EditorialFontId = "newsreader";
+export const defaultDisplayFont: EditorialFontId = "bonbance";
+export const defaultReadingFont: EditorialFontId = "superior-serif";
 export const displayStorageKey = "editorial-display-font-v2";
 export const readingStorageKey = "editorial-reading-font-v3";
 
