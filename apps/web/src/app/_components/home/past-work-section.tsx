@@ -1,7 +1,5 @@
 import { Heading, Text } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
-import Link from "next/link";
-import { featureLink } from "./styles";
 
 const pastWork = [
   {
@@ -86,24 +84,6 @@ export function PastWorkSection() {
             <Text variant="date" className="md:text-right">
               {work.dates}
             </Text>
-            {work.company === "Treasure It" ? (
-              <div className="col-span-full pt-5 pb-2">
-                <Text variant="metadata" className="max-w-[36ch]">
-                  Selected work
-                </Text>
-                <Heading as="h4" variant="feature" className="mt-3 mb-6">
-                  A second life for good things.
-                </Heading>
-                <Text className="mb-4 max-w-[36ch]">
-                  A local marketplace for buying, selling, and giving things
-                  nearby. Listings, offers, and scheduled pickups bring the
-                  handoff into one place.
-                </Text>
-                <Link className={featureLink} href="https://treasureit.fun">
-                  Explore Treasure It
-                </Link>
-              </div>
-            ) : null}
           </li>
         ))}
       </ul>

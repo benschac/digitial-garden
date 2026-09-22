@@ -10,9 +10,8 @@ import { focusRing } from "./styles";
 const primaryLink = cn(
   "inline-flex min-h-11 items-center",
   headingVariants({ variant: "section" }),
-  "text-inherit",
-  "underline decoration-[color-mix(in_srgb,currentColor_40%,transparent)] decoration-[max(1px,0.04em)] underline-offset-[0.3em] [text-decoration-skip-ink:none] [text-decoration-inset:0.06em]",
-  "hover:decoration-current focus-visible:decoration-current",
+  "text-inherit not-italic",
+  "underline underline-offset-[0.08em] [text-decoration-skip-ink:auto]",
   focusRing,
 );
 const socialLink = cn(
