@@ -25,6 +25,12 @@
       "skillPath": "skills/baseline-ui/SKILL.md",
       "computedHash": "dfcb3e778b57ad1cba92375689bb8265fa5aef78fba523a744f5220b3c619901"
     },
+    "better-interface": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/better-interface/SKILL.md",
+      "computedHash": "406267c5782510d658a914899db2fc5eb3f5f7d51620cc4c86d7e26b217fdf24"
+    },
     "better-typography": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
