@@ -15,7 +15,7 @@ const pastWork = [
   {
     company: "Entropy Cryptography",
     role: "Software Engineer",
-    dates: "December 2023 – January 2024",
+    dates: "December 2022 – January 2024",
   },
   {
     company: "Comm",
