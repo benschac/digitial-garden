@@ -16,6 +16,12 @@ const pastWork = [
     dates: "June 2022 – Present",
   },
   {
+    company: "Recurse Center",
+    logo: "/images/work/recurse-center.jpg",
+    role: "Participant Summer 2 ’24 (half batch)",
+    dates: "July 1 – August 9, 2024",
+  },
+  {
     company: "Entropy Cryptography",
     logo: "/images/work/entropy.png",
     role: "Software Engineer",
@@ -50,6 +56,12 @@ const pastWork = [
     logo: "/images/work/dexter.jpg",
     role: "Software Engineer",
     dates: "May 2017 – May 2018",
+  },
+  {
+    company: "Recurse Center",
+    logo: "/images/work/recurse-center.jpg",
+    role: "Participant Winter 1 ’16",
+    dates: "November 7, 2016 – February 9, 2017",
   },
 ];
 
