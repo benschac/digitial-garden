@@ -125,6 +125,15 @@ export function Hero() {
         >
           Blog
         </Link>
+        {process.env.NODE_ENV === "development" ? (
+          <Link
+            className={primaryLink}
+            href="/reading"
+            transitionTypes={["nav-forward"]}
+          >
+            Reading
+          </Link>
+        ) : null}
         <Link
           className={primaryLink}
           href="/playground"
