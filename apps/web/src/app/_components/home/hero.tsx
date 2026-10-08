@@ -48,7 +48,7 @@ export function Hero() {
             )}
           />
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-x-8 gap-y-4">
+        <div className="flex flex-wrap items-center justify-end gap-x-8 gap-y-4 pr-2 pb-2">
           <nav
             aria-label="Social profiles"
             className="m-0 flex flex-wrap gap-2"
