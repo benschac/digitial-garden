@@ -1,9 +1,9 @@
 import { typographyVariants } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
-import { ContributionsSection } from "./_components/home/contributions-section";
 import { Hero } from "./_components/home/hero";
 import { HomeFooter } from "./_components/home/home-footer";
 import { PastWorkSection } from "./_components/home/past-work-section";
+import { PublicWorkSection } from "./_components/home/public-work-section";
 import { SpeakingSection } from "./_components/home/speaking-section";
 import { PageTransition } from "./_components/page-transition";
 
@@ -21,7 +21,7 @@ export default function Home() {
       >
         <Hero />
         <SpeakingSection />
-        <ContributionsSection />
+        <PublicWorkSection />
         <PastWorkSection />
       </main>
       <HomeFooter />

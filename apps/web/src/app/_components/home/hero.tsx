@@ -8,13 +8,15 @@ import { focusRing } from "./styles";
 const primaryLink = cn(
   "inline-flex min-h-11 items-center",
   headingVariants({ variant: "section" }),
-  "text-inherit not-italic",
+  "text-inherit not-italic max-sm:text-2xl",
   "underline underline-offset-[0.08em] [text-decoration-skip-ink:auto]",
+  "hover:decoration-[0.12em] focus-visible:decoration-[0.12em]",
   focusRing,
 );
 const socialLink = cn(
   "inline-flex min-h-11 min-w-11 items-center justify-center",
   "rounded-[0.25rem] text-inherit",
+  "hover:bg-[color-mix(in_srgb,currentColor_8%,transparent)]",
   focusRing,
 );
 export function Hero() {
@@ -22,8 +24,8 @@ export function Hero() {
     <>
       <header
         className={cn(
-          "relative col-span-full grid grid-cols-1 grid-rows-[1fr_auto] gap-y-12",
-          "min-h-[clamp(32rem,75svh,50rem)]",
+          "relative col-span-full grid grid-cols-1 grid-rows-[1fr_auto] gap-y-6 sm:gap-y-12",
+          "min-h-[clamp(22rem,50svh,28rem)] sm:min-h-[clamp(32rem,75svh,50rem)]",
         )}
       >
         {/* Let the portrait bleed above and sideways, but stop before navigation. */}
@@ -31,13 +33,20 @@ export function Hero() {
           aria-hidden="true"
           className={cn(
             "pointer-events-none absolute inset-0 -z-1 [clip-path:inset(-100vmax_-100vmax_0)]",
-            "before:absolute before:top-1/2 before:left-[72%] before:aspect-square before:w-[clamp(64rem,115vw,100rem)] before:content-['']",
+            "before:absolute before:top-1/2 before:left-[75%] before:aspect-square before:content-['']",
+            "before:w-[clamp(28rem,125vw,48rem)] sm:before:left-[72%] sm:before:w-[clamp(64rem,115vw,100rem)]",
             "before:opacity-[0.22] before:[transform:translate(-50%,-46%)_rotate(-12deg)]",
             "before:bg-[url('/images/benschac.svg')] before:bg-contain before:bg-center before:bg-no-repeat",
           )}
         />
         <div className="self-center">
-          <InkHeading className="max-w-[9ch] self-center" />
+          <InkHeading
+            className={cn(
+              "max-w-[9ch] self-center",
+              "text-[clamp(3.5rem,17vw,5rem)] sm:text-[clamp(3.5rem,11vw,9rem)] leading-[1.02]",
+              "font-[number:var(--home-name-weight)] tracking-[var(--home-name-tracking)]",
+            )}
+          />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-x-8 gap-y-4">
           <nav
@@ -102,7 +111,7 @@ export function Hero() {
       <nav
         aria-label="Primary"
         className={cn(
-          "col-span-full m-0 flex flex-wrap items-start gap-x-8 gap-y-2 py-6",
+          "col-span-full m-0 flex flex-wrap items-start gap-x-6 gap-y-2 py-6 sm:gap-x-8",
           "border-t border-[color-mix(in_srgb,currentColor_18%,transparent)]",
         )}
       >

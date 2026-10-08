@@ -42,6 +42,8 @@
     --font-editorial-display: var(--font-choice-bonbance);
     --font-editorial-display-tracking-adjustment: 0em;
     --font-editorial-display-secondary-tracking-adjustment: 0em;
+    --home-name-weight: 450;
+    --home-name-tracking: -0.045em;
     --font-editorial-reading: var(--font-choice-superior-serif);
     --font-editorial: var(--font-editorial-reading);
     --font-ui:
@@ -66,6 +68,8 @@
   :root[data-editorial-display-font="bonbance"] {
     --font-editorial-display: var(--font-choice-bonbance);
     --font-editorial-display-tracking-adjustment: 0.06em;
+    --home-name-weight: 700;
+    --home-name-tracking: 0em;
   }
 
   :root[data-editorial-display-font="goudy-bookletter"] {
