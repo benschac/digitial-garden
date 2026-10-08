@@ -12,7 +12,10 @@ export function HomeFooter() {
   const impressionId = useId();
   const { ink, canvas, pointerHandlers } = useWetInk<HTMLSpanElement>(900);
   return (
-    <footer className="mt-[clamp(5rem,10vw,10rem)] text-ink" translate="no">
+    <footer
+      className={cn("mt-[clamp(5rem,10vw,10rem)] text-ink", styles.footer)}
+      translate="no"
+    >
       <div className="mx-auto max-w-[80rem] px-[clamp(1.5rem,4vw,3rem)]">
         <div className={styles.wordmark}>
           <div
