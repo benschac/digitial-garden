@@ -6,6 +6,7 @@
 @import "@personal-site/ui/styles/baseline.css";
 @import "./blog/prose.css";
 @import "./reset.css";
+@import "./paper.css";
 @import "./view-transitions.css";
 @source "../../../../packages/ui/src";
 @source "../../node_modules/streamdown/dist/*.js";

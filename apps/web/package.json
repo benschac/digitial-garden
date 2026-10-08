@@ -81,6 +81,7 @@
     "@types/react-dom": "19.2.4",
     "@types/sql.js": "1.4.10",
     "@webgpu/types": "^0.1.72",
+    "babel-plugin-react-compiler": "1.0.0",
     "typescript": "7.0.2",
     "unplugin-typegpu": "0.12.2"
   }

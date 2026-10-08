@@ -1,5 +1,6 @@
 import type { EffectCallback } from "react";
 import { useEffect, useEffectEvent } from "react";
+import { useAbortController } from "./use-abort-controller";
 
 /**
  * An effect that can cancel in-flight work when its component unmounts.
@@ -13,25 +14,35 @@ export type AbortableEffect = (
 ) => ReturnType<EffectCallback>;
 
 /**
- * Runs an effect once with a fresh abort signal.
+ * Runs an effect with a fresh abort signal while enabled.
  *
  * The signal is aborted before the callback's optional React effect cleanup is
  * invoked. The callback always sees the latest render values without causing
- * the effect to restart.
+ * the effect to restart. Disabling aborts and cleans up the current run;
+ * enabling starts a new run. Omit `enabled` for component-lifetime work.
  *
  * @param effect - Starts the abortable work and optionally returns a cleanup
  * function. Use the supplied signal with APIs such as `fetch`.
+ * @param enabled - Whether the effect should be active. Defaults to true.
  */
-export function useAbortableEffect(effect: AbortableEffect) {
+export function useAbortableEffect(effect: AbortableEffect, enabled = true) {
+  const createController = useAbortController();
   const onEffect = useEffectEvent(effect);
 
   useEffect(() => {
-    const abortController = new AbortController();
-    const cleanup = onEffect(abortController.signal);
+    if (!enabled) return;
+    const abortController = createController();
+    let cleanup: ReturnType<EffectCallback>;
+    try {
+      cleanup = onEffect(abortController.signal);
+    } catch (error) {
+      abortController.abort();
+      throw error;
+    }
 
     return () => {
       abortController.abort();
       cleanup?.();
     };
-  }, []);
+  }, [createController, enabled]);
 }

@@ -1,4 +1,8 @@
 export {
+  type CreateAbortController,
+  useAbortController,
+} from "./use-abort-controller";
+export {
   type AbortableEffect,
   useAbortableEffect,
 } from "./use-abortable-effect";

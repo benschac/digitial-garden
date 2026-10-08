@@ -1,5 +1,13 @@
 # Repository conventions
 
+## Standard libraries and reusable hooks
+
+- Before adding a dependency, utility, or browser lifecycle effect, check [the standard-library directory](docs/standard-libraries.md) and the owning package's exports.
+- Reuse existing hooks for abortable work, animation frames, events, media queries, and observers when their lifecycle matches the feature. Extend a shared hook compatibly when a reusable capability is missing; keep feature-specific rendering and state in the app.
+- Do not hide reactive dependencies just to use a helper. Check cancellation on restart/unmount, Strict Mode replay, async initialization, and observer readiness when refactoring effects.
+- If a native API is needed because the shared helper cannot express its lifecycle, document that reason next to the effect rather than forcing the abstraction.
+- Update the directory when adding or changing a shared API so future work can discover it. These are project-owned defaults, not permission to add dependencies.
+
 ## Tailwind class readability
 
 - Split long Tailwind class lists into multiple string arguments to `cn()`, grouped by concern such as layout, appearance, typography, and interaction states.

@@ -117,16 +117,18 @@ export function useMediaQuery(
  *
  * @param elementRef - A stable ref containing the element to observe.
  * @param listener - Responds to initial measurement and subsequent resizes.
+ * @param enabled - Disconnect while false; observe and measure again when true.
  */
 export function useResizeObserver<TElement extends Element>(
   elementRef: RefObject<TElement | null>,
   listener: ResizeObserverListener,
+  enabled = true,
 ): void {
   const onResize = useEffectEvent(listener);
 
   useEffect(() => {
     const element = elementRef.current;
-    if (!element) {
+    if (!enabled || !element) {
       return;
     }
 
@@ -134,7 +136,7 @@ export function useResizeObserver<TElement extends Element>(
     observer.observe(element);
     onResize();
     return () => observer.disconnect();
-  }, [elementRef]);
+  }, [elementRef, enabled]);
 }
 
 /**

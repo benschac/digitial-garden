@@ -1,0 +1,29 @@
+@layer theme, base, reset, components, utilities;
+
+@layer components {
+  body,
+  .page-transition-surface,
+  .paper-surface {
+    --paper-grain-opacity: 0.22;
+    isolation: isolate;
+    background-color: var(--color-paper);
+  }
+
+  .page-transition-surface {
+    position: relative;
+  }
+
+  body::before,
+  .page-transition-surface::before,
+  .paper-surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: url("/images/paper-grain.svg");
+    background-size: 180px 180px;
+    opacity: var(--paper-grain-opacity);
+    mix-blend-mode: multiply;
+  }
+}

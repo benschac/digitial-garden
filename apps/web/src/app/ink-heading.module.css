@@ -1,12 +1,12 @@
 @layer theme, base, reset, components, utilities;
 
-@property --name-ink-x {
+@property --ink-light-x {
   syntax: "<length>";
   inherits: false;
   initial-value: 0px;
 }
 
-@property --name-ink-y {
+@property --ink-light-y {
   syntax: "<length>";
   inherits: false;
   initial-value: 0px;
@@ -18,8 +18,21 @@
   initial-value: #211f1b;
 }
 
+@property --ink-impression-opacity {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+@property --ink-base-color {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #211f1b;
+}
+
 @layer components {
   .ink {
+    --ink-base-color: var(--ink-rest-color, var(--color-ink));
     position: relative;
     display: inline-block;
     max-width: 100%;
@@ -29,21 +42,25 @@
     /* Include the final glyph's overhang in the clipped background. */
     padding-inline-end: 0.15em;
     margin-inline-end: -0.15em;
-    color: var(--color-ink);
+    color: var(--ink-base-color, var(--color-ink));
+    --ink-impression-opacity: var(--ink-rest-impression, 1);
   }
 
   /* Fine ink grain sits inside the glyphs, beneath the fixed inset shading. */
   @media (forced-colors: none) {
     .ink {
-      color: color-mix(in srgb, var(--color-ink) 92%, var(--color-paper));
+      color: color-mix(
+        in srgb,
+        var(--ink-base-color, var(--color-ink)) 92%,
+        var(--color-paper)
+      );
       filter: var(--name-letterpress-filter);
     }
 
     @supports (background-clip: text) {
       .ink {
-        --name-ink-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Cpath fill='%23fff' opacity='.28' filter='url(%23grain)' d='M0 0h160v160H0z'/%3E%3C/svg%3E");
-        background-color: var(--color-ink);
-        background-image: var(--name-ink-grain);
+        background-color: var(--ink-base-color, var(--color-ink));
+        background-image: var(--ink-grain);
         background-size: 160px 160px;
         background-clip: text;
         color: transparent;
@@ -69,29 +86,49 @@
 
     @supports (background-clip: text) {
       .ink {
-        --name-ink-color: var(--color-ink);
+        --name-ink-color: var(--ink-base-color, var(--color-ink));
         background-image:
-          var(--name-ink-grain),
+          var(--ink-grain),
           radial-gradient(
-            ellipse 2.4em 1.5em at var(--name-ink-x) var(--name-ink-y),
+            ellipse 2.4em 1.5em at var(--ink-light-x) var(--ink-light-y),
             var(--name-ink-color) 0%,
-            color-mix(in srgb, var(--name-ink-color) 55%, var(--color-ink)) 38%,
-            color-mix(in srgb, var(--name-ink-color) 12%, var(--color-ink)) 72%,
-            var(--color-ink) 100%
+            color-mix(
+                in srgb,
+                var(--name-ink-color) 55%,
+                var(--ink-base-color, var(--color-ink))
+              )
+              38%,
+            color-mix(
+                in srgb,
+                var(--name-ink-color) 12%,
+                var(--ink-base-color, var(--color-ink))
+              )
+              72%,
+            var(--ink-base-color, var(--color-ink)) 100%
           );
         background-clip: text;
         color: transparent;
         background-size:
           160px 160px,
           auto;
-        transition: --name-ink-color var(--name-ink-fade-out, 500ms)
+        transition:
+          --ink-base-color var(--name-ink-fade-out, 500ms)
+          cubic-bezier(0.77, 0, 0.175, 1),
+          --name-ink-color var(--name-ink-fade-out, 500ms)
+          cubic-bezier(0.77, 0, 0.175, 1),
+          --ink-impression-opacity var(--name-ink-fade-out, 500ms)
           cubic-bezier(0.77, 0, 0.175, 1);
       }
 
       .ink[data-ink-active] {
+        --ink-base-color: var(--color-ink);
         --name-ink-color: #965b3d;
-        transition-duration: 160ms;
-        transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+        --ink-impression-opacity: 1;
+        transition-duration: var(--ink-fade-in, 160ms);
+        transition-timing-function: var(
+          --ink-fade-in-easing,
+          cubic-bezier(0.23, 1, 0.32, 1)
+        );
       }
 
       .ink::selection {

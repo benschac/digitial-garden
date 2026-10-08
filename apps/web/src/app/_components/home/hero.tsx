@@ -16,7 +16,7 @@ const primaryLink = cn(
 );
 const socialLink = cn(
   "inline-flex min-h-11 min-w-11 items-center justify-center",
-  "rounded-[0.25rem] text-inherit hover:bg-[color-mix(in_srgb,currentColor_8%,transparent)]",
+  "rounded-[0.25rem] text-inherit",
   focusRing,
 );
 export function Hero() {

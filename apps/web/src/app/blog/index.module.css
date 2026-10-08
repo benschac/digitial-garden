@@ -2,12 +2,12 @@
 
 @layer components {
   .page {
+    position: relative;
     --blog-rule: #d9d2c5;
     --blog-accent: #8b3a2a;
     --blog-supporting-text: #565149;
     min-height: 100svh;
     padding: clamp(1.25rem, 4vw, 3.5rem);
-    background: var(--color-paper);
     color: var(--color-ink);
   }
 

@@ -4,6 +4,7 @@ import { withEve } from "eve/next";
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
+  reactCompiler: true,
   allowedDevOrigins: ["127.0.0.1"],
   experimental: {
     // Restored production caches have served obsolete PostCSS output.

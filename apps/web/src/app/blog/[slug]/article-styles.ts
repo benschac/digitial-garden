@@ -16,10 +16,7 @@ const styles = {
   particleHeaderCanvas: layout.particleHeaderCanvas,
   metadata: layout.metadata,
   particleHeaderControls: layout.particleHeaderControls,
-  surface: cn(
-    "fixed inset-0 z-[-1] pointer-events-none",
-    "bg-[var(--blog-paper)]",
-  ),
+  surface: cn("fixed inset-0 z-[-1] pointer-events-none", "paper-surface"),
   navigationLink: cn("inline-flex flex-col min-h-[44px]", "no-underline"),
   navigationLabel: cn("text-[var(--blog-muted)]", "mb-[0.55rem]"),
 };

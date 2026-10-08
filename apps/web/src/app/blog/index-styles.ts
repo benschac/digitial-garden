@@ -3,7 +3,7 @@ import layout from "./index.module.css";
 
 // Local utility recipes; CSS retains the authored layout and motion rules.
 const styles = {
-  page: layout.page,
+  page: cn(layout.page, "paper-surface"),
   shell: layout.shell,
   link: layout.link,
   skipLink: layout.skipLink,
@@ -15,10 +15,7 @@ const styles = {
     "[scroll-margin-block-start:1.5rem]",
   ),
   title: "m-0",
-  surface: cn(
-    "absolute inset-0 z-[-1] pointer-events-none",
-    "bg-[var(--color-paper)]",
-  ),
+  surface: cn("absolute inset-0 z-[-1] pointer-events-none", "paper-surface"),
   post: "grid gap-3 min-w-0",
   postDate: cn("[margin:0.25rem_0_0]", "text-[var(--blog-supporting-text)]"),
   postTitle: "m-0",
