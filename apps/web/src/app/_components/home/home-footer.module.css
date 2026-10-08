@@ -2,7 +2,6 @@
 
 @layer components {
   .footer {
-    overflow: clip;
     mask-image: linear-gradient(
       to bottom,
       rgb(0 0 0 / 40%),
@@ -13,7 +12,7 @@
 
   .wordmark {
     container-type: inline-size;
-    padding-block-end: 0.5rem;
+    padding-block-end: 1rem;
   }
 
   .hoverArea {
@@ -32,9 +31,8 @@
     --ink-fade-in-easing: linear;
     --ink-fade-out-easing: linear;
     font-family: var(--font-editorial-display), Georgia, serif;
-    /* Push the lettering below the footer edge for a cropped wordmark. */
-    margin-block-end: -0.075em;
-    translate: 0 0.32em;
+    /* Keep the descender paint area inside the page's measured height. */
+    margin-block-end: 0;
     flex-shrink: 0;
     max-width: none;
     font-size: 26cqi;
