@@ -1,8 +1,6 @@
-import {
-  Heading,
-  headingVariants,
-} from "@personal-site/ui/components/typography";
+import { headingVariants } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
+import Image from "next/image";
 import Link from "next/link";
 import { InkHeading } from "../../ink-heading";
 import { focusRing } from "./styles";
@@ -40,16 +38,17 @@ export function Hero() {
         />
         <div className="self-center">
           <InkHeading className="max-w-[9ch] self-center" />
-          <Heading variant="subtitleItalic" className="mt-5">
-            looking for my next role
-          </Heading>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-x-8 gap-y-4">
-          <nav aria-label="Social profiles" className="m-0 flex gap-2">
+          <nav
+            aria-label="Social profiles"
+            className="m-0 flex flex-wrap gap-2"
+          >
             <Link className={socialLink} href="https://github.com/benschac">
               <span className="sr-only">GitHub</span>
               <svg
                 aria-hidden="true"
+                focusable="false"
                 width="24"
                 height="24"
                 viewBox="0 0 24 24"
@@ -65,6 +64,7 @@ export function Hero() {
               <span className="sr-only">LinkedIn</span>
               <svg
                 aria-hidden="true"
+                focusable="false"
                 width="24"
                 height="24"
                 viewBox="0 0 24 24"
@@ -72,6 +72,29 @@ export function Hero() {
               >
                 <path d="M20.447 2H3.553C2.695 2 2 2.677 2 3.512v16.976C2 21.323 2.695 22 3.553 22h16.894C21.305 22 22 21.323 22 20.488V3.512C22 2.677 21.305 2 20.447 2ZM7.93 18.75H4.98V9.2h2.95v9.55ZM6.455 7.895a1.71 1.71 0 1 1 0-3.42 1.71 1.71 0 0 1 0 3.42ZM19.02 18.75h-2.948v-4.645c0-1.108-.02-2.533-1.543-2.533-1.545 0-1.782 1.207-1.782 2.453v4.725H9.8V9.2h2.829v1.305h.04c.394-.748 1.356-1.537 2.79-1.537 2.986 0 3.561 1.965 3.561 4.52v5.262Z" />
               </svg>
+            </Link>
+            <Link
+              className={socialLink}
+              href="https://bsky.app/profile/benschac.bsky.social"
+            >
+              <span className="sr-only">Bluesky</span>
+              <Image
+                src="/images/brands/bluesky.svg"
+                alt=""
+                width={24}
+                height={24}
+                className="h-6 w-6 object-contain"
+              />
+            </Link>
+            <Link className={socialLink} href="https://x.com/benschac">
+              <span className="sr-only">Twitter</span>
+              <Image
+                src="/images/brands/twitter.svg"
+                alt=""
+                width={24}
+                height={24}
+                className="h-6 w-6 object-contain"
+              />
             </Link>
           </nav>
         </div>
