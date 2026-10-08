@@ -5,16 +5,28 @@ import { useId, useState } from "react";
 import { Typography, typographyVariants } from "@/components/page-typography";
 import { useEditorialFontPreference } from "./editorial-font-preference";
 import styles from "./editorial-font-switcher-styles";
-import { type EditorialFontId, editorialFontOptions } from "./editorial-fonts";
+import {
+  type EditorialFontId,
+  type EntryFontId,
+  editorialFontOptions,
+  entryFontOptions,
+} from "./editorial-fonts";
 
 export function EditorialFontSwitcher() {
   const pathname = usePathname();
   const displaySelectId = useId();
   const readingSelectId = useId();
+  const entrySelectId = useId();
   const panelId = useId();
   const [isOpen, setIsOpen] = useState(false);
-  const { displayFont, readingFont, selectDisplayFont, selectReadingFont } =
-    useEditorialFontPreference();
+  const {
+    displayFont,
+    readingFont,
+    selectDisplayFont,
+    selectReadingFont,
+    entryFont,
+    selectEntryFont,
+  } = useEditorialFontPreference();
 
   // Chat uses UI fonts and reserves the bottom of the viewport for its composer.
   if (pathname === "/s" || pathname.startsWith("/s/")) {
@@ -40,6 +52,32 @@ export function EditorialFontSwitcher() {
         {isOpen ? "Close typography" : "Typography"}
       </button>
       <div id={panelId} className={styles.controls} hidden={!isOpen}>
+        {pathname === "/" ? (
+          <>
+            <Typography
+              as="label"
+              variant="previewLabel"
+              className={styles.label}
+              htmlFor={entrySelectId}
+            >
+              Entry titles
+            </Typography>
+            <select
+              className={styles.select}
+              id={entrySelectId}
+              value={entryFont}
+              onChange={(event) =>
+                selectEntryFont(event.currentTarget.value as EntryFontId)
+              }
+            >
+              {entryFontOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : null}
         <Typography
           as="label"
           variant="previewLabel"

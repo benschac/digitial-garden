@@ -4,7 +4,7 @@ import layout from "./article.module.css";
 // Local utility recipes; CSS retains the authored layout and motion rules.
 const styles = {
   nextPost: layout.nextPost,
-  page: layout.page,
+  page: cn(layout.page, "ui-article-typography"),
   link: layout.link,
   prose: layout.prose,
   postHeader: layout.postHeader,

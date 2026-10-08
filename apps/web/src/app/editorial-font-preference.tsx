@@ -14,11 +14,17 @@ import {
   defaultReadingFont,
   displayStorageKey,
   type EditorialFontId,
+  type EntryFontId,
+  entryFontOptions,
+  entryStorageKey,
   isEditorialFontId,
+  isEntryFontId,
   readingStorageKey,
 } from "./editorial-fonts";
 
 type EditorialFontPreferenceValue = {
+  entryFont: EntryFontId;
+  selectEntryFont: (font: EntryFontId) => void;
   displayFont: EditorialFontId;
   readingFont: EditorialFontId;
   selectDisplayFont: (font: EditorialFontId) => void;
@@ -36,63 +42,91 @@ function applyReadingFont(font: EditorialFontId) {
   document.documentElement.dataset.editorialReadingFont = font;
 }
 
-export function EditorialFontPreference({ children }: { children: ReactNode }) {
-  const [displayFont, setDisplayFont] =
-    useState<EditorialFontId>(defaultDisplayFont);
-  const [readingFont, setReadingFont] =
-    useState<EditorialFontId>(defaultReadingFont);
+function applyEntryFont(font: EntryFontId) {
+  const option = entryFontOptions.find((option) => option.id === font);
+  if (option) {
+    document.documentElement.style.setProperty(
+      "--home-entry-font",
+      option.family,
+    );
+  }
+}
+
+// Keep storage reads after hydration so the first client render matches the server.
+// Callers supply module-level validators and DOM setters to keep effects stable.
+function useFontPreference<T extends string>(
+  storageKey: string,
+  defaultFont: T,
+  isFont: (value: string | null) => value is T,
+  applyFont: (font: T) => void,
+) {
+  const [font, setFont] = useState(defaultFont);
 
   useEffect(() => {
+    let initialFont = defaultFont;
     try {
-      const storedDisplayFont = window.localStorage.getItem(displayStorageKey);
-      const storedReadingFont = window.localStorage.getItem(readingStorageKey);
-      const initialDisplayFont = isEditorialFontId(storedDisplayFont)
-        ? storedDisplayFont
-        : defaultDisplayFont;
-      const initialReadingFont = isEditorialFontId(storedReadingFont)
-        ? storedReadingFont
-        : defaultReadingFont;
-
-      setDisplayFont(initialDisplayFont);
-      setReadingFont(initialReadingFont);
-      applyDisplayFont(initialDisplayFont);
-      applyReadingFont(initialReadingFont);
+      const storedFont = window.localStorage.getItem(storageKey);
+      if (isFont(storedFont)) initialFont = storedFont;
     } catch {
-      applyDisplayFont(defaultDisplayFont);
-      applyReadingFont(defaultReadingFont);
+      // Use the default when storage is unavailable.
     }
-  }, []);
+    setFont(initialFont);
+    applyFont(initialFont);
+  }, [storageKey, defaultFont, isFont, applyFont]);
 
-  const selectDisplayFont = useCallback((nextFont: EditorialFontId) => {
-    setDisplayFont(nextFont);
-    applyDisplayFont(nextFont);
+  const selectFont = useCallback(
+    (nextFont: T) => {
+      setFont(nextFont);
+      applyFont(nextFont);
+      try {
+        window.localStorage.setItem(storageKey, nextFont);
+      } catch {
+        // The active page still updates when storage is unavailable.
+      }
+    },
+    [storageKey, applyFont],
+  );
 
-    try {
-      window.localStorage.setItem(displayStorageKey, nextFont);
-    } catch {
-      // The active page still updates when storage is unavailable.
-    }
-  }, []);
+  return [font, selectFont] as const;
+}
 
-  const selectReadingFont = useCallback((nextFont: EditorialFontId) => {
-    setReadingFont(nextFont);
-    applyReadingFont(nextFont);
-
-    try {
-      window.localStorage.setItem(readingStorageKey, nextFont);
-    } catch {
-      // The active page still updates when storage is unavailable.
-    }
-  }, []);
+export function EditorialFontPreference({ children }: { children: ReactNode }) {
+  const [entryFont, selectEntryFont] = useFontPreference<EntryFontId>(
+    entryStorageKey,
+    "system",
+    isEntryFontId,
+    applyEntryFont,
+  );
+  const [displayFont, selectDisplayFont] = useFontPreference(
+    displayStorageKey,
+    defaultDisplayFont,
+    isEditorialFontId,
+    applyDisplayFont,
+  );
+  const [readingFont, selectReadingFont] = useFontPreference(
+    readingStorageKey,
+    defaultReadingFont,
+    isEditorialFontId,
+    applyReadingFont,
+  );
 
   const value = useMemo(
     () => ({
+      entryFont,
+      selectEntryFont,
       displayFont,
       readingFont,
       selectDisplayFont,
       selectReadingFont,
     }),
-    [displayFont, readingFont, selectDisplayFont, selectReadingFont],
+    [
+      displayFont,
+      readingFont,
+      selectDisplayFont,
+      selectReadingFont,
+      entryFont,
+      selectEntryFont,
+    ],
   );
 
   return (

@@ -72,12 +72,13 @@ export function PastWorkSection() {
             className={cn(
               "col-span-full grid grid-cols-subgrid items-baseline gap-y-1.5 py-5 min-[72rem]:first:pt-0",
               "[&+li]:border-t [&+li]:border-[color-mix(in_srgb,currentColor_12%,transparent)]",
-              "focus-within:bg-[color-mix(in_srgb,var(--color-ink)_4%,transparent)]",
-              "[@media(hover:hover)_and_(pointer:fine)]:hover:bg-[color-mix(in_srgb,var(--color-ink)_4%,transparent)]",
-              "motion-safe:transition-[background-color] motion-safe:duration-[160ms] motion-safe:ease-[ease]",
             )}
           >
-            <Heading as="h3" variant="item">
+            <Heading
+              as="h3"
+              variant="item"
+              className="font-[family-name:var(--home-entry-font,var(--font-sans))]"
+            >
               {work.company}
             </Heading>
             <Text variant="small">{work.role}</Text>

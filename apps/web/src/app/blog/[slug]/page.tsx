@@ -79,7 +79,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   return (
     <BlogTransition key={slug} name="blog-post-page" view="article">
-      <Typography as="main" variant="articleReading" className={styles.page}>
+      <Typography as="main" variant="ui" className={styles.page}>
         <ArticleSurface slug={post.slug} className={styles.surface} expanded />
         <article>
           <header

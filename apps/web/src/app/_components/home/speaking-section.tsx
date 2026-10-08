@@ -16,7 +16,7 @@ export function SpeakingSection() {
     >
       <Heading
         id="featured-talk-heading"
-        variant="sectionSidebar"
+        variant="section"
         className="mb-4 md:col-span-full min-[72rem]:col-[1]"
       >
         Speaking
@@ -35,10 +35,11 @@ export function SpeakingSection() {
           alt=""
           width={1280}
           height={720}
+          loading="eager"
           sizes="(min-width: 80rem) 692px, (min-width: 72rem) 55vw, (min-width: 48rem) 65vw, 100vw"
         />
         <div>
-          <Text variant="metadata" className="max-w-[36ch]">
+          <Text variant="metadata" className="max-w-[36ch] normal-case">
             App.js Conf · 2026
           </Text>
           <Heading as="h3" variant="feature" className="mt-3 mb-6">

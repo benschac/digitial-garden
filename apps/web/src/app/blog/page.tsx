@@ -18,7 +18,7 @@ export default async function BlogIndexPage() {
 
   return (
     <BlogTransition view="index">
-      <Typography as="main" variant="journalReading" className={styles.page}>
+      <Typography as="main" variant="ui" className={styles.page}>
         <a className={`${styles.link} ${styles.skipLink}`} href="#posts">
           Skip to articles
         </a>

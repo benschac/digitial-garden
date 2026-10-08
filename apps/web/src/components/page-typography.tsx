@@ -120,7 +120,6 @@ const pageTypography = {
   experimentStatus: "font-mono text-[0.72rem] tracking-[0.08em] uppercase",
   experimentNotes: "text-[0.88rem] leading-[1.6]",
 
-  journalReading: "font-reading [font-optical-sizing:auto]",
   journalTitle: cn(
     "font-display text-[clamp(3rem,_2rem_+_3cqi,_4.5rem)] font-[400] leading-[1]",
     "tracking-[calc(_-0.04em_+_var(--font-editorial-display-tracking-adjustment)_)]",
@@ -132,14 +131,16 @@ const pageTypography = {
     "text-balance",
     "[overflow-wrap:anywhere]",
   ),
-  journalSummary:
+  journalSummary: cn(
+    "font-reading [font-optical-sizing:auto]",
     "text-[1.125rem] leading-[1.65] text-pretty [overflow-wrap:anywhere]",
-  articleReading:
-    "font-reading [font-optical-sizing:auto] ui-article-typography",
+  ),
   articleBackLink:
     "font-sans text-[2rem] font-[650] tracking-[0] leading-[1] uppercase",
-  articleDeck:
+  articleDeck: cn(
+    "font-reading [font-optical-sizing:auto]",
     "text-[length:var(--blog-text-deck)] leading-[var(--blog-leading-deck)] text-pretty",
+  ),
   articleTitle: cn(
     "font-display text-[clamp(3.25rem,2rem_+_5vw,6.75rem)] font-[450]",
     "tracking-[calc(-0.047em_+_var(--font-editorial-display-tracking-adjustment))]",
@@ -150,8 +151,10 @@ const pageTypography = {
   ),
   articleMetadata:
     "font-sans text-[length:var(--blog-text-meta)] tabular-nums tracking-[0.04em] leading-[1.55]",
-  articleProse:
+  articleProse: cn(
+    "font-reading [font-optical-sizing:auto]",
     "text-[length:var(--blog-text-body)] font-[400] leading-[var(--blog-leading-body)] ui-article-prose",
+  ),
   articleNavigationTitle:
     "font-display text-[clamp(1.25rem,_2.2vw,_1.7rem)] leading-[1.15]",
   articleNavigationLabel:
