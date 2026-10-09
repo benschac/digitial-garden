@@ -109,7 +109,7 @@ export function PublicWorkSection() {
             >
               Nate Wienert <span aria-hidden="true">&nbsp;↗</span>
             </Link>
-            <span className="ml-2">Tamagui maintainer</span>
+            <span className="ml-2">Tamagui creator</span>
           </figcaption>
         </figure>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-x-8 gap-y-6">

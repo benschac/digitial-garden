@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" viewBox="99 43 263 377" width="460" height="460" version="1.1">
+  <title>Layered avatar — ten editable pieces</title>
+  <desc>Refined from the supplied PNG. Solid head base, complete face, independent hair cap and beard, two brows, two eyes, tongue and badge. Hidden overlaps keep the pieces complete.</desc>
+  <g id="head-base" data-pivot-x="230" data-pivot-y="330" inkscape:groupmode="layer" inkscape:label="Head base">
+    <title>Head base</title>
+    <path d="M 226 49 C 191 48 167 59 148 81 C 129 103 107 130 106 153 C 105 187 107 229 109 271 C 110 309 122 343 143 371 C 164 398 194 414 229 414 C 265 415 296 401 321 376 C 340 357 350 325 352 289 C 354 249 355 204 356 160 C 357 136 339 112 319 91 C 302 71.5 292 59.2 270 53.8 C 254 49.8 241 48.6 226 49 Z" fill="#4F2F27" fill-rule="nonzero" />
+  </g>
+</svg>

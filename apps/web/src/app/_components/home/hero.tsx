@@ -3,6 +3,8 @@ import { cn } from "@personal-site/ui/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { InkHeading } from "../../ink-heading";
+import { AnimatedAvatar } from "./animated-avatar";
+import { AvatarArtwork } from "./avatar-artwork";
 import { focusRing } from "./styles";
 
 const primaryLink = cn(
@@ -29,16 +31,9 @@ export function Hero() {
         )}
       >
         {/* Let the portrait bleed above and sideways, but stop before navigation. */}
-        <div
-          aria-hidden="true"
-          className={cn(
-            "pointer-events-none absolute inset-0 -z-1 [clip-path:inset(-100vmax_-100vmax_0)]",
-            "before:absolute before:top-1/2 before:left-[75%] before:aspect-square before:content-['']",
-            "before:w-[clamp(28rem,125vw,48rem)] sm:before:left-[72%] sm:before:w-[clamp(64rem,115vw,100rem)]",
-            "before:opacity-[0.22] before:[transform:translate(-50%,-46%)_rotate(-12deg)]",
-            "before:bg-[url('/images/benschac.svg')] before:bg-contain before:bg-center before:bg-no-repeat",
-          )}
-        />
+        <AnimatedAvatar>
+          <AvatarArtwork />
+        </AnimatedAvatar>
         <div className="self-center">
           <InkHeading
             className={cn(

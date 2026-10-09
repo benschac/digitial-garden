@@ -1,0 +1,161 @@
+{
+  "source": "Refined vector reconstruction of the supplied 460 by 460 PNG, with manually smoothed curves",
+  "viewBox": [
+    0,
+    0,
+    460,
+    460
+  ],
+  "layers": [
+    {
+      "id": "badge",
+      "label": "Badge",
+      "order": 0,
+      "pivot": [
+        230,
+        230
+      ],
+      "bounds": [
+        0,
+        0,
+        460,
+        460
+      ]
+    },
+    {
+      "id": "head-base",
+      "label": "Head base",
+      "order": 1,
+      "pivot": [
+        230,
+        330
+      ],
+      "bounds": [
+        105,
+        49,
+        356,
+        414
+      ]
+    },
+    {
+      "id": "face",
+      "label": "Face",
+      "order": 2,
+      "pivot": [
+        230,
+        285
+      ],
+      "bounds": [
+        114,
+        80,
+        343,
+        403
+      ]
+    },
+    {
+      "id": "hair",
+      "label": "Hair",
+      "order": 3,
+      "pivot": [
+        230,
+        116
+      ],
+      "bounds": [
+        106,
+        49,
+        355,
+        177
+      ]
+    },
+    {
+      "id": "beard",
+      "label": "Beard",
+      "order": 4,
+      "pivot": [
+        232,
+        353
+      ],
+      "bounds": [
+        172,
+        291,
+        299,
+        414
+      ]
+    },
+    {
+      "id": "brow-left",
+      "label": "Left brow",
+      "order": 5,
+      "pivot": [
+        168,
+        190
+      ],
+      "bounds": [
+        144,
+        179,
+        192,
+        205
+      ]
+    },
+    {
+      "id": "brow-right",
+      "label": "Right brow",
+      "order": 6,
+      "pivot": [
+        289,
+        190
+      ],
+      "bounds": [
+        267,
+        178,
+        317,
+        206
+      ]
+    },
+    {
+      "id": "eye-left",
+      "label": "Left eye",
+      "order": 7,
+      "pivot": [
+        170,
+        236
+      ],
+      "bounds": [
+        155,
+        215,
+        185,
+        258
+      ]
+    },
+    {
+      "id": "eye-right",
+      "label": "Right eye",
+      "order": 8,
+      "pivot": [
+        292,
+        236
+      ],
+      "bounds": [
+        276,
+        215,
+        307,
+        257
+      ]
+    },
+    {
+      "id": "tongue",
+      "label": "Tongue",
+      "order": 9,
+      "pivot": [
+        243,
+        335
+      ],
+      "bounds": [
+        204,
+        316,
+        272,
+        351
+      ]
+    }
+  ]
+}

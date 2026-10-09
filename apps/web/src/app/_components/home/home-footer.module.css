@@ -1,7 +1,43 @@
 @layer theme, base, reset, components, utilities;
 
 @layer components {
-  .footer {
+  .wordmark {
+    position: relative;
+    isolation: isolate;
+    container-type: inline-size;
+    padding-block: 13.5% clamp(2rem, 4vw, 3rem);
+  }
+
+  .knockout {
+    padding-block: 0.15em;
+    margin-block-start: -0.15em;
+    padding-inline-end: 0.15em;
+    margin-inline-end: -0.15em;
+    color: var(--color-paper);
+    -webkit-text-stroke: 0.024em var(--color-paper);
+    text-shadow: 0 0.06em var(--color-paper);
+    /* Fade outside the overlap so a hard mask edge cannot nick a letter contour. */
+    mask-image:
+      linear-gradient(
+        to right,
+        transparent 30%,
+        #000 32%,
+        #000 66%,
+        transparent 68%
+      ),
+      linear-gradient(to bottom, #000 56%, transparent 64%);
+    mask-composite: intersect;
+    pointer-events: none;
+  }
+
+  .hoverArea {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    justify-content: center;
+  }
+
+  .impression {
     mask-image: linear-gradient(
       to bottom,
       rgb(0 0 0 / 40%),
@@ -10,22 +46,12 @@
     );
   }
 
-  .wordmark {
-    container-type: inline-size;
-    padding-block-end: 1rem;
-  }
-
-  .hoverArea {
-    position: relative;
-    display: flex;
-    justify-content: center;
-  }
-
   .hoverArea::before {
     inset-block-end: 0;
   }
 
   .lettering {
+    grid-area: 1 / 1;
     --name-ink-fade-out: 900ms;
     --ink-fade-in: 900ms;
     --ink-fade-in-easing: linear;

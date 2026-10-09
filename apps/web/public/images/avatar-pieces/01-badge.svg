@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" viewBox="-6 -6 472 472" width="460" height="460" version="1.1">
+  <title>Layered avatar — ten editable pieces</title>
+  <desc>Refined from the supplied PNG. Solid head base, complete face, independent hair cap and beard, two brows, two eyes, tongue and badge. Hidden overlaps keep the pieces complete.</desc>
+  <g id="badge" data-pivot-x="230" data-pivot-y="230" inkscape:groupmode="layer" inkscape:label="Badge">
+    <title>Badge</title>
+    <circle cx="230" cy="230" r="230" fill="#54C5E1" />
+  </g>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" viewBox="198 310 80 47" width="460" height="460" version="1.1">
+  <title>Layered avatar — ten editable pieces</title>
+  <desc>Refined from the supplied PNG. Solid head base, complete face, independent hair cap and beard, two brows, two eyes, tongue and badge. Hidden overlaps keep the pieces complete.</desc>
+  <g id="tongue" data-pivot-x="243" data-pivot-y="335" inkscape:groupmode="layer" inkscape:label="Tongue">
+    <title>Tongue</title>
+    <path d="M 206 343 C 230 340 250 337 264 323 C 267 320 270 316 270 318 C 268 333 262 343 253 347 C 239 353 221 350 207 345 C 204 344 204 343 206 343 Z" fill="#F2BBB1" fill-rule="nonzero" />
+  </g>
+</svg>

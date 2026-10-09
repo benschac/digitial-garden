@@ -1,0 +1,21 @@
+@layer theme, base, reset, components, utilities;
+
+@layer components {
+  .stage {
+    position: absolute;
+    inset-block-start: -1.5cqi;
+    /* The painted head sits slightly right of the SVG viewBox's center. */
+    inset-inline-start: calc(50% - 0.1cqi);
+    width: 33cqi;
+    aspect-ratio: 280 / 235;
+    translate: -50% 0;
+    /* The SVG crop rounds the gaps without exposing the face inside the s. */
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .artwork {
+    width: 100%;
+    aspect-ratio: 280 / 230;
+  }
+}

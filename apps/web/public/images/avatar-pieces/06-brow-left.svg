@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" viewBox="138 173 60 38" width="460" height="460" version="1.1">
+  <title>Layered avatar — ten editable pieces</title>
+  <desc>Refined from the supplied PNG. Solid head base, complete face, independent hair cap and beard, two brows, two eyes, tongue and badge. Hidden overlaps keep the pieces complete.</desc>
+  <g id="brow-left" data-pivot-x="168" data-pivot-y="190" inkscape:groupmode="layer" inkscape:label="Left brow">
+    <title>Left brow</title>
+    <path d="M 145 204 C 150 190 160 180 176 180 C 186 179 192 184 192 189 C 192 194 188 195 179 195 C 163 195 154 197 145 204 Z" fill="#4F2F27" fill-rule="nonzero" />
+  </g>
+</svg>
