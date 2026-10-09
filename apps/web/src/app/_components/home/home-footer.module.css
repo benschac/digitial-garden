@@ -46,6 +46,16 @@
     );
   }
 
+  @media (max-width: 40rem), (hover: none), (pointer: coarse) {
+    /* Keep mobile lettering visible without filtered, background-clipped text. */
+    .lettering.impression {
+      color: var(--color-ink);
+      background: none;
+      filter: none;
+      mask-image: none;
+    }
+  }
+
   .hoverArea::before {
     inset-block-end: 0;
   }
