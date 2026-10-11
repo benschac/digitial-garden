@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { deckleFilterIds } from "../../paper-filters";
+import { Annotation } from "./annotation";
 import styles from "./public-work.module.css";
 import { dateText, featureLink, itemHeading, sectionLabel } from "./styles";
 
@@ -56,7 +57,9 @@ export function PublicWorkSection() {
           the maintainers on GitHub.
         </Text>
         <Text className="mt-4">
-          PostHog subsequently merged a fix with regression coverage.
+          PostHog subsequently{" "}
+          <Annotation kind="circle">merged a fix</Annotation> with regression
+          coverage.
         </Text>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
           <div className="flex flex-wrap gap-x-6 gap-y-2 font-sans">
@@ -108,7 +111,9 @@ export function PublicWorkSection() {
             className="m-0"
           >
             <Text className="text-2xl italic text-ink">
-              “this is heroic work, thank you”
+              <Annotation kind="highlight">
+                “this is heroic work, thank you”
+              </Annotation>
             </Text>
           </blockquote>
           <figcaption className="mt-2 font-sans text-sm text-editorial-muted">
