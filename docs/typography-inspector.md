@@ -1,0 +1,92 @@
+# Article typography inspector
+
+In development, open a blog article and choose **Typography**. The inspector
+starts with native heading trim, matching the published editorial default.
+The blog title and authored h2–h4 use `text-box-trim: trim-both` and
+`text-box-edge: cap alphabetic` where both are supported; older browsers retain
+untrimmed CSS. Paragraphs and embedded components keep their own boxes.
+Choosing Trim off or Capsize previews an alternative, including an optional
+headings-and-paragraphs scope. Closing the panel or leaving the article removes
+preview classes and restores the published default. Preview preferences are not
+persisted.
+
+Font sources are resolved from the computed primary family, CSS font-face rules,
+style and CSS weight matching. After the face loads, the development-only metrics
+route extracts its metrics from the exact compiled Next font asset with
+`@capsizecss/unpack/fs`. This covers custom OTF/WOFF/WOFF2 files and self-hosted
+Google fonts. LT Superior Serif and Bonbance are the repository defaults;
+the existing font preference can choose different fonts. System fonts cannot be
+verified through this API, so they retain original CSS; Georgia's Capsize catalog
+entry is explicitly a reference. Missing metrics never trigger fallback trimming.
+
+Capsize's `precomputeValues` preserves the computed font size and line height and
+supplies pseudo-element edge margins. Trim off and Capsize explicitly suppress
+published native trim so comparisons never stack both methods. `getCapHeight` supplies the cap-height
+measurement. Native comparison uses `text-box-trim: trim-both` and
+`text-box-edge: cap alphabetic`, only when both are supported. Existing pseudo
+content and embedded component interiors are excluded from trim selection.
+
+**Show all content overlays** adds reading-column rails, labeled DOM boxes for
+all visible article content (including nested lists/tables, code, notes and
+embedded figures), and optional font guides across HTML text. Scroll and resize
+refresh the overlays; clipped table content stays clipped. Dynamically loaded
+figure content refreshes the diagnostic boxes, including labels and shapes
+inside open shadow roots such as Giotto. SVG text is boxed, while font
+guides require a verified HTML font. Embedded component styles are never
+changed by these overlays. Only visible blocks are measured and clone line
+measurements are cached between scrolls.
+
+For one block, use **Show guides for selected text**. Gold is the DOM box; red is its
+baseline, blue the font-wide cap height, green the x-height, purple ascent and
+orange descent. DOM Ranges locate wrapped lines, and zero-height inline probes
+in an offscreen clone measure their baselines without modifying React-owned
+text. These lines are **not rendered glyph ink bounds**. Descenders, accents,
+inline code, alternate faces and variable-font outlines can extend beyond or
+differ from the primary face's metrics. Compare the typography visually as well
+as numerically. The mode table measures clone heights at the current width.
+
+**Vertical rhythm** exposes the Spacing preset selector directly. Fine-tune
+spacing and overlays contains optional heading leading, body/deck leading and
+outer block margin sliders. All start at 1× existing CSS. Only an
+explicit slider adjustment changes leading. Gap guides measure DOM block edges
+across the header and authored content, including lists, tables, code and
+figures. An optional nested-spacing view includes component interiors without changing
+their styles. Zero gaps (such as adjacent table rows) are shown; horizontally
+separated grid cells are not treated as vertical gaps.
+
+The **Spacing preset** selector previews Editorial · recommended, Editorial
+compact, Editorial airy, Golden ratio · 1.618, 4px spacing grid, 8px spacing grid,
+and Fluid spacing · responsive, all using the selected trim mode. Editorial is
+the current blog design and the recommended starting point for long posts, with
+body leading at 1.55. Editorial compact uses 1.50 and 20% smaller outer gaps;
+Editorial airy uses 1.65 and 20% larger gaps. **Compare spacing presets** explains
+line spacing versus block spacing and shows a comparison table so each choice is
+understandable before selection. Presets preserve heading line height.
+
+Golden ratio sets body leading to 1.618 and positive outer spacing from body-size
+multiples 1, 1.618 and 2.618 (heading-to-text space is body size / 1.618). It
+preserves zero margins and embedded internals. The ratio is an experiment, not a
+quality score or a requirement for every gap. Slider adjustments switch to
+Custom while retaining the active spacing scale, so any spacing system can be
+fine-tuned without reverting to editorial gaps.
+
+The 4px and 8px grid presets round positive outer margins to the nearest step
+(with one step as the minimum) and retain body leading at 1.55. They organize
+gaps, not every text baseline. The fine-tune multiplier applies after snapping,
+so Custom values may intentionally leave the grid. Fluid retains body leading
+at 1.55, with paragraph gaps growing from 18px at 360px to 28px at 1440px,
+clamped beyond those widths. Group gaps are 1.5 times the base, h2 section gaps
+2.5 times, and heading-to-text gaps 0.75 times for h2 or 0.5 times for h3/h4.
+All scales preserve zero margins and embedded component interiors. Grid steps
+follow common [Carbon spacing conventions](https://www.carbondesignsystem.com/building-blocks/foundations/spacing/overview);
+Fluid is a project-specific experiment inspired by [Utopia's fluid space system](https://utopia.fyi/space/calculator/).
+
+Presets are not persisted. Reset restores current editorial spacing; closing the
+main panel also restores all inline values while keeping published native heading
+trim. Hiding controls preserves the preview.
+
+Both trim and rhythm CSS can be exported. Exports are font/viewport snapshots
+with deliberate classes to add to the relevant owned elements. Adapt snapshots
+to the article's responsive tokens before adopting them. Trimming first/last
+line edges does not change baseline-to-baseline spacing inside a multiline
+heading. Evaluate those two decisions separately.

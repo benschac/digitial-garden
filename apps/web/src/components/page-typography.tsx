@@ -142,7 +142,7 @@ const pageTypography = {
     "text-[length:var(--blog-text-deck)] leading-[var(--blog-leading-deck)] text-pretty",
   ),
   articleTitle: cn(
-    "font-display text-[clamp(3.25rem,2rem_+_5vw,6.75rem)] font-[450]",
+    "font-display text-[length:var(--blog-text-title)] font-[450]",
     "tracking-[calc(-0.047em_+_var(--font-editorial-display-tracking-adjustment))]",
     "leading-[1]",
     "text-balance",

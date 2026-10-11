@@ -9,8 +9,8 @@
     --blog-paper: var(--color-paper);
     --blog-rule: #d9d2c5;
     --blog-accent: #8b3a2a;
-    --blog-measure-body: 60ch;
-    --blog-measure-deck: 38ch;
+    --blog-measure-body: 40rem;
+    --blog-measure-deck: var(--blog-measure-body);
     --blog-measure-title: 17ch;
     --blog-space-0: 0;
     --blog-space-1: 0.25rem;
@@ -135,9 +135,9 @@
   .postHeader {
     border-bottom: 1px solid var(--blog-rule);
     padding-bottom: clamp(
-      var(--blog-space-section-md),
-      7vw,
-      var(--blog-space-section-xl)
+      var(--blog-space-stack-lg),
+      3vw,
+      var(--blog-space-section-sm)
     );
   }
 
@@ -208,12 +208,15 @@
   }
 
   .title {
-    margin-top: clamp(
-      var(--blog-space-section-md),
-      5vw,
-      var(--blog-space-section-lg)
-    );
+    margin-top: clamp(var(--blog-space-stack-xl), 3vw, var(--blog-space-10));
     max-width: var(--blog-measure-title);
+  }
+
+  @supports (text-box-trim: trim-both) and (text-box-edge: cap alphabetic) {
+    .title {
+      text-box-trim: var(--blog-heading-trim, trim-both);
+      text-box-edge: cap alphabetic;
+    }
   }
 
   .summary {
@@ -222,19 +225,19 @@
       3vw,
       var(--blog-space-section-sm)
     );
-    max-width: 44rem;
+    max-width: var(--blog-measure-deck);
   }
 
   .metadata {
     color: var(--blog-muted);
-    margin: var(--blog-space-stack-lg) var(--blog-space-0) var(--blog-space-0);
+    margin: var(--blog-space-stack-md) var(--blog-space-0) var(--blog-space-0);
   }
 
   .prose {
     margin-block: clamp(
-        var(--blog-space-section-md),
-        6vw,
-        var(--blog-space-section-xl)
+        var(--blog-space-stack-lg),
+        3vw,
+        var(--blog-space-section-sm)
       )
       var(--blog-space-0);
   }
@@ -244,7 +247,7 @@
   }
 
   .prose p + p:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
-    margin-top: 1.2em;
+    margin-top: 1.1em;
   }
 
   .prose
@@ -253,10 +256,19 @@
   }
 
   .prose
-    :where(p, ul, ol, blockquote, pre, table, figure, aside, section):not(
-      :where([data-prose-exclude], [data-prose-exclude] *)
-    ) {
-    margin-block: 1.5em;
+    :where(
+      p,
+      ul,
+      ol,
+      blockquote,
+      pre,
+      table,
+      figure,
+      aside,
+      section,
+      [data-mdx-table]
+    ):not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    margin-block: 1.2em;
   }
 
   .prose
@@ -267,15 +279,15 @@
   }
 
   .prose h2:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
-    margin: 2.1em 0 0.55em;
+    margin: clamp(3rem, 4.5vw, 4rem) 0 1.5rem;
   }
 
   .prose h3:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
-    margin: 2em 0 0.6em;
+    margin: clamp(2rem, 3vw, 2.5rem) 0 1rem;
   }
 
   .prose h4:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
-    margin: 2.2em 0 0.7em;
+    margin: 2rem 0 0.75rem;
   }
 
   .prose
@@ -347,18 +359,37 @@
     margin-top: var(--blog-space-stack-sm);
   }
 
+  .prose > [data-mdx-table] {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+
+  .prose > [data-mdx-table]:focus-visible {
+    outline: 3px solid var(--blog-accent);
+    outline-offset: 4px;
+  }
+
   .prose
     :where(table):not(:where([data-prose-exclude], [data-prose-exclude] *)) {
     border-collapse: collapse;
     table-layout: auto;
+    margin-block: 0;
     width: 100%;
   }
 
   .prose
     :where(th, td):not(:where([data-prose-exclude], [data-prose-exclude] *)) {
     border-bottom: 1px solid var(--blog-rule);
-    padding: 0.6rem 0.8rem;
+    padding: 0.75rem 0.8rem;
     text-align: left;
+    vertical-align: top;
+  }
+
+  .prose
+    :where(td:first-child):not(
+      :where([data-prose-exclude], [data-prose-exclude] *)
+    ) {
+    font-weight: 500;
   }
 
   .postNavigation {
@@ -384,6 +415,11 @@
       grid-template-columns:
         [wide-start content-start] minmax(0, 1fr)
         [content-end wide-end];
+    }
+
+    .prose
+      :where(table):not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+      min-width: 32rem;
     }
 
     .postNavigation {

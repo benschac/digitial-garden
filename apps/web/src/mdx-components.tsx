@@ -3,6 +3,7 @@ import type { MDXComponents } from "mdx/types";
 import Image from "next/image";
 import Link from "next/link";
 import { type ComponentPropsWithoutRef, isValidElement } from "react";
+import { AnimatedDiagram } from "./components/mdx/animated-diagram";
 import { Callout } from "./components/mdx/callout";
 
 function MdxLink({ href = "", ...props }: ComponentPropsWithoutRef<"a">) {
@@ -64,10 +65,20 @@ export function MdxParagraph({
   );
 }
 
+export function MdxTable(props: ComponentPropsWithoutRef<"table">) {
+  return (
+    // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to focus the overflow container to scroll the table.
+    <section data-mdx-table aria-label="Scrollable table" tabIndex={0}>
+      <table {...props} />
+    </section>
+  );
+}
+
 const components = {
   a: MdxLink,
   img: MdxImage,
   p: MdxParagraph,
+  table: MdxTable,
   h1: (props) => <Typography as="h1" {...props} />,
   h2: (props) => <Typography as="h2" {...props} />,
   h3: (props) => <Typography as="h3" {...props} />,
@@ -80,6 +91,7 @@ const components = {
   code: (props) => <Typography as="code" {...props} />,
   pre: (props) => <Typography as="pre" {...props} />,
   Callout,
+  AnimatedDiagram,
 } satisfies MDXComponents;
 
 export function useMDXComponents(): MDXComponents {

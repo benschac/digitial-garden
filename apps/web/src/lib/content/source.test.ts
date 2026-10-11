@@ -13,7 +13,11 @@ import {
   postMetadataSchema,
   sortPostsNewestFirst,
 } from "./schema";
-import { getPostSummariesByTag, getPublishedPostSummaries } from "./source";
+import {
+  getBlogPostSummaries,
+  getPostSummariesByTag,
+  getPublishedPostSummaries,
+} from "./source";
 
 const temporaryDirectories: string[] = [];
 
@@ -145,6 +149,7 @@ describe("file-based post registry", () => {
     });
 
     expect(posts.map((post) => post.slug)).toEqual([
+      "how-we-use-effect-in-snap-to-post",
       "rust-wasm-webgpu-particles",
       "upload-to-pinata-ipfs",
       "persist-react-navigation-router-state",
@@ -158,6 +163,13 @@ describe("file-based post registry", () => {
       "self-positioning-react-components",
       "how-i-got-my-first-developer-job",
     ]);
+    const draft = posts.find(
+      (post) => post.slug === "how-we-use-effect-in-snap-to-post",
+    );
+    expect(draft?.status).toBe("draft");
+    expect(
+      getPublishedPostSummaries(posts).map((post) => post.slug),
+    ).not.toContain(draft?.slug);
   });
 
   test("renders compiled MDX with the existing plugins and components", async () => {
@@ -231,6 +243,17 @@ const answer = 42;
     });
 
     expect(published.map((post) => post.slug)).toEqual(["newer", "older"]);
+    const options = { now: new Date("2026-08-23T12:00:00.000Z") };
+    expect(
+      getBlogPostSummaries(posts, "development", options).map(
+        (post) => post.slug,
+      ),
+    ).toEqual(["draft", "newer", "older"]);
+    for (const environment of ["production", "test", "preview", undefined]) {
+      expect(getBlogPostSummaries(posts, environment, options)).toEqual(
+        published,
+      );
+    }
   });
 
   test("rejects duplicate slugs", async () => {

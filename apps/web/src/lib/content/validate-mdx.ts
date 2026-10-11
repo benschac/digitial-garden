@@ -2,7 +2,7 @@ import { compile } from "@mdx-js/mdx";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 
-const allowedComponents = new Set(["Callout"]);
+const allowedComponents = new Set(["Callout", "AnimatedDiagram"]);
 
 interface MdxNode {
   attributes?: Array<{

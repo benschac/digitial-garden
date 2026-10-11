@@ -1,0 +1,288 @@
+{
+  "title": "Snap to Post: from camera to listing draft",
+  "speed": 4200,
+  "elements": [
+    {
+      "id": "capture",
+      "type": "rectangle",
+      "x": 0,
+      "y": 0,
+      "width": 210,
+      "height": 170,
+      "content": [
+        { "type": "title", "text": "📷 Capture an item" },
+        { "type": "subtitle", "text": "VisionCamera" },
+        { "type": "subtitle", "text": "Effect: remote queue" }
+      ]
+    },
+    {
+      "id": "local",
+      "type": "rectangle",
+      "x": 0,
+      "y": 220,
+      "width": 210,
+      "height": 170,
+      "content": [
+        { "type": "title", "text": "🧠 Local perception" },
+        { "type": "subtitle", "text": "ExecuTorch + VisionCamera" },
+        { "type": "subtitle", "text": "OCR, barcodes, candidates" }
+      ]
+    },
+    {
+      "id": "listing",
+      "type": "rectangle",
+      "x": 0,
+      "y": 440,
+      "width": 210,
+      "height": 170,
+      "content": [
+        { "type": "title", "text": "📋 Listing draft UI" },
+        { "type": "subtitle", "text": "React Native + Legend State" },
+        { "type": "subtitle", "text": "Identity, details, listing text" }
+      ]
+    },
+    {
+      "id": "identify",
+      "type": "rectangle",
+      "x": 390,
+      "y": 0,
+      "width": 210,
+      "height": 170,
+      "content": [
+        { "type": "title", "text": "🏷️ Identify the item" },
+        { "type": "subtitle", "text": "NestJS + AI SDK" },
+        { "type": "subtitle", "text": "Gemini 3.8 Flash" }
+      ]
+    },
+    {
+      "id": "research",
+      "type": "rectangle",
+      "x": 390,
+      "y": 220,
+      "width": 210,
+      "height": 170,
+      "content": [
+        { "type": "title", "text": "🔎 Research the product" },
+        { "type": "subtitle", "text": "Exa" },
+        { "type": "subtitle", "text": "Product-page evidence" }
+      ]
+    },
+    {
+      "id": "resolve",
+      "type": "rectangle",
+      "x": 390,
+      "y": 440,
+      "width": 210,
+      "height": 170,
+      "content": [
+        { "type": "title", "text": "✍️ Build listing information" },
+        { "type": "subtitle", "text": "AI SDK" },
+        { "type": "subtitle", "text": "Gemini 3.8 Flash" }
+      ]
+    },
+    {
+      "id": "narration",
+      "type": "rectangle",
+      "x": 0,
+      "y": 720,
+      "width": 210,
+      "height": 170,
+      "content": [
+        { "type": "title", "text": "🎙️ Narrate the item" },
+        { "type": "subtitle", "text": "expo-audio + oRPC" },
+        { "type": "subtitle", "text": "Microphone → item transcript" }
+      ]
+    },
+    {
+      "id": "scribe",
+      "type": "rectangle",
+      "x": 390,
+      "y": 720,
+      "width": 210,
+      "height": 170,
+      "content": [
+        { "type": "title", "text": "💬 Speech to text" },
+        { "type": "subtitle", "text": "ElevenLabs Scribe" },
+        { "type": "subtitle", "text": "Realtime transcription" }
+      ]
+    },
+    {
+      "id": "phone",
+      "type": "group",
+      "children": ["capture", "local", "listing", "narration"],
+      "label": { "title": "📱 Phone · React Native" }
+    },
+    {
+      "id": "backend",
+      "type": "group",
+      "children": ["identify", "research", "resolve"],
+      "label": { "title": "☁️ Backend" }
+    },
+    {
+      "id": "speech-provider",
+      "type": "group",
+      "children": ["scribe"],
+      "label": { "title": "💬 Speech provider" }
+    },
+    {
+      "id": "audio",
+      "type": "arrow",
+      "start": { "id": "narration" },
+      "end": { "id": "scribe" },
+      "fromSide": "right",
+      "toSide": "left",
+      "label": { "text": "Audio" }
+    },
+    {
+      "id": "transcript",
+      "type": "arrow",
+      "start": { "id": "scribe" },
+      "end": { "id": "narration" },
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "label": { "text": "Transcript" }
+    },
+    {
+      "id": "narration-context",
+      "type": "arrow",
+      "start": { "id": "narration" },
+      "end": { "id": "resolve" },
+      "fromSide": "right",
+      "toSide": "left",
+      "label": { "text": "Item transcript" }
+    },
+    {
+      "id": "perceive",
+      "type": "arrow",
+      "start": { "id": "capture" },
+      "end": { "id": "local" },
+      "label": { "text": "On device" }
+    },
+    {
+      "id": "local-hint",
+      "type": "arrow",
+      "start": { "id": "local" },
+      "end": { "id": "listing" },
+      "label": { "text": "Local hint" }
+    },
+    {
+      "id": "upload",
+      "type": "arrow",
+      "start": { "id": "capture" },
+      "end": { "id": "identify" },
+      "label": { "text": "JPEGs + signals" }
+    },
+    {
+      "id": "candidate",
+      "type": "arrow",
+      "start": { "id": "identify" },
+      "end": { "id": "listing" },
+      "fromSide": "left",
+      "toSide": "right",
+      "label": { "text": "Early candidate" }
+    },
+    {
+      "id": "search",
+      "type": "arrow",
+      "start": { "id": "identify" },
+      "end": { "id": "research" },
+      "label": { "text": "Text query" }
+    },
+    {
+      "id": "evidence",
+      "type": "arrow",
+      "start": { "id": "research" },
+      "end": { "id": "resolve" },
+      "label": { "text": "Product evidence" }
+    },
+    {
+      "id": "patches",
+      "type": "arrow",
+      "start": { "id": "resolve" },
+      "end": { "id": "listing" },
+      "label": { "text": "Draft updates" }
+    }
+  ],
+  "scenes": [
+    {
+      "label": "1. 📷 Capture",
+      "beats": [
+        {
+          "edges": { "edge": "perceive", "data": "Photograph" },
+          "light": ["capture", "local"],
+          "say": "VisionCamera captures the item; ExecuTorch runs local inference. Effect coordinates queued remote identification work on the phone. The live feed stays on device."
+        },
+        {
+          "edges": { "edge": "local-hint", "data": "Local clue" },
+          "light": ["local", "listing"],
+          "say": "When available, a local category or identity candidate gives the seller an early clue. Local classification stays on the phone."
+        }
+      ]
+    },
+    {
+      "label": "2. 🏷️ Identify",
+      "beats": [
+        {
+          "edges": { "edge": "upload", "data": "Images + clues" },
+          "light": ["capture", "identify"],
+          "say": "Selected JPEGs and available signals enter the NestJS API. The AI SDK calls Gemini 3.8 Flash through AI Gateway by default to identify the item."
+        },
+        {
+          "edges": { "edge": "candidate", "data": "Candidate" },
+          "light": ["identify", "listing"],
+          "say": "An early remote candidate can update the draft UI before product research finishes. A candidate is still a provisional answer."
+        }
+      ]
+    },
+    {
+      "label": "3. 🎙️ Narrate",
+      "beats": [
+        {
+          "edges": { "edge": "audio", "data": "PCM audio" },
+          "light": ["narration", "scribe"],
+          "say": "When the seller narrates an item, expo-audio streams microphone audio directly to ElevenLabs Scribe. The backend supplies a short-lived speech token."
+        },
+        {
+          "edges": { "edge": "transcript", "data": "Spoken details" },
+          "light": ["scribe", "narration"],
+          "say": "ElevenLabs Scribe returns partial and committed transcripts to the phone. Spoken details stay associated with the item being described."
+        },
+        {
+          "edges": { "edge": "narration-context", "data": "Item narration" },
+          "light": ["narration", "resolve"],
+          "say": "The phone sends transcript updates through the oRPC control API. Available final narration informs the listing resolver alongside product evidence; speech can overlap with capture and research."
+        }
+      ]
+    },
+    {
+      "label": "4. 🔎 Research",
+      "beats": [
+        {
+          "edges": { "edge": "search", "data": "Text query" },
+          "light": ["identify", "research"],
+          "say": "The backend turns identity clues into a text query. Exa retrieves relevant product pages and text, without receiving the original photographs."
+        },
+        {
+          "edges": { "edge": "evidence", "data": "Evidence" },
+          "light": ["research", "resolve"],
+          "say": "The resolver uses a second AI SDK model call, defaulting to Gemini 3.8 Flash, to compare the candidate, signals, research, and available narration and draft listing information."
+        }
+      ]
+    },
+    {
+      "label": "5. ✍️ Draft",
+      "beats": [
+        {
+          "edges": { "edge": "patches", "data": "Listing patches" },
+          "light": ["resolve", "listing"],
+          "say": "Updates return over the oRPC control WebSocket. Legend State holds the item's observable state; React Native renders the draft as information arrives."
+        },
+        {
+          "edges": { "edge": "perceive", "data": "Next item" },
+          "light": ["capture", "listing"],
+          "say": "The seller keeps capturing while earlier items are processed. The result is a researched draft in the app; publishing is a separate step."
+        }
+      ]
+    }
+  ]
+}

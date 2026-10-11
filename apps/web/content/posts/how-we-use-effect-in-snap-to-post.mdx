@@ -1,0 +1,686 @@
+---
+title: "How we use Effect in Snap to Post"
+slug: "how-we-use-effect-in-snap-to-post"
+summary: "How two nested Effect semaphore permits coordinate remote identification, per-item ordering, and cancellation in Snap to Post."
+publishedAt: "2026-10-11"
+status: "draft"
+tags:
+  - "Effect"
+  - "React Native"
+  - "Concurrency"
+featured: false
+---
+
+<Callout title="Draft note" variant="editorial">
+
+Editable draft for my personal blog. Source reviewed October 11, 2026, against Effect `4.0.0-rc.112`. Code excerpts omit surrounding implementation where noted. Visualization placeholders describe components to build on the personal site; the prose and tables remain readable without them. Remove this note and the editorial appendix before publishing.
+
+</Callout>
+
+When someone photographs an item to sell, they should be able to move on to the next item while we identify the first. They should also see useful information before every model call, product search, and listing field is finished.
+
+Snap to Post combines on-device perception through React Native ExecuTorch with remote visual identification and product research. Making that experience responsive means deciding what can overlap, what must wait, and which intermediate results are useful enough to show.
+
+Effect helps with one specific part: a mobile queue that admits remote identification work. The task remains a Promise-returning function; nested semaphore permits express when it is allowed to run. To understand why that matters, start with the data moving through the application.
+
+## From the camera to a researched listing
+
+There are two connected flows: local perception on the phone, and remote identification followed by research. They overlap, and the UI receives useful results at several points along the way.
+
+### On the phone: collect evidence and begin identification
+
+VisionCamera supplies frames and selected still images. React Native ExecuTorch runs object detection and OCR, plus image classification on a selected image. An optional cached local vision-language model can produce a more detailed identity. Those outputs have different destinations:
+
+| Input or result | Application behavior |
+| --- | --- |
+| Selected JPEG images | Sends one to three views of the same item to the API. While capture is ongoing, prefers available previews; after finalization, prefers full images when they exist and fit the 2 MB per-image limit. |
+| Local OCR | Merges selected recognized text into the item's OCR evidence. Sends available extraction, an OCR request flag, and trigger reasons in the request's `signals` field. |
+| Barcode | Sends the observed format and value in `signals` when available. A separate barcode lookup can also start product research. |
+| Object detector label | Can supply an immediate local category candidate and help decide the OCR trigger. The label itself is not a separate field in this request. |
+| Local image classification | Updates the local candidate and supplies a category hint to the local vision-language model. Its result is not included in the identification upload. |
+| Local vision-language result | Progressively updates local identity. It is not uploaded as the server's visual classification input. |
+
+The OCR path is asynchronous. Saving a selected photo starts OCR and progressive identification without awaiting OCR first. The first upload therefore contains the OCR evidence available at that moment; useful text discovered afterward can request a refinement. We do not make every image wait for every local model before starting remote work.
+
+The caller also coalesces changes. While an item's identification cycle is in flight, it retains the latest pending item snapshot instead of submitting every intermediate update. That policy belongs to the caller. The queue we will examine below supplies a separate execution guarantee.
+
+### Across the network: images and observations, then progressive results
+
+The mobile client posts multipart data to `/v1/identify`: JPEG files under `images`, JSON-encoded observations under `signals`, and session, item, and image IDs in headers. This is selected image evidence, not a continuous video upload.
+
+The server then follows this sequence:
+
+| Stage | Input and work | What can reach the user |
+| --- | --- | --- |
+| Accept the upload | NestJS validates metadata, signals, image count, declared JPEG type, and byte limits; acquires a provider budget. | An `accepted` event on the HTTP NDJSON response indicates that identification has been admitted. |
+| Identify visually | Sends the image bytes and an instruction prompt containing client observations to the configured visual model through the AI SDK. | A schema-valid partial candidate can be published over the control WebSocket before the complete model output arrives. |
+| Return identification | Builds the candidate, merges local and provider OCR, and constructs a text search query from supported clues. | The HTTP stream returns a `result`; the item can show an identity while research remains unfinished. |
+| Research with Exa | Sends a text query containing identity, OCR, barcode, and variant clues. Exa returns product-page URLs, titles, and text highlights. A matching cached barcode search can be reused. | An evidence patch arrives over the control WebSocket. Image bytes are not sent to Exa by this search implementation. |
+| Resolve the evidence | A second model call compares the candidate and signals with search evidence and available final seller narration. This call receives structured/text evidence, not the original image bytes. | Partial listing text, followed by identity status and metadata, condition, market, and draft patches, progressively updates the item. |
+
+The visual provider's source default is `google/gemini-3.8-flash` through AI Gateway. The evidence resolver has the same source default. Both are configurable, so these names describe the checked-in defaults, not a verified deployed configuration. The first call performs structured visual identification and evidence extraction; the second evaluates retrieved evidence and drafts listing information.
+
+Client OCR and search-result text are explicitly presented to the models as untrusted evidence. A recognized label is a clue, not proof of an exact model. The resolver can return an inferred, verified, or conflicted identity; the application must preserve that distinction as information arrives.
+
+Exa is the research service in this implementation. The researched listing returns to the phone through the control stream; this flow does not publish it to a marketplace.
+
+### Two return paths, different completion points
+
+The upload's HTTP stream carries acceptance and the visual-identification result, or an error. The oRPC control WebSocket carries early identity candidates and subsequent research and listing updates. A completed HTTP request therefore does not mean the listing is finished.
+
+After yielding the identification result, the server starts evidence search and resolution as background Promise work. The mobile queue's slot covers its identification request, not the entire research lifecycle. That research is not joined to the upload request's cancellation scope in the current service. It can outlive that request, and research for different evidence revisions can overlap on the backend.
+
+The client reconciles incoming candidates using identity specificity, source priority, confidence, and server revisions, with image checks in the control-stream handler. This is separate from semaphore ordering. An earlier candidate can remain useful while new evidence is being processed; a later arrival is not automatically a better answer. The queue alone does not establish that every downstream listing patch is fresh.
+
+<AnimatedDiagram
+  src="/diagrams/snap-to-post-identification.json"
+  title="One item, useful results along the way"
+  description="Illustrative sequence, not measured timing or an executing Effect queue. Local and remote candidates can arrive in either order; local inference may be unavailable."
+/>
+
+The phone keeps local classification on device while selected JPEGs and available OCR/barcode signals go to the API. HTTP NDJSON carries acceptance and the identification result. Background text search and evidence resolution send progressive listing updates over the control WebSocket.
+
+*The first useful answer can appear before product research and listing generation finish. Each update retains its source and certainty.*
+
+## The client boundaries around this queue
+
+The React Native architecture follows a simple rule: keep high-frequency sensor work native or off the React render path, then send compact, item-scoped observations into JavaScript. The capture-session controller composes the camera, models, capture policy, item lifecycle, cancellation, and UI feedback.
+
+| Boundary | Responsibility |
+| --- | --- |
+| VisionCamera | Owns the camera session and separate photo, frame, barcode, and iOS salient-object outputs. Camera activity follows screen focus, session state, and permission. |
+| Frame/worklet path | Runs object detection and quality, motion, and novelty checks; gates live OCR submissions; disposes frames on both analyzed and skipped paths. |
+| React Native ExecuTorch | Runs native object detection, OCR, image classification, and optional local visual identity. |
+| JavaScript controller | Receives compact analysis and model results, selects useful views, and coordinates item ownership and progressive identification. |
+| Legend State | Holds compact observable state for the rendered item and capture UI. Raw camera frames do not enter React state. |
+| Reanimated shared values | Carry high-frequency overlay and feedback values outside ordinary React rendering. |
+| HTTP and oRPC WebSocket | Upload selected JPEG evidence and receive identification results and progressive control patches. |
+
+The frame output uses VGA 16:9 RGB frames. RGB is a choice made for the current pixel-analysis path, not a claim that it is always the cheapest camera format. A skipped frame still needs disposal. A selected photo has a different lifetime: it becomes durable JPEG evidence and a small preview, then starts local and remote identification.
+
+Live OCR has its own queue. The forked ExecuTorch package secures owned pixels during submission, then runs OCR on a bounded native worker with one active frame and at most one pending frame. A newer submission replaces an existing pending frame, and a later analyzed frame polls the latest result. This favors recent evidence over a backlog of stale frames.
+
+Moving inference to that worker does not make submission free. The shared frame extractor clones pixels, so other frame consumers also pay the copy cost. Live and captured-photo OCR share an inference mutex; a photo can wait behind live inference. Reset suppresses stale worker results without interrupting active native inference. Those are separate device-validation concerns, outside the remote Effect queue. They need throughput, copy-time, capture-latency, memory, thermal, and teardown measurements; native compilation alone does not establish those outcomes.
+
+### Two voice lanes, two transport roles
+
+Listing narration uses `expo-audio` to produce 16 kHz mono PCM and sends base64 audio directly to ElevenLabs Scribe over a WebSocket. The backend supplies a short-lived speech token. Partial transcript text remains transient; committed text is associated with an item and sent through the control API.
+
+The separate `/voice` route uses the ElevenLabs React Native conversation SDK with LiveKit/WebRTC. That conversational-agent path has a different role from listing narration. This distinction gives the speech-token Effect example later in the article a concrete place in the client architecture.
+
+Across the capture flow, HTTP results, WebSocket patches, and local candidates arrive independently. Session IDs, item-intent IDs, image IDs, and revisions provide ownership information for their consumers. They need to be checked at the relevant update boundary; a semaphore does not make a late result safe to publish. The current candidate reconciliation is useful, but it is not a blanket freshness guarantee for every listing field.
+
+## What makes this faster, or feel faster?
+
+There are three different outcomes to distinguish: time to the first useful visible candidate, throughput across several items, and time to a complete researched listing.
+
+Local candidates and streamed remote candidates target the first outcome. The person sees the application recognize something without waiting for the full research chain. Showing a useful category while refining the model is meaningful progress, provided the UI communicates its provisional status. An upload acknowledgement alone is feedback, not an identification result.
+
+Overlapping remote requests targets throughput. Item B can make progress while item A waits for a network response. The Effect queue makes that overlap explicit and bounded, while preserving per-item serialization inside the queue. It does not make a single Google model call execute faster. Increasing concurrency may also encounter provider limits or resource contention, so four slots is an application setting rather than a universal optimum.
+
+ExecuTorch supplies on-device inference; Effect is not the model execution engine. The local classifier has a busy guard that skips overlapping classification work. The local vision-language model uses a shared Promise chain to serialize generation and requests native interruption when cancelled. These paths can overlap with remote identification, but they are not managed by the remote Effect semaphore.
+
+There is also a remaining dependency in the current caller: it waits for classification, remote identification, and local vision-language work to settle before processing the next pending evidence for that item. Intermediate results can already be visible, but slow local generation can delay the next remote refinement. That is a concrete point to measure before claiming the pipeline is fully independent or proposing to separate its scheduling.
+
+The backend visual-model, Exa, and resolver sequence currently uses ordinary Promises, async generators, streaming callbacks, and explicit request budgets. Its smaller Effect-based oRPC procedures are not what makes this image pipeline progressive. Moving the same dependencies into Effect would not by itself reduce their latency.
+
+Effect could help a future backend change express task ownership, cancellation, bounded concurrency, and cleanup consistently. For example, we could give background research an explicit session/item lifecycle and cancel superseded research cooperatively. That would require defining which results remain useful and verifying provider cancellation; it is not implemented by the current mobile queue. The potential benefit would come from avoiding obsolete work and coordinating independent work, not from replacing `await` with another syntax.
+
+For a speed claim, we would measure capture-to-first-useful-candidate, queue wait, researched-listing completion, and multi-item throughput separately. Physical-device measurements would also need to include dropped frames, memory, and thermals. The implementation explains how earlier feedback is possible; it does not establish a dramatic measured improvement from adopting Effect.
+
+## The problem that makes Effect useful here
+
+Snap to Post turns a capture session into information about items someone wants to sell. While the user captures another item, earlier items can still be uploading images and waiting for remote identification. Multiple requests can also concern the same item as its evidence changes.
+
+That gives the mobile remote queue two different constraints: independent items should make progress concurrently, but submitted task Promises for the same item must not overlap within that queue. We also need to handle a session being reset, a request failing, or a queued job becoming irrelevant.
+
+Those constraints are where our most substantial use of Effect lives. We also use it in a few API procedures to wrap Promise-based operations and express failures.
+
+Our use of Effect is concentrated at these boundaries. The mobile application still calls Promise-returning functions, and the API still uses its existing framework. That makes the queue a useful example of adopting Effect for a specific responsibility.
+
+## What Effect is doing
+
+An Effect describes a computation that a runtime can execute. Its type can describe a successful value, expected failures, and required services. Constructing an Effect lets us attach execution rules before running the underlying operation.
+
+For someone used to `async` and `await`, the distinction to watch is describing work versus starting it. Calling an async function begins executing its body. Giving `Effect.tryPromise` a function lets us describe that operation first. The runtime invokes it when the surrounding Effect program reaches it.
+
+That delay gives us somewhere to put the rules. We can require an item permit and a shared execution slot before the Promise-producing function is called.
+
+In our queue, `Effect.tryPromise` describes a Promise-producing task. Semaphore permits control when that task can begin. `Effect.runPromise` executes the assembled program and returns the Promise that the rest of the application expects.
+
+There are two main places to follow in the application:
+
+| Location | Responsibility | Effect primitives used |
+| --- | --- | --- |
+| Mobile item task queue | Limit concurrent remote work and serialize work per item | `Effect.tryPromise`, `Effect.runPromise`, `Semaphore`, `Scheduler` |
+| API control router | Implement three oRPC procedures and express their failure paths | `.effect(function* …)`, `Effect.fail`, `Effect.tryPromise` |
+
+There is no application-wide Effect service or Layer architecture in these files. The subscription and response-stream procedures still use ordinary async generators. The queue still maintains its own counters, pending entries, and callbacks. That scope matters when explaining what benefits we actually get.
+
+## Start with four available slots
+
+Suppose six different items are ready for remote identification. Our default queue can run four tasks at a time. The first four start; the other two wait. When a running task settles, a slot becomes available for waiting work.
+
+A semaphore represents that capacity with permits. A task acquires a permit before entering the protected operation and gives it back when the operation exits. With four permits, at most four tasks can occupy that part of the program at once.
+
+> **Interactive placeholder 1 — Four slots, many items**
+>
+> Show six item cards, four execution slots, and a waiting area. Let the reader run the scenario, complete a selected job, and reset. Offer concurrency settings of 1, 2, and 4, rebuilding the scenario when the setting changes. Display active and waiting counts. Four is the app's default.
+>
+> **Caption:** A waiting job starts when capacity becomes available. Waiting jobs have not entered the protected remote operation.
+
+The interesting change is visible when we reduce the capacity to one: the same submitted jobs execute one at a time. Increasing it allows independent jobs to overlap. The selector changes how much work can be active; it does not make an individual remote request faster.
+
+## Why we use it
+
+Consider a queue with two available execution slots and three submitted jobs:
+
+1. Identify item A from one set of evidence.
+2. Identify item A again from updated evidence.
+3. Identify item B.
+
+We want the first A job and the B job to run together. The second A job must wait for the first A job to finish.
+
+A single concurrency limit cannot express both rules. A single lock would serialize all three jobs. Our implementation combines a shared semaphore with a separate one-permit semaphore for each item.
+
+This example isolates the queue's contract. In the normal application path, the caller's coalescing loop also coordinates successive requests for an item. The example demonstrates what the queue guarantees when these jobs are submitted directly; it does not imply that every new camera observation becomes another queued request.
+
+Effect supplies the permit acquisition, waiting, and release mechanics. Our application supplies the policy: which item owns the work, how much work can run, and what cancellation means before and after execution begins.
+
+This is the central reason the abstraction fits: we can compose two execution constraints around an existing asynchronous function.
+
+## How we use it from application code
+
+The caller does not need to return an Effect. The progressive identification hook retains a queue in a React ref and submits remote work through `run`.
+
+The integration has this shape, condensed from the hook:
+
+```ts
+const execution = await remoteQueue.run(
+  itemIntentId,
+  async ({ queueWaitMs }) => {
+    // Record upload timing, including queueWaitMs.
+    return identifyItemImages({
+      sessionId,
+      itemIntentId,
+      imageId: requestImageId,
+      images: requestFiles,
+      signals: requestSignals,
+      signal: abortController.signal,
+      // The source also handles identification events here.
+    });
+  },
+  {
+    signal: abortController.signal,
+    // The source records queue and start events through callbacks.
+  },
+);
+```
+
+The same external abort signal reaches both the queue and the network operation. Those recipients have different responsibilities: the queue can remove work that has not started; the network operation can respond to cancellation once work is running.
+
+The queue defaults to four active tasks. This limit belongs to a queue instance retained by the hook. It is not a server-wide or cross-device rate limit, and it does not govern the separate on-device classifier.
+
+### Separate coalescing from admission
+
+*Before running: new evidence for item A arrives twice while its current identification cycle is in flight. Does that necessarily mean two more remote requests enter the Effect queue?*
+
+The caller has a different policy from the queue. It stores the latest pending item snapshot for the current item. A new request updates these fields before checking whether a cycle is already running:
+
+```ts
+requestState.desiredCaptureKey = nextCaptureKey;
+requestState.pendingItem = requestedItem;
+```
+
+If another snapshot arrives during that cycle, it replaces the pending snapshot. This is coalescing: keep the most recent evidence for the next cycle instead of retaining every intermediate request. Here is a controlled example with distinct capture keys:
+
+| Event | Current cycle | Latest pending snapshot |
+| --- | --- | --- |
+| Begin processing A1 | A1 | None after the loop consumes A1 |
+| A2 evidence arrives | A1 | A2 |
+| A3 evidence arrives | A1 | A3 replaces A2 |
+| The current cycle settles | The loop can consider A3 next | A2 was not separately retained for execution |
+
+The semaphore answers “may this submitted task execute now?” The caller answers “which evidence should we submit next?” Those policies can coexist without making every camera observation a queued network operation.
+
+There is another boundary to notice. The caller waits for three operations at the end of each cycle:
+
+```ts
+await Promise.allSettled([
+  classifierPromise,
+  remotePromise,
+  localVlmPromise,
+]);
+```
+
+Suppose remote identification settles while local vision-language generation is still pending. The remote queue's permits can be released, and another item's request can use the capacity. But this item's caller has not passed its completion barrier, so it cannot process its next pending snapshot yet.
+
+Both states can coexist: “remote slot available” and “item cycle still waiting.” The queue is enforcing its admission rule. The remaining wait comes from a dependency in the caller. Separating that scheduling would be a potential follow-up after measurement, rather than behavior the current queue already supplies.
+
+## How the queue is implemented
+
+The most useful way to understand our use of Effect is to change one condition and predict what happens. Give the queue fewer slots. Submit another request for the same item. Cancel a request before it starts, then try cancelling one that is already running.
+
+For this small workshop, A1 and A2 are separate tasks for item A. B1 belongs to item B. Each task stands in for a remote identification request. Controlled Promises let us examine ordering without making real model calls or treating demonstration timing as application latency.
+
+### Wrap the existing task
+
+*Before running: when does the task function actually get called?*
+
+Inside `run`, `Effect.tryPromise` wraps an async function. That function removes the pending entry, marks the item active, computes its queue wait, calls `onStarted`, and awaits the submitted task.
+
+We adapt the Promise once, then compose the admission rules around the resulting Effect. The real wrapper also maintains queue bookkeeping, so the following is a teaching version:
+
+```ts
+const executeTask = Effect.tryPromise({
+  try: async () => task(context),
+  catch: (error) => error,
+});
+```
+
+Here, `context` stands for the start context computed after admission inside the actual wrapper. Constructing `executeTask` does not call `task`. The runtime invokes the `try` function only when execution reaches this part of the program, after both permits are available.
+
+A small detail can undo that arrangement. If we create the task's Promise before constructing the Effect, the task has already started:
+
+```ts
+// Teaching example: work starts before permit admission.
+const alreadyStarted = task(context);
+
+const executeTask = Effect.tryPromise({
+  try: () => alreadyStarted,
+  catch: (error) => error,
+});
+```
+
+The semaphore could delay observing that Promise, but it would not delay the operation that created it. Our implementation keeps the call to `task` inside the factory. The thing we delay is the start of the work.
+
+A JavaScript `finally` block decrements the active count and removes the item from the active set. Application bookkeeping stays explicit even though Effect manages permits.
+
+The wrapper uses `catch: (error) => error`. It preserves failures rather than converting them into a domain-specific tagged error model. Effect supports richer error modeling, but this queue does not define an exhaustive error taxonomy.
+
+### Acquire the item permit before global capacity
+
+*Before running: two slots are available, and we submit A1, A2, B1 in that order. Which tasks start?*
+
+The core composition is short enough to show directly:
+
+```ts
+const program = itemSemaphore.semaphore.withPermit(
+  this.globalSemaphore.withPermit(executeTask),
+);
+```
+
+The outer permit is acquired first. A second job for item A therefore waits for A's permit before it competes for a global slot. Waiting for the same item does not consume capacity that item B could use.
+
+Each item semaphore has one permit. The shared semaphore has the configured concurrency count. `withPermit` releases its permit when the enclosed Effect exits, including failure. The installed Effect implementation attaches that release to the computation's exit path.
+
+To see why the order matters, reduce the example to two shared slots. A1 and A2 are separate jobs for item A. B1 belongs to item B. Submit them in that order.
+
+A1 acquires A's permit and a shared slot. A2 reaches A's permit and waits. B1 can acquire B's permit and the other shared slot. Both items make progress, while A's work remains serialized.
+
+> **Interactive placeholder 2 — One gate per item**
+>
+> Draw item A and item B as separate lanes leading through their own gates into two shared execution slots. Submit A1, A2, and B1. Let the reader complete B1 before A1, then complete A1. Keep the nested `withPermit` code visible beside the diagram.
+>
+> **Caption:** A free shared slot does not allow two jobs for the same item to overlap. A2 must first acquire item A's permit.
+
+| Moment | Running | Waiting | Free shared slots |
+| --- | --- | --- | --- |
+| All three jobs submitted | A1, B1 | A2 | 0 |
+| B1 completes | A1 | A2 | 1 |
+| Complete A1; process the handoff | A2 | None | 1 |
+| A2 completes | None | None | 2 |
+
+The second row is the useful one to pause on. There is spare capacity, but A2 still cannot run. Capacity and permission to work on a particular item are separate conditions.
+
+Now imagine reversing the nesting. This is a hypothetical alternative, not our previous implementation:
+
+```ts
+// Teaching comparison: acquire shared capacity first.
+const program = this.globalSemaphore.withPermit(
+  itemSemaphore.semaphore.withPermit(executeTask),
+);
+```
+
+In the controlled A1, A2, B1 scenario, A1 takes the first shared slot and item A's permit. A2 takes the second shared slot, then waits for item A. B1 waits for shared capacity. Only A1 is executing the task, but both shared permits are occupied.
+
+“Holding a shared permit” and “executing the remote operation” are different states. With our chosen order, a same-item waiter does not spend shared capacity while waiting for its item. The ordering lesson uses two slots so the behavior is easy to see; the application default remains four active tasks per queue instance.
+
+### Run it at the Promise boundary
+
+```ts
+return Effect.runPromise(program, {
+  scheduler: this.scheduler,
+  signal: queueAbortController.signal,
+});
+```
+
+The actual return chain also normalizes queued-abort errors and cleans up pending entries, listeners, and semaphore references in `finally`.
+
+The queue uses `new Scheduler.MixedScheduler('sync')`. Immediately available tasks start during submission; waiting work starts through the scheduler's microtask handoff after preceding work settles. The tests assert those observable boundaries. “Sync” does not mean an asynchronous provider call completes synchronously.
+
+### Make cancellation respect real work
+
+*Before running: A1 is active and B1 is waiting in a one-slot queue. Does cancelling either task have the same effect?*
+
+The caller's abort signal has two recipients: it reaches the queue through the `run` options and `identifyItemImages` through the submitted task. The queue creates an internal abort controller specifically for waiting work. Its forwarding listener has this shape:
+
+```ts
+const abortWhileQueued = () => {
+  if (!hasStarted) queueAbortController.abort(signal?.reason);
+};
+
+signal?.addEventListener('abort', abortWhileQueued, { once: true });
+```
+
+Cancel B1 while it is waiting. The internal controller interrupts the Effect waiting for permits. The outer cleanup removes its pending entry, listener, and semaphore reference. B1's task function is never called.
+
+Now reset the example and cancel A1 while it is running. At the beginning of execution, the queue has already done this:
+
+```ts
+hasStarted = true;
+signal?.removeEventListener('abort', abortWhileQueued);
+```
+
+The caller's signal still reaches the identification operation. The queue has disconnected the forwarding path that would interrupt its running Effect. It continues observing the task's Promise and holding the permits until that Promise settles.
+
+| Action | A1 and shared slot | B1 |
+| --- | --- | --- |
+| Start the scenario | Running; slot held | Waiting |
+| Request A1 cancellation | Stop requested; Promise pending; slot held | Waiting |
+| Settle A1's Promise | Resolved or rejected; slot released | Starts after the handoff; holds slot |
+
+This prevents a subtle concurrency bug: declaring a task cancelled does not guarantee that the underlying asynchronous operation has stopped. Releasing its slot immediately could start replacement work while the old operation is still running.
+
+Here, “operation” means the task Promise observed by this client queue. A fetch rejection is not proof that a remote provider has stopped computing. The server forwards upload disconnection to the visual provider's cancellation signal, but that remains cooperative cancellation, and the separate research lifecycle described above is outside this permit.
+
+The tradeoff is deliberate. If a running operation ignores cancellation and never settles, it continues holding capacity. This queue does not add a timeout or force arbitrary Promise work to stop.
+
+The actual identification request wrapper supplies its own 15-second default timeout. Session reset aborts the caller's controllers and clears request state while retaining the queue instance. For local generation, the existing code requests `model.interrupt()` and keeps its serialized slot until generation settles. A timeout or interrupt request is not permission to overlap access to a still-busy native model.
+
+> **Interactive placeholder 3 — Request cancellation, then settle**
+>
+> Show two one-slot scenarios. In the first, cancel the waiting task and show it leaving the queue. In the second, cancel the running task and keep its slot occupied with the label “Cancellation requested — still holding capacity.” A separate Settle running job control resolves its Promise and allows the waiting job to start.
+>
+> **Caption:** Cancellation is a request. This queue releases running capacity when the task's Promise settles.
+
+The demo intentionally uses a task that does not immediately cooperate with cancellation. A real network operation may reject promptly when it receives the signal. Either way, settlement is the event the queue can use to account for the work.
+
+Cancellation history and final outcome are separate facts. Our existing test cancels an active task and then resolves it successfully. The queue allows that result; the application caller separately checks whether the signal was aborted before publishing the returned candidate.
+
+## What happens when a task fails?
+
+*Before running: A1 fails while A2 is waiting for the same item. What must be released before A2 can proceed?*
+
+A concurrency limit is only useful if it survives the unhappy path. Suppose A1 owns the only shared slot and A2 is waiting for the same item. If A1 rejects, both of its permits need to become available so A2 can start.
+
+There are three cleanup responsibilities in the implementation:
+
+| Owner | What it cleans up |
+| --- | --- |
+| Nested Effect `withPermit` calls | The shared permit and item permit when their enclosed computation exits |
+| The task wrapper's JavaScript `finally` | The active count and active item set |
+| The returned Promise's `finally` | Any remaining pending entry, the abort listener, and the reference to the item semaphore |
+
+Effect knows about its permits. Our queue knows about its public counters, listeners, and map entries. The task wrapper contains a particularly useful detail:
+
+```ts
+try {
+  options.onStarted?.(context);
+  return await task(context);
+} finally {
+  this.activeCount -= 1;
+  this.activeItemIntentIds.delete(itemIntentId);
+}
+```
+
+The `await` keeps that `finally` tied to settlement of the submitted task. Replacing it with `return task(context)` would run the local `finally` as the function returns the still-pending Promise. The wrapper's resulting Promise would continue adopting the task's outcome, but the application's counters would already say the task had stopped. Effect's permits and the queue's bookkeeping could then describe different states.
+
+This is a case where `return await` expresses the lifecycle we need. Try resolving A1, then reset and reject A1. In both cases cleanup runs and A2 can start. A1's outcome changes; the capacity available afterward does not.
+
+> **Interactive placeholder 4 — Failure frees capacity**
+>
+> Use the main queue widget with A1 running and A2 waiting. Offer Resolve A1 and Reject A1. Either outcome releases the permits and lets A2 begin; only the result recorded for A1 changes.
+>
+> **Caption:** A failed task releases its permits. The next submitted task can proceed without retrying the failed task automatically.
+
+That final distinction matters: A2 was already waiting. Seeing it start does not mean Effect retried A1. This queue has no automatic retry policy.
+
+Pending and active jobs retain a reference to their item semaphore. The outer cleanup releases that reference; when no jobs reference the entry, the queue removes it from the map. That cleanup is separate from bounding the pending queue itself, which has no explicit size cap.
+
+## How Effect appears in the API
+
+The API imports the oRPC Effect extension and defines three procedures with `.effect(function* …)`: publishing control/domain events, creating realtime speech tokens, and updating transcripts.
+
+*Before running: the speech-token provider is missing. Does the handler attempt a provider call?*
+
+The speech-token procedure checks a dependency, adapts its Promise, and maps its failure. The existing oRPC framework supplies the procedure integration:
+
+```ts
+const createRealtimeToken = os.speech.createRealtimeToken.effect(function* ({
+  errors,
+  input,
+}) {
+  const createRealtimeSpeechToken = options.createRealtimeSpeechToken;
+  if (createRealtimeSpeechToken === undefined) {
+    return yield* Effect.fail(errors.SERVICE_UNAVAILABLE());
+  }
+
+  return yield* Effect.tryPromise({
+    try: (signal) => createRealtimeSpeechToken(input, { signal }),
+    catch: (error) => errors.BAD_GATEWAY({ cause: error }),
+  });
+});
+```
+
+The first `return yield*` ends the successful path before a provider call can happen. The second sequences the adapted operation and returns its successful value, or propagates the mapped failure. The `signal` passed to the provider comes from Effect; actual cancellation depends on the procedure integration and provider honoring it.
+
+The publish procedure maps known persistence failures to `CONFLICT`, `NOT_FOUND`, and `NOT_IMPLEMENTED`. Missing database configuration becomes `SERVICE_UNAVAILABLE`. Other failures are passed through. The transcript procedure similarly wraps its existing function without defining a new error taxonomy.
+
+Effect makes these execution and failure paths composable. Database durability and event ingestion rules remain the responsibility of the persistence implementation, not a consequence of using Effect.
+
+> **Interactive placeholder 5 — Follow an API outcome**
+>
+> Show the speech-token request moving through a configuration check, provider call, and response. Select Provider missing, Provider succeeds, or Provider rejects, then highlight the source branch that executes. Use a fake provider and token. A static branch diagram is sufficient for the first publication.
+>
+> **Caption:** Missing configuration stops before the provider call. A provider rejection is mapped to the procedure's gateway error.
+
+| Scenario | Provider called? | Procedure outcome |
+| --- | --- | --- |
+| Provider is missing | No | `SERVICE_UNAVAILABLE` |
+| Provider resolves | Yes | Token response |
+| Provider rejects | Yes | `BAD_GATEWAY` |
+
+The generator syntax gives this procedure a sequential reading order: check the dependency, perform the operation, return its value or fail. A failure is not a token response, and this procedure does not configure a retry. The queue and the API use the same library for different purposes. One composes access to capacity; the other composes an operation with its failure mapping.
+
+## What benefits we can demonstrate
+
+The queue tests cover six concrete behaviors:
+
+| Verified behavior | Practical value |
+| --- | --- |
+| Four jobs run and excess work waits | A defined limit on active remote tasks per queue |
+| A queued abort removes the pending job | Obsolete work can be discarded before execution |
+| Start context includes item ownership and queue wait | Callers can attribute waiting time separately |
+| Same-item jobs serialize while another item runs | Item ownership and concurrency coexist |
+| Active abort retains capacity until settlement | Cancellation does not falsely advertise free capacity |
+| Failure releases item and shared permits | A failed task does not strand subsequent work |
+
+These are behaviors of the complete queue implementation, including our cancellation bridge and bookkeeping. Effect provides reusable coordination machinery, but it does not choose the policy for us.
+
+The Promise boundary also lets us adopt that machinery without changing the identification function's programming model. On the API side, the benefit is a consistent place to compose operations and map expected failures, although ordinary async code could also express the current procedures.
+
+We have not established a measured speedup, lower memory consumption, fewer production incidents, or reduced code size from this adoption. The pending array has no explicit size cap, so bounded active concurrency should not be described as bounded total queue memory. Automatic retries, distributed coordination, and exported Effect tracing are also outside the implementation described here.
+
+The benefit I can point to in the code is the composition itself. The requirement that an item must be available sits around the requirement that shared capacity must be available. The task remains a Promise-returning function, and failure releases the permits around it. The tests make those relationships observable.
+
+That gives me a concrete way to evaluate further uses of Effect: identify the execution rule we need to express, show where it belongs, and test what happens when work fails or stops being wanted. For this queue, two nested permits are enough to express the central rule.
+
+## Inspiration
+
+The interactive treatment is inspired by [Kit Langton's Visual Effect](https://effect.kitlangton.com/), which pairs executable examples with visual state and code. Its [source](https://github.com/kitlangton/visual-effect) is a useful reference for connecting an explanation to the computation it describes.
+
+---
+
+## Editorial appendix — rebuilding this on the personal site
+
+Everything below this heading is authoring and implementation guidance, not part of the published article. The numbered placeholders above identify where each component belongs. Keep their captions; replace the placeholder instructions with the finished figures or interactive components.
+
+The system-context figure above now uses Giotto for a narrated, illustrative sequence. The executable queue widgets below remain planned; the figure does not execute the queue or establish its timing or cancellation guarantees.
+
+The article lives in MDX as an unpublished, development-only blog draft. Its interactive illustrations will be embedded as separate client components. The tables provide static fallbacks until the interactive components exist.
+
+### Visualization specifications
+
+Design reference: [Kit Langton's Visual Effect](https://effect.kitlangton.com/) and its [source repository](https://github.com/kitlangton/visual-effect). These are proposed article illustrations, not implemented widgets.
+
+Keep the explanation, changing execution state, and relevant code together. Use an original renderer around our Effect 4 queue. The reference's runtime wrapper is not a drop-in replacement for our Effect version or active-abort policy.
+
+### Shared presentation
+
+Use a compact execution view with persistent, labeled task tokens. Move each token between described, waiting, running, and settled positions. Highlight the code associated with the current reader action. Give A1 and A2 separate job IDs while retaining their shared item ID.
+
+Let readers Run, advance one action, and Reset. For completed runs, support replay of recorded events. Pausing replay pauses the presentation; it does not suspend arbitrary live Promise work. Respect reduced motion and make every action usable with a keyboard. Pair color with status text, and retain the prose and tables as static fallbacks.
+
+Keep durations labeled as demonstration timing. `queueWaitMs` in a controlled demo includes the reader's time between actions; it is not a production latency measurement.
+
+### 0. Follow the evidence — existing system context
+
+The existing system `<AnimatedDiagram>` provides context: selected images and available OCR/barcode signals enter the upload, local classification remains on the phone, and HTTP and control WebSocket updates have different completion points. Keep its description's distinction between illustrative timing and executing queue behavior. The workshop illustrations are separate components, including the caller's coalescing example.
+
+### Describe, then run
+
+Begin with a constructed `Effect.tryPromise` and a visible task-call count of zero. Advance to the nested permit composition; the count remains zero. Run the program. When admission succeeds and the task factory executes, move the token into the operation and show one call.
+
+Keep the Promise pending until the reader chooses Settle, then show its result returning through the Promise boundary. An optional comparison creates the Promise before wrapping it; label that as a teaching alternative. This illustrates deferred execution, not a claim that constructing an Effect sends a request.
+
+### 1 and 2. Four slots and two gates
+
+Reuse one queue view for placeholders 1 and 2. In the capacity preset, submit six distinct items with selectable concurrency of 1, 2, or 4. Changing concurrency creates a fresh scenario and queue. Label four as the application default.
+
+In the ordering preset, use two shared slots and submit A1, A2, B1. Draw a lane for each item and an item gate before the shared slots. Keep the nested `withPermit` code visible.
+
+| Reader action | State the illustration must show |
+| --- | --- |
+| Submit A1, A2, B1 | A1 and B1 active; A2 waiting for item A |
+| Complete B1 | One slot free; A2 still waiting for A1 |
+| Complete A1; process the handoff | A2 starts; it now owns A's permit |
+| Complete A2 | Both shared slots available |
+
+Pause on the second row. Show the free slot and occupied item A gate at the same time. This is the recommended first interactive prototype.
+
+If the reversed-order comparison is implemented, execute and test its hypothetical semaphore composition separately. Show A2 holding a shared permit while waiting for item A, and B1 waiting for shared capacity. Do not represent two permits held as two remote operations running.
+
+### 3. Cancellation requested, then settlement
+
+Use two resettable one-slot scenarios. Cancel waiting B1: remove it from pending work and record that its task was never called. Cancel active A1: show “Cancellation requested — still holding capacity” and keep B1 blocked. A separate Settle A1 action resolves or rejects the controlled task; only then can B1 start.
+
+Show the caller's signal reaching two recipients. Before start, the queue listener forwards to the internal controller. At start, that forwarding listener is removed; the task's own access to the caller's signal remains. This explains the queue's policy without suggesting all running Effect programs are uninterruptible.
+
+Preserve cancellation requested separately from final success or failure. In the success-after-cancellation case, include the caller's aborted-signal check as a separate “candidate not published” step if illustrating the actual hook. The queue itself allows the successful result.
+
+### 4. Failure and bookkeeping
+
+Use A1 running and A2 waiting for the same item. Resolve and Reject are alternate outcomes of A1. Both allow A2 to proceed; A2 is a separately submitted task, not a retry.
+
+Annotate the three cleanup owners from the article table. The two `finally` blocks and permit finalization have different responsibilities; do not present them as one application-wide cleanup scope.
+
+An optional `return await` lesson can contrast the current wrapper with a teaching variant using `return task(context)`. Test that variant before animating it. Its early application-counter cleanup must not be drawn as an actual early release of Effect's semaphore permits.
+
+### Coalescing and the caller's completion barrier
+
+Show a current item cycle with classifier, remote request, and local VLM lanes. Beside it, show one latest-pending-snapshot position. A2 arrives, then A3 replaces it. Settle remote work while leaving local VLM pending: the remote slot becomes available, but the current item cycle remains in flight. Once all three operations settle, the loop can consider the latest snapshot.
+
+Label this as an illustrative caller sequence unless the actual hook can be exercised in a suitable test environment. It uses ordinary Promise coordination around the queue; do not relabel `Promise.allSettled` or local model work as Effect-managed execution. Keep it separate from the existing system diagram.
+
+### 5. Three API outcomes
+
+Draw configuration check → provider → response. Missing configuration exits from the first node with `SERVICE_UNAVAILABLE`. Provider rejection exits from the second with `BAD_GATEWAY`. Success returns a fake token. Highlight the corresponding source lines.
+
+If a simplified standalone Effect reproduction drives the diagram, label it as a handler-branch demonstration. Only claim oRPC integration proof when the actual procedure runs in the test harness. Do not require credentials or call a real speech provider for this lesson.
+
+### Optional deeper lesson: the scheduler handoff
+
+Use an event strip—submit, task starts, resolve gate, process settlement, waiter starts—rather than a wall-clock chart. The queue's sync execution mode starts immediately available work during submission; waiters use the microtask handoff. The renderer must not add delays inside permit release to make its animation easier.
+
+### How to build the first prototype faithfully
+
+Import the current `ItemTaskQueue` while prototyping in the Snap to Post repository. If the blog needs a copied implementation, pin the reviewed source and Effect version, record the source commit, and port its behavioral tests. The reviewed queue is unchanged from HEAD `4a25aac`; the installed Effect version is `4.0.0-rc.112`. These source paths are authoring references, not imports available in the personal site.
+
+Use manually resolvable/rejectable Promise tasks, following the deferred gates in the queue tests. Drive the view from actual submissions, `onQueued`, `onStarted`, cancellation requests, Promise outcomes, and queue snapshots. Avoid recreating the scheduling policy inside the animation.
+
+The public snapshot reports counts and pending item IDs; it does not expose actual semaphore wait stages. For the fixed A1/A2/B1 lesson, the item-gate explanation can be derived from the controlled scenario and labeled accordingly. A general permit inspector would require explicit demo instrumentation; do not pretend the current snapshot exposes it.
+
+Sample settled state after the relevant Promise and finalizer chain completes. A successor's start notification may occur before every observer of the predecessor's returned Promise has run; distinguish recorded runtime events from stable scenario checkpoints. The diagram must not temporarily invent an extra running operation because presentation bookkeeping lags behind the queue.
+
+Reset must abort waiting jobs, settle all controlled task gates, await their executions, retire old event subscriptions, and then create the next queue. Running demonstration tasks intentionally ignore cancellation, so abort alone is insufficient. Dispose queued tasks' unused gates too; do not leave rejected demonstration Promises unobserved.
+
+Unmount and navigation need the same controlled-task cleanup, with no late update to a retired view. Tag events with a demo-run ID so an earlier run cannot update the next one. Prevent duplicate completion/cancellation actions and verify rapid Reset or concurrency changes while work is pending. Cleanup of controlled demonstration Promises is not evidence that arbitrary native or remote work can be forcibly stopped.
+
+If adapting any source from Visual Effect, inspect its applicable license and retain the required notice. The design reference does not imply its runtime wrapper is compatible with our Effect version or active-abort policy.
+
+Acceptance for the first prototype: reproduce same-item serialization and independent-item progress; confirm failure and active cancellation preserve their contracts; then verify the visible controls, labels, and replay match execution events. The reversed-order and early-`finally` teaching variants need dedicated verification before becoming executable demos. This content revision delivers prose, code excerpts, tables, and briefs; it does not implement those demos or change mobile behavior.
+
+### Runtime follow-ups, separate from this article implementation
+
+Keep useful earlier identity visible while newer evidence is pending, communicate uncertainty, and prevent superseded results from replacing an accepted newer result. Existing candidate reconciliation implements parts of this policy; it is not a blanket freshness guarantee for every listing field. A follow-up runtime review should cover old/new image results arriving in both orders, competing local/remote candidates, research patches arriving after another refinement, and reset during each stage.
+
+For a stuck native generation, the proposed recovery policy is to mark local inference unavailable and keep remote identification usable where possible, without admitting another generation on the same busy model. Verify native interruption and safe disposal/recreation before implementing recovery. The current shared completion barrier between local and remote work also needs attention if a stuck local task must not block subsequent remote refinements. These are proposed improvements, not changes delivered by this draft.
+
+### OCR device validation and upstream scope
+
+The September OCR handoff is a separate physical-device testing plan. It proposes a development-only `off`, `worker`, and `synchronous` comparison switch so the same native binary can isolate live-worker contention from the older scheduling path. That switch is not implemented in the inspected app. The OCR-off comparison still uses the fork's shared frame extractor, so it does not isolate the global clone cost.
+
+Before claiming a device improvement, collect controlled camera throughput and dropped-frame traces, submission/copy timing, captured-photo OCR latency, memory and thermal behavior, and repeated lifecycle/teardown results. Follow Debug diagnosis with a physical-device Profile or Release run. The synchronous baseline in the handoff motivates the experiment; it is not a measured Effect benefit or proof that the worker meets its product budgets.
+
+Keep the fork for that validation. For upstream work, separate the frame-buffer lifetime/ownership fix from a proposal for reusable bounded frame inference. The latter needs explicit session ownership, typed backpressure, honest non-cancellation semantics, and asynchronous disposal. App-specific item indices and OCR-model polling methods should not become the public contract unchanged. No upstream submission or mobile runtime change is part of this article edit.
+
+### Questions for the next writing pass
+
+1. What incident or implementation frustration originally made us consider Effect? Add a real example before writing a historical motivation story.
+2. Is the API example useful at this length, or should it become a separate post? This draft leads with the mobile queue.
+3. Would a small before-and-after excerpt from Git history explain what coordination code Effect replaced? Inspect that version before claiming a reduction in complexity.
+4. Can we add a capture-session trace showing overlapping items and queue wait? That would illustrate runtime behavior; an isolated trace would still not establish an Effect performance improvement.
+5. Which part needs the deepest reader walkthrough: describing versus running an Effect, nested permits, or cancellation after a job starts?
+
+### Source map for editing
+
+These source paths are relative to the Snap to Post repository, not the personal site, and are retained for authoring. Replace them with public permalinks if the source is published, or leave the implementation references in this appendix when moving the article to the personal site.
+
+| Source | Claims to check when editing |
+| --- | --- |
+| Item task queue (`apps/mobile/src/features/capture-session/identity/item-task-queue.ts`) | Permits, cancellation bridge, scheduler, counters, reference cleanup |
+| Progressive identification hook (`apps/mobile/src/features/capture-session/identity/use-progressive-identification.ts`) | Queue lifetime, caller signal, aborted-result check, latest pending snapshot, `Promise.allSettled` barrier |
+| Queue tests (`apps/mobile/tests/item-task-queue.test.mjs`) | Six tested behaviors and controlled Promise scenarios |
+| API router (`apps/api/src/orpc.ts`) | Generator procedures and failure mapping |
+| Capture flow (`apps/mobile/src/features/capture-session/capture/use-photo-capture.ts`) | Photo persistence, independently started OCR and identification |
+| Capture-session controller (`apps/mobile/src/features/capture-session/use-capture-session-controller.ts`) | Client composition, Legend State, shared values, model and transport ownership |
+| Camera session (`apps/mobile/src/features/capture-session/camera/use-camera-session.ts`) | Camera activity, photo, barcode, and salient-object outputs |
+| Frame delivery (`apps/mobile/src/features/capture-session/camera/use-frame-delivery.ts`) | VGA RGB frames, native analysis, compact observations, worker submission/polling, frame disposal |
+| OCR signal hook (`apps/mobile/src/features/capture-session/identity/use-ocr-signal.ts`) | Extraction merging, local observations, refinement requests |
+| ExecuTorch inference (`apps/mobile/src/features/capture-session/inference/use-executorch-inference.ts`) | Detector, CRAFT OCR, EfficientNet classification |
+| Local visual identity (`apps/mobile/src/features/capture-session/identity/use-local-visual-identity.ts`) | Optional local model, shared generation queue, interruption and settlement |
+| Mobile request wrapper (`apps/mobile/src/features/backend/backend-client.ts`) | Multipart fields, request timeout, HTTP stream parsing |
+| Identity controller (`apps/api/src/identity/identity.controller.ts`) | Validation, admission, NDJSON response, disconnection signal |
+| Identification service (`apps/api/src/identity/identification.service.ts`) | Partial candidates, OCR merge, Exa query, detached research, listing events |
+| Visual provider (`apps/api/src/providers/visual-identity.ts`) | Configurable model default, image/prompt input, structured streaming |
+| Exa search (`apps/api/src/providers/exa-search.ts`) | Text-only query, retrieved evidence, timeout |
+| Evidence resolver (`apps/api/src/providers/identity-evidence-resolver.ts`) | Evidence/narration input, listing streaming, identity and price guardrails |
+| Provider budget (`apps/api/src/providers/provider-budget.ts`) | Explicit backend admission limits; no Effect scheduler |
+| Control stream consumer (`apps/mobile/src/features/capture-session/identity/use-identity-control-stream.ts`) | Progressive patches, candidate image checks, session ownership |
+| Candidate reconciliation (`apps/mobile/src/features/capture-session/identity/progressive-identity.ts`) | Source/specificity/confidence ranking and server revisions |
+| Listing narration (`apps/mobile/src/features/capture-session/speech/use-audio-telemetry.ts`) | Short-lived token, PCM audio, Scribe connection, partial and committed transcripts |
+| Voice-agent screen (`apps/mobile/src/features/voice/elevenlabs-conversation-screen.tsx`) | Separate WebRTC conversation route |
+| Forked frame extractor (`vendor/react-native-executorch/packages/react-native-executorch/common/rnexecutorch/utils/FrameExtractor.cpp`) | Native buffer locking and owned pixel clone |
+| Forked OCR worker (`vendor/react-native-executorch/packages/react-native-executorch/common/rnexecutorch/models/ocr/OCR.cpp`) | Active/pending work, replacement, result generation, inference mutex, thread teardown |
+| Installed Effect (`node_modules/effect/src/Semaphore.ts`, `node_modules/effect/src/Scheduler.ts`) | Permit finalization, sync execution mode, microtask dispatcher |
+
+### Evidence and validation notes
+
+The October 11, 2026 revision folds the workshop into the corresponding sections and adds client architecture context from the supplied September handoffs. Checked the current queue, progressive identification hook, speech-token procedure, camera/controller, speech paths, and forked frame/OCR implementation. The queue matches HEAD `4a25aac`, and the installed Effect package is `4.0.0-rc.112`. The older handoffs' pinned native commit and build results are historical evidence, not current validation claims.
+
+Reran `node --experimental-strip-types --test apps/mobile/tests/item-task-queue.test.mjs`: **6 passed, 0 failed**, with the existing Node module-type warning. The personal site's `bun run content:validate` compiled all **13 posts**. The draft renders at `/blog/how-we-use-effect-in-snap-to-post` in development, with its code excerpts and tables.
+
+Checked the preview at desktop and 390px widths. The added sections render, but the existing three-column network-stage table produces about 21px of page overflow at 390px; its mobile layout remains a publication follow-up. Verified all 26 source-path references exist, balanced code fences, and unchanged protected text.
+
+The introduction, frontmatter, and existing system `<AnimatedDiagram>` remain unchanged. This is a content-only revision: no executable workshop demos, provider calls, production operations, upstream submissions, or mobile runtime changes. API integration tests, physical-device behavior, and performance benchmarks were not run. The hypothetical reversed-order and early-`finally` variants remain teaching analyses until separately tested as executable demos.

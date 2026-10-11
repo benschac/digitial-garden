@@ -1,0 +1,63 @@
+@layer theme, base, reset, components, utilities;
+
+@layer components {
+  .figure {
+    --fig-bg: var(--color-paper, #f7f4ed);
+    --fig-fg: var(--color-ink, #292621);
+    --fig-muted: #625c53;
+    --fig-surface: #fffcf6;
+    --fig-border: #b9b1a4;
+    --fig-accent: #8b3a2a;
+    margin: 2rem 0;
+    min-width: 0;
+    padding: clamp(0.75rem, 2vw, 1.25rem);
+    border: 1px solid var(--fig-border);
+    border-radius: 8px;
+    background: var(--fig-bg);
+    color: var(--fig-fg);
+    font-family: var(--font-ui, system-ui), sans-serif;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  .figure[data-diagram-theme="dark"] {
+    --fig-bg: #23211e;
+    --fig-fg: #f3eee4;
+    --fig-muted: #c3bbad;
+    --fig-surface: #302d28;
+    --fig-border: #82786a;
+    --fig-accent: #e9a38e;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .figure:not([data-diagram-theme="light"]) {
+      --fig-bg: #23211e;
+      --fig-fg: #f3eee4;
+      --fig-muted: #c3bbad;
+      --fig-surface: #302d28;
+      --fig-border: #82786a;
+      --fig-accent: #e9a38e;
+    }
+  }
+
+  .title {
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  .player {
+    display: block;
+    min-width: 0;
+  }
+  .player::part(caption) {
+    min-height: 4.5em;
+  }
+  .caption {
+    margin-top: 1rem;
+    color: var(--fig-muted);
+    font-size: 0.875rem;
+  }
+  .status {
+    margin: 1rem 0;
+    color: var(--fig-muted);
+  }
+}

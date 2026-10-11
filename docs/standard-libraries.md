@@ -60,3 +60,18 @@ initializing after cancellation.
 When introducing a reusable API, add its export, document ownership and lifecycle
 here, and verify both its new caller and existing callers. Prefer the smallest
 abstraction that handles the real lifecycle.
+
+## Animated article figures
+
+[`AnimatedDiagram`](../apps/web/src/components/mdx/animated-diagram.tsx) owns the
+Giotto client boundary, cancellable JSON loading, static description and scoped
+paper/ink theme. Giotto owns SVG rendering and playback. Use repository-owned
+`public/diagrams/*.json`; see [authoring and verification](animated-diagrams.md).
+
+## Article typography inspection
+
+[`TypographyInspector`](../apps/web/src/app/typography-inspector.tsx) extends the
+development font panel with exact-asset Capsize metrics, reversible edge trimming,
+DOM baseline guides and CSS export. [`ArticleRhythmInspector`](../apps/web/src/app/article-rhythm-inspector.tsx)
+owns optional article leading, outer spacing and DOM gap previews. Both restore
+page styles on teardown; see [usage and measurement boundaries](typography-inspector.md).

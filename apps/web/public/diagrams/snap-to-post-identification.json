@@ -1,0 +1,292 @@
+{
+  "title": "From capture to a researched listing",
+  "speed": 4200,
+  "elements": [
+    {
+      "id": "phone",
+      "type": "rectangle",
+      "x": 0,
+      "y": 180,
+      "width": 220,
+      "content": [
+        {
+          "type": "title",
+          "text": "Phone"
+        },
+        {
+          "type": "subtitle",
+          "text": "Selected JPEGs + signals"
+        }
+      ]
+    },
+    {
+      "id": "local",
+      "type": "rectangle",
+      "x": 0,
+      "y": 0,
+      "width": 220,
+      "content": [
+        {
+          "type": "title",
+          "text": "Local perception"
+        },
+        {
+          "type": "subtitle",
+          "text": "Candidates stay on device"
+        }
+      ]
+    },
+    {
+      "id": "api",
+      "type": "rectangle",
+      "x": 310,
+      "y": 180,
+      "width": 220,
+      "content": [
+        {
+          "type": "title",
+          "text": "Identification API"
+        },
+        {
+          "type": "subtitle",
+          "text": "Admission + HTTP stream"
+        }
+      ]
+    },
+    {
+      "id": "visual",
+      "type": "rectangle",
+      "x": 310,
+      "y": 0,
+      "width": 220,
+      "content": [
+        {
+          "type": "title",
+          "text": "Visual model"
+        },
+        {
+          "type": "subtitle",
+          "text": "Images + observations"
+        }
+      ]
+    },
+    {
+      "id": "exa",
+      "type": "rectangle",
+      "x": 310,
+      "y": 390,
+      "width": 220,
+      "content": [
+        {
+          "type": "title",
+          "text": "Exa search"
+        },
+        {
+          "type": "subtitle",
+          "text": "Text query \u2192 evidence"
+        }
+      ]
+    },
+    {
+      "id": "resolver",
+      "type": "rectangle",
+      "x": 0,
+      "y": 390,
+      "width": 220,
+      "content": [
+        {
+          "type": "title",
+          "text": "Evidence resolver"
+        },
+        {
+          "type": "subtitle",
+          "text": "Evidence \u2192 listing"
+        }
+      ]
+    },
+    {
+      "id": "perception",
+      "type": "arrow",
+      "start": {
+        "id": "phone"
+      },
+      "end": {
+        "id": "local"
+      },
+      "label": {
+        "text": "On device"
+      }
+    },
+    {
+      "id": "upload",
+      "type": "arrow",
+      "start": {
+        "id": "phone"
+      },
+      "end": {
+        "id": "api"
+      },
+      "label": {
+        "text": "Upload"
+      }
+    },
+    {
+      "id": "identify",
+      "type": "arrow",
+      "start": {
+        "id": "api"
+      },
+      "end": {
+        "id": "visual"
+      },
+      "label": {
+        "text": "Images"
+      }
+    },
+    {
+      "id": "search",
+      "type": "arrow",
+      "start": {
+        "id": "api"
+      },
+      "end": {
+        "id": "exa"
+      },
+      "label": {
+        "text": "Text query"
+      }
+    },
+    {
+      "id": "resolve",
+      "type": "arrow",
+      "start": {
+        "id": "exa"
+      },
+      "end": {
+        "id": "resolver"
+      },
+      "label": {
+        "text": "Evidence"
+      }
+    },
+    {
+      "id": "http",
+      "type": "arrow",
+      "start": {
+        "id": "api"
+      },
+      "end": {
+        "id": "phone"
+      },
+      "label": {
+        "text": "HTTP result"
+      },
+      "fromSide": "bottom",
+      "toSide": "bottom"
+    },
+    {
+      "id": "control",
+      "type": "arrow",
+      "start": {
+        "id": "resolver"
+      },
+      "end": {
+        "id": "phone"
+      },
+      "label": {
+        "text": "Control WebSocket"
+      },
+      "fromSide": "left",
+      "toSide": "left"
+    }
+  ],
+  "scenes": [
+    {
+      "label": "1. Capture",
+      "beats": [
+        {
+          "edges": {
+            "edge": "perception",
+            "data": "Local clue",
+            "back": false
+          },
+          "say": "On-device perception can show a category or identity; local classification is not uploaded."
+        },
+        {
+          "edges": {
+            "edge": "upload",
+            "data": "JPEGs + signals",
+            "back": false
+          },
+          "say": "Selected images and available OCR/barcode signals enter the API. OCR may request a later refinement."
+        },
+        {
+          "edges": {
+            "edge": "http",
+            "data": "Accepted",
+            "back": false
+          },
+          "say": "HTTP NDJSON acknowledges admission. Acceptance is not an identification result."
+        }
+      ]
+    },
+    {
+      "label": "2. Identify",
+      "beats": [
+        {
+          "edges": {
+            "edge": "identify",
+            "data": "Image evidence",
+            "back": false
+          },
+          "say": "The visual model receives images and observations. A partial candidate can reach the phone over the control WebSocket."
+        },
+        {
+          "edges": {
+            "edge": "identify",
+            "data": "Candidate",
+            "back": true
+          },
+          "say": "The visual model returns an identity and extracted evidence."
+        },
+        {
+          "edges": {
+            "edge": "http",
+            "data": "Result",
+            "back": false
+          },
+          "say": "The HTTP result completes identification; product research can still be running."
+        }
+      ]
+    },
+    {
+      "label": "3. Research",
+      "beats": [
+        {
+          "edges": {
+            "edge": "search",
+            "data": "Text only",
+            "back": false
+          },
+          "say": "The API starts background research with a text query. Exa receives no original image bytes."
+        },
+        {
+          "edges": {
+            "edge": "resolve",
+            "data": "Evidence",
+            "back": false
+          },
+          "say": "The resolver combines candidate, signals, search evidence, and available narration\u2014not the original image upload."
+        },
+        {
+          "edges": {
+            "edge": "control",
+            "data": "Listing updates",
+            "back": false
+          },
+          "say": "Evidence and progressive listing updates reach the phone over the control WebSocket. The listing is not published to a marketplace."
+        }
+      ]
+    }
+  ]
+}

@@ -91,6 +91,21 @@ export function getPublishedPostSummaries(
     .map(asSummary);
 }
 
+// Draft previews belong only to blog pages, never RSS or sitemap consumers.
+export function getBlogPostSummaries(
+  posts: readonly PostRecord[],
+  environment: string | undefined,
+  { now = new Date() }: PublishedPostOptions = {},
+): PostSummary[] {
+  return posts
+    .filter(
+      (post) =>
+        isPublicationEligible(post, now) ||
+        (environment === "development" && post.status === "draft"),
+    )
+    .map(asSummary);
+}
+
 export function getPostSummariesByTag(
   posts: readonly PostRecord[],
   tag: string,

@@ -43,6 +43,8 @@ export async function generateMetadata({
   return {
     title: post.title,
     description: post.summary,
+    robots:
+      post.status === "draft" ? { index: false, follow: false } : undefined,
     alternates: { canonical },
     openGraph: {
       type: "article",
@@ -129,7 +131,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               variant="articleMetadata"
               className={styles.metadata}
             >
-              Published{" "}
+              {post.status === "draft" ? "Draft · Dev only · " : "Published "}
               <time dateTime={post.publishedAt}>{post.publishedAt}</time>
               {post.updatedAt ? (
                 <>

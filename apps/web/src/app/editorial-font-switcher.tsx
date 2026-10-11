@@ -11,6 +11,7 @@ import {
   editorialFontOptions,
   entryFontOptions,
 } from "./editorial-fonts";
+import { TypographyInspector } from "./typography-inspector";
 
 export function EditorialFontSwitcher() {
   const pathname = usePathname();
@@ -19,6 +20,7 @@ export function EditorialFontSwitcher() {
   const entrySelectId = useId();
   const panelId = useId();
   const [isOpen, setIsOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const {
     displayFont,
     readingFont,
@@ -45,13 +47,36 @@ export function EditorialFontSwitcher() {
       <button
         className={styles.toggle}
         type="button"
-        aria-expanded={isOpen}
+        aria-expanded={isOpen && !isMinimized}
         aria-controls={panelId}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (isMinimized) setIsMinimized(false);
+          else setIsOpen(!isOpen);
+        }}
       >
-        {isOpen ? "Close typography" : "Typography"}
+        {isMinimized
+          ? "Show typography"
+          : isOpen
+            ? "Close typography"
+            : "Typography"}
       </button>
-      <div id={panelId} className={styles.controls} hidden={!isOpen}>
+      {isMinimized ? (
+        <button
+          type="button"
+          className={styles.toggle}
+          onClick={() => {
+            setIsMinimized(false);
+            setIsOpen(false);
+          }}
+        >
+          Reset preview
+        </button>
+      ) : null}
+      <div
+        id={panelId}
+        className={styles.controls}
+        hidden={!isOpen || isMinimized}
+      >
         {pathname === "/" ? (
           <>
             <Typography
@@ -122,6 +147,18 @@ export function EditorialFontSwitcher() {
             </option>
           ))}
         </select>
+        {isOpen && pathname.startsWith("/blog/") ? (
+          <>
+            <button
+              type="button"
+              className={`${styles.toggle} col-span-full`}
+              onClick={() => setIsMinimized(true)}
+            >
+              Hide controls · keep preview
+            </button>
+            <TypographyInspector key={pathname} pathname={pathname} />
+          </>
+        ) : null}
       </div>
     </aside>
   );

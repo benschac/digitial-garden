@@ -7,18 +7,18 @@
     --blog-display: var(--font-editorial-display);
     --blog-reading: var(--font-editorial-reading);
     --blog-text-display: clamp(4rem, 2.35rem + 6.5vw, 7.5rem);
-    --blog-text-title: clamp(3.25rem, 2rem + 5vw, 6.75rem);
-    --blog-text-heading-2: clamp(2rem, 1.55rem + 1.8vw, 3rem);
-    --blog-text-heading-3: clamp(1.45rem, 1.25rem + 0.8vw, 1.9rem);
-    --blog-text-deck: clamp(1.3rem, 1.12rem + 0.7vw, 1.75rem);
+    --blog-text-title: clamp(3.25rem, 2rem + 5vw, 6rem);
+    --blog-text-heading-2: clamp(2rem, 1.55rem + 0.9vw, 2.5rem);
+    --blog-text-heading-3: clamp(1.35rem, 1.25rem + 0.3vw, 1.5625rem);
+    --blog-text-deck: clamp(1.3rem, 1.12rem + 0.7vw, 1.6875rem);
     --blog-text-body: clamp(1.1875rem, 1.15rem + 0.2vw, 1.25rem);
     --blog-text-caption: 0.875rem;
-    --blog-text-meta: 0.78rem;
+    --blog-text-meta: 0.8125rem;
     --blog-leading-display: 0.9;
     --blog-leading-title: 1;
-    --blog-leading-heading: 1.06;
-    --blog-leading-deck: 1.32;
-    --blog-leading-body: 1.6;
+    --blog-leading-heading: 1.08;
+    --blog-leading-deck: 1.35;
+    --blog-leading-body: 1.55;
   }
 
   .ui-article-prose
@@ -26,6 +26,16 @@
       :where([data-prose-exclude], [data-prose-exclude] *)
     ) {
     text-wrap: balance;
+  }
+
+  @supports (text-box-trim: trim-both) and (text-box-edge: cap alphabetic) {
+    .ui-article-prose
+      :where(h2, h3, h4):not(
+        :where([data-prose-exclude], [data-prose-exclude] *)
+      ) {
+      text-box-trim: var(--blog-heading-trim, trim-both);
+      text-box-edge: cap alphabetic;
+    }
   }
 
   .ui-article-prose
@@ -43,7 +53,7 @@
   }
 
   .ui-article-prose
-    :where(h2, h3):not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    h2:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
     font-family: var(--blog-display);
   }
 
@@ -55,8 +65,11 @@
 
   .ui-article-prose
     h3:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    font-family: var(--blog-reading);
     font-size: var(--blog-text-heading-3);
-    letter-spacing: -0.018em;
+    font-weight: 600;
+    line-height: calc(var(--blog-leading-heading) * 1.16);
+    letter-spacing: -0.012em;
   }
 
   .ui-article-prose

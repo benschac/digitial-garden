@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ViewTransition } from "react";
 import { Typography } from "@/components/page-typography";
-import { getPublishedPosts } from "@/lib/content";
+import { getBlogPosts } from "@/lib/content";
 import { ArticleSurface } from "./article-surface";
 import { BlogTransition } from "./blog-transition";
 import styles from "./index-styles";
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogIndexPage() {
-  const posts = await getPublishedPosts();
+  const posts = await getBlogPosts();
 
   return (
     <BlogTransition view="index">
@@ -74,6 +74,7 @@ export default async function BlogIndexPage() {
                       variant="journalDate"
                       className={styles.postDate}
                     >
+                      {post.status === "draft" ? "Draft · Dev only · " : null}
                       <time dateTime={post.publishedAt}>
                         {new Intl.DateTimeFormat("en-US", {
                           month: "short",

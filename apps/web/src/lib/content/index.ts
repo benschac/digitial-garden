@@ -7,6 +7,7 @@ import { useMDXComponents } from "@/mdx-components";
 import { type PostSummary, sortPostsNewestFirst } from "./schema";
 import {
   asSummary,
+  getBlogPostSummaries,
   getPostSummariesByTag,
   getPublishedPostSummaries,
 } from "./source";
@@ -24,6 +25,10 @@ export async function getPublishedPosts(): Promise<PostSummary[]> {
   return getPublishedPostSummaries(getRegistry());
 }
 
+export async function getBlogPosts(): Promise<PostSummary[]> {
+  return getBlogPostSummaries(getRegistry(), process.env.NODE_ENV);
+}
+
 export async function getPostBySlug(slug: string): Promise<
   | (PostSummary & {
       Content: ComponentType<Record<string, never>>;
@@ -33,7 +38,7 @@ export async function getPostBySlug(slug: string): Promise<
   const posts = getRegistry();
   const post = posts.find((candidate) => candidate.slug === slug);
 
-  if (!post || !getPublishedPostSummaries([post]).length) {
+  if (!post || !getBlogPostSummaries([post], process.env.NODE_ENV).length) {
     return undefined;
   }
 
@@ -53,14 +58,14 @@ export async function getPostsByTag(tag: string): Promise<PostSummary[]> {
 }
 
 export async function getAllPostSlugs(): Promise<string[]> {
-  return (await getPublishedPosts()).map((post) => post.slug);
+  return (await getBlogPosts()).map((post) => post.slug);
 }
 
 export async function getAdjacentPosts(slug: string): Promise<{
   next?: PostSummary;
   previous?: PostSummary;
 }> {
-  const posts = await getPublishedPosts();
+  const posts = await getBlogPosts();
   const currentIndex = posts.findIndex((post) => post.slug === slug);
 
   if (currentIndex === -1) {

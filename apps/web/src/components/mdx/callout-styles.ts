@@ -4,6 +4,8 @@ import layout from "./callout.module.css";
 // Local utility recipes; CSS retains the authored layout and motion rules.
 const styles = {
   content: layout.content,
+  editorialNote: layout.editorialNote,
+  editorialNoteTitle: layout.editorialNoteTitle,
   callout: cn(
     "bg-[#eee7d9] border-l-[2px] border-l-[var(--blog-accent,_#8b3a2a)]",
     "[padding:1.1rem_1.2rem]",

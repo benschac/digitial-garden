@@ -1,6 +1,24 @@
 @layer theme, base, reset, components, utilities;
 
 @layer components {
+  .editorialNote {
+    border-left: 1px solid var(--blog-rule, #d9d2c5);
+    color: var(--blog-muted, #625c53);
+    font-family: var(--font-ui, system-ui), sans-serif;
+    font-size: 0.875rem;
+    font-style: normal;
+    line-height: 1.55;
+    margin-bottom: 1.5rem;
+    padding: 0.25rem 0 0.25rem 1rem;
+  }
+
+  .editorialNoteTitle {
+    display: block;
+    color: var(--blog-ink, #292621);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
   .content
     > :last-child:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
     margin-bottom: 0;
