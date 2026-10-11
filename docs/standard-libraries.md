@@ -37,6 +37,7 @@ initializing after cancellation.
 | Class merging | [`cn`](../packages/ui/src/lib/utils.ts), imported via `@personal-site/ui/lib/utils` |
 | Component variants | Existing Tailwind Variants (`tv`) conventions in shared UI; do not add it solely for long class lists |
 | Springs and motion values | Existing `motion/react` dependency; use the frame hook for imperative drawing rather than React state per frame |
+| Homepage avatar gaze and blinking | [`useAvatarAnimation`](../apps/web/src/app/_components/home/use-avatar-animation.ts) owns the hero/footer eye and brow tracking plus blinking. Attach its ref to a mounted wrapper containing only the portrait SVG; it handles viewport/tab visibility, reduced motion, fine-pointer tracking, and cleanup while preserving the artwork's resting transforms. |
 | Page typography and feature effects | Keep in `apps/web`; for example [`useWetInk`](../apps/web/src/app/use-wet-ink.ts) composes shared lifecycle hooks but owns ink rendering |
 
 ## Next.js and tooling

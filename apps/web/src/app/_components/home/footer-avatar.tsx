@@ -1,9 +1,13 @@
+"use client";
+
 import { useId } from "react";
 import { AvatarArtwork } from "./avatar-artwork";
 import styles from "./footer-avatar.module.css";
+import { useAvatarAnimation } from "./use-avatar-animation";
 
 export function FooterAvatar() {
   const cropId = useId();
+  const artworkRef = useAvatarAnimation();
   return (
     <div
       className={styles.stage}
@@ -24,7 +28,7 @@ export function FooterAvatar() {
           </clipPath>
         </defs>
       </svg>
-      <div className={styles.artwork}>
+      <div ref={artworkRef} className={styles.artwork}>
         <AvatarArtwork variant="peek" className="overflow-visible" />
       </div>
     </div>

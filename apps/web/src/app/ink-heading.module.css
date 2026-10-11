@@ -159,3 +159,35 @@
     }
   }
 }
+
+@layer components {
+  /* Flat, speckled ink for the header name, including touch screens. */
+  .flatInk {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    /* Preserve the paint area for descenders and the final glyph's overhang. */
+    padding-block: 0.15em;
+    margin-block: -0.15em;
+    padding-inline-end: 0.15em;
+    margin-inline-end: -0.15em;
+    color: var(--color-ink);
+  }
+
+  @media (forced-colors: none) {
+    @supports (background-clip: text) {
+      .flatInk {
+        background-color: var(--color-ink);
+        background-image: var(--ink-grain);
+        background-size: 160px 160px;
+        background-clip: text;
+        color: transparent;
+      }
+    }
+  }
+
+  .flatInk::selection {
+    color: var(--color-ink);
+    background: var(--color-selection);
+  }
+}
