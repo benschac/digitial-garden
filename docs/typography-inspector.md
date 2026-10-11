@@ -6,9 +6,12 @@ The blog title and authored h2–h4 use `text-box-trim: trim-both` and
 `text-box-edge: cap alphabetic` where both are supported; older browsers retain
 untrimmed CSS. Paragraphs and embedded components keep their own boxes.
 Choosing Trim off or Capsize previews an alternative, including an optional
-headings-and-paragraphs scope. Closing the panel or leaving the article removes
-preview classes and restores the published default. Preview preferences are not
-persisted.
+headings-and-paragraphs scope. **Close typography** hides the controls while
+keeping the inspector mounted, so spacing, trim, selected block and overlay
+choices remain active. **Show typography** reopens the same controls. **Reset
+preview** clears article spacing/trim overrides and removes overlays; saved font
+preferences remain selected. Leaving the article also tears down its preview.
+Preview state is retained on close, but is not stored across a page reload.
 
 Font sources are resolved from the computed primary family, CSS font-face rules,
 style and CSS weight matching. After the face loads, the development-only metrics
@@ -70,10 +73,21 @@ quality score or a requirement for every gap. Slider adjustments switch to
 Custom while retaining the active spacing scale, so any spacing system can be
 fine-tuned without reverting to editorial gaps.
 
-The 4px and 8px grid presets round positive outer margins to the nearest step
-(with one step as the minimum) and retain body leading at 1.55. They organize
-gaps, not every text baseline. The fine-tune multiplier applies after snapping,
-so Custom values may intentionally leave the grid. Fluid retains body leading
+The 4px and 8px grid presets use distinct spacing recipes instead of rounding
+existing gaps, which can produce identical results when gaps already fit both
+grids. Both retain body leading at 1.55 and preserve zero margins. They organize
+gaps, not every text baseline.
+
+| Owned outer spacing | 4px grid | 8px grid |
+| --- | --- | --- |
+| Paragraphs | 20px | 24px |
+| Grouped content / title | 32px | 40px |
+| h2 before / after | 48px / 16px | 64px / 24px |
+| h3 before / after | 32px / 12px | 40px / 16px |
+| h4 before / after | 24px / 8px | 32px / 16px |
+
+The fine-tune multiplier applies to these recipes, so Custom values may
+intentionally leave the grid. Fluid retains body leading
 at 1.55, with paragraph gaps growing from 18px at 360px to 28px at 1440px,
 clamped beyond those widths. Group gaps are 1.5 times the base, h2 section gaps
 2.5 times, and heading-to-text gaps 0.75 times for h2 or 0.5 times for h3/h4.
@@ -81,9 +95,11 @@ All scales preserve zero margins and embedded component interiors. Grid steps
 follow common [Carbon spacing conventions](https://www.carbondesignsystem.com/building-blocks/foundations/spacing/overview);
 Fluid is a project-specific experiment inspired by [Utopia's fluid space system](https://utopia.fyi/space/calculator/).
 
-Presets are not persisted. Reset restores current editorial spacing; closing the
-main panel also restores all inline values while keeping published native heading
-trim. Hiding controls preserves the preview.
+Closing the main panel preserves the active preview and shows **Show typography**
+and **Reset preview**. Reset clears all article preview overrides while keeping
+published native heading trim. **Reset to editorial default** inside the panel
+only resets rhythm sliders and spacing, preserving the selected trim comparison.
+No preview styles leak into another route when the article inspector unmounts.
 
 Both trim and rhythm CSS can be exported. Exports are font/viewport snapshots
 with deliberate classes to add to the relevant owned elements. Adapt snapshots

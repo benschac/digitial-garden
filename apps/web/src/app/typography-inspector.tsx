@@ -237,9 +237,9 @@ export function TypographyInspector({ pathname }: { pathname: string }) {
     <section className={styles.panel} aria-label="Article metric inspector">
       <strong>Article leading trim</strong>
       <p className={styles.note}>
-        Native heading trim is the editorial default where supported. These
-        controls preview alternatives; closing restores that default. Trimming
-        preserves font size and spacing between lines.
+        Native heading trim is the editorial default where supported. Closing
+        keeps your selected preview; Reset preview restores the default.
+        Trimming preserves font size and spacing between lines.
       </p>
       <label className={styles.label} htmlFor={scopeId}>
         Apply comparison to

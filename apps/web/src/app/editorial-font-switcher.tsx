@@ -51,6 +51,9 @@ export function EditorialFontSwitcher() {
         aria-controls={panelId}
         onClick={() => {
           if (isMinimized) setIsMinimized(false);
+          // Keep the article inspector mounted so closing only hides its controls.
+          else if (isOpen && pathname.startsWith("/blog/"))
+            setIsMinimized(true);
           else setIsOpen(!isOpen);
         }}
       >
@@ -148,16 +151,7 @@ export function EditorialFontSwitcher() {
           ))}
         </select>
         {isOpen && pathname.startsWith("/blog/") ? (
-          <>
-            <button
-              type="button"
-              className={`${styles.toggle} col-span-full`}
-              onClick={() => setIsMinimized(true)}
-            >
-              Hide controls · keep preview
-            </button>
-            <TypographyInspector key={pathname} pathname={pathname} />
-          </>
+          <TypographyInspector key={pathname} pathname={pathname} />
         ) : null}
       </div>
     </aside>

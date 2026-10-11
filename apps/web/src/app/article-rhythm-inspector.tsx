@@ -35,9 +35,9 @@ const presetNotes: Record<RhythmPreset, string> = {
   golden:
     "A proportional experiment: body line spacing at 1.618× text size. Paragraph, group and section gaps use 1, 1.618 and 2.618× body text size.",
   grid4:
-    "A fine spacing grid: positive block gaps snap to the nearest 4px step. Body line spacing stays at the editorial default of 1.55× text size.",
+    "A compact 4px spacing recipe: 20px between paragraphs, 32px around grouped content, and 48px before major sections. Body line spacing stays at 1.55× text size.",
   grid8:
-    "A more structured spacing grid: positive block gaps snap to the nearest 8px step. Body line spacing stays at the editorial default of 1.55× text size.",
+    "A roomier 8px spacing recipe: 24px between paragraphs, 40px around grouped content, and 64px before major sections. Body line spacing stays at 1.55× text size.",
   fluid:
     "Responsive spacing: paragraph gaps grow smoothly from 18px at a 360px viewport to 28px at 1440px. Groups and sections use larger multiples; body line spacing stays at 1.55× text size.",
   custom: "Custom: your slider adjustments. Select a preset to compare again.",
@@ -47,10 +47,34 @@ const presetComparisons = [
   ["Editorial compact", "1.50×", "20% smaller gaps"],
   ["Editorial airy", "1.65×", "20% larger gaps"],
   ["Golden ratio", "1.618×", "Proportional scale"],
-  ["4px spacing grid", "1.55×", "Gaps in 4px steps"],
-  ["8px spacing grid", "1.55×", "Gaps in 8px steps"],
+  ["4px spacing grid", "1.55×", "20px paragraphs · 48px sections"],
+  ["8px spacing grid", "1.55×", "24px paragraphs · 64px sections"],
   ["Fluid spacing", "1.55×", "Grows with viewport"],
 ] as const;
+// Explicit recipes make grid previews distinct even when existing gaps already
+// land on both grids. Only positive owned margins change; component internals stay intact.
+const gridSpacing = {
+  grid4: {
+    paragraph: 20,
+    group: 32,
+    h2Before: 48,
+    h2After: 16,
+    h3Before: 32,
+    h3After: 12,
+    h4Before: 24,
+    h4After: 8,
+  },
+  grid8: {
+    paragraph: 24,
+    group: 40,
+    h2Before: 64,
+    h2After: 24,
+    h3Before: 40,
+    h3After: 16,
+    h4Before: 32,
+    h4After: 16,
+  },
+} as const;
 const leadingTokens = [
   "--blog-leading-heading",
   "--blog-leading-body",
@@ -201,8 +225,10 @@ export function ArticleRhythmInspector({ onChange }: { onChange: () => void }) {
       }
     }
     if (spacing !== 1 || spacingScale !== "editorial") {
-      const gridUnit =
-        spacingScale === "grid4" ? 4 : spacingScale === "grid8" ? 8 : 0;
+      const gridRecipe =
+        spacingScale === "grid4" || spacingScale === "grid8"
+          ? gridSpacing[spacingScale]
+          : undefined;
       const fluidProgress = Math.min(
         1,
         Math.max(0, (window.innerWidth - 360) / (1440 - 360)),
@@ -229,14 +255,29 @@ export function ArticleRhythmInspector({ onChange }: { onChange: () => void }) {
         if (spacingScale === "golden") {
           if (top > 0) top = goldenGap;
           if (bottom > 0) bottom = isHeading ? bodySize / phi : goldenGap;
-        } else if (gridUnit) {
-          if (top > 0)
-            top = Math.max(gridUnit, Math.round(top / gridUnit) * gridUnit);
-          if (bottom > 0)
-            bottom = Math.max(
-              gridUnit,
-              Math.round(bottom / gridUnit) * gridUnit,
-            );
+        } else if (gridRecipe) {
+          const before =
+            tag === "H2"
+              ? gridRecipe.h2Before
+              : tag === "H3"
+                ? gridRecipe.h3Before
+                : tag === "H4"
+                  ? gridRecipe.h4Before
+                  : grouped || tag === "H1"
+                    ? gridRecipe.group
+                    : gridRecipe.paragraph;
+          const after =
+            tag === "H2"
+              ? gridRecipe.h2After
+              : tag === "H3"
+                ? gridRecipe.h3After
+                : tag === "H4"
+                  ? gridRecipe.h4After
+                  : grouped || tag === "H1"
+                    ? gridRecipe.group
+                    : gridRecipe.paragraph;
+          if (top > 0) top = before;
+          if (bottom > 0) bottom = after;
         } else if (spacingScale === "fluid") {
           if (top > 0)
             top = fluidBase * (tag === "H2" ? 2.5 : grouped ? 1.5 : 1);
@@ -415,8 +456,9 @@ export function ArticleRhythmInspector({ onChange }: { onChange: () => void }) {
           </div>
         </details>
         <p className={styles.note}>
-          Presets keep the selected trim mode. Closing Typography restores
-          editorial spacing; hiding controls keeps your preview.
+          Close Typography hides the controls and keeps your spacing, trim and
+          overlay selections. Reopen to keep adjusting; Reset preview restores
+          the article defaults.
         </p>
         <label className={styles.row}>
           <input
