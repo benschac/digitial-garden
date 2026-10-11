@@ -2,7 +2,25 @@ import { Heading, Text } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
+import type { CSSProperties } from "react";
+import { deckleFilterIds } from "../../paper-filters";
+import styles from "./public-work.module.css";
 import { dateText, featureLink, itemHeading, sectionLabel } from "./styles";
+
+const card = cn(
+  styles.card,
+  "col-span-full max-w-[65ch] min-[72rem]:col-[2/-1]",
+  // Text keeps the column edge; the sheet hangs into the gutter.
+  "-mx-4 px-4 py-6 sm:-mx-7 sm:px-7 sm:py-7",
+  "font-reading text-lg",
+);
+
+function sheet(deckle: number, tilt: string) {
+  return {
+    "--home-deckle": `url(#${deckleFilterIds[deckle]})`,
+    "--home-card-tilt": tilt,
+  } as CSSProperties;
+}
 
 export function PublicWorkSection() {
   return (
@@ -24,7 +42,7 @@ export function PublicWorkSection() {
       >
         Selected public work
       </Heading>
-      <article className="col-span-full max-w-[65ch] font-reading text-lg min-[72rem]:col-[2/-1]">
+      <article className={card} style={sheet(0, "-0.3deg")}>
         <Heading as="h3" variant="item" className={cn(itemHeading, "mb-1")}>
           Investigating an iOS launch failure
         </Heading>
@@ -55,26 +73,19 @@ export function PublicWorkSection() {
               See the fix <span aria-hidden="true">&nbsp;↗</span>
             </Link>
           </div>
-          {/* Official, unmodified logo: https://posthog.com/handbook/brand/assets */}
-          <Image
-            src="/images/posthog-logo.svg"
-            alt="PostHog"
-            width={120}
-            height={21}
-            className={cn(
-              "h-auto w-[120px] shrink-0",
-              "[@media(prefers-color-scheme:dark)]:invert [@media(prefers-color-scheme:dark)]:hue-rotate-180",
-            )}
-          />
+          {/* Official logo file, unmodified; the ink treatment is CSS only: https://posthog.com/handbook/brand/assets */}
+          <span className={cn(styles.taped, "shrink-0")}>
+            <Image
+              src="/images/posthog-logo.svg"
+              alt="PostHog"
+              width={120}
+              height={21}
+              className={cn(styles.inked, "block h-auto w-[120px]")}
+            />
+          </span>
         </div>
       </article>
-      <article
-        className={cn(
-          "col-span-full mt-10 max-w-[65ch] pt-6 min-[72rem]:col-[2/-1]",
-          "border-t border-[color-mix(in_srgb,currentColor_18%,transparent)]",
-          "font-reading text-lg",
-        )}
-      >
+      <article className={cn(card, "mt-8")} style={sheet(2, "0.25deg")}>
         <Heading as="h3" variant="item" className={cn(itemHeading, "mb-1")}>
           Making Tamagui’s starter work with Expo
         </Heading>
@@ -120,15 +131,20 @@ export function PublicWorkSection() {
             </Link>
           </div>
           <Link href="https://tamagui.dev/" className={featureLink}>
-            {/* Official, unmodified wordmark: https://github.com/tamagui/tamagui/blob/main/code/tamagui.dev/public/tamagui-words-logo.png */}
-            <Image
-              src="/images/tamagui-logo.png"
-              alt="Tamagui"
-              width={1242}
-              height={136}
-              sizes="120px"
-              className="h-auto w-[120px] shrink-0"
-            />
+            {/* Official wordmark file, unmodified; the ink treatment is CSS only: https://github.com/tamagui/tamagui/blob/main/code/tamagui.dev/public/tamagui-words-logo.png */}
+            <span
+              className={styles.taped}
+              style={{ "--home-logo-tilt": "1.25deg" } as CSSProperties}
+            >
+              <Image
+                src="/images/tamagui-logo.png"
+                alt="Tamagui"
+                width={1242}
+                height={136}
+                sizes="120px"
+                className={cn(styles.inked, "block h-auto w-[120px]")}
+              />
+            </span>
           </Link>
         </div>
       </article>
