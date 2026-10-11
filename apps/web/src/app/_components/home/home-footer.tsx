@@ -21,12 +21,12 @@ export function HomeFooter() {
             className={cn(inkStyles.hoverArea, styles.hoverArea)}
             {...pointerHandlers}
           >
+            {/* Generated content keeps the decorative copy out of copied and extracted text. */}
             <span
               aria-hidden="true"
               className={cn(styles.lettering, styles.knockout)}
-            >
-              @benschac
-            </span>
+              data-text="@benschac"
+            />
 
             <span
               ref={ink}

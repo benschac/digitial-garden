@@ -107,9 +107,9 @@ export function PublicWorkSection() {
               className={featureLink}
               href="https://github.com/tamagui/tamagui/pull/1173#issuecomment-1550657547"
             >
-              Nate Wienert <span aria-hidden="true">&nbsp;↗</span>
+              Nate Wienert, Tamagui creator
+              <span aria-hidden="true">&nbsp;↗</span>
             </Link>
-            <span className="ml-2">Tamagui creator</span>
           </figcaption>
         </figure>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
