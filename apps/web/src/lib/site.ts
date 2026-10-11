@@ -1,8 +1,6 @@
-export const siteConfig = {
-  url: "https://www.benjaminschachter.com",
-} as const;
+const fallbackSiteUrl = "http://localhost:3000";
 
-/** Absolute URL for canonical links, the sitemap, and RSS. Set SITE_URL to override per environment. */
 export function getSiteUrl(): URL {
-  return new URL(process.env.SITE_URL || siteConfig.url);
+  const configuredUrl = process.env.SITE_URL ?? fallbackSiteUrl;
+  return new URL(configuredUrl);
 }

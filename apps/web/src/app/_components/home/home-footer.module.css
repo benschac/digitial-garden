@@ -30,10 +30,6 @@
     pointer-events: none;
   }
 
-  .knockout::before {
-    content: attr(data-text);
-  }
-
   .hoverArea {
     position: relative;
     z-index: 1;

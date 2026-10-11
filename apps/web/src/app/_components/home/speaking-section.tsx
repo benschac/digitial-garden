@@ -2,7 +2,7 @@ import { Heading, Text } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-import { featureLink, focusRing, sectionLabel } from "./styles";
+import { featureLink, focusRing } from "./styles";
 
 export function SpeakingSection() {
   return (
@@ -17,10 +17,7 @@ export function SpeakingSection() {
       <Heading
         id="featured-talk-heading"
         variant="section"
-        className={cn(
-          sectionLabel,
-          "mb-4 md:col-span-full min-[72rem]:col-[1]",
-        )}
+        className="mb-4 md:col-span-full min-[72rem]:col-[1]"
       >
         Speaking
       </Heading>
@@ -45,11 +42,7 @@ export function SpeakingSection() {
           <Text variant="metadata" className="max-w-[36ch] normal-case">
             App.js Conf · 2026
           </Text>
-          <Heading
-            as="h3"
-            variant="feature"
-            className="mt-3 mb-6 font-[family-name:var(--font-newsreader)] [font-optical-sizing:auto]"
-          >
+          <Heading as="h3" variant="feature" className="mt-3 mb-6">
             Emit Once,
             <br />
             Notify Anywhere

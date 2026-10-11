@@ -7,7 +7,6 @@ import { getSiteUrl } from "@/lib/site";
 import { EditorialFontPreference } from "./editorial-font-preference";
 import { EditorialFontSwitcher } from "./editorial-font-switcher";
 import { editorialFontPreferenceInitScript } from "./editorial-fonts";
-import { PaperFilters } from "./paper-filters";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
@@ -121,7 +120,6 @@ export default function RootLayout({
         </Script>
       </head>
       <body style={{ position: "relative" }} suppressHydrationWarning>
-        <PaperFilters />
         <div style={{ isolation: "isolate" }}>
           <EditorialFontPreference>
             {children}

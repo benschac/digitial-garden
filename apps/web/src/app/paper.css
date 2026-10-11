@@ -1,47 +1,18 @@
 @layer theme, base, reset, components, utilities;
 
-/* Charcoal paper: the editorial palette re-inked for dark, not inverted cream. */
-@layer theme {
-  :root {
-    color-scheme: light dark;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --color-paper: #1f1d1a;
-      --color-ink: #e9e3d7;
-      --color-editorial-muted: #a59e91;
-      --color-editorial-accent: #e0694d;
-      --color-selection: #5a3328;
-    }
-  }
-}
-
 @layer components {
   body,
   .page-transition-surface,
   .paper-surface {
-    /* Specks are tinted in the tile itself, so the layer composites without a blend mode. */
-    --paper-grain-opacity: 0.08;
-    --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .13 0 0 0 0 .12 0 0 0 0 .11 3 0 0 0 -1.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    --paper-grain-opacity: 0.22;
     isolation: isolate;
     background-color: var(--color-paper);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    body,
-    .page-transition-surface,
-    .paper-surface {
-      --paper-grain-opacity: 0.05;
-      --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .96 0 0 0 0 .93 0 0 0 0 .87 3 0 0 0 -1.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
-    }
   }
 
   .page-transition-surface {
     position: relative;
   }
 
-  /* Grain belongs to the sheet: it scrolls with content and stays beneath the ink. */
   body::before,
   .page-transition-surface::before,
   .paper-surface::before {
@@ -50,8 +21,9 @@
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    background-image: var(--paper-grain);
-    background-size: 200px 200px;
+    background-image: url("/images/paper-grain.svg");
+    background-size: 180px 180px;
     opacity: var(--paper-grain-opacity);
+    mix-blend-mode: multiply;
   }
 }

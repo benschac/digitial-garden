@@ -2,26 +2,7 @@ import { Heading, Text } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-import type { CSSProperties } from "react";
-import { deckleFilterIds } from "../../paper-filters";
-import { Annotation } from "./annotation";
-import styles from "./public-work.module.css";
-import { dateText, featureLink, itemHeading, sectionLabel } from "./styles";
-
-const card = cn(
-  styles.card,
-  "col-span-full max-w-[65ch] min-[72rem]:col-[2/-1]",
-  // Text keeps the column edge; the sheet hangs into the gutter.
-  "-mx-4 px-4 py-6 sm:-mx-7 sm:px-7 sm:py-7",
-  "font-reading text-lg",
-);
-
-function sheet(deckle: number, tilt: string) {
-  return {
-    "--home-deckle": `url(#${deckleFilterIds[deckle]})`,
-    "--home-card-tilt": tilt,
-  } as CSSProperties;
-}
+import { featureLink } from "./styles";
 
 export function PublicWorkSection() {
   return (
@@ -36,18 +17,19 @@ export function PublicWorkSection() {
       <Heading
         id="public-work-heading"
         variant="section"
-        className={cn(
-          sectionLabel,
-          "mb-4 whitespace-nowrap md:col-span-full min-[72rem]:col-[1]",
-        )}
+        className="mb-4 whitespace-nowrap md:col-span-full min-[72rem]:col-[1]"
       >
         Selected public work
       </Heading>
-      <article className={card} style={sheet(0, "-0.3deg")}>
-        <Heading as="h3" variant="item" className={cn(itemHeading, "mb-1")}>
+      <article className="col-span-full max-w-[65ch] font-reading text-lg min-[72rem]:col-[2/-1]">
+        <Heading
+          as="h3"
+          variant="item"
+          className="mb-1 text-balance font-[family-name:var(--home-entry-font,var(--font-sans))]"
+        >
           Investigating an iOS launch failure
         </Heading>
-        <Text variant="date" className={cn(dateText, "mb-4")}>
+        <Text variant="date" className="mb-4">
           <time dateTime="2026-07">July 2026</time>
         </Text>
         <Text>
@@ -57,9 +39,7 @@ export function PublicWorkSection() {
           the maintainers on GitHub.
         </Text>
         <Text className="mt-4">
-          PostHog subsequently{" "}
-          <Annotation kind="circle">merged a fix</Annotation> with regression
-          coverage.
+          PostHog subsequently merged a fix with regression coverage.
         </Text>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
           <div className="flex flex-wrap gap-x-6 gap-y-2 font-sans">
@@ -76,23 +56,31 @@ export function PublicWorkSection() {
               See the fix <span aria-hidden="true">&nbsp;↗</span>
             </Link>
           </div>
-          {/* Official logo file, unmodified; the ink treatment is CSS only: https://posthog.com/handbook/brand/assets */}
-          <span className={cn(styles.taped, "shrink-0")}>
-            <Image
-              src="/images/posthog-logo.svg"
-              alt="PostHog"
-              width={120}
-              height={21}
-              className={cn(styles.inked, "block h-auto w-[120px]")}
-            />
-          </span>
+          {/* Official, unmodified logo: https://posthog.com/handbook/brand/assets */}
+          <Image
+            src="/images/posthog-logo.svg"
+            alt="PostHog"
+            width={120}
+            height={21}
+            className="h-auto w-[120px] shrink-0"
+          />
         </div>
       </article>
-      <article className={cn(card, "mt-8")} style={sheet(2, "0.25deg")}>
-        <Heading as="h3" variant="item" className={cn(itemHeading, "mb-1")}>
+      <article
+        className={cn(
+          "col-span-full mt-10 max-w-[65ch] pt-6 min-[72rem]:col-[2/-1]",
+          "border-t border-[color-mix(in_srgb,currentColor_18%,transparent)]",
+          "font-reading text-lg",
+        )}
+      >
+        <Heading
+          as="h3"
+          variant="item"
+          className="mb-1 text-balance font-[family-name:var(--home-entry-font,var(--font-sans))]"
+        >
           Making Tamagui’s starter work with Expo
         </Heading>
-        <Text variant="date" className={cn(dateText, "mb-4")}>
+        <Text variant="date" className="mb-4">
           <time dateTime="2023-05">May 2023</time>
         </Text>
         <Text>
@@ -111,9 +99,7 @@ export function PublicWorkSection() {
             className="m-0"
           >
             <Text className="text-2xl italic text-ink">
-              <Annotation kind="highlight">
-                “this is heroic work, thank you”
-              </Annotation>
+              “this is heroic work, thank you”
             </Text>
           </blockquote>
           <figcaption className="mt-2 font-sans text-sm text-editorial-muted">
@@ -121,9 +107,9 @@ export function PublicWorkSection() {
               className={featureLink}
               href="https://github.com/tamagui/tamagui/pull/1173#issuecomment-1550657547"
             >
-              Nate Wienert, Tamagui creator
-              <span aria-hidden="true">&nbsp;↗</span>
+              Nate Wienert <span aria-hidden="true">&nbsp;↗</span>
             </Link>
+            <span className="ml-2">Tamagui creator</span>
           </figcaption>
         </figure>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
@@ -136,20 +122,15 @@ export function PublicWorkSection() {
             </Link>
           </div>
           <Link href="https://tamagui.dev/" className={featureLink}>
-            {/* Official wordmark file, unmodified; the ink treatment is CSS only: https://github.com/tamagui/tamagui/blob/main/code/tamagui.dev/public/tamagui-words-logo.png */}
-            <span
-              className={styles.taped}
-              style={{ "--home-logo-tilt": "1.25deg" } as CSSProperties}
-            >
-              <Image
-                src="/images/tamagui-logo.png"
-                alt="Tamagui"
-                width={1242}
-                height={136}
-                sizes="120px"
-                className={cn(styles.inked, "block h-auto w-[120px]")}
-              />
-            </span>
+            {/* Official, unmodified wordmark: https://github.com/tamagui/tamagui/blob/main/code/tamagui.dev/public/tamagui-words-logo.png */}
+            <Image
+              src="/images/tamagui-logo.png"
+              alt="Tamagui"
+              width={1242}
+              height={136}
+              sizes="120px"
+              className="h-auto w-[120px] shrink-0"
+            />
           </Link>
         </div>
       </article>

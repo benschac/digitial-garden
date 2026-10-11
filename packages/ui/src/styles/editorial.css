@@ -2,11 +2,10 @@
  * Static emission keeps these variables available to CSS Modules as well as utilities.
  */
 @theme static {
-  --color-ink: #22201c;
-  --color-editorial-muted: #6b655b;
-  --color-paper: #f5f0e6;
-  --color-editorial-accent: #c8452c;
-  --color-selection: #ecd3c4;
+  --color-ink: #211f1b;
+  --color-editorial-muted: #6f6a61;
+  --color-paper: #f8f5ee;
+  --color-selection: #e8d8bd;
 }
 
 /* Consumers own font loading and preferences; previews can use serif fallbacks. */
