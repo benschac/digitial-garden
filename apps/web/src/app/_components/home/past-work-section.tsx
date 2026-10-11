@@ -1,6 +1,7 @@
 import { Heading, Text } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import Image from "next/image";
+import { dateText, itemHeading, sectionLabel } from "./styles";
 
 const pastWork = [
   {
@@ -77,7 +78,10 @@ export function PastWorkSection() {
       <Heading
         id="past-work-heading"
         variant="section"
-        className="mb-4 md:col-span-full min-[72rem]:col-[1]"
+        className={cn(
+          sectionLabel,
+          "mb-4 md:col-span-full min-[72rem]:col-[1]",
+        )}
       >
         Past work
       </Heading>
@@ -98,14 +102,14 @@ export function PastWorkSection() {
             <Heading
               as="h3"
               variant="item"
-              className={cn(
-                "flex items-center gap-2",
-                "text-balance font-[family-name:var(--home-entry-font,var(--font-sans))]",
-              )}
+              className={cn("flex items-center gap-2", itemHeading)}
             >
               <span
                 aria-hidden="true"
-                className="size-11 shrink-0 overflow-hidden rounded-[8px]"
+                className={cn(
+                  "size-11 shrink-0 overflow-hidden rounded-[8px]",
+                  "[@media(prefers-color-scheme:dark)]:bg-[color-mix(in_srgb,var(--color-ink)_94%,transparent)]",
+                )}
               >
                 {work.logo && (
                   <Image
@@ -123,7 +127,10 @@ export function PastWorkSection() {
             <Text variant="small" className="pl-13 md:pl-0">
               {work.role}
             </Text>
-            <Text variant="date" className="pl-13 md:pl-0 md:text-right">
+            <Text
+              variant="date"
+              className={cn(dateText, "pl-13 md:pl-0 md:text-right")}
+            >
               {work.dates}
             </Text>
           </li>

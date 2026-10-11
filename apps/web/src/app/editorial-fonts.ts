@@ -19,12 +19,14 @@ export const displayStorageKey = "editorial-display-font-v2";
 export const readingStorageKey = "editorial-reading-font-v3";
 
 export const entryFontOptions = [
+  { id: "newsreader", label: "Newsreader", family: "var(--font-newsreader)" },
   { id: "system", label: "System sans", family: "var(--font-sans)" },
   { id: "display", label: "Display font", family: "var(--font-display)" },
   { id: "reading", label: "Reading font", family: "var(--font-reading)" },
 ] as const;
 export type EntryFontId = (typeof entryFontOptions)[number]["id"];
-export const entryStorageKey = "home-entry-font-v1";
+export const defaultEntryFont: EntryFontId = "newsreader";
+export const entryStorageKey = "home-entry-font-v2";
 
 export function isEntryFontId(value: string | null): value is EntryFontId {
   return entryFontOptions.some((option) => option.id === value);
@@ -55,7 +57,8 @@ export const editorialFontPreferenceInitScript = `
     const entryOptions = ${JSON.stringify(entryFontOptions)};
     const entryFont = window.localStorage.getItem(${JSON.stringify(entryStorageKey)});
     root.style.setProperty('--home-entry-font',
-      (entryOptions.find(option => option.id === entryFont) || entryOptions[0]).family);
+      (entryOptions.find(option => option.id === entryFont) ||
+        entryOptions.find(option => option.id === ${JSON.stringify(defaultEntryFont)})).family);
   } catch {
     // The CSS root tokens already contain the default font pair.
   }

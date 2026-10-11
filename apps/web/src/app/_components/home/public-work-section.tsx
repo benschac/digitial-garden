@@ -2,7 +2,7 @@ import { Heading, Text } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-import { featureLink } from "./styles";
+import { dateText, featureLink, itemHeading, sectionLabel } from "./styles";
 
 export function PublicWorkSection() {
   return (
@@ -17,19 +17,18 @@ export function PublicWorkSection() {
       <Heading
         id="public-work-heading"
         variant="section"
-        className="mb-4 whitespace-nowrap md:col-span-full min-[72rem]:col-[1]"
+        className={cn(
+          sectionLabel,
+          "mb-4 whitespace-nowrap md:col-span-full min-[72rem]:col-[1]",
+        )}
       >
         Selected public work
       </Heading>
       <article className="col-span-full max-w-[65ch] font-reading text-lg min-[72rem]:col-[2/-1]">
-        <Heading
-          as="h3"
-          variant="item"
-          className="mb-1 text-balance font-[family-name:var(--home-entry-font,var(--font-sans))]"
-        >
+        <Heading as="h3" variant="item" className={cn(itemHeading, "mb-1")}>
           Investigating an iOS launch failure
         </Heading>
-        <Text variant="date" className="mb-4">
+        <Text variant="date" className={cn(dateText, "mb-4")}>
           <time dateTime="2026-07">July 2026</time>
         </Text>
         <Text>
@@ -62,7 +61,10 @@ export function PublicWorkSection() {
             alt="PostHog"
             width={120}
             height={21}
-            className="h-auto w-[120px] shrink-0"
+            className={cn(
+              "h-auto w-[120px] shrink-0",
+              "[@media(prefers-color-scheme:dark)]:invert [@media(prefers-color-scheme:dark)]:hue-rotate-180",
+            )}
           />
         </div>
       </article>
@@ -73,14 +75,10 @@ export function PublicWorkSection() {
           "font-reading text-lg",
         )}
       >
-        <Heading
-          as="h3"
-          variant="item"
-          className="mb-1 text-balance font-[family-name:var(--home-entry-font,var(--font-sans))]"
-        >
+        <Heading as="h3" variant="item" className={cn(itemHeading, "mb-1")}>
           Making Tamagui’s starter work with Expo
         </Heading>
-        <Text variant="date" className="mb-4">
+        <Text variant="date" className={cn(dateText, "mb-4")}>
           <time dateTime="2023-05">May 2023</time>
         </Text>
         <Text>

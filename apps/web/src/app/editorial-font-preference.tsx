@@ -11,6 +11,7 @@ import {
 } from "react";
 import {
   defaultDisplayFont,
+  defaultEntryFont,
   defaultReadingFont,
   displayStorageKey,
   type EditorialFontId,
@@ -93,7 +94,7 @@ function useFontPreference<T extends string>(
 export function EditorialFontPreference({ children }: { children: ReactNode }) {
   const [entryFont, selectEntryFont] = useFontPreference<EntryFontId>(
     entryStorageKey,
-    "system",
+    defaultEntryFont,
     isEntryFontId,
     applyEntryFont,
   );
