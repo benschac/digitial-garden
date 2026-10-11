@@ -26,10 +26,15 @@ export default function VectorMathPage() {
         <PageNavigation className={styles.nav}>
           <Link
             className={styles.navLink}
-            href="/"
+            href={process.env.NODE_ENV === "development" ? "/reading" : "/"}
+            aria-label={
+              process.env.NODE_ENV === "development"
+                ? "Back to Reading"
+                : "Back home"
+            }
             transitionTypes={["nav-back"]}
           >
-            ← Workbench
+            <span aria-hidden="true">←</span>
           </Link>
           <span>Experiment 003</span>
         </PageNavigation>

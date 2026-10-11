@@ -30,6 +30,8 @@ const styles = {
     "text-[var(--experiment-muted)]",
   ),
   navLink: cn(
+    "inline-flex min-w-11 items-center justify-center",
+    "text-2xl",
     "text-inherit no-underline",
     "min-h-[44px]",
     "hover:text-[var(--experiment-ink)] focus-visible:outline-3 focus-visible:outline-[#a33f2b]",
