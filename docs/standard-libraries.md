@@ -38,6 +38,7 @@ initializing after cancellation.
 | Component variants | Existing Tailwind Variants (`tv`) conventions in shared UI; do not add it solely for long class lists |
 | Springs and motion values | Existing `motion/react` dependency; use the frame hook for imperative drawing rather than React state per frame |
 | Homepage avatar gaze and blinking | [`useAvatarAnimation`](../apps/web/src/app/_components/home/use-avatar-animation.ts) owns the hero/footer eye and brow tracking plus blinking. Attach its ref to a mounted wrapper containing only the portrait SVG; it handles viewport/tab visibility, reduced motion, fine-pointer tracking, and cleanup while preserving the artwork's resting transforms. |
+| Homepage navigation hover | [`NavigationHighlight`](../apps/web/src/app/_components/home/primary-navigation.tsx) owns the clipped duplicate row shared by primary and social navigation. Optional per-link `data-highlight-color` sets the fill; row classes and clipping padding preserve each caller's layout. Uses shared media-query, resize, and document-event hooks to clear stale hover state; the duplicate is inert and hidden from assistive technology. |
 | Page typography and feature effects | Keep in `apps/web`; for example [`useWetInk`](../apps/web/src/app/use-wet-ink.ts) composes shared lifecycle hooks but owns ink rendering |
 
 ## Next.js and tooling

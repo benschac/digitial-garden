@@ -9,9 +9,21 @@ import { cn } from "@personal-site/ui/lib/utils";
 import { type ReactNode, useRef, useState } from "react";
 import styles from "./hero.module.css";
 
-const rowClass = "flex flex-wrap items-start gap-x-6 gap-y-2 p-1.5 sm:gap-x-8";
-
-export function PrimaryNavigation({ children }: { children: ReactNode }) {
+export function NavigationHighlight({
+  children,
+  rowClassName,
+  className,
+  highlightClassName,
+  paddingX = 6,
+  paddingY = 4,
+}: {
+  children: ReactNode;
+  rowClassName: string;
+  className?: string;
+  highlightClassName?: string;
+  paddingX?: number;
+  paddingY?: number;
+}) {
   const rowRef = useRef<HTMLDivElement>(null);
   const canHover = useRef(false);
   const hoveredLink = useRef<HTMLAnchorElement | null>(null);
@@ -19,6 +31,7 @@ export function PrimaryNavigation({ children }: { children: ReactNode }) {
     clip: "inset(0 100% 0 0 round 4px)",
     visible: false,
     moving: false,
+    color: "var(--color-ink)",
   });
 
   function hideHighlight() {
@@ -36,6 +49,47 @@ export function PrimaryNavigation({ children }: { children: ReactNode }) {
   });
 
   return (
+    <div
+      ref={rowRef}
+      className={cn("relative", className)}
+      onPointerOver={(event) => {
+        if (!canHover.current || event.pointerType !== "mouse") return;
+        const link = (event.target as Element).closest("a");
+        const row = rowRef.current;
+        if (!link || !row || link === hoveredLink.current) return;
+        const bounds = row.getBoundingClientRect();
+        const target = link.getBoundingClientRect();
+        const moving = hoveredLink.current !== null;
+        hoveredLink.current = link;
+        setHighlight({
+          clip: `inset(${target.top - bounds.top - paddingY}px ${bounds.right - target.right - paddingX}px ${bounds.bottom - target.bottom - paddingY}px ${target.left - bounds.left - paddingX}px round 4px)`,
+          visible: true,
+          moving,
+          color: link.dataset.highlightColor ?? "var(--color-ink)",
+        });
+      }}
+      onPointerLeave={hideHighlight}
+    >
+      <div className={rowClassName}>{children}</div>
+      <div
+        aria-hidden="true"
+        inert
+        className={cn(rowClassName, styles.highlight, highlightClassName)}
+        data-moving={highlight.moving}
+        style={{
+          backgroundColor: highlight.color,
+          clipPath: highlight.clip,
+          opacity: highlight.visible ? 1 : 0,
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function PrimaryNavigation({ children }: { children: ReactNode }) {
+  return (
     <nav
       aria-label="Primary"
       className={cn(
@@ -43,40 +97,12 @@ export function PrimaryNavigation({ children }: { children: ReactNode }) {
         "border-t border-[color-mix(in_srgb,currentColor_18%,transparent)]",
       )}
     >
-      <div
-        ref={rowRef}
-        className="relative -m-1.5"
-        onPointerOver={(event) => {
-          if (!canHover.current || event.pointerType !== "mouse") return;
-          const link = (event.target as Element).closest("a");
-          const row = rowRef.current;
-          if (!link || !row || link === hoveredLink.current) return;
-          const bounds = row.getBoundingClientRect();
-          const target = link.getBoundingClientRect();
-          const moving = hoveredLink.current !== null;
-          hoveredLink.current = link;
-          setHighlight({
-            clip: `inset(${target.top - bounds.top - 4}px ${bounds.right - target.right - 6}px ${bounds.bottom - target.bottom - 4}px ${target.left - bounds.left - 6}px round 4px)`,
-            visible: true,
-            moving,
-          });
-        }}
-        onPointerLeave={hideHighlight}
+      <NavigationHighlight
+        className="-m-1.5"
+        rowClassName="flex flex-wrap items-start gap-x-6 gap-y-2 p-1.5 sm:gap-x-8"
       >
-        <div className={rowClass}>{children}</div>
-        <div
-          aria-hidden="true"
-          inert
-          className={cn(rowClass, styles.highlight)}
-          data-moving={highlight.moving}
-          style={{
-            clipPath: highlight.clip,
-            opacity: highlight.visible ? 1 : 0,
-          }}
-        >
-          {children}
-        </div>
-      </div>
+        {children}
+      </NavigationHighlight>
     </nav>
   );
 }

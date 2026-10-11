@@ -27,7 +27,17 @@
   .highlight[data-moving="true"] {
     transition:
       clip-path 180ms cubic-bezier(0.23, 1, 0.32, 1),
-      opacity 100ms ease-out;
+      opacity 100ms ease-out,
+      background-color 180ms ease;
+  }
+
+  .socialHighlight {
+    --home-social-icon-filter: brightness(0) invert(1);
+    color: #fff;
+  }
+
+  .socialIcon {
+    filter: var(--home-social-icon-filter, none);
   }
 
   @media (prefers-reduced-motion: reduce) {
