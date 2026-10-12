@@ -684,3 +684,99 @@ Reran `node --experimental-strip-types --test apps/mobile/tests/item-task-queue.
 Checked the preview at desktop and 390px widths. The added sections render, but the existing three-column network-stage table produces about 21px of page overflow at 390px; its mobile layout remains a publication follow-up. Verified all 26 source-path references exist, balanced code fences, and unchanged protected text.
 
 The introduction, frontmatter, and existing system `<AnimatedDiagram>` remain unchanged. This is a content-only revision: no executable workshop demos, provider calls, production operations, upstream submissions, or mobile runtime changes. API integration tests, physical-device behavior, and performance benchmarks were not run. The hypothetical reversed-order and early-`finally` variants remain teaching analyses until separately tested as executable demos.
+
+## Research appendix: ExecuTorch 0.10 and the Snap to Post fork
+
+<Callout title="Research notes — October 11, 2026" variant="editorial">
+
+Saved for workshopping this draft. This is a source-based compatibility assessment, not an implemented migration or a physical-device performance result. It updates the migration options behind the earlier OCR upstream discussion without changing the description of the app as it currently runs. Recheck versions and source before implementing or publishing these conclusions.
+
+</Callout>
+
+### Finding: keep the fork until a replacement is validated
+
+The fork is still necessary for Snap to Post as currently written. ExecuTorch 0.10 provides a credible path to removing it after a targeted migration. Investigate that migration before porting the C++ changes onto the rewrite.
+
+The comparison covered the app's pinned fork commit, `461e3e7643daa16d0fe9a7f2c46ca0c2d586cb63`, against upstream `v0.9.3`, the app's actual callers, and this draft. Upstream `v0.10.0` was inspected directly, with patch-release differences checked through `v0.10.5`. The relevant OCR pipeline, background runtime, legacy OCR implementation, and legacy frame extractor were unchanged between those upstream tags.
+
+The inspected Snap to Post HEAD was `4a25aac37a218ab021aac3d775c85b55dfc7f2c0`. Its mobile app consumes `react-native-executorch` and `react-native-executorch-expo-resource-fetcher` as workspace packages from `vendor/react-native-executorch`. The fork's working copy also contained staged OCR documentation and type-comment changes; these were reviewed separately from the committed runtime implementation.
+
+The fork's default branch is not the worker implementation. The worker integration branch is `snap/v0.9.3-bounded-ocr-worker`. At review time, its published branch tip was `34eeeefd5263bf218c882cb8e330130d070bee7a`; the app-pinned local fork was two commits ahead, at `461e3e76`. Use the app's exact gitlink when reproducing this assessment, rather than assuming the fork's default branch or published integration branch represents the app's dependency.
+
+### What the rewrite replaces, and what the application still owns
+
+| Fork change | What upstream 0.10 supplies | Assessment |
+| --- | --- | --- |
+| Native thread that runs OCR outside the camera callback | Background worklet runtimes and asynchronous OCR execution | Potentially replaceable with app-level scheduling. |
+| One active frame, one replaceable pending frame, latest-result polling | Ordinary asynchronous dispatch | Still needs implementation. Upstream does not reproduce the bounded worker contract. |
+| Generation reset and item-scoped results | General inference results | Still needed in Snap to Post to reject stale results. |
+| Locked frame extraction followed by an owned pixel copy | New pipelines accept an `ImageBuffer`; legacy retains the old extractor | Depends on the migration path. Pixel lifetime still needs explicit handling. |
+| Workspace build scripts, dependency alignment, and lockfile repairs | Published package distribution | Mostly unnecessary once the app stops consuming the vendored workspace packages. |
+
+The current `use-executorch-inference.ts` directly consumes `submitFrame`, `takeLatestFrameResult`, and `resetFrameWorker`. The camera path submits gated frames, polls completed results, and records queue, inference, and submission timing. Those custom worker APIs are absent from upstream, including its legacy entry point.
+
+The substantive native patch lives in `OCR.cpp`, `OCR.h`, `Types.h`, `FrameExtractor.cpp`, the host-object bindings, and their TypeScript controller/hook/types. The fork also contains workspace and CI repairs and formatting-only changes to unrelated type unions. Those integration and formatting changes are not independent product reasons to keep a native fork.
+
+### A worklet is not automatically a separate OCR lane
+
+The old `runOnFrame` already ran in a worklet. The fork moved expensive OCR off the camera analysis callback so object detection and quality analysis could continue. The important distinction is where OCR blocks.
+
+Upstream's new synchronous `recognizeCharactersWorklet` still occupies whichever thread calls it. Its asynchronous counterpart uses `wrapAsync`, which dispatches to a background runtime, but provides no pending-frame replacement, generation invalidation, or application-level admission limit. Calling the async function for every incoming frame would not reproduce the fork's bounded scheduling policy.
+
+The new runtime accepts a custom `WorkletRuntime`, and `createPaddleOcr(config, runtime)` can use one dedicated to OCR. The stock hook uses the default runtime. A dedicated runtime is a migration option for isolating OCR from other heavy model work; its benefit still needs measurement.
+
+The upstream camera example runs synchronous model inference inside `useFrameOutput` and uses `dropFramesWhileBusy`. That bounds camera delivery by dropping frames while the callback is occupied. It does not preserve Snap to Post's behavior of continuing detector and quality analysis while OCR runs elsewhere.
+
+Sources: [background runtime implementation](https://github.com/software-mansion/react-native-executorch/blob/v0.10.5/packages/react-native-executorch/src/core/runtime.ts), [worklets and threading documentation](https://docs.swmansion.com/react-native-executorch/docs/core-and-advanced/worklets-and-threading), and [versioned camera integration example](https://github.com/software-mansion/react-native-executorch/blob/v0.10.5/docs/docs/02-extensions/computer-vision/11-camera-integration.md).
+
+### The legacy entry point preserves upstream's API, not the fork
+
+Moving imports to `react-native-executorch/legacy` preserves upstream's older hooks and modules. It does not add the three custom worker methods on which the app depends.
+
+The legacy iOS and Android frame extractors still unlock the native buffer and return a non-owning OpenCV matrix. The fork's RAII locking and owned-copy modification has not been incorporated there. This establishes that the ownership change remains absent; it does not by itself establish a reproduced crash on either platform.
+
+The new API avoids that particular extractor by accepting an `ImageBuffer`, but this moves the input-lifetime responsibility to the integration. An `ImageBuffer` contains a `Uint8Array`. Constructing a typed-array view over camera memory does not copy it. An asynchronous handoff must establish owned pixels before releasing the frame, or use an explicitly valid retention contract. Row padding, orientation, mirroring, and coordinate mapping also need to be handled.
+
+Sources: [legacy frame extractor](https://github.com/software-mansion/react-native-executorch/blob/v0.10.5/packages/react-native-executorch/legacy/cpp/rnexecutorch/utils/FrameExtractor.cpp), [ImageBuffer definition](https://github.com/software-mansion/react-native-executorch/blob/v0.10.5/packages/react-native-executorch/src/extensions/cv/image.ts), and [image preprocessing implementation](https://github.com/software-mansion/react-native-executorch/blob/v0.10.5/packages/react-native-executorch/src/extensions/cv/utils/imagePreprocessor.ts).
+
+### OCR migration changes more than scheduling
+
+The app currently selects English CRAFT with `models.ocr.craft({ language: 'en' })`. The new `useOpticalCharacterRecognizer` hook uses PaddleOCR PP-OCRv6. Its results expose `confidence` and quadrilateral `quad` values instead of the current `score` and `bbox` fields.
+
+Switching to that pipeline therefore requires result adapters and validation of recognition quality, confidence thresholds, geometry, and latency on representative product labels. The release's functional-parity statement is not sufficient evidence that the new OCR pipeline preserves CRAFT's outputs or performance. CRAFT remains available through legacy. If preserving CRAFT is a requirement, keep the existing implementation temporarily or recreate its pipeline using the new primitives.
+
+Live and captured-photo OCR also need explicit coordination. The fork serializes inference using its mutex. Upstream's new model implementation rejects concurrent execution of the same model with `RESOURCE_BUSY`; it does not supply the application's ordering or photo-priority policy. Serialize access to the shared OCR runner, and treat reset as invalidating results rather than stopping active native inference.
+
+Sources: [PaddleOCR implementation](https://github.com/software-mansion/react-native-executorch/blob/v0.10.5/packages/react-native-executorch/src/extensions/cv/tasks/paddleOcr.ts), [OCR hook](https://github.com/software-mansion/react-native-executorch/blob/v0.10.5/packages/react-native-executorch/src/hooks/useOpticalCharacterRecognizer.ts), and [native model execution and disposal](https://github.com/software-mansion/react-native-executorch/blob/v0.10.5/packages/react-native-executorch/cpp/core/model.cpp).
+
+### Proposed migration experiment
+
+Use upstream 0.10.5 as the reviewed baseline for a focused experiment, with a dedicated OCR runtime and a small app-owned scheduler. This is a proposed next step, not completed work.
+
+1. Establish safe, correctly oriented image input and explicit ownership before camera-frame disposal. Keep the existing RGB quality-analysis requirement in view; do not copy the upstream YUV example without adapting that consumer.
+2. Bound admission before dispatching inference: preserve one active job and one replaceable latest pending job, with session/item generation checks on returned results.
+3. Coordinate live and captured-photo OCR through the same scheduling boundary. Define capture priority and wait for active work to settle before disposing its resources.
+4. Adapt PaddleOCR's result shape and compare label recognition against the current CRAFT path. Keeping CRAFT would require a different migration scope.
+5. Measure camera throughput, dropped frames, submission/copy cost, captured-photo latency, memory, thermals, reset, navigation, and teardown on the target physical devices. Static checks or Simulator compilation cannot establish these outcomes.
+6. Retire the fork only after the replacement meets those requirements. Migrate other legacy consumers incrementally, preserving their lifecycle and cancellation behavior.
+
+The new API also replaces the separate resource-fetcher adapters with built-in fetching through `react-native-blob-util` and removes manual `initExecutorch` initialization. Legacy consumers still require their adapter and initialization. Snap to Post's optional local vision-language path currently uses `LLMModule`, `ResourceFetcher`, and `ResourceFetcherUtils`, so an OCR-only migration is not sufficient reason to remove that setup immediately. See the [migration guide](https://docs.swmansion.com/react-native-executorch/docs/fundamentals/migrating-from-v0-9).
+
+The installed VisionCamera worklets implementation was also checked as an alternative scheduling route. Its `createAsyncRunner.ts` still contained a TODO describing a cross-runtime `scheduleOnRuntime` error, and it reset its busy flag after `task()` without a task-level `finally`. That is a feasibility concern requiring a device probe, not proof that every invocation fails. Do not assume `AsyncRunner` is a validated drop-in replacement for the native worker.
+
+### Implications for the article
+
+The existing account of owned pixels, one active/one pending frame, polling, and reset accurately describes the inspected fork. Keep that description version-specific. The earlier upstream recommendation should acknowledge the new alternative before publication:
+
+> ExecuTorch 0.10 introduces background worklet execution that may let us retire the native OCR worker. Snap to Post would still own bounded scheduling, pixel lifetime, stale-result rejection, and coordination with captured-photo OCR. We have not yet validated that migration.
+
+The article's Effect semaphore argument remains relevant. That queue governs remote identification independently of local OCR execution. Changing ExecuTorch's implementation does not replace remote admission control, per-item ordering, or the cancellation bridge discussed in the post.
+
+### Open decisions and evidence limits
+
+- Must the migration meet acceptance criteria on both iOS and Android, or can it prioritize the current iOS capture flow and track Android gaps separately?
+- Is switching from CRAFT to PaddleOCR acceptable if recognition and latency pass device testing, or must CRAFT be preserved?
+
+Neither preference was assumed in the recommendation. The review established source-level differences and migration options. It did not change the mobile application, run a migration build, benchmark either OCR model, or validate camera behavior on a physical device. The existing device-validation handoff remains useful, but its historical build and timing evidence should not be presented as proof of the proposed 0.10 migration.
+
+Starting references: [0.10.0 release announcement](https://swmansion.com/changelog/react-native-executorch-0-10-0/), [fork repository](https://github.com/benschac/react-native-executorch), [Snap to Post at the reviewed commit](https://github.com/benschac/snap_post/tree/4a25aac37a218ab021aac3d775c85b55dfc7f2c0), and [upstream 0.10.5 source](https://github.com/software-mansion/react-native-executorch/tree/v0.10.5). Fork implementation paths and app call sites are listed in the source map above.

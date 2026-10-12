@@ -115,6 +115,7 @@ export function AnimatedDiagram({
   return (
     <figure
       className={cn(styles.figure, className)}
+      data-mdx-interactive
       data-prose-exclude
       data-diagram-theme={theme}
     >

@@ -1,7 +1,7 @@
 ---
-title: "Building Snap to Post with Effect"
-slug: "building-snap-to-post-with-effect"
-summary: "From a camera capture to a researched listing draft: the experience I'm building, the work behind it, and where Effect helps coordinate that work."
+title: "Building A Low Latency <object classifier thing> <need a better title>"
+slug: "build-snap-to-post"
+summary: "Built with Effect TS, VisionCamera, React Native ExecuTorch, ElevenLabs Scribe, Exa, and the AI SDK to turn captured items into researched listings"
 publishedAt: "2026-10-11"
 status: "draft"
 tags:
@@ -11,11 +11,13 @@ tags:
 featured: false
 ---
 
+## The Problem
+
 I'm building Snap to Post to help someone turn the items in front of them into researched listing drafts. The starting point is a camera: photograph an item, collect evidence about what it is, and use that evidence to help prepare a listing.
 
 <AnimatedDiagram
   src="/diagrams/snap-to-post-overview.json"
-  title="Snap to Post: from camera to listing draft"
+  title="Overview"
   description="The phone sends selected photographs and local signals to the backend for identification and product research. Seller audio goes directly to ElevenLabs Scribe; transcripts return to the phone, which sends item-associated text through the control API. Available final narration helps the backend build listing information. Candidates and draft updates return to the UI while the seller keeps capturing. Model names show configurable source defaults. This illustrative flow can overlap; marketplace publishing is a separate step."
 />
 

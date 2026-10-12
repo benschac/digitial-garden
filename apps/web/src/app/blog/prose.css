@@ -7,7 +7,7 @@
     --blog-display: var(--font-editorial-display);
     --blog-reading: var(--font-editorial-reading);
     --blog-text-display: clamp(4rem, 2.35rem + 6.5vw, 7.5rem);
-    --blog-text-title: clamp(3.25rem, 2rem + 5vw, 6rem);
+    --blog-text-title: clamp(2.5rem, 1.5rem + 3.5vw, 4.5rem);
     --blog-text-heading-2: clamp(2rem, 1.55rem + 0.9vw, 2.5rem);
     --blog-text-heading-3: clamp(1.35rem, 1.25rem + 0.3vw, 1.5625rem);
     --blog-text-deck: clamp(1.3rem, 1.12rem + 0.7vw, 1.6875rem);

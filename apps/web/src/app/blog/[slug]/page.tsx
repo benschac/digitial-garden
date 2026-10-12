@@ -83,7 +83,26 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     <BlogTransition key={slug} name="blog-post-page" view="article">
       <Typography as="main" variant="ui" className={styles.page}>
         <ArticleSurface slug={post.slug} className={styles.surface} expanded />
-        <article>
+        <nav
+          aria-label="Blog navigation"
+          className={cn(
+            styles.backNavigation,
+            hasParticleHeader && styles.particleBackNavigation,
+          )}
+        >
+          <Link
+            className={typographyVariants({
+              variant: "articleBackLink",
+              className: `${styles.link} ${styles.backLink}`,
+            })}
+            href="/blog"
+            transitionTypes={["blog-close"]}
+          >
+            <span aria-hidden="true">←</span>
+            <span>All posts</span>
+          </Link>
+        </nav>
+        <article className={styles.article}>
           <header
             className={`${styles.postHeader}${
               hasParticleHeader ? ` ${styles.particlePostHeader}` : ""
@@ -92,17 +111,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             {hasSvgHeader ? (
               <ColorfulSVGPattern className="[grid-column:wide-start/wide-end]" />
             ) : null}
-            <Link
-              aria-label="All posts"
-              className={typographyVariants({
-                variant: "articleBackLink",
-                className: `${styles.link} ${styles.backLink}`,
-              })}
-              href="/blog"
-              transitionTypes={["blog-close"]}
-            >
-              <span aria-hidden="true">←</span>
-            </Link>
             <ViewTransition
               name={`post-title-${post.slug}`}
               default="none"

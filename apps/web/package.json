@@ -49,6 +49,8 @@
     "@streamdown/math": "1.0.2",
     "@tailwindcss/postcss": "4.3.0",
     "@types/mdx": "2.0.14",
+    "@videojs/mux-video": "10.0.1",
+    "@videojs/react": "10.0.1",
     "ai": "7.0.83",
     "eve": "0.46.0",
     "giotto": "github:nicoloboschi/giotto#b0809dc037358f21e5e1ebe3dcbdf257b432a4aa",

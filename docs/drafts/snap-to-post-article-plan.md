@@ -1,6 +1,6 @@
 # Snap to Post article plan
 
-The reader-facing draft is `apps/web/content/posts/building-snap-to-post-with-effect.mdx`. This first pass writes the opening through the handoff to the queue walkthrough. Its separate slug allows development preview while the original remains available.
+The reader-facing draft is `apps/web/content/posts/build-snap-to-post.mdx`. This first pass writes the opening through the handoff to the queue walkthrough. Its separate slug allows development preview while the original remains available.
 
 Keep `apps/web/content/posts/how-we-use-effect-in-snap-to-post.mdx` as the detailed source draft. It holds the implementation excerpts, source map, validation history, device caveats, and visualization specifications. This pass does not reverify the mobile implementation or carry its historical test results forward as new evidence.
 

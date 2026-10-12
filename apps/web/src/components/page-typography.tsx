@@ -136,7 +136,7 @@ const pageTypography = {
     "text-[1.125rem] leading-[1.65] text-pretty [overflow-wrap:anywhere]",
   ),
   articleBackLink:
-    "font-sans text-[2rem] font-[650] tracking-[0] leading-[1] uppercase",
+    "font-sans text-[0.875rem] font-[500] tracking-[0] leading-[1.5]",
   articleDeck: cn(
     "font-reading [font-optical-sizing:auto]",
     "text-[length:var(--blog-text-deck)] leading-[var(--blog-leading-deck)] text-pretty",
@@ -146,7 +146,6 @@ const pageTypography = {
     "tracking-[calc(-0.047em_+_var(--font-editorial-display-tracking-adjustment))]",
     "leading-[1]",
     "text-balance",
-    "[@media(max-width:42rem)]:text-[clamp(2.85rem,14vw,4.5rem)]",
     "[@media(max-width:42rem)]:tracking-[calc(-0.04em_+_var(--font-editorial-display-tracking-adjustment))]",
   ),
   articleMetadata:

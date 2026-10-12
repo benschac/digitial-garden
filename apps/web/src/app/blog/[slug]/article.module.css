@@ -4,14 +4,19 @@
   .page {
     position: relative;
     isolation: isolate;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
     --blog-ink: var(--color-ink);
     --blog-muted: var(--color-editorial-muted);
     --blog-paper: var(--color-paper);
     --blog-rule: #d9d2c5;
     --blog-accent: #8b3a2a;
     --blog-measure-body: 40rem;
+    --blog-measure-table: 60rem;
     --blog-measure-deck: var(--blog-measure-body);
-    --blog-measure-title: 17ch;
+    --blog-measure-title: 22ch;
+    --blog-navigation-height: 2.75rem;
     --blog-space-0: 0;
     --blog-space-1: 0.25rem;
     --blog-space-2: 0.5rem;
@@ -95,6 +100,7 @@
     max-width: 72rem;
   }
 
+  .backNavigation,
   .postHeader,
   .prose {
     display: grid;
@@ -108,20 +114,48 @@
     width: 100%;
   }
 
+  .backNavigation > *,
   .postHeader > *,
   .prose > * {
     grid-column: content-start / content-end;
     min-width: 0;
   }
 
-  .postHeader > :where(.backLink, .title),
+  .postHeader > :where(.title) {
+    grid-column: content-start / wide-end;
+  }
+
   .prose > [data-mdx-interactive] {
     grid-column: wide-start / wide-end;
   }
 
+  /* Navigation and article share a row without collapsing their margins. */
+  .article {
+    grid-area: 1 / 1;
+    min-width: 0;
+  }
+
+  .backNavigation {
+    grid-area: 1 / 1;
+    align-self: start;
+    position: relative;
+    z-index: 3;
+    min-height: var(--blog-navigation-height);
+  }
+
+  .particleBackNavigation {
+    --blog-accent: #69d7ff;
+    color: #f8f5ee;
+  }
+
   .backLink {
     align-self: start;
-    min-height: 44px;
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--blog-space-stack-sm);
+    min-width: 44px;
+    min-height: var(--blog-navigation-height);
     padding-block: var(--blog-space-stack-sm);
     text-decoration: none;
   }
@@ -133,6 +167,7 @@
   }
 
   .postHeader {
+    padding-block-start: var(--blog-navigation-height);
     border-bottom: 1px solid var(--blog-rule);
     padding-bottom: clamp(
       var(--blog-space-stack-lg),
@@ -151,7 +186,10 @@
     margin-inline: calc(0rem - var(--blog-page-inline-padding));
     max-width: none;
     overflow: hidden;
-    padding-block-start: var(--blog-page-block-padding);
+    padding-block-start: calc(
+      var(--blog-page-block-padding) +
+      var(--blog-navigation-height)
+    );
     padding-inline: max(
       var(--blog-page-inline-padding),
       calc((100vw - 72rem) / 2)
@@ -208,7 +246,11 @@
   }
 
   .title {
-    margin-top: clamp(var(--blog-space-stack-xl), 3vw, var(--blog-space-10));
+    margin-top: clamp(
+      var(--blog-space-stack-md),
+      2vw,
+      var(--blog-space-stack-lg)
+    );
     max-width: var(--blog-measure-title);
   }
 
@@ -221,9 +263,9 @@
 
   .summary {
     margin-top: clamp(
-      var(--blog-space-stack-lg),
-      3vw,
-      var(--blog-space-section-sm)
+      var(--blog-space-stack-md),
+      2vw,
+      var(--blog-space-stack-lg)
     );
     max-width: var(--blog-measure-deck);
   }
@@ -364,6 +406,16 @@
     overscroll-behavior-inline: contain;
   }
 
+  .prose
+    > [data-mdx-table]:not(
+      :where([data-prose-exclude], [data-prose-exclude] *)
+    ) {
+    grid-column: wide-start / wide-end;
+    justify-self: center;
+    max-width: var(--blog-measure-table);
+    width: 100%;
+  }
+
   .prose > [data-mdx-table]:focus-visible {
     outline: 3px solid var(--blog-accent);
     outline-offset: 4px;
@@ -375,6 +427,19 @@
     table-layout: auto;
     margin-block: 0;
     width: 100%;
+  }
+
+  .prose
+    :where(table):has(> thead > tr > th:nth-child(3):last-child):not(
+      :where([data-prose-exclude], [data-prose-exclude] *)
+    ) {
+    table-layout: fixed;
+  }
+
+  .prose
+    :where(table):has(> thead > tr > th:nth-child(3):last-child)
+    th:first-child:not(:where([data-prose-exclude], [data-prose-exclude] *)) {
+    width: 20%;
   }
 
   .prose
@@ -393,6 +458,8 @@
   }
 
   .postNavigation {
+    grid-area: 2 / 1;
+    width: 100%;
     border-top: 1px solid var(--blog-rule);
     display: grid;
     gap: var(--blog-space-stack-md);
@@ -410,6 +477,7 @@
   }
 
   @media (max-width: 42rem) {
+    .backNavigation,
     .postHeader,
     .prose {
       grid-template-columns:
