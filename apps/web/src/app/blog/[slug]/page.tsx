@@ -104,13 +104,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         </nav>
         <article className={styles.article}>
           <header
-            className={`${styles.postHeader}${
-              hasParticleHeader ? ` ${styles.particlePostHeader}` : ""
-            }${hasSvgHeader ? " relative isolate" : ""}`}
+            className={cn(
+              styles.postHeader,
+              hasParticleHeader && styles.particlePostHeader,
+              hasSvgHeader && styles.svgPostHeader,
+            )}
           >
-            {hasSvgHeader ? (
-              <ColorfulSVGPattern className="[grid-column:wide-start/wide-end]" />
-            ) : null}
             <ViewTransition
               name={`post-title-${post.slug}`}
               default="none"
@@ -148,6 +147,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 </>
               ) : null}
             </Typography>
+            {hasSvgHeader ? (
+              <ColorfulSVGPattern className={styles.svgHeaderPattern} />
+            ) : null}
             {hasParticleHeader ? (
               <ParticleHeaderBackground
                 canvasClassName={styles.particleHeaderCanvas}

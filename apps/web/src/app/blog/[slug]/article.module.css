@@ -176,6 +176,28 @@
     );
   }
 
+  .svgPostHeader {
+    position: relative;
+    isolation: isolate;
+    margin-block-start: calc(0rem - var(--blog-page-block-padding));
+    margin-inline: calc(0rem - var(--blog-page-inline-padding));
+    max-width: none;
+    width: calc(100% + var(--blog-page-inline-padding) * 2);
+    padding-block-start: calc(
+      var(--blog-page-block-padding) +
+      var(--blog-navigation-height)
+    );
+    padding-inline: max(
+      var(--blog-page-inline-padding),
+      calc((100vw - 72rem) / 2)
+    );
+  }
+
+  .svgHeaderPattern {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
   .particlePostHeader {
     --blog-accent: #69d7ff;
     background: #05070d;

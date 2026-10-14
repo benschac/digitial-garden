@@ -1,159 +1,262 @@
 "use client";
 
+import {
+  useAnimationFrame,
+  useDocumentEvent,
+  useIntersectionObserver,
+  useMediaQuery,
+  useResizeObserver,
+  useWindowEvent,
+} from "@personal-site/react-hooks";
 import { cn } from "@personal-site/ui/lib/utils";
-import { useEffect, useId, useRef } from "react";
+import { useRef } from "react";
+import styles from "./colorful-svg-pattern.module.css";
+import { frameProgress } from "./svg-pattern-motion";
 
-// Ported from benschac-new/packages/ui/src/PostLayout.tsx.
+const COLORS = ["#cb6247", "#bd8540", "#72844b", "#4f8d86", "#7771a5"];
+const POINTER_RADIUS = 170;
+const RIPPLE_DURATION = 1400;
+
+interface PatternLine {
+  element: SVGLineElement;
+  x: number;
+  y: number;
+  restingRotation: number;
+  rotation: number;
+  emphasis: number;
+}
+
+// A line has no direction: take the shortest turn, including across ±180°.
+function angleDifference(target: number, current: number) {
+  return ((((target - current + 90) % 180) + 180) % 180) - 90;
+}
+
 export function ColorfulSVGPattern({ className }: { className?: string }) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const id = useId();
+  const simulation = useRef({
+    lines: [] as PatternLine[],
+    pointer: null as { x: number; y: number } | null,
+    ripples: [] as { x: number; y: number; startedAt: number }[],
+    previousTime: null as number | null,
+    bounds: null as DOMRect | null,
+    reducedMotion: false,
+    finePointer: false,
+    visible: true,
+  });
 
-  useEffect(() => {
-    const svg = svgRef.current;
-    const header = svg?.parentElement;
-    const group = svg?.querySelector("g");
-    if (!svg || !header || !group) return;
+  const { requestFrame, cancelFrame } = useAnimationFrame((time) => {
+    const state = simulation.current;
+    if (state.reducedMotion || !state.visible || document.hidden) {
+      state.previousTime = null;
+      return false;
+    }
+    const easing = frameProgress(state.previousTime, time);
+    state.previousTime = time;
+    state.ripples = state.ripples.filter(
+      (ripple) => time - ripple.startedAt < RIPPLE_DURATION,
+    );
+    let moving = state.ripples.length > 0;
 
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let frame = 0;
-    let previousTime = 0;
-    let pointer: { x: number; y: number } | null = null;
-    let lines: {
-      element: SVGLineElement;
-      x: number;
-      y: number;
-      rotation: number;
-      target: number;
-    }[] = [];
-
-    const animate = (time: number) => {
-      frame = 0;
-      const easing =
-        1 - 0.9 ** (Math.min(time - previousTime, 64) / (1000 / 60));
-      previousTime = time;
-      let moving = false;
-      for (const line of lines) {
-        if (pointer) {
-          const dx = pointer.x - line.x;
-          const dy = pointer.y - line.y;
-          if (Math.hypot(dx, dy) < 10) {
-            line.target = (Math.atan2(dy, dx) * 180) / Math.PI;
-          }
+    for (const line of state.lines) {
+      let target = line.restingRotation;
+      let emphasis = 0;
+      if (state.pointer) {
+        const dx = state.pointer.x - line.x;
+        const dy = state.pointer.y - line.y;
+        const influence = Math.max(0, 1 - Math.hypot(dx, dy) / POINTER_RADIUS);
+        if (influence > 0) {
+          target +=
+            angleDifference((Math.atan2(dy, dx) * 180) / Math.PI, target) *
+            influence;
         }
-        const difference = line.target - line.rotation;
-        if (Math.abs(difference) < 0.01) continue;
-        line.rotation += difference * easing;
-        line.element.setAttribute(
-          "transform",
-          `rotate(${line.rotation} ${line.x} ${line.y})`,
+        emphasis = influence;
+      }
+      for (const ripple of state.ripples) {
+        const age = Math.max(0, time - ripple.startedAt);
+        const dx = line.x - ripple.x;
+        const dy = line.y - ripple.y;
+        const ring = Math.max(
+          0,
+          1 - Math.abs(Math.hypot(dx, dy) - age * 0.6) / 75,
         );
-        moving = true;
-      }
-      if (moving) frame = requestAnimationFrame(animate);
-    };
-
-    const rebuild = () => {
-      cancelAnimationFrame(frame);
-      frame = 0;
-      pointer = null;
-      const { width, height } = svg.getBoundingClientRect();
-      if (!width || !height) return;
-      const viewWidth = (width / height) * 100;
-      svg.setAttribute("viewBox", `0 0 ${viewWidth} 100`);
-      const columns = Math.ceil(60 * (width / height));
-      const fragment = document.createDocumentFragment();
-      lines = [];
-      for (let x = 0; x < columns; x++) {
-        for (let y = 0; y < 60; y++) {
-          const centerX = ((x + 0.5) * viewWidth) / columns;
-          const centerY = ((y + 0.5) * 100) / 60;
-          const rotation = (x + y) % 2 === 0 ? 0 : 90;
-          const element = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "line",
-          );
-          element.setAttribute("x1", String(centerX - 1));
-          element.setAttribute("x2", String(centerX + 1));
-          element.setAttribute("y1", String(centerY));
-          element.setAttribute("y2", String(centerY));
-          element.setAttribute(
-            "stroke",
-            `hsla(${Math.floor(Math.random() * 360)}, ${70 + Math.floor(Math.random() * 30)}%, ${35 + Math.floor(Math.random() * 30)}%, 0.6)`,
-          );
-          element.setAttribute("stroke-width", "0.2");
-          element.setAttribute(
-            "transform",
-            `rotate(${rotation} ${centerX} ${centerY})`,
-          );
-          fragment.append(element);
-          lines.push({
-            element,
-            x: centerX,
-            y: centerY,
-            rotation,
-            target: rotation,
-          });
+        const influence = ring * (1 - age / RIPPLE_DURATION);
+        if (influence > 0) {
+          target +=
+            angleDifference((Math.atan2(dy, dx) * 180) / Math.PI + 90, target) *
+            influence;
         }
+        emphasis = Math.max(emphasis, influence);
       }
-      group.replaceChildren(fragment);
-    };
-
-    const move = (event: PointerEvent) => {
-      if (reducedMotion.matches || event.pointerType === "touch") return;
-      const matrix = svg.getScreenCTM();
-      if (!matrix) return;
-      pointer = new DOMPoint(event.clientX, event.clientY).matrixTransform(
-        matrix.inverse(),
+      const difference = angleDifference(target, line.rotation);
+      const emphasisDifference = emphasis - line.emphasis;
+      const settled =
+        Math.abs(difference) < 0.05 && Math.abs(emphasisDifference) < 0.002;
+      if (settled && line.rotation === target && line.emphasis === emphasis)
+        continue;
+      line.rotation = settled ? target : line.rotation + difference * easing;
+      line.emphasis = settled
+        ? emphasis
+        : line.emphasis + emphasisDifference * easing;
+      line.element.setAttribute(
+        "transform",
+        `translate(${line.x} ${line.y}) rotate(${line.rotation}) scale(${1 + line.emphasis * 0.4})`,
       );
-      if (!frame) {
-        previousTime = performance.now();
-        frame = requestAnimationFrame(animate);
+      line.element.style.opacity = String(0.48 + line.emphasis * 0.52);
+      if (!settled) moving = true;
+    }
+    if (!moving) state.previousTime = null;
+    return moving;
+  });
+
+  const reset = () => {
+    cancelFrame();
+    const state = simulation.current;
+    state.pointer = null;
+    state.ripples = [];
+    state.previousTime = null;
+    for (const line of state.lines) {
+      line.rotation = line.restingRotation;
+      line.emphasis = 0;
+      line.element.setAttribute(
+        "transform",
+        `translate(${line.x} ${line.y}) rotate(${line.rotation})`,
+      );
+      line.element.style.opacity = "0.48";
+    }
+  };
+
+  useMediaQuery("(prefers-reduced-motion: reduce)", (matches) => {
+    simulation.current.reducedMotion = matches;
+    reset();
+  });
+  useMediaQuery("(hover: hover) and (pointer: fine)", (matches) => {
+    simulation.current.finePointer = matches;
+    reset();
+  });
+  useDocumentEvent("visibilitychange", reset);
+  useWindowEvent("blur", reset);
+  useIntersectionObserver(svgRef, (visible) => {
+    simulation.current.visible = visible;
+    if (!visible) reset();
+  });
+
+  useResizeObserver(svgRef, () => {
+    const svg = svgRef.current;
+    const group = svg?.querySelector("g");
+    if (!svg || !group) return;
+    reset();
+    const bounds = svg.getBoundingClientRect();
+    simulation.current.bounds = bounds;
+    const { width, height } = bounds;
+    if (!width || !height) return;
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    // Keep marks legible in pixels and cap the SVG work on very wide screens.
+    const spacing = Math.max(18, Math.sqrt((width * height) / 3200));
+    const fragment = document.createDocumentFragment();
+    const lines: PatternLine[] = [];
+    for (let column = 0; column < Math.ceil(width / spacing); column++) {
+      for (let row = 0; row < Math.ceil(height / spacing); row++) {
+        const x = (column + 0.5) * spacing;
+        const y = (row + 0.5) * spacing;
+        const rotation = (column + row) % 2 === 0 ? 0 : 90;
+        const element = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "line",
+        );
+        element.setAttribute("x1", "-5.5");
+        element.setAttribute("x2", "5.5");
+        element.setAttribute(
+          "stroke",
+          COLORS[(column * 7 + row * 3) % COLORS.length],
+        );
+        element.setAttribute("stroke-width", "1.6");
+        element.setAttribute("stroke-linecap", "round");
+        element.setAttribute(
+          "transform",
+          `translate(${x} ${y}) rotate(${rotation})`,
+        );
+        element.style.opacity = "0.48";
+        fragment.append(element);
+        lines.push({
+          element,
+          x,
+          y,
+          restingRotation: rotation,
+          rotation,
+          emphasis: 0,
+        });
       }
-    };
-    const leave = () => {
-      pointer = null;
-    };
-    const stop = () => {
-      pointer = null;
-      cancelAnimationFrame(frame);
-      frame = 0;
-    };
-    const observer = new ResizeObserver(rebuild);
-    observer.observe(svg);
-    header.addEventListener("pointermove", move);
-    header.addEventListener("pointerleave", leave);
-    reducedMotion.addEventListener("change", stop);
-    document.addEventListener("visibilitychange", stop);
-    return () => {
-      stop();
-      observer.disconnect();
-      header.removeEventListener("pointermove", move);
-      header.removeEventListener("pointerleave", leave);
-      reducedMotion.removeEventListener("change", stop);
-      document.removeEventListener("visibilitychange", stop);
-    };
-  }, []);
+    }
+    simulation.current.lines = lines;
+    group.replaceChildren(fragment);
+  });
+
+  const pointInPattern = (event: PointerEvent) => {
+    const svg = svgRef.current;
+    if (!svg || !simulation.current.visible || document.hidden) return null;
+    // Resize/scroll own measurement; pointer events never flush SVG layout.
+    const bounds = simulation.current.bounds;
+    if (!bounds) return null;
+    const x = event.clientX - bounds.left;
+    const y = event.clientY - bounds.top;
+    return x >= 0 && x <= bounds.width && y >= 0 && y <= bounds.height
+      ? { x, y }
+      : null;
+  };
+  const start = () => {
+    requestFrame();
+  };
+
+  useWindowEvent("pointermove", (event) => {
+    const state = simulation.current;
+    if (
+      state.reducedMotion ||
+      !state.finePointer ||
+      event.pointerType === "touch"
+    )
+      return;
+    const previousPointer = state.pointer;
+    state.pointer = pointInPattern(event);
+    if (state.pointer || previousPointer) start();
+  });
+  useWindowEvent("pointerdown", (event) => {
+    const state = simulation.current;
+    if (state.reducedMotion || event.button !== 0) return;
+    const point = pointInPattern(event);
+    if (!point) return;
+    state.ripples = [
+      ...state.ripples.slice(-3),
+      { ...point, startedAt: performance.now() },
+    ];
+    start();
+  });
+  useWindowEvent("pointerout", (event) => {
+    if (event.relatedTarget !== null) return;
+    simulation.current.pointer = null;
+    if (!simulation.current.reducedMotion) start();
+  });
+  useWindowEvent("scroll", () => {
+    simulation.current.pointer = null;
+    simulation.current.bounds = svgRef.current?.getBoundingClientRect() ?? null;
+    if (!simulation.current.reducedMotion) start();
+  });
 
   return (
-    <svg
-      ref={svgRef}
-      className={cn(
-        "pointer-events-none absolute inset-0 z-[-1] h-full w-full opacity-[0.65]",
-        className,
-      )}
-      aria-hidden="true"
-      focusable="false"
-    >
-      <defs>
-        <radialGradient id={`${id}-fade`}>
-          <stop offset="0%" stopColor="white" />
-          <stop offset="100%" stopColor="white" stopOpacity="0" />
-        </radialGradient>
-        <mask id={`${id}-mask`}>
-          <rect width="100%" height="100%" fill={`url(#${id}-fade)`} />
-        </mask>
-      </defs>
-      <g mask={`url(#${id}-mask)`} />
-    </svg>
+    <>
+      <svg
+        ref={svgRef}
+        className={cn(styles.pattern, className)}
+        aria-hidden="true"
+        focusable="false"
+      >
+        <g />
+      </svg>
+      <p className={styles.hint}>
+        <span className={styles.pointerHint}>
+          Move your pointer · Click for a ripple
+        </span>
+        <span className={styles.touchHint}>Tap the header for a ripple</span>
+      </p>
+    </>
   );
 }

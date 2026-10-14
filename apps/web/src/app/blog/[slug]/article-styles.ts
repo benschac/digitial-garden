@@ -9,6 +9,8 @@ const styles = {
   link: layout.link,
   prose: layout.prose,
   postHeader: layout.postHeader,
+  svgPostHeader: layout.svgPostHeader,
+  svgHeaderPattern: layout.svgHeaderPattern,
   postNavigation: layout.postNavigation,
   backLink: layout.backLink,
   backNavigation: layout.backNavigation,
