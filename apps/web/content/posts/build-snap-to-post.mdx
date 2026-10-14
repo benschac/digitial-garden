@@ -85,17 +85,17 @@ The [worker walkthrough below](#give-ocr-one-waiting-frame) describes our curren
 | [Exa](https://exa.ai/docs)                                                                                                                        | Retrieves product-page evidence from text queries built from identity clues. This service is called over HTTP, so it doesn't appear as an SDK dependency in the manifests.                  |
 | [Drizzle ORM](https://orm.drizzle.team/), [PostgreSQL](https://www.postgresql.org/docs/), and [Postgres.js](https://github.com/porsager/postgres) | Database schema, queries, migrations, and the backend's database connection.                                                                                                                |
 
-## On Device Models
+### On Device Models
 
-[VisionCamera](https://github.com/margelo/react-native-vision-camera) supplies live camera frames and selected still photographs. [React Native ExecuTorch](https://docs.swmansion.com/react-native-executorch/) runs the local models. These are the models selected by the current fork, before the planned 0.10 migration:
+[VisionCamera](https://github.com/margelo/react-native-vision-camera) supplies live camera frames and selected still photographs. [React Native ExecuTorch](https://docs.swmansion.com/react-native-executorch/) runs the local models.
 
-| Local model                                                                                                                                                 | Role in Quick Catalog                                                                                                                                                                                                                                                                                                                            |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [SSDLite 320 + MobileNet V3 Large](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.detection.ssdlite320_mobilenet_v3_large.html) | **Live object detection.** Returns bounding boxes, labels, and confidence scores for camera frames. These feed object tracking and automatic capture selection, and can provide an immediate provisional category such as “bottle.” Configured to use Core ML.                                                                                   |
-| [EfficientNet V2 S](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.efficientnet_v2_s.html)                                      | **Captured-image classification.** Produces ImageNet labels that the app maps into broad item categories such as bottle, laptop, keyboard, or camera. The category provides early feedback and a hint for the local vision-language model.                                                                                                       |
-| [CRAFT](https://github.com/clovaai/CRAFT-pytorch)                                                                                                           | **Text detection.** Locates text regions in live frames and captured photographs, identifying where the OCR recognizer should look.                                                                                                                                                                                                              |
-| [English CRNN recognizer](https://huggingface.co/software-mansion/react-native-executorch-recognizer-crnn.en)                                               | **Text recognition.** Reads the text inside the regions found by CRAFT. Recognized brands, labels, and capacity markings become evidence for identification and product search.                                                                                                                                                                  |
-| [LFM2.5-VL-450M](https://huggingface.co/LiquidAI/LFM2.5-VL-450M), quantized                                                                                 | **Optional local visual identity.** Uses selected photographs and a category hint to generate a short item label, broad color, readable capacity, and visible text. The prompt requests compact JSON; its example includes “Owala FreeSip bottle,” “purple,” and “32 oz.” These are requested fields, not a guarantee of correct identification. |
+| Step and model                                                                                                                                                                               | Input                                                                             | Output and handoff                                                                                                                                                                                                                                     |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Find objects:** [SSDLite 320 + MobileNet V3 Large](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.detection.ssdlite320_mobilenet_v3_large.html), using Core ML | A sampled live camera frame.                                                      | Detections shaped as `{ bbox, label, score }`. The app uses these for tracking and capture selection. A trusted label such as `bottle` can also become an early category candidate.                                                                    |
+| **Classify a captured image:** [EfficientNet V2 S](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.efficientnet_v2_s.html)                                        | A saved image, using its preview when available.                                  | ImageNet labels and scores. App code maps labels such as `WATER_BOTTLE` to `bottle`, producing `{ category, confidence, modelLabel, topResults }`. The category updates the local candidate and becomes a hint for the optional VLM.                   |
+| **Find text:** [CRAFT](https://github.com/clovaai/CRAFT-pytorch)                                                                                                                             | An eligible live frame or saved photograph.                                       | Text regions within the image. The OCR pipeline passes these regions to the recognizer. This step locates text; it does not identify the product.                                                                                                      |
+| **Read text:** [English CRNN recognizer](https://huggingface.co/software-mansion/react-native-executorch-recognizer-crnn.en)                                                                 | The text regions found by CRAFT.                                                  | OCR detections containing `{ bbox, text, score }`. App code filters, normalizes, and deduplicates the text, then stores it in the item's `ocr.visibleLabelText` for the backend request.                                                               |
+| **Describe the item:** quantized [LFM2.5-VL-450M](https://huggingface.co/LiquidAI/LFM2.5-VL-450M), optional                                                                                  | Selected photographs and an available category hint after classification settles. | The prompt requests `{ label, colorFamily, capacityText, visibleText }`. The app parses a useful response into a local identity candidate with a category, product label, variant, and image provenance. This candidate updates the phone's interface. |
 
 “CRAFT OCR” in the app's configuration refers to the combined **CRAFT detector and English CRNN recognizer**. Finding text and reading it are separate model operations within the same OCR pipeline.
 
@@ -103,9 +103,11 @@ The LFM model is optional: when it isn't ready, the app skips that step and cont
 
 Barcode scanning is a separate VisionCamera output. Speech transcription uses cloud ElevenLabs Scribe, as described in the tooling table; neither is part of this local model inventory.
 
-## Keep camera frames out of React state
+## What happens to a camera frame?
 
-The live camera produces more data than the interface needs to render. The frame path performs object detection and checks image quality, motion, and how much the view has changed. It sends compact observations into JavaScript, where the capture controller coordinates items and selected views.
+The live camera produces frames continuously, but the app only analyzes selected frames. **SSDLite 320 + MobileNet V3 Large** returns bounding boxes, labels, and confidence scores. App code combines those detections with image-quality and motion checks to track objects and decide when to capture a photograph. Eligible frames also enter a separate OCR worker, and later camera callbacks collect its completed results.
+
+There are two decisions here: **whether to analyze a frame**, and **whether to submit it for OCR**. A sampled frame can contribute bounding boxes, quality scores, and motion information without triggering text recognition. OCR submissions have their own timing, quality, and motion checks.
 
 Raw camera frames stay out of React state. Legend State holds the compact item and capture state used by the interface, while Reanimated shared values carry frequent overlay and feedback updates.
 
@@ -115,22 +117,23 @@ OCR introduces a harder problem. Reading a label takes time, and the camera can 
 
 ## Give OCR one waiting frame
 
-Quick Catalog uses a fork of React Native ExecuTorch with a native OCR worker. The worker runs live OCR separately from the camera analysis callback, allowing that callback to continue with detection and quality analysis between submissions.
+Quick Catalog uses a fork of React Native ExecuTorch with a native OCR worker running **CRAFT followed by the English CRNN recognizer**. The worker runs live OCR separately from the camera analysis callback, allowing that callback to continue with detection and quality analysis between submissions.
 
 The application first gates submissions using timing, quality, and motion checks. For frames that pass those checks, the worker has a small scheduling rule: **one active frame and at most one pending frame**. A new submission replaces the pending frame if one is already waiting.
 
-Consider three frames that pass the submission checks:
+The first scene follows a sampled frame into capture decisions and OCR. The second follows three eligible frames through the worker. Step through it to see the active and waiting slots change.
 
-| Event                                             | Active OCR | Waiting frame |
-| ------------------------------------------------- | ---------- | ------------- |
-| The worker starts frame A                         | A          | None          |
-| Frame B arrives while A is running                | A          | B             |
-| Frame C arrives before A finishes                 | A          | C replaces B  |
-| A finishes and the worker takes the pending frame | C          | None          |
+<AnimatedDiagram
+  src="/diagrams/quick-catalog-live-frames.json"
+  title="Live frames: one active OCR job, one waiting frame"
+  description="Sampled frames produce compact observations for tracking and capture decisions. OCR receives eligible frames with an owned pixel copy. While A runs, B waits; C replaces B. When A finishes, C starts and the waiting slot becomes empty. Later camera callbacks collect completed results for item-ownership checks. Every camera frame is released. This illustrates the current fork's scheduling, not measured timing."
+/>
 
-This is an illustrative sequence, not a timing trace. Frame B never runs. The worker favors the newest eligible view when it becomes available for more work.
+Frame B never runs. The worker favors the newest eligible view when it becomes available for more work.
 
 Replacing waiting work keeps the backlog bounded without requiring the active inference to stop.
+
+The OCR result is a list of text detections, each with a bounding box, recognized text, and score. App code filters low-confidence detections, orders the remaining text by position, and merges unique lines into the current item. For example, it might retain `OWALA` and `32 OZ` in `visibleLabelText`. The local extraction currently leaves `otherProductIdentifiers` empty; it does not turn those lines into structured brand or model fields.
 
 The fork exposes three operations for this path: `submitFrame`, `takeLatestFrameResult`, and `resetFrameWorker`. The camera path submits eligible frames and polls for completed results on subsequent analyzed frames. Each result includes its item association and timing information.
 
@@ -150,11 +153,68 @@ These tradeoffs need physical-device measurements: frame throughput, dropped fra
 
 ## A saved photograph starts more than one job
 
-Saving a photograph starts OCR and progressive identification independently. Identification can begin with the evidence already available, while OCR works on the saved image.
+Saving a photograph starts **CRAFT + English CRNN photo OCR** and progressive identification independently. Within identification, **EfficientNet V2 S** classifies a saved image while the remote request can begin with the evidence already available. **LFM2.5-VL-450M** waits for classification to settle before using an available category hint with the selected photographs.
 
-The phone sends one to three selected JPEG views of the same item to the backend, along with available OCR and barcode signals. Session, item, and image identifiers associate the request with its owner. Useful text discovered afterward can request another identification pass with the newer evidence.
+<AnimatedDiagram
+  src="/diagrams/quick-catalog-saved-photo.json"
+  title="A saved photograph opens several paths"
+  description="CRAFT and English CRNN read text from a saved photograph. EfficientNet V2 S maps the image to a broad category; optional LFM2.5-VL-450M uses the photos and an available category hint to refine the local identity. The backend receives selected JPEGs and available OCR/barcode signals without waiting for those local candidates. Results can arrive in either order. This is an illustrative flow, not measured timing."
+/>
 
-The local classifier and local vision-language model update candidates on the phone. Their outputs are not uploaded as the server's visual-classification input; the server receives the selected photographs and observations.
+### From a category to a local identity
+
+EfficientNet produces scores for ImageNet labels. The app takes its top five results, groups recognized labels into item categories, and sums their scores. Several bottle labels can therefore contribute to the same `bottle` category. If no mapped category meets the threshold, classification supplies no new category hint.
+
+When LFM is ready, it receives the selected photographs and the classifier's category, or an existing candidate's category when classification provides none. Its task is to make that description more specific using visible evidence. The prompt asks for a short label, broad color, readable capacity, and visible text. OCR's extracted strings are not injected into this local VLM prompt; LFM reads the photographs itself.
+
+For an illustrative response with the label `Owala FreeSip bottle`, color `purple`, and capacity `32 oz`, the app can construct this local candidate:
+
+```json
+{
+  "candidateId": "item-0:image-1:local-lfm2-5-vl-450m",
+  "level": "product_family",
+  "category": "bottle",
+  "productName": "Owala FreeSip bottle",
+  "variant": "32 oz · purple",
+  "confidence": 0.55,
+  "provenance": [{ "sourceId": "image-1", "sourceType": "visual_observation" }]
+}
+```
+
+This example shows the application's candidate shape, not a recorded model result. For this compact-label response path, `0.55` is an app-assigned confidence value, not a calibrated probability from LFM. The candidate is held in the item's identity state with source `local-vlm`. The image IDs record which views support it. The parsed color and capacity become the candidate's `variant`; the OCR extraction remains separate item evidence.
+
+That gives us a concrete on-device result: **saved views, any collected OCR/barcode evidence, and a provisional identity candidate for the interface**. These are held in the capture and identity state, rather than combined into a single model response. The candidate can improve as work completes, and the optional LFM path can be skipped.
+
+### The payload handed to the backend
+
+The upload is built from the saved views and the evidence available for that request. It can leave the phone before the local identity candidate above exists. The current endpoint is `POST /v1/identify`, with a multipart body:
+
+| Request part            | What the phone sends                                                                                                                                 |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `images`                | One to three selected JPEG files, attached as repeated form fields named `images` with filenames such as `view-1.jpg`. Live frames are not uploaded. |
+| `signals`               | A JSON string containing the OCR request, available OCR extraction, and an optional detected barcode.                                                |
+| `X-Snap-Session-Id`     | The capture session ID.                                                                                                                              |
+| `X-Snap-Item-Intent-Id` | The item being identified, such as `item-0`.                                                                                                         |
+| `X-Snap-Image-Id`       | The newest selected capture's ID, used to associate the request and its results.                                                                     |
+
+The header names still use `Snap` in the current implementation. With the illustrative OCR lines above and no barcode, the `signals` field is:
+
+```json
+{
+  "ocr": {
+    "requested": true,
+    "triggers": ["selected_stable_frame"],
+    "extraction": {
+      "visibleLabelText": ["OWALA", "32 OZ"],
+      "otherProductIdentifiers": []
+    }
+  }
+}
+```
+
+If OCR has not produced useful text yet, `extraction` is omitted. If a barcode was detected, `signals.barcode` carries its `format` and `rawValue`, and the OCR triggers also include `barcode_detected`. A detector label in the app's text-heavy category set adds `text_heavy_category`.
+
+The local candidate JSON is **not a field in this upload**. Detector boxes, classifier scores, and LFM's generated label stay on the phone; the backend receives the selected photographs and OCR/barcode observations. Useful text from photo OCR can request another identification pass with updated evidence.
 
 This lets the first request begin without waiting for every local model. It also creates an important distinction between showing progress and finishing an item's current processing cycle. The caller still waits for classification, remote identification, and local vision-language work to settle before processing that item's next pending snapshot. A useful result may already be visible during that wait.
 
