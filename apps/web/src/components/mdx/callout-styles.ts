@@ -7,10 +7,15 @@ const styles = {
   editorialNote: layout.editorialNote,
   editorialNoteTitle: layout.editorialNoteTitle,
   callout: cn(
-    "bg-[#eee7d9] border-l-[2px] border-l-[var(--blog-accent,_#8b3a2a)]",
-    "[padding:1.1rem_1.2rem]",
+    layout.paper,
+    "rounded-2xl border border-[#c8c9b9]",
+    "px-5 py-5 sm:px-7 sm:py-6",
+    "text-[#303d34] shadow-[0_2px_8px_#243b320a,inset_0_1px_0_#ffffff80]",
   ),
-  title: "font-sans text-[0.78rem] font-[650] tracking-[0.08em] uppercase",
+  title: cn(
+    "block font-sans text-[0.78rem] font-[650] tracking-[0.08em] uppercase",
+    "text-[#3f594a]",
+  ),
 };
 
 export default styles;

@@ -6,7 +6,9 @@ declare module "giotto/player" {
       font?: string;
       shadow?: boolean;
       radius?: number;
-      dark?: { packetText?: string };
+      codeFill?: string;
+      codeText?: string;
+      dark?: { packetText?: string; codeFill?: string; codeText?: string };
     };
   }
 }

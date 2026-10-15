@@ -1,6 +1,14 @@
 @layer theme, base, reset, components, utilities;
 
 @layer components {
+  .paper {
+    /* Reuse the header's textured paper and organic cut-paper contour. */
+    background-color: #f2eee3;
+    background-image: url("/images/blog/paper-valley/paper.webp");
+    background-position: center 65%;
+    background-size: cover;
+  }
+
   .editorialNote {
     border-left: 1px solid var(--blog-rule, #d9d2c5);
     color: var(--blog-muted, #625c53);
@@ -17,6 +25,25 @@
     color: var(--blog-ink, #292621);
     font-weight: 600;
     margin-bottom: 0.5rem;
+  }
+
+  .editorialNote > .content > p + p {
+    margin-top: 0.65em;
+  }
+
+  .editorialNote > .content > p > a {
+    text-decoration-line: underline;
+    text-decoration-thickness: 0.06em;
+    text-underline-offset: 0.16em;
+  }
+
+  .editorialNote > .content > p > a:hover {
+    color: var(--blog-accent, #8b3a2a);
+  }
+
+  .editorialNote > .content > p > a:focus-visible {
+    outline: 2px solid var(--blog-accent, #8b3a2a);
+    outline-offset: 3px;
   }
 
   .content

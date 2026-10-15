@@ -1,0 +1,158 @@
+@layer theme, base, reset, components, utilities;
+
+@layer components {
+  .hero {
+    container-type: inline-size;
+    position: relative;
+    isolation: isolate;
+    background: #f2eee3;
+    color: #1c302b;
+    margin-block-start: calc(0rem - var(--blog-page-block-padding));
+    margin-inline: calc(0rem - var(--blog-page-inline-padding));
+  }
+  .editorial {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .back {
+    position: absolute;
+    top: 8%;
+    left: 19%;
+    font-size: max(12px, 1.05cqw);
+    pointer-events: auto;
+  }
+  .copy {
+    pointer-events: auto;
+    position: absolute;
+    top: 16%;
+    left: 19%;
+    width: 49%;
+  }
+  .title {
+    font:
+      700 4.1cqw / 1.05 var(--font-bonbance),
+      Georgia,
+      serif;
+    letter-spacing: 0.065cqw;
+    text-wrap: balance;
+    margin: 0;
+    text-box-trim: none;
+  }
+  .summary {
+    font:
+      400 1.8cqw / 1.35 var(--font-superior-serif),
+      Georgia,
+      serif;
+    color: #6f6a61;
+    margin: 1.55cqw 0 1.75cqw;
+  }
+  .metadata {
+    font:
+      400 max(10px, 1cqw) / 1.5 var(--font-sans),
+      sans-serif;
+    letter-spacing: 0.06cqw;
+    color: #726f65;
+    margin: 0;
+  }
+  .frame {
+    position: relative;
+    aspect-ratio: 2528 / 1696;
+    overflow: clip;
+    background: #eee8db;
+    view-timeline: --blog-valley-scroll block;
+    view-timeline-inset: 0;
+  }
+  .original,
+  .layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    display: block;
+    transform: scale(1.09);
+    transform-origin: 50% 0%;
+    pointer-events: none;
+    user-select: none;
+  }
+  .layer[data-layer="corner-sage"] {
+    filter: drop-shadow(0 0.7px 0.35px #243b3240);
+  }
+  .frame[data-running="true"] .layer:not([data-layer="paper"]) {
+    will-change: translate, transform;
+  }
+  /* Native scroll tracking stays synchronized with compositor scrolling. Older
+     browsers keep the registered artwork still rather than emulate it in JS. */
+  @supports (animation-timeline: --blog-valley-scroll) and
+    (animation-range: exit-crossing 0% exit-crossing 45%) {
+    .frame[data-active="true"] .layer:not([data-layer="paper"]) {
+      animation: valley-scroll 1ms linear both;
+      animation-timeline: --blog-valley-scroll;
+      /* Match the art's top crossing the viewport, even when taller than it. */
+      animation-range: exit-crossing 0% exit-crossing 45%;
+    }
+  }
+  @keyframes valley-scroll {
+    from {
+      translate: 0 0;
+    }
+    to {
+      translate: 0 var(--blog-valley-scroll-y, 0px);
+    }
+  }
+  .layers {
+    position: absolute;
+    inset: 0;
+    visibility: hidden;
+  }
+  .frame[data-active="true"] .layers {
+    visibility: visible;
+  }
+  .frame[data-active="true"] .original {
+    visibility: hidden;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .frame[data-active] .layers {
+      visibility: hidden;
+    }
+    .frame[data-active] .original {
+      visibility: visible;
+    }
+  }
+  @media (width <= 700px) {
+    .frame {
+      aspect-ratio: 3 / 2;
+    }
+    .editorial {
+      position: relative;
+      padding: 30px 24px 25px;
+      pointer-events: auto;
+    }
+    .back {
+      position: static;
+      font-size: 12px;
+    }
+    .copy {
+      position: static;
+      width: auto;
+      margin-top: 28px;
+    }
+    .title {
+      font-size: clamp(31px, 7.8vw, 48px);
+      line-height: 1.08;
+      letter-spacing: 0.015em;
+      text-wrap: pretty;
+    }
+    .summary {
+      font-size: 17px;
+      line-height: 1.45;
+      margin: 19px 0;
+    }
+    .metadata {
+      font-size: 10px;
+      letter-spacing: 0.04em;
+    }
+  }
+}

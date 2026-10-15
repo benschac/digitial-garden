@@ -149,6 +149,8 @@ describe("file-based post registry", () => {
     });
 
     expect(posts.map((post) => post.slug)).toEqual([
+      "coordinating-identification-with-effect",
+      "build-snap-to-post",
       "how-we-use-effect-in-snap-to-post",
       "rust-wasm-webgpu-particles",
       "upload-to-pinata-ipfs",
@@ -180,6 +182,10 @@ describe("file-based post registry", () => {
 
 <Callout title="Tip">A useful note.</Callout>
 
+<EffectWalkthrough kind="factory" />
+
+1. **A future post** <ComingSoon />
+
 | Name | Value |
 | --- | --- |
 | Example | 42 |
@@ -204,7 +210,14 @@ const answer = 42;
     );
     expect(html).toContain('id="body"');
     expect(html).toContain("data-mdx-callout");
+    expect(html).toContain('data-effect-walkthrough="factory"');
+    expect(html).toContain("Describe first. Run when admitted.");
+    expect(html).toContain("The async factory has not been called");
+    expect(html).toContain('data-slot="badge"');
+    expect(html).toContain("Coming soon");
     expect(html).toContain("<table>");
+    expect(html).toContain('data-column-label="Name"');
+    expect(html).toContain('data-column-label="Value"');
     expect(html).toContain("katex");
     expect(html).toContain("shiki");
     expect(html).toContain("<figcaption>Caption</figcaption>");

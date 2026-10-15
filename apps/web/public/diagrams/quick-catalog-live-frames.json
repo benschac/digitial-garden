@@ -1,0 +1,431 @@
+{
+  "title": "From live frames to item evidence",
+  "speed": 4200,
+  "elements": [
+    {
+      "id": "analysis",
+      "type": "rectangle",
+      "x": 0,
+      "y": 0,
+      "width": 210,
+      "content": [
+        {
+          "type": "title",
+          "text": "SSDLite 320"
+        },
+        {
+          "type": "subtitle",
+          "text": "Find objects in live frames"
+        }
+      ]
+    },
+    {
+      "id": "app",
+      "type": "rectangle",
+      "x": 290,
+      "y": 0,
+      "width": 210,
+      "content": [
+        {
+          "type": "title",
+          "text": "Capture controller"
+        },
+        {
+          "type": "subtitle",
+          "text": "Track object; decide capture"
+        }
+      ]
+    },
+    {
+      "id": "photo",
+      "type": "rectangle",
+      "x": 290,
+      "y": -210,
+      "width": 210,
+      "content": [
+        {
+          "type": "title",
+          "text": "Saved photograph"
+        },
+        {
+          "type": "subtitle",
+          "text": "Save JPEG + preview"
+        },
+        {
+          "type": "subtitle",
+          "text": "Continue in next diagram"
+        }
+      ]
+    },
+    {
+      "id": "gate",
+      "type": "rectangle",
+      "x": 0,
+      "y": 210,
+      "width": 210,
+      "content": [
+        {
+          "type": "title",
+          "text": "OCR eligibility"
+        },
+        {
+          "type": "subtitle",
+          "text": "Choose frames to read"
+        }
+      ]
+    },
+    {
+      "id": "pending",
+      "type": "rectangle",
+      "x": 290,
+      "y": 210,
+      "width": 210,
+      "content": [
+        {
+          "type": "title",
+          "text": "Waiting slot"
+        }
+      ]
+    },
+    {
+      "id": "active",
+      "type": "rectangle",
+      "x": 0,
+      "y": 420,
+      "width": 210,
+      "content": [
+        {
+          "type": "title",
+          "text": "Active OCR"
+        },
+        {
+          "type": "subtitle",
+          "text": "CRAFT → English CRNN"
+        },
+        {
+          "type": "subtitle",
+          "text": "Find text → read words"
+        }
+      ]
+    },
+    {
+      "id": "result",
+      "type": "rectangle",
+      "x": 290,
+      "y": 420,
+      "width": 210,
+      "content": [
+        {
+          "type": "title",
+          "text": "Latest result"
+        }
+      ]
+    },
+    {
+      "id": "observations",
+      "type": "arrow",
+      "start": {
+        "id": "analysis"
+      },
+      "end": {
+        "id": "app"
+      },
+      "label": {
+        "text": "Observe"
+      }
+    },
+    {
+      "id": "eligibility",
+      "type": "arrow",
+      "start": {
+        "id": "analysis"
+      },
+      "end": {
+        "id": "gate"
+      },
+      "label": {
+        "text": "Check frame"
+      }
+    },
+    {
+      "id": "start",
+      "type": "arrow",
+      "start": {
+        "id": "gate"
+      },
+      "end": {
+        "id": "active"
+      },
+      "label": {
+        "text": "Start if idle"
+      }
+    },
+    {
+      "id": "queue",
+      "type": "arrow",
+      "start": {
+        "id": "gate"
+      },
+      "end": {
+        "id": "pending"
+      },
+      "label": {
+        "text": "Queue"
+      }
+    },
+    {
+      "id": "next",
+      "type": "arrow",
+      "start": {
+        "id": "pending"
+      },
+      "end": {
+        "id": "active"
+      },
+      "label": {
+        "text": "Take newest"
+      },
+      "fromSide": "bottom",
+      "toSide": "right"
+    },
+    {
+      "id": "complete",
+      "type": "arrow",
+      "start": {
+        "id": "active"
+      },
+      "end": {
+        "id": "result"
+      },
+      "label": {
+        "text": "Result"
+      }
+    },
+    {
+      "id": "poll",
+      "type": "arrow",
+      "start": {
+        "id": "result"
+      },
+      "end": {
+        "id": "app"
+      },
+      "label": {
+        "text": "Poll"
+      },
+      "fromSide": "right",
+      "toSide": "right"
+    },
+    {
+      "id": "capture",
+      "type": "arrow",
+      "start": {
+        "id": "app"
+      },
+      "end": {
+        "id": "photo"
+      },
+      "label": {
+        "text": "Capture checks pass"
+      },
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "scenes": [
+    {
+      "label": "1. Detect, capture, read",
+      "beats": [
+        {
+          "edges": {
+            "edge": "observations",
+            "data": "Boxes + quality"
+          },
+          "light": ["analysis", "app"],
+          "say": "Model: SSDLite finds objects and returns boxes, labels, and scores. App: quality checks and object tracking help the capture controller decide whether this view is worth saving.",
+          "show": {
+            "pending": [
+              {
+                "type": "subtitle",
+                "text": "Empty"
+              }
+            ],
+            "active": [
+              {
+                "type": "subtitle",
+                "text": "Idle"
+              }
+            ],
+            "result": [
+              {
+                "type": "subtitle",
+                "text": "No result yet"
+              }
+            ]
+          }
+        },
+        {
+          "edges": {
+            "edge": "capture",
+            "data": "Take photo"
+          },
+          "light": ["app", "photo"],
+          "say": "App: when automatic capture is enabled and stability, quality, motion, cooldown, and duplicate-view checks pass, request a still photo and save its JPEG and preview. This photograph starts the next diagram; capture does not wait for live OCR."
+        },
+        {
+          "edges": {
+            "edge": "eligibility",
+            "data": "Eligible?"
+          },
+          "light": ["gate"],
+          "say": "OCR has its own timing, quality, and motion checks. A frame can contribute observations without being submitted for OCR."
+        },
+        {
+          "edges": {
+            "edge": "start",
+            "data": "Owned pixels"
+          },
+          "light": ["active"],
+          "say": "An eligible submission copies pixels for CRAFT to locate text and English CRNN to read it. The camera callback releases its frame; the OCR worker owns the copy.",
+          "show": {
+            "active": [
+              {
+                "type": "subtitle",
+                "text": "OCR running"
+              }
+            ]
+          }
+        },
+        {
+          "edges": {
+            "edge": "poll",
+            "data": "Text + item"
+          },
+          "light": ["result", "app"],
+          "say": "Later analyzed-frame callbacks poll the latest completed OCR result before detection. The app checks its item association before using the text.",
+          "show": {
+            "active": [
+              {
+                "type": "subtitle",
+                "text": "Idle"
+              }
+            ],
+            "result": [
+              {
+                "type": "subtitle",
+                "text": "Completed OCR"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "label": "2. One waiting frame",
+      "beats": [
+        {
+          "edges": {
+            "edge": "start",
+            "data": "Frame A"
+          },
+          "show": {
+            "active": [
+              {
+                "type": "subtitle",
+                "text": "A running"
+              }
+            ],
+            "pending": [
+              {
+                "type": "subtitle",
+                "text": "Empty"
+              }
+            ],
+            "result": [
+              {
+                "type": "subtitle",
+                "text": "No result yet"
+              }
+            ]
+          },
+          "light": ["active"],
+          "say": "A passes the submission checks and starts OCR. The waiting slot is empty."
+        },
+        {
+          "edges": {
+            "edge": "queue",
+            "data": "Frame B"
+          },
+          "show": {
+            "pending": [
+              {
+                "type": "subtitle",
+                "text": "B waiting"
+              }
+            ]
+          },
+          "light": ["active", "pending"],
+          "say": "B passes the checks while A is still running. B occupies the single waiting slot."
+        },
+        {
+          "edges": {
+            "edge": "queue",
+            "data": "Frame C"
+          },
+          "show": {
+            "pending": [
+              {
+                "type": "subtitle",
+                "text": "C waiting — B replaced"
+              }
+            ]
+          },
+          "light": ["active", "pending"],
+          "say": "C arrives before A finishes and replaces B. A keeps running. B will never enter inference."
+        },
+        {
+          "edges": [
+            {
+              "edge": "complete",
+              "data": "A result"
+            },
+            {
+              "edge": "next",
+              "data": "Frame C"
+            }
+          ],
+          "show": {
+            "active": [
+              {
+                "type": "subtitle",
+                "text": "C running"
+              }
+            ],
+            "pending": [
+              {
+                "type": "subtitle",
+                "text": "Empty"
+              }
+            ],
+            "result": [
+              {
+                "type": "subtitle",
+                "text": "A result ready"
+              }
+            ]
+          },
+          "light": ["active", "pending", "result"],
+          "say": "A finishes and its result is stored. The worker takes C next, leaving the waiting slot empty."
+        },
+        {
+          "edges": {
+            "edge": "poll",
+            "data": "A text + item"
+          },
+          "light": ["result", "app", "active"],
+          "say": "A later camera callback collects A's result while C can continue running. Only relevant results become item evidence; this sequence illustrates scheduling, not measured timing."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,215 @@
+{
+  "title": "From saved photograph to backend evidence",
+  "speed": 4500,
+  "elements": [
+    {
+      "id": "packet-space",
+      "type": "group",
+      "children": ["item", "ocr", "remote", "updates"],
+      "padding": 75
+    },
+    {
+      "id": "item",
+      "type": "rectangle",
+      "x": 0,
+      "y": 0,
+      "width": 210,
+      "content": [
+        {
+          "type": "title",
+          "text": "Saved photographs"
+        },
+        {
+          "type": "subtitle",
+          "text": "Keep selected JPEGs"
+        }
+      ]
+    },
+    {
+      "id": "ocr",
+      "type": "rectangle",
+      "x": 360,
+      "y": 0,
+      "width": 210,
+      "content": [
+        {
+          "type": "title",
+          "text": "Photo OCR"
+        },
+        {
+          "type": "subtitle",
+          "text": "CRAFT → English CRNN"
+        },
+        {
+          "type": "subtitle",
+          "text": "Find text → read words"
+        }
+      ]
+    },
+    {
+      "id": "remote",
+      "type": "rectangle",
+      "x": 0,
+      "y": 240,
+      "width": 210,
+      "content": [
+        {
+          "type": "title",
+          "text": "Backend handoff"
+        },
+        {
+          "type": "subtitle",
+          "text": "Send JPEGs + observations"
+        }
+      ]
+    },
+    {
+      "id": "updates",
+      "type": "rectangle",
+      "x": 360,
+      "y": 240,
+      "width": 230,
+      "content": [
+        {
+          "type": "title",
+          "text": "Item on phone"
+        },
+        {
+          "type": "subtitle",
+          "text": "Show identity + label text"
+        }
+      ]
+    },
+    {
+      "id": "read",
+      "type": "arrow",
+      "start": {
+        "id": "item"
+      },
+      "end": {
+        "id": "ocr"
+      },
+      "label": {
+        "text": "Read text"
+      },
+      "route": "curved",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "upload",
+      "type": "arrow",
+      "start": {
+        "id": "item"
+      },
+      "end": {
+        "id": "remote"
+      },
+      "label": {
+        "text": "Upload"
+      },
+      "route": "curved",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "ocr-result",
+      "type": "arrow",
+      "start": {
+        "id": "ocr"
+      },
+      "end": {
+        "id": "updates"
+      },
+      "label": {
+        "text": "Label text"
+      },
+      "route": "curved",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "remote-result",
+      "type": "arrow",
+      "start": {
+        "id": "remote"
+      },
+      "end": {
+        "id": "updates"
+      },
+      "label": {
+        "text": "Remote identity"
+      },
+      "route": "curved",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "retry",
+      "type": "arrow",
+      "start": {
+        "id": "updates"
+      },
+      "end": {
+        "id": "remote"
+      },
+      "label": {
+        "text": "Photo OCR refinement"
+      },
+      "route": "curved",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "around": "below"
+    }
+  ],
+  "scenes": [
+    {
+      "label": "1. Upload available evidence",
+      "beats": [
+        {
+          "edges": [
+            {
+              "edge": "read",
+              "data": "Saved photo"
+            },
+            {
+              "edge": "upload",
+              "data": "JPEGs + signals"
+            }
+          ],
+          "light": ["item", "ocr", "remote"],
+          "say": "App: use the saved photograph from the capture flow. Start photo OCR and upload selected JPEGs with available OCR/barcode observations; the upload does not wait for OCR or local identity predictions."
+        },
+        {
+          "edges": {
+            "edge": "remote-result",
+            "data": "Remote identity"
+          },
+          "light": ["remote", "updates"],
+          "say": "Remote identification can update the item while OCR or product research is still running. This arrival order is illustrative."
+        }
+      ]
+    },
+    {
+      "label": "2. Refine with new photo text",
+      "beats": [
+        {
+          "edges": {
+            "edge": "ocr-result",
+            "data": "OWALA · 32 OZ"
+          },
+          "light": ["ocr", "updates"],
+          "say": "Photo OCR merges useful recognized text into the item and can request refinement. Late live OCR updates the item but needs a later identification trigger to reach the backend."
+        },
+        {
+          "edges": {
+            "edge": "retry",
+            "data": "JPEGs + new text"
+          },
+          "light": ["updates", "remote"],
+          "say": "A refinement sends selected JPEGs with updated OCR/barcode signals. The current same-item cycle must settle first; slow local inference can delay this request."
+        }
+      ]
+    }
+  ]
+}

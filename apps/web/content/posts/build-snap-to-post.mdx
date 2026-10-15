@@ -1,7 +1,7 @@
 ---
-title: "Building Quick Catalog, Part 1: What the Phone Can Figure Out"
+title: "Part 1: What the Phone Can Figure Out on Device"
 slug: "build-snap-to-post"
-summary: "Turning captured items into researched listing drafts, starting with on-device detection, text recognition, and a bounded OCR worker built with VisionCamera and React Native ExecuTorch."
+summary: "How Quick Catalog chooses photographs, reads labels without building a backlog, and sends useful evidence to the backend."
 publishedAt: "2026-10-11"
 status: "draft"
 tags:
@@ -11,213 +11,167 @@ tags:
 featured: false
 ---
 
-This is **part one of three** about building Quick Catalog:
+## Why I'm building Quick Catalog
 
-1. **What the phone can figure out:** capture, local inference, and keeping OCR work bounded.
-2. **Coordinating identification with Effect:** letting independent items progress together while requests for the same item run in order.
-3. **From an identity guess to a researched listing:** combining photographs, product research, and seller narration into a draft.
+Cataloging the hundreds of items in my home means photographing each one, looking up what it is, and describing its condition. That work is tedious whether I'm preparing an inventory for renter's insurance, tracking what goes into checked bags, or listing items for sale.
+
+[Quick Catalog](https://github.com/benschac/snap_post) is my attempt to make that easier: point the phone camera at an item and describe it aloud, including any dings or other details worth recording. The goal is less tippy-tappy on the keyboard.
+
+This post follows what happens on the phone: **choose useful photographs, read visible labels, and send available evidence to the backend.** The main challenge we’ll tackle is keeping text recognition from falling behind the camera.
+
+<Callout title="Work in progress">
+
+Quick Catalog is open source and under active development. This post describes the current implementation. The bottle examples and animations are illustrative; they aren't a recorded capture or a timing trace.
+
+</Callout>
+
+This is **part one of three**:
+
+1. **What the phone can figure out:** capture, label reading, and keeping OCR work bounded.
+2. **Coordinating identification with Effect** <ComingSoon />
+3. **From an identity guess to a researched listing** <ComingSoon />
 
 _[Add here: a capture example from your own use of the app.]_
 
-## What is Quick Catalog?
+## Take useful photographs automatically
 
-Quick Catalog solves my problem of cataloging the hundreds of different items in my home.
+With automatic capture enabled, you point the camera at an item and hold it steady; the app takes useful photographs without a shutter tap for each one. Automatic capture is on by default, and a manual mode is available.
 
-Quick Catalog is [open source on GitHub](https://github.com/benschac/snap_post) and a work in progress.
+The camera produces frames continuously. Most only need to exist long enough for the app to decide whether they're useful. A photograph is different: it's a saved view that the app can keep working with after the camera moves on.
 
-This becomes useful when I'm:
+[VisionCamera](https://github.com/margelo/react-native-vision-camera) supplies both. The app analyzes selected frames with an object detector running through [React Native ExecuTorch](https://docs.swmansion.com/react-native-executorch/). The detector, [SSDLite 320 with MobileNet V3 Large](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.detection.ssdlite320_mobilenet_v3_large.html), returns an object's location, label, and confidence score.
 
-- Getting renter's insurance and need an itemized list of my belongings, with proof of what I own.
-- Traveling with checked bags.
-- Looking to sell items on multiple platforms.
+The detector’s boxes, labels, and scores feed object tracking. The capture policy looks for a stable tracked object, sufficient image quality, low motion, enough time since the last capture, and a view different from those already saved. When those checks pass during an active automatic-capture session, the app requests a separate photograph and saves a JPEG with a smaller preview.
 
-The process of manually looking up and tagging each item, then describing its condition and appearance is really error-prone, tedious, and time-consuming.
+That makes object detection part of the local evidence pipeline: **detect and track → check the view → take a photograph → run OCR and backend identification.** Its boxes and scores stay on the phone, but its capture decisions help determine which photographs the backend receives.
 
-## What makes it better?
+Every camera frame is released after use, including frames skipped by the sampling policy. The interface receives compact observations rather than raw frames.
 
-The goal is speed and less tippy-tappy on the keyboard.
+Reading a label takes more work than deciding whether a view is useful. If the app submitted every frame for text recognition, it could spend its time reading views the user had already moved past.
 
-An opportunity in consumer AI that I think is truly magical is that we can interface with our technology without needing to use our fingers. A feeling of magic that Steve Jobs is articulating, but also kind of makes me feel like I'm living in a Jetsons episode.
+## Read labels without falling behind
 
-Everything can be done by just pointing your phone camera and speaking to the app in real time. We can tell the app every imperfection, ding, or unique property of the item, and it'll automatically be added to the listing. Tasks are handled in parallel and in the background, so everything feels especially snappy.
+Optical character recognition (OCR) turns text in an image into strings the app can use. Quick Catalog does this in two steps: **[CRAFT](https://github.com/clovaai/CRAFT-pytorch) finds the text regions, then an [English CRNN recognizer](https://huggingface.co/software-mansion/react-native-executorch-recognizer-crnn.en) reads them.**
 
-## High Level Implementation
+Live OCR runs in a native background worker in the app's [React Native ExecuTorch fork](https://github.com/benschac/react-native-executorch). This lets the camera callback continue with detection and quality analysis between OCR submissions.
 
-The phone turns a continuous camera feed into a small set of item evidence. It finds an object, chooses useful photographs, reads visible text, and can show a provisional local identity. The backend uses selected photographs and available OCR/barcode observations to identify the product, retrieve supporting pages, and assemble a listing draft.
+The app only submits a frame when enough time has passed since the last submission, image quality is sufficient, and motion is low. Even then, frames can arrive faster than OCR finishes.
 
-There are three useful boundaries to follow:
+The worker handles that with one rule: **one active frame and at most one waiting frame. A newer submission replaces the waiting frame.**
 
-| Boundary | Artifact leaving it | What it enables next |
-| --- | --- | --- |
-| Live camera → captured item | Saved JPEG views, item/image IDs, and collected observations. | Local models and remote identification can work on the same item while capture continues. |
-| Phone → backend | Selected JPEGs, JSON OCR/barcode signals, and session/item/image headers. | Remote visual identification gets both image evidence and machine-read clues without waiting for the optional local VLM. |
-| Identification → research | A structured identity candidate, supporting signals, and a text search query. | Exa retrieves product evidence; a resolver combines it with the candidate and available seller narration. |
-
-Here, **artifact** means the evidence handed from one stage to the next. The device-to-backend artifact is a multipart request, not a single model-generated JSON object. The local candidate shown in the interface is a separate output.
-
-Part one follows that handoff step by step. Parts two and three go deeper into request coordination and backend research. The tool inventory below identifies who owns each part.
-
-### Capture and on-device inference
-
-| Tool                                                                                                                                                                                      | Role in Quick Catalog                                                                                                                                                                           |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [React Native](https://reactnative.dev/) and [Expo](https://docs.expo.dev/)                                                                                                               | React Native provides the mobile interface and native runtime. Expo provides build tooling and device APIs, with [Expo Router](https://docs.expo.dev/router/introduction/) handling navigation. |
-| [VisionCamera](https://github.com/margelo/react-native-vision-camera)                                                                                                                     | Supplies camera sessions, live frames, photographs, and barcode scanning. Companion packages handle frame resizing and worklet integration. The live camera feed stays on the phone.            |
-| [React Native ExecuTorch](https://docs.swmansion.com/react-native-executorch/)\*                                                                                                          | On-device object detection, OCR, image classification, and optional local visual identity. The current app uses a workspace fork with a custom OCR worker.                                      |
-| [React Native Worklets](https://docs.swmansion.com/react-native-worklets/)                                                                                                                | Runs frame-processing functions outside the main JavaScript runtime and passes compact observations back to the application.                                                                    |
-| [Expo Audio](https://docs.expo.dev/versions/latest/sdk/audio/) and [ElevenLabs Scribe](https://elevenlabs.io/docs/eleven-api/guides/how-to/speech-to-text/realtime/client-side-streaming) | Expo Audio captures microphone audio; Scribe turns it into text. The app associates transcripts with the captured item and sends them to the backend to inform its listing.                     |
-| [ElevenLabs React Native SDK](https://elevenlabs.io/docs/eleven-agents/libraries/react-native) and [LiveKit](https://docs.livekit.io/transport/sdk-platforms/react-native/)               | Power the separate conversational voice route over WebRTC. Item narration uses Scribe transcription, as described above.                                                                        |
-
-<Callout title="* ExecuTorch 0.10 migration" variant="editorial">
-
-I am planning to replace our custom fork using the new 0.10 APIs. The [0.10.0 release notes](https://swmansion.com/changelog/react-native-executorch-0-10-0/) describe the substantive rewrite: TypeScript model pipelines, background worklets, and Core ML, MLX, and Vulkan acceleration. These changes give us a path to moving OCR off the camera callback without a custom native worker. [0.10.2](https://swmansion.com/changelog/react-native-executorch-0-10-2/) contains follow-up build and LLM error-handling fixes.
-
-The [worker walkthrough below](#2-read-visible-text-without-building-a-frame-backlog) describes our current patch. Retiring it still requires app-owned scheduling, safe pixel lifetimes, stale-result checks, and device validation; we haven't measured the new architecture's performance in Quick Catalog yet. See the [migration guide](https://docs.swmansion.com/react-native-executorch/docs/fundamentals/migrating-from-v0-9) for the API changes.
-
-</Callout>
-
-### Interface and application state
-
-| Tool                                                                                                                                              | Role in Quick Catalog                                                                  |
-| ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| [Legend State](https://legendapp.com/open-source/state/)                                                                                          | Observable item and capture-session state, updated as local and remote results arrive. |
-| [TanStack Query](https://tanstack.com/query/latest/docs/framework/react/overview)                                                                 | Server-state queries, caching, and mutations alongside the oRPC client.                |
-| [NativeWind](https://www.nativewind.dev/)                                                                                                         | Utility-based styling for the React Native interface.                                  |
-| [Reanimated](https://docs.swmansion.com/react-native-reanimated/) and [Gesture Handler](https://docs.swmansion.com/react-native-gesture-handler/) | Animated feedback, shared values, and touch interactions.                              |
-| [React Native Skia](https://wcandillon.github.io/react-native-skia/v2/docs/getting-started/installation/)                                         | Custom drawing for the camera's scan guide.                                            |
-
-### Coordination, research, and storage
-
-| Tool                                                                                                                                              | Role in Quick Catalog                                                                                                                                                                       |
-| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Effect](https://effect.website/)                                                                                                                 | Coordinates the mobile remote-identification queue with shared capacity and per-item ordering. Part two follows this implementation.                                                        |
-| [oRPC](https://orpc.dev/) and [Zod](https://zod.dev/)                                                                                             | oRPC provides typed control operations and a WebSocket connection for progressive identity and listing updates. Zod validates data at runtime; both apps use the shared protocol contracts. |
-| [NestJS](https://docs.nestjs.com/)                                                                                                                | Organizes upload handling, identification, and research into backend services. Selected photographs arrive through an HTTP identification endpoint.                                         |
-| [AI SDK](https://ai-sdk.dev/)                                                                                                                     | Calls remote models to identify items and generate listing information. Structured outputs stream back through the backend as they become available.                                        |
-| [Exa](https://exa.ai/docs)                                                                                                                        | Retrieves product-page evidence from text queries built from identity clues. This service is called over HTTP, so it doesn't appear as an SDK dependency in the manifests.                  |
-| [Drizzle ORM](https://orm.drizzle.team/), [PostgreSQL](https://www.postgresql.org/docs/), and [Postgres.js](https://github.com/porsager/postgres) | Database schema, queries, migrations, and the backend's database connection.                                                                                                                |
-
-### On Device Models
-
-[VisionCamera](https://github.com/margelo/react-native-vision-camera) supplies live camera frames and selected still photographs. [React Native ExecuTorch](https://docs.swmansion.com/react-native-executorch/) runs the local models.
-
-| Step and model                                                                                                                                                                               | Input                                                                             | Output and handoff                                                                                                                                                                                                                                     |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Find objects:** [SSDLite 320 + MobileNet V3 Large](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.detection.ssdlite320_mobilenet_v3_large.html), using Core ML | A sampled live camera frame.                                                      | Detections shaped as `{ bbox, label, score }`. The app uses these for tracking and capture selection. A trusted label such as `bottle` can also become an early category candidate.                                                                    |
-| **Classify a captured image:** [EfficientNet V2 S](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.efficientnet_v2_s.html)                                        | A saved image, using its preview when available.                                  | ImageNet labels and scores. App code maps labels such as `WATER_BOTTLE` to `bottle`, producing `{ category, confidence, modelLabel, topResults }`. The category updates the local candidate and becomes a hint for the optional VLM.                   |
-| **Find text:** [CRAFT](https://github.com/clovaai/CRAFT-pytorch)\*                                                                                                                             | An eligible live frame or saved photograph.                                       | Text regions within the image. The OCR pipeline passes these regions to the recognizer. This step locates text; it does not identify the product.                                                                                                      |
-| **Read text:** [English CRNN recognizer](https://huggingface.co/software-mansion/react-native-executorch-recognizer-crnn.en)                                                                 | The text regions found by CRAFT.                                                  | OCR detections containing `{ bbox, text, score }`. App code filters, normalizes, and deduplicates the text, then stores it in the item's `ocr.visibleLabelText` for the backend request.                                                               |
-| **Describe the item:** quantized [LFM2.5-VL-450M](https://huggingface.co/LiquidAI/LFM2.5-VL-450M), optional                                                                                  | Selected photographs and an available category hint after classification settles. | The prompt requests `{ label, colorFamily, capacityText, visibleText }`. The app parses a useful response into a local identity candidate with a category, product label, variant, and image provenance. This candidate updates the phone's interface. |
-
-<Callout title="* CRAFT OCR" variant="editorial">
-
-“CRAFT OCR” in the app's configuration refers to the combined **CRAFT detector and English CRNN recognizer**. Finding text and reading it are separate model operations within the same OCR pipeline.
-
-</Callout>
-
-The LFM model is optional: when it isn't ready, the app skips that step and continues with the other identification work. Its configured [ExecuTorch model entry](https://docs.swmansion.com/react-native-executorch/docs/0.9.x/api-reference/variables/models) selects the quantized export. Local inference and remote identification can overlap, so a remote candidate can arrive first.
-
-Barcode scanning is a separate VisionCamera output. Speech transcription uses cloud ElevenLabs Scribe, as described in the tooling table; neither is part of this local model inventory.
-
-## Step by step: from the camera to a researched item
-
-Follow one captured item through the system. The bottle examples below illustrate payload shapes; they are not a recorded capture or measured timing trace.
-
-### 1. Find an object and decide which view to keep
-
-The live camera produces frames continuously, but the app only analyzes selected frames. **SSDLite 320 + MobileNet V3 Large** returns bounding boxes, labels, and confidence scores. App code combines those detections with image-quality and motion checks to track objects and decide when to capture a photograph. Eligible frames also enter a separate OCR worker, and later camera callbacks collect its completed results.
-
-There are two decisions here: **whether to analyze a frame**, and **whether to submit it for OCR**. A sampled frame can contribute bounding boxes, quality scores, and motion information without triggering text recognition. OCR submissions have their own timing, quality, and motion checks.
-
-Raw camera frames stay out of React state. Legend State holds the compact item and capture state used by the interface, while Reanimated shared values carry frequent overlay and feedback updates.
-
-Frame lifetime matters at this boundary. Whether a frame is analyzed or skipped, the application must release it. A selected photograph has a different lifetime: it is saved as JPEG evidence with a smaller preview that can be used while capture continues.
-
-OCR introduces a harder problem. Reading a label takes time, and the camera can deliver more frames before that work finishes. Submitting every frame would create a queue of increasingly old views.
-
-### 2. Read visible text without building a frame backlog
-
-Quick Catalog uses a fork of React Native ExecuTorch with a native OCR worker running **CRAFT followed by the English CRNN recognizer**. The worker runs live OCR separately from the camera analysis callback, allowing that callback to continue with detection and quality analysis between submissions.
-
-The application first gates submissions using timing, quality, and motion checks. For frames that pass those checks, the worker has a small scheduling rule: **one active frame and at most one pending frame**. A new submission replaces the pending frame if one is already waiting.
-
-The first scene follows a sampled frame into capture decisions and OCR. The second follows three eligible frames through the worker. Step through it to see the active and waiting slots change.
+Suppose OCR is reading frame A. Frame B arrives and waits. If frame C arrives before A finishes, C replaces B. When A finishes, the worker starts C; B never runs.
 
 <AnimatedDiagram
   src="/diagrams/quick-catalog-live-frames.json"
-  title="Live frames: one active OCR job, one waiting frame"
-  description="Sampled frames produce compact observations for tracking and capture decisions. OCR receives eligible frames with an owned pixel copy. While A runs, B waits; C replaces B. When A finishes, C starts and the waiting slot becomes empty. Later camera callbacks collect completed results for item-ownership checks. Every camera frame is released. This illustrates the current fork's scheduling, not measured timing."
+  title="Live frames: detect objects, capture photos, read labels"
+  description="Capture checks produce a saved photograph; live OCR keeps one active frame and at most one waiting frame."
 />
 
-Frame B never runs. The worker favors the newest eligible view when it becomes available for more work.
+<Callout title="How to read this animation" variant="editorial">
 
-Replacing waiting work keeps the backlog bounded without requiring the active inference to stop.
+- **Object detector — find the object.** SSDLite returns boxes, labels, and scores from sampled live frames.
+- **Capture controller — decide when to photograph it.** App code tracks the object and checks stability, quality, motion, cooldown, and duplicate views. Passing those checks in automatic mode requests a photograph; its saved JPEG continues into the next diagram.
+- **OCR models — find and read text.** CRAFT locates text regions; English CRNN reads the words. The app chooses eligible frames and supplies an owned pixel copy.
+- **OCR worker — keep work current.** App scheduling keeps one active frame and one waiting frame. While A runs, C replaces waiting B. When A finishes, C starts.
 
-The OCR result is a list of text detections, each with a bounding box, recognized text, and score. App code filters low-confidence detections, orders the remaining text by position, and merges unique lines into the current item. For example, it might retain `OWALA` and `32 OZ` in `visibleLabelText`. The local extraction currently leaves `otherProductIdentifiers` empty; it does not turn those lines into structured brand or model fields.
+Later camera callbacks collect completed OCR results for item-ownership checks. Every camera frame is released. The capture and OCR paths can progress independently; this illustrates the current fork's scheduling, not measured timing.
 
-The fork exposes three operations for this path: `submitFrame`, `takeLatestFrameResult`, and `resetFrameWorker`. The camera path submits eligible frames and polls for completed results on subsequent analyzed frames. Each result includes its item association and timing information.
+</Callout>
 
-#### Keep pixels and results attached to the right work
+### Replace waiting work
 
-Moving OCR to another thread introduces two ownership questions: how long the pixels remain valid, and whether the result still belongs to the current work.
+The worker stores the waiting job in a single `pending_frame_` slot. Assigning a new job replaces whatever was waiting there. The active job continues running.
 
-For the pixels, the fork secures an owned copy during submission. The worker can then use those pixels after the camera frame is released. This has a cost: copying and preparing the image still happen before the background inference, so submitting work is not free.
+Here is the relevant C++ excerpt. Before this code runs, the frame's pixels have been copied and converted into image data owned by the job:
 
-For results, the worker uses a generation counter. A job records the generation in which it was submitted. Resetting the worker advances that counter and clears pending work and the latest stored result. When active inference finishes, the worker only publishes its result if the generation still matches.
+```cpp
+{
+  std::scoped_lock lock(frame_worker_mutex_);
 
-A reset therefore invalidates old work without interrupting the native inference already running. Item ownership is also checked when the application consumes OCR results. Finishing an operation doesn't automatically make its output relevant to the current item.
+  if (frame_worker_stopping_ ||
+      generation != frame_worker_generation_) {
+    return 0;
+  }
 
-Live OCR and OCR on saved photographs share an inference mutex, which permits one inference at a time. A saved photograph can wait behind live inference. The background worker bounds waiting live frames; it doesn't eliminate contention for the model.
+  replacedPendingFrame = pending_frame_.has_value();
 
-These tradeoffs need physical-device measurements: frame throughput, dropped frames, submission and copy time, captured-photo OCR latency, memory, and thermals. The scheduling behavior explains how the application avoids a growing live-frame backlog. It doesn't establish a measured speedup.
+  pending_frame_ = FrameJob{
+      itemIndex,
+      generation,
+      std::chrono::steady_clock::now(),
+      std::move(bgr),
+      orientation};
+}
 
-### 3. Start independent work from the saved photograph
+frame_worker_condition_.notify_one();
+return replacedPendingFrame ? 2 : 1;
+```
 
-Saving a photograph starts **CRAFT + English CRNN photo OCR** and progressive identification independently. Within identification, **EfficientNet V2 S** classifies a saved image while the remote request can begin with the evidence already available. **LFM2.5-VL-450M** waits for classification to settle before using an available category hint with the selected photographs.
+The lock protects the shared slot while it's updated. `notify_one()` wakes the worker so it can pick up waiting work. The generation check rejects submissions from work that has been reset.
+
+This bounds the live-frame backlog even when OCR is slower than the incoming frames.
+
+### Keep the pixels alive and discard stale results
+
+Moving OCR off the camera callback creates two problems the queue alone doesn't solve.
+
+**The worker needs its own pixels.** The camera frame is released after its callback, so the worker takes an owned copy during submission. Copying and preparing that image still cost time on the submission path.
+
+**A completed result may be out of date.** Each job records the worker's current generation number. Resetting the worker advances that number and clears waiting work and the stored result. Active inference can finish, but its result is only published if the generation still matches. The app also checks which item owns the result before applying it.
+
+A later sampled camera callback collects the latest completed result and passes it to the React Native runtime. App code filters low-confidence text, orders it by position, and merges unique lines into the item. For our bottle, that might produce `OWALA` and `32 OZ` in `visibleLabelText`. These are observed strings; the phone hasn't established a verified brand or model from them.
+
+### What the worker still costs
+
+Live OCR and OCR on saved photographs share a lock that allows one inference at a time. A saved photograph can therefore wait behind live OCR, even though the live queue stays small.
+
+The bounded queue explains how the app avoids accumulating old frames. Its effect on responsiveness still needs physical-device measurements, including dropped frames, image-copy time, photo OCR latency, memory use, and heat.
+
+## From a saved photograph to an upload
+
+Saving a photograph starts photo OCR and remote identification with the evidence already available. Photo OCR gets another opportunity to read labels; useful new text can request another identification pass.
 
 <AnimatedDiagram
   src="/diagrams/quick-catalog-saved-photo.json"
-  title="A saved photograph opens several paths"
-  description="CRAFT and English CRNN read text from a saved photograph. EfficientNet V2 S maps the image to a broad category; optional LFM2.5-VL-450M uses the photos and an available category hint to refine the local identity. The backend receives selected JPEGs and available OCR/barcode signals without waiting for those local candidates. Results can arrive in either order. This is an illustrative flow, not measured timing."
+  title="Upload available evidence, refine when photo OCR adds text"
+  description="The saved photograph feeds photo OCR and backend identification; useful new photo text can request refinement."
 />
 
-#### Turn a broad category into a provisional local identity
+<Callout title="What happens to the saved photograph" variant="editorial">
 
-EfficientNet produces scores for ImageNet labels. The app takes its top five results, groups recognized labels into item categories, and sums their scores. Several bottle labels can therefore contribute to the same `bottle` category. If no mapped category meets the threshold, classification supplies no new category hint.
+- **Photo OCR — read the labels.** CRAFT finds text regions in the saved photo; English CRNN reads them into strings such as `OWALA` and `32 OZ`.
+- **Backend handoff — send available evidence.** App code uploads selected JPEGs and available OCR/barcode observations. The remote visual model examines that evidence to propose an identity.
+- **Item on phone — show the results.** App code updates the displayed identity and label text. Useful new photo OCR can request another identification pass.
 
-When LFM is ready, it receives the selected photographs and the classifier's category, or an existing candidate's category when classification provides none. Its task is to make that description more specific using visible evidence. The prompt asks for a short label, broad color, readable capacity, and visible text. OCR's extracted strings are not injected into this local VLM prompt; LFM reads the photographs itself.
+The upload can start before OCR finishes. Late live OCR needs a later identification trigger, and a pending refinement can wait for the current item cycle to settle. The illustrated order is not measured timing.
 
-For an illustrative response with the label `Owala FreeSip bottle`, color `purple`, and capacity `32 oz`, the app can construct this local candidate:
+</Callout>
 
-```json
-{
-  "candidateId": "item-0:image-1:local-lfm2-5-vl-450m",
-  "level": "product_family",
-  "category": "bottle",
-  "productName": "Owala FreeSip bottle",
-  "variant": "32 oz · purple",
-  "confidence": 0.55,
-  "provenance": [{ "sourceId": "image-1", "sourceType": "visual_observation" }]
-}
-```
+<Callout title="Provisional labels on the phone" variant="editorial">
 
-This example shows the application's candidate shape, not a recorded model result. For this compact-label response path, `0.55` is an app-assigned confidence value, not a calibrated probability from LFM. The candidate is held in the item's identity state with source `local-vlm`. The image IDs record which views support it. The parsed color and capacity become the candidate's `variant`; the OCR extraction remains separate item evidence.
+The detector and local classifier can supply provisional category labels while backend identification runs. Those predictions stay on the phone; the detector also feeds the automatic-capture policy described above.
 
-That gives us a concrete on-device result: **saved views, any collected OCR/barcode evidence, and a provisional identity candidate for the interface**. These are held in the capture and identity state, rather than combined into a single model response. The candidate can improve as work completes, and the optional LFM path can be skipped.
+An iPhone capture trace from September 3 recorded a detector category at **69 ms** after the photograph was requested, a classifier category at **211 ms**, and the first remote candidate at **5.25 seconds**. On another view of the mouse, the classifier corrected the detector’s “smartphone” label to “computer mouse.” The local vision-language model was unavailable in that session.
 
-### 4. Package the evidence for the backend
+These are candidate-event timings, not measurements of when text appeared on screen. The first photograph had been superseded before its remote result arrived. The recording demonstrates useful early category feedback in that session; it does not establish typical latency or the richer local model’s benefit.
 
-The upload is built from the saved views and the evidence available for that request. It can leave the phone before the local identity candidate above exists. The current endpoint is `POST /v1/identify`, with a multipart body:
+</Callout>
 
-| Request part            | What the phone sends                                                                                                                                 |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `images`                | One to three selected JPEG files, attached as repeated form fields named `images` with filenames such as `view-1.jpg`. Live frames are not uploaded. |
-| `signals`               | A JSON string containing the OCR request, available OCR extraction, and an optional detected barcode.                                                |
-| `X-Snap-Session-Id`     | The capture session ID.                                                                                                                              |
-| `X-Snap-Item-Intent-Id` | The item being identified, such as `item-0`.                                                                                                         |
-| `X-Snap-Image-Id`       | The newest selected capture's ID, used to associate the request and its results.                                                                     |
+The initial upload does not wait for those predictions. However, the current per-item loop waits for local classification, remote identification, and local vision-language work to settle before processing a pending replacement. Slow local inference can therefore delay the next request for the same item. Part two examines that coordination.
 
-The header names still use `Snap` in the current implementation. With the illustrative OCR lines above and no barcode, the `signals` field is:
+## Send the evidence to the backend
+
+The phone sends **selected photographs and available OCR or barcode observations**. Early identification prefers a small preview, targeted at 320×320; after item finalization, it can use the larger saved photograph, targeted at 1024×768, when the file fits the upload limit. The local identity label stays on the phone, along with detector boxes and classifier scores. The backend examines the photographs for itself.
+
+The request goes to `POST /v1/identify` as a multipart upload:
+
+| Part            | Contents                                                                      |
+| --------------- | ----------------------------------------------------------------------------- |
+| `images`        | One to three selected JPEGs.                                                  |
+| `signals`       | JSON containing the OCR request, any extracted text, and an optional barcode. |
+| Request headers | Session, item, and image IDs to associate results with the right capture.     |
+
+For the bottle example, the `signals` field could contain:
 
 ```json
 {
@@ -232,49 +186,20 @@ The header names still use `Snap` in the current implementation. With the illust
 }
 ```
 
-If OCR has not produced useful text yet, `extraction` is omitted. If a barcode was detected, `signals.barcode` carries its `format` and `rawValue`, and the OCR triggers also include `barcode_detected`. A detector label in the app's text-heavy category set adds `text_heavy_category`.
+If useful OCR text isn't ready, `extraction` is omitted. Useful new text from photo OCR can request another identification pass. Late live OCR updates the item and the interface, but does not independently request refinement; it can travel with a later capture, finalization, or another identification trigger. Live camera frames are never uploaded.
 
-The local candidate JSON is **not a field in this upload**. Detector boxes, classifier scores, and LFM's generated label stay on the phone; the backend receives the selected photographs and OCR/barcode observations. Useful text from photo OCR can request another identification pass with updated evidence.
+The photographs preserve visual details that OCR may miss. Extracted text enters the backend visual prompt, contributes to its Exa search query, and reaches evidence resolution. For example, `OWALA` and `32 OZ` can make a generic `water bottle` query more specific. A barcode supplies another identifier to cross-check. These are implemented uses of the evidence; improved identification accuracy still needs a controlled comparison.
 
-This lets the first request begin without waiting for every local model. It also creates an important distinction between showing progress and finishing an item's current processing cycle. The caller still waits for classification, remote identification, and local vision-language work to settle before processing that item's next pending snapshot. A useful result may already be visible during that wait.
+From here, the backend identifies the item, builds a text query for product research, and uses retrieved sources to develop the listing. Listing updates can continue after the initial identification response returns. That research process is the subject of part three.
 
-The backend's research and listing updates can continue after the initial identification request returns.
+<Callout title="Implementation note: the ExecuTorch fork" variant="editorial">
 
-#### Why this artifact is useful
+This walkthrough describes the current custom OCR worker. I plan to replace the fork using the ExecuTorch 0.10 APIs; the [migration guide](https://docs.swmansion.com/react-native-executorch/docs/fundamentals/migrating-from-v0-9) covers those changes. The replacement still needs safe pixel ownership, scheduling, stale-result checks, and device validation.
 
-Each part answers a different question for the next stage. The JPEGs preserve appearance and readable details that local extraction may have missed. OCR supplies literal retrieval clues such as `OWALA` and `32 OZ`. A barcode supplies an exact observed identifier to cross-check against the photographs. The headers associate the work with a session, item, and captured view as results arrive asynchronously.
+</Callout>
 
-The phone does not have to settle the exact product identity before this handoff. It can send useful evidence now and request a refinement when more text becomes available. The backend can inspect the photographs for itself instead of depending on the optional local model's label.
+## Next: coordinate requests with Effect
 
-### 5. Turn photographs and observations into a research query
+The OCR worker keeps incoming frames from piling up. Outgoing identification requests need their own rules: different items should be able to progress together, requests for the same item should run one at a time, and total active work should stay bounded.
 
-The API passes the selected image bytes and client signals to the remote visual model through the AI SDK. Google's Gemini Flash fills this role in the checked-in configuration: the source default is `google/gemini-3.8-flash`. The evidence resolver uses the same default in a separate call. Both are configurable; these defaults do not establish which model a deployed server uses.
-
-The visual prompt asks for a structured identity candidate first, then supporting signals: visible text, attributes, OCR fields, and a proposed search query. A valid partial candidate can reach the phone before the full output finishes. The prompt treats client OCR as observed text to check, and the barcode as a possible identifier to verify against the item. Neither establishes the physical item's condition.
-
-Once visual inference finishes, the service merges its OCR with the phone's extraction and builds a text query from the available brand, product, model, variant, capacity, color, barcode, and visible-text clues. This is where a broad observation such as `bottle` can become a more specific research request. Local OCR contributes searchable words without having to correctly parse them into a verified brand or model on the phone.
-
-Exa receives that **text query**, not the photographs. It returns product-page URLs, titles, and text highlights. The resolver then receives the candidate, signals, retrieved evidence, and any final seller narration available for the item. That second model call works with structured and text evidence rather than the original image bytes, and streams listing information back as it develops.
-
-The artifact changes at each stage: **image evidence → identity candidate and search clues → retrieved sources → researched listing fields**. The benefit is a clear input for each job: visual identification interprets the photographs, search finds supporting pages, and resolution compares those sources with the observed item and seller's account.
-
-### 6. Overlap independent work and return useful results early
-
-The system has several opportunities for parallel work, but the ordinary research path has an order: **visual identification → Exa search → evidence resolution**. Exa needs the query built from identification, and the resolver needs the retrieved evidence.
-
-| Work that can overlap | Why it can start independently |
-| --- | --- |
-| Saved-photo OCR, local classification, and remote identification | They can begin from the saved photograph and evidence already available. The remote request does not wait for the local VLM. |
-| Capture of another item and research on the previous item | Research continues in the background; the mobile queue allows independent items to progress within its capacity limit. |
-| Barcode research and visual identification | A separate barcode lookup can search from the observed code. The later research path can reuse a matching cached barcode result. |
-| Visible feedback and remaining inference/research | Partial candidates and listing updates can be delivered before the corresponding work is complete. |
-
-The upload's HTTP response uses NDJSON to report acceptance and the visual-identification result or an error. The oRPC control WebSocket carries early candidates and subsequent evidence and listing patches. Completing the upload response therefore does not mean the listing is finished.
-
-This organization lets the phone keep capturing while the system enriches earlier items. It also lets the interface show a useful category or candidate before the final listing is ready. Those are scheduling and delivery properties of the implementation; measuring their effect on latency still requires a device trace.
-
-## Next: keep several items moving
-
-The native OCR worker handles incoming frames. Outgoing identification requests need a separate policy: independent items should be able to progress together, while requests for the same item run one at a time and total active work stays bounded.
-
-That's where Effect enters Quick Catalog. ExecuTorch runs the local models; Effect supplies permit coordination inside the mobile remote-request queue. In part two, we'll follow two requests for item A and one for item B through that queue, including what happens when work fails or is cancelled.
+Part two follows how Effect coordinates that mobile request queue. We'll trace two requests for item A and one for item B, including what happens when work fails or is cancelled.

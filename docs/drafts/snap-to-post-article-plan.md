@@ -1,4 +1,26 @@
-# Snap to Post article plan
+# Quick Catalog article plan
+
+## Current direction: three posts
+
+The project is now called **Quick Catalog**. The reader-facing draft at `apps/web/content/posts/build-snap-to-post.mdx` is **Part 1: What the Phone Can Figure Out on Device**. Its filename and slug remain stable. It remains a draft.
+
+1. **What the phone can figure out.** Focus on photograph selection, OCR evidence, frame ownership, the bounded OCR worker, pending-frame replacement, generation invalidation, and the handoff to remote identification. A technical draft is written and will be refined collaboratively, one implementation section at a time. Product motivation and usage examples have “Add here” placeholders for the author.
+2. **Coordinating identification with Effect.** A standalone first draft is at `apps/web/content/posts/coordinating-identification-with-effect.mdx`, previewed at `/blog/coordinating-identification-with-effect`. It covers the A1/A2/B1 example, deferred execution, item-before-global permits, the Promise boundary, caller coalescing, cancellation, and cleanup. The queue, caller, and installed Effect semaphore source were rechecked for this pass. Technical prose remains collaborative working material; the motivation placeholder is for the author.
+3. **From an identity guess to a researched listing.** Use the source article's selected-image upload, remote candidates, Exa evidence, seller narration, resolver, and progressive return paths. This part remains to be written as a standalone post.
+
+Preserve `apps/web/content/posts/how-we-use-effect-in-snap-to-post.mdx` as the complete source and research draft, with its current explanation aligned to Quick Catalog and its dated research/validation history preserved. Part one uses focused live-OCR and saved-photo diagrams; the broader draft retains the backend identification diagram.
+
+Part one's worker and frame-lifetime descriptions were checked against the current mobile frame-delivery, capture, inference, native OCR worker, and frame-extractor source. This is source verification, not a new device benchmark. Keep the generation-reset/non-interruption distinction and the live/photo inference mutex caveat.
+
+The October 15 content pass simplifies local prediction coverage to provisional frontend feedback. The supplied September 3 iPhone trace assessment supports useful early detector/classifier categories in that session; typical latency, screen-render timing, device cost, and the richer local VLM’s additional benefit remain unestablished. Both drafts distinguish photo OCR refinement from late live OCR, explain preview versus finalized-photo uploads, and preserve the caller barrier that can delay a same-item refinement. The saved-photo and backend diagrams follow the uploaded evidence; classifier/VLM details remain only where they explain frontend behavior or scheduling. No runtime removal of local models is implied.
+
+The earlier single-post plan below remains as an authoring checklist for part two. Its proposed next writing pass no longer describes part one.
+
+## Collaborative editing approach
+
+Leave nontechnical framing, personal motivation, and product anecdotes to the author, using visible “Add here” placeholders. Do not invent those passages. Work through one technical implementation at a time: inspect the owning code, explain its execution and tradeoffs, discuss the explanation with the author, then revise that section. The existing technical prose is a starting draft, not an agreed final explanation.
+
+## Earlier single-post plan
 
 The reader-facing draft is `apps/web/content/posts/build-snap-to-post.mdx`. This first pass writes the opening through the handoff to the queue walkthrough. Its separate slug allows development preview while the original remains available.
 
@@ -49,6 +71,6 @@ Visualization build briefs, source paths, and authoring questions remain editing
 
 ## Next writing pass
 
-Write the deferred-task and nested-permit sections first. Use the source draft's reviewed excerpts, label condensed code, and carry forward the A1/A2/B1 example. Then explain cancellation and failure before making any adoption claims.
+Review the new part-two draft one implementation section at a time, beginning with deferred tasks and nested permits. The initial pass includes cancellation and failure; refine those explanations with the author before expanding the article or adding interactive demonstrations.
 
 Before publication, verify excerpts against the owning implementation, replace private source paths with public permalinks if available, run content validation, and check the rendered article at desktop and mobile widths. Add a historical motivation story only if the author supplies a real incident or implementation frustration.

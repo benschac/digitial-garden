@@ -4,6 +4,7 @@ import { useAbortController, useMediaQuery } from "@personal-site/react-hooks";
 import { cn } from "@personal-site/ui/lib/utils";
 import { useEffect, useId, useRef, useState } from "react";
 import styles from "./animated-diagram.module.css";
+import { articleCodeTheme } from "./article-code-theme";
 
 export interface AnimatedDiagramProps {
   /** Trusted, repository-owned Giotto JSON in public/diagrams. */
@@ -40,6 +41,7 @@ export function AnimatedDiagram({
     const { signal } = controller;
     let player: HTMLElement | undefined;
     let controlsObserver: MutationObserver | undefined;
+    let stopHighlighting: (() => void) | undefined;
 
     async function initialize() {
       setStatus("Loading interactive diagram…");
@@ -71,8 +73,14 @@ export function AnimatedDiagram({
         element.figStyle = {
           font: "var(--font-ui, system-ui), sans-serif",
           shadow: false,
-          radius: 6,
-          dark: { packetText: "#23211e" },
+          radius: 3,
+          codeFill: articleCodeTheme.background,
+          codeText: articleCodeTheme.foreground,
+          dark: {
+            packetText: "#202d27",
+            codeFill: articleCodeTheme.background,
+            codeText: articleCodeTheme.foreground,
+          },
         };
         // Load before connecting: malformed data never leaves an empty player behind.
         element.doc = doc;
@@ -97,6 +105,19 @@ export function AnimatedDiagram({
           }
         }
         setStatus("");
+        if (JSON.stringify(doc).includes('"type":"code"')) {
+          // Highlighting is optional: a failed import leaves readable plain code.
+          try {
+            const { getArticleCodeTokenizer, highlightDiagramCode } =
+              await import("./article-code-theme");
+            const tokenize = await getArticleCodeTokenizer();
+            if (signal.aborted) return;
+            const svg = root?.querySelector("svg");
+            if (svg) stopHighlighting = highlightDiagramCode(svg, tokenize);
+          } catch {
+            // Keep Giotto's code text and the shared dark palette as a fallback.
+          }
+        }
       } catch {
         player?.remove();
         if (!signal.aborted)
@@ -107,6 +128,7 @@ export function AnimatedDiagram({
     return () => {
       controller.abort();
       controlsObserver?.disconnect();
+      stopHighlighting?.();
       // disconnectedCallback releases Giotto's observers, listeners and animation frame.
       player?.remove();
     };

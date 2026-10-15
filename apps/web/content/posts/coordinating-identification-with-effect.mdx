@@ -1,0 +1,266 @@
+---
+title: "Part 2: Coordinating Identification with Effect"
+slug: "coordinating-identification-with-effect"
+summary: "How Quick Catalog uses Effect to run identification across items, serialize work for each item, and keep cancellation from releasing capacity too early."
+publishedAt: "2026-10-15"
+status: "draft"
+tags:
+  - "Effect"
+  - "TypeScript"
+  - "React Native"
+featured: false
+---
+
+In [part one](/blog/build-snap-to-post), we followed how Quick Catalog chooses photographs, reads labels, and sends useful evidence to the backend. The phone can start identification with a photograph, then request another pass when better evidence becomes available.
+
+That creates a coordination problem. Several items can need identification at once, and one item can need more than one pass. **Different items should progress together, requests for the same item should run one at a time, and total active work should stay bounded.**
+
+This is where we use [Effect](https://effect.website/): to compose those execution rules around the mobile app's existing asynchronous requests.
+
+<Callout title="Work in progress">
+
+This is part two of the Quick Catalog series. The excerpts follow the current mobile queue, which uses Effect `4.0.0-rc.112`. Shortened examples are labeled. The request sequences illustrate scheduling; they are not measured network timings.
+
+</Callout>
+
+_[Add here: what made you revisit request coordination, or a concrete example from using the app.]_
+
+## Give each request two conditions to satisfy
+
+Suppose we submit three tasks in this order:
+
+1. **A1:** identify item A from its first evidence.
+2. **A2:** identify item A again from updated evidence.
+3. **B1:** identify item B.
+
+A1 and B1 can run together. A2 must wait for A1 to finish.
+
+A single shared concurrency limit cannot enforce both rules. With two slots, it could start A1 and A2 together. A single lock around the whole queue would keep B1 waiting unnecessarily.
+
+The queue uses **semaphores at two levels**: one shared across all items, and one for each individual item.
+
+A **semaphore** controls access using a limited number of permits. Before a task can run, it must acquire a permit. It holds that permit while running and releases it when finished. If all permits are occupied, another task must wait. [Effect's semaphore guide](https://effect.website/docs/v4/concurrency/semaphore) explains this mechanism and shows examples with one or several permits.
+
+For example, a semaphore with two permits allows two tasks to run at once, when each task requires one permit. The function trace beneath the animation marks the expression being explained and shows when each task factory would be called:
+
+<AnimatedDiagram
+  src="/diagrams/quick-catalog-semaphore.json"
+  title="Two permits: acquire, wait, release"
+  description="A and B each acquire one of two permits and run together. C waits while both permits are occupied. When A finishes, its permit becomes available; C acquires it and starts while B continues. When B and C finish, both permits are free again. The trace connects withPermit to admission and release, and the tryPromise factory to task invocation. C’s task-call count stays zero until a permit is available. This is a narrated source walkthrough, not a live Effect execution or measured timing."
+/>
+
+This code-and-state presentation is inspired by [Kit Langton’s Visual Effect](https://effect.kitlangton.com/). Our diagrams step through a prepared example of the queue; they do not execute Effect or send identification requests.
+
+The permit limits how much work can run simultaneously. It does not make an individual task finish faster.
+
+In Quick Catalog, each identification task first acquires its item's permit, then a shared permit. It holds both while running and releases them when the task settles.
+
+The item's single permit allows only one task for that item to proceed. The four shared permits allow up to four tasks to execute across items.
+
+Acquiring the item's permit first matters. A second request for item A waits before taking shared capacity, leaving that capacity available to item B.
+
+Effect's [`withPermit`](https://effect.website/docs/v4/api/effect/Semaphore) wraps the operation with permit acquisition and release. Our application chooses the permit counts and how the two semaphores are composed.
+
+Four is the limit for one queue instance retained by the mobile hook. It does not limit work across devices or cap the number of waiting requests.
+
+## Describe the request before starting it
+
+To control when work begins, we first need to keep it from starting during submission.
+
+Calling an async function starts executing its body immediately, up to its first suspension. Wrapping a Promise after calling that function would be too late to control the start of the operation.
+
+`Effect.tryPromise` accepts a function that produces a Promise. Constructing the Effect describes the work; the runtime calls that function when execution reaches it.
+
+Here is a shortened version of our task wrapper:
+
+```ts
+const executeTask = Effect.tryPromise({
+  try: async () => task(context),
+  catch: (error) => error,
+});
+```
+
+`task` is the asynchronous operation supplied by the caller. In the full implementation, the wrapper creates `context` after acquiring the permits, including how long the task waited. It also updates the queue's active count.
+
+<EffectWalkthrough kind="factory" />
+
+The walkthrough abbreviates the item and shared semaphores as `item` and `global`, and omits runner options and bookkeeping. Step from **Describe** to **Invoke** and watch the task-call count: it stays at zero until both permits are acquired.
+
+<Callout title="The function is the boundary" variant="editorial">
+
+The important detail is the placement of `task(context)`: **the call stays inside the factory.** That allows us to put permit acquisition before the operation begins. Creating a Promise first and wrapping it afterward would already have started the task.
+
+</Callout>
+
+The `catch` function passes failures into Effect without defining a new domain error model. This queue uses Effect for execution control; its errors still come from the submitted work.
+
+## Acquire the item permit first
+
+The composition in the queue is small:
+
+```ts
+const program = itemSemaphore.semaphore.withPermit(
+  this.globalSemaphore.withPermit(executeTask),
+);
+```
+
+The outer operation acquires the item's permit first. Only then does the task compete for shared capacity. Each `withPermit` holds its permit until the enclosed Effect exits, including when it fails.
+
+Use two shared slots for the A1, A2, B1 example so we can see the ordering. The function trace follows the nested calls: `item` abbreviates `itemSemaphore.semaphore`, and `global` abbreviates `this.globalSemaphore`. The excerpt omits bookkeeping and runner options; `context` is created inside the full task wrapper after admission.
+
+<AnimatedDiagram
+  src="/diagrams/quick-catalog-item-permits.json"
+  title="Follow the function: item permit, shared permit, task"
+  description="With two shared slots, A1 acquires item A’s permit and a shared permit. A2 waits for A’s permit, leaving shared capacity for B1. When B1 finishes, a shared slot is free but A2 still waits. Only after A1 settles can A2 acquire the item permit, then a shared permit, and start. The trace marks item.withPermit while A2 waits, then the tryPromise factory when A2 starts; A2’s task-call count stays zero until both permits are acquired. The app defaults to four shared permits. This is a narrated source walkthrough, not a live Effect execution or measured timing."
+/>
+
+| Event | Running | Waiting | Free shared slots |
+| --- | --- | --- | --- |
+| Submit A1, A2, B1 | A1, B1 | A2 | 0 |
+| B1 finishes | A1 | A2 | 1 |
+| A1 finishes; A2 starts | A2 | None | 1 |
+| A2 finishes | None | None | 2 |
+
+A2 waits at item A's semaphore, leaving the second shared slot available to B1. When B1 finishes, that slot becomes free, but A2 still needs A's permit. Spare global capacity does not allow two tasks for the same item to overlap.
+
+Reversing the nesting would change that behavior. In this example, A2 could take the second shared permit and then wait for A's permit. B1 would be blocked even though only A1 was doing useful work.
+
+<Callout title="Read the nesting from the outside in" variant="editorial">
+
+`item.withPermit(global.withPermit(executeTask))` means: acquire the item permit, acquire a shared permit, then invoke the task. Acquiring the item permit first prevents a same-item waiter from occupying capacity another item could use.
+
+</Callout>
+
+## Keep the caller's Promise interface
+
+Once the rules are composed, the queue runs the program:
+
+```ts
+return Effect.runPromise(program, {
+  scheduler: this.scheduler,
+  signal: queueAbortController.signal,
+});
+```
+
+This excerpt omits the returned Promise's error normalization and final cleanup. `Effect.runPromise` executes the program and gives the caller an ordinary Promise to await.
+
+The progressive identification hook submits work in this shape, shortened from the source:
+
+```ts
+await remoteQueue.run(
+  itemIntentId,
+  async () => identifyItemImages({
+    sessionId,
+    itemIntentId,
+    imageId: requestImageId,
+    images: requestFiles,
+    signals: requestSignals,
+    signal: abortController.signal,
+  }),
+  { signal: abortController.signal },
+);
+```
+
+The hook can continue using async functions. Effect stays inside the queue, where the execution constraints live.
+
+The queue also selects `Scheduler.MixedScheduler('sync')` to preserve its immediate-start and microtask-handoff behavior. That controls when eligible work begins; the network request still completes asynchronously.
+
+## Keep the latest evidence in the caller
+
+The A1, A2, B1 example isolates what the queue guarantees when tasks are submitted directly. The application also decides which tasks are worth submitting.
+
+While an identification cycle is running for an item, the caller keeps its latest pending evidence snapshot. New evidence replaces that pending snapshot:
+
+```ts
+requestState.desiredCaptureKey = nextCaptureKey;
+requestState.pendingItem = requestedItem;
+```
+
+If A2 evidence arrives and then A3 replaces it before the current cycle finishes, the next cycle can use A3. It does not need to submit a separate remote request for every intermediate observation. This is **coalescing**, and the hook owns it.
+
+The hook also awaits its classifier, remote request, and local vision-language model with `Promise.allSettled` before moving to the next cycle. A remote permit may therefore be free while that item's next cycle still waits for local work.
+
+<EffectWalkthrough kind="coalescing" />
+
+<Callout title="A2 can disappear before it reaches the queue" variant="editorial">
+
+The caller replaces a pending evidence snapshot; it does not remove an already-submitted A2 task from the semaphore queue. These are separate responsibilities: the caller chooses the evidence for the next cycle; the queue decides when an admitted task can execute.
+
+</Callout>
+
+## Cancel waiting work; account for running work
+
+The caller's abort signal reaches both the queue and the identification request. They use it differently depending on whether execution has started.
+
+While a task waits, the queue forwards cancellation to an internal controller:
+
+```ts
+const abortWhileQueued = () => {
+  if (!hasStarted) queueAbortController.abort(signal?.reason);
+};
+
+signal?.addEventListener("abort", abortWhileQueued, { once: true });
+```
+
+That internal signal is the one passed to `Effect.runPromise`. Cancelling a waiting task interrupts its permit wait. Cleanup removes the pending entry, and the task function is never called.
+
+When the task starts, the queue removes that forwarding listener:
+
+```ts
+hasStarted = true;
+signal?.removeEventListener("abort", abortWhileQueued);
+```
+
+The request still receives the caller's signal. But the queue continues holding both permits until the submitted Promise settles.
+
+Consider a one-slot queue with A1 running and B1 waiting. If we cancel A1, B1 stays waiting until A1 resolves or rejects. Otherwise we could start B1 while A1 was still active and exceed the intended concurrency limit.
+
+<EffectWalkthrough kind="cancellation" />
+
+<Callout title="Watch the slot, not just the abort signal" variant="editorial">
+
+**Requesting cancellation and finishing work are different events.** A waiting task can be removed without calling its factory. A running task keeps its permits until its Promise settles. A cooperative request may reject promptly. A task that ignores cancellation and never settles continues holding capacity; the queue itself adds no timeout.
+
+</Callout>
+
+This accounting ends at the client task's Promise. Its settlement does not prove that a remote model provider has stopped computing. Backend research has its own lifecycle, which we'll cover in part three.
+
+Cancellation also does not automatically discard a successful result from a running task. The caller checks the abort signal and session identity before publishing the returned candidate.
+
+## Release permits and clean up application state
+
+If A1 fails, A2 still needs to be able to start. Effect releases the permits when the enclosed computation exits. The application separately cleans up the state it owns:
+
+| Owner | Cleanup |
+| --- | --- |
+| Effect's nested `withPermit` calls | Shared and per-item permits |
+| Task wrapper's `finally` | Active count and active-item set |
+| Returned Promise's `finally` | Pending entry, abort listener, and item-semaphore reference |
+
+The task wrapper contains a useful JavaScript detail:
+
+<EffectWalkthrough kind="cleanup" />
+
+<Callout title="Here, return await changes the bookkeeping" variant="editorial">
+
+`return await` keeps this `finally` tied to the task's settlement. With `return task(context)`, the local cleanup would run while the returned Promise could still be pending. The counters would report that work had stopped too early, even though Effect's permits remained held.
+
+</Callout>
+
+When no pending or active jobs reference an item's semaphore, the outer cleanup removes it from the map. A failed task frees capacity for the next submitted task; this queue does not automatically retry it.
+
+## What Effect gives this queue
+
+Effect supplies the mechanics for waiting on two permits and releasing them when execution exits. The application keeps its evidence policy, bookkeeping, and cancellation rules explicit, and the caller keeps its Promise interface.
+
+That lets independent items progress concurrently while serializing work for each item. It is a scheduling guarantee, not evidence that any individual model call is faster. Measuring time to an initial identity or a complete listing would require a separate end-to-end measurement.
+
+<Callout title="When would Streams make sense?" variant="editorial">
+
+For now, I'd keep the semaphore queue. I'd consider Effect Streams if we want Effect to own the entire pipeline from incoming evidence to returned results.
+
+If we move in that direction, we need to preserve the current cancellation rule: **an active task whose cancellation has been requested keeps its permits until its Promise settles.** An Effect finalizer running does not, by itself, prove that the underlying operation has stopped.
+
+</Callout>
+
+In part three, we'll follow what happens after a request reaches the backend: identifying the item, researching supporting sources, and combining that evidence with the user's description to develop a listing.

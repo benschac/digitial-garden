@@ -1,7 +1,7 @@
 ---
-title: "How we use Effect in Snap to Post"
+title: "How we use Effect in Quick Catalog"
 slug: "how-we-use-effect-in-snap-to-post"
-summary: "How two nested Effect semaphore permits coordinate remote identification, per-item ordering, and cancellation in Snap to Post."
+summary: "How two nested Effect semaphore permits coordinate remote identification, per-item ordering, and cancellation in Quick Catalog."
 publishedAt: "2026-10-11"
 status: "draft"
 tags:
@@ -13,13 +13,15 @@ featured: false
 
 <Callout title="Draft note" variant="editorial">
 
-Editable draft for my personal blog. Source reviewed October 11, 2026, against Effect `4.0.0-rc.112`. Code excerpts omit surrounding implementation where noted. Visualization placeholders describe components to build on the personal site; the prose and tables remain readable without them. Remove this note and the editorial appendix before publishing.
+Editable source draft for the Quick Catalog series. The capture-to-backend explanation was rechecked October 15, 2026. The Effect walkthrough and migration research retain their separately dated validation notes; the original Effect review used `4.0.0-rc.112`. Code excerpts omit surrounding implementation where noted. Visualization placeholders describe components to build on the personal site; the prose and tables remain readable without them. Remove this note and the editorial appendix before publishing.
 
 </Callout>
 
 When someone photographs an item to sell, they should be able to move on to the next item while we identify the first. They should also see useful information before every model call, product search, and listing field is finished.
 
-Snap to Post combines on-device perception through React Native ExecuTorch with remote visual identification and product research. Making that experience responsive means deciding what can overlap, what must wait, and which intermediate results are useful enough to show.
+Quick Catalog combines photograph selection and label reading on the phone with remote visual identification and product research. Making that experience responsive means deciding what can overlap, what must wait, and which intermediate results are useful enough to show.
+
+The shorter [part-one walkthrough](/blog/build-snap-to-post) focuses on capture and OCR. This broader draft retains the queue implementation, backend context, and research notes that support the series.
 
 Effect helps with one specific part: a mobile queue that admits remote identification work. The task remains a Promise-returning function; nested semaphore permits express when it is allowed to run. To understand why that matters, start with the data moving through the application.
 
@@ -29,24 +31,32 @@ There are two connected flows: local perception on the phone, and remote identif
 
 ### On the phone: collect evidence and begin identification
 
-VisionCamera supplies frames and selected still images. React Native ExecuTorch runs object detection and OCR, plus image classification on a selected image. An optional cached local vision-language model can produce a more detailed identity. Those outputs have different destinations:
+VisionCamera supplies live frames and still photographs. With automatic capture enabled, the user points the camera at an item and holds it steady; the app takes photographs without requiring a shutter tap for each view. This mode is on by default, with manual capture also available.
 
-| Input or result              | Application behavior                                                                                                                                                                                  |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Selected JPEG images         | Sends one to three views of the same item to the API. While capture is ongoing, prefers available previews; after finalization, prefers full images when they exist and fit the 2 MB per-image limit. |
-| Local OCR                    | Merges selected recognized text into the item's OCR evidence. Sends available extraction, an OCR request flag, and trigger reasons in the request's `signals` field.                                  |
-| Barcode                      | Sends the observed format and value in `signals` when available. A separate barcode lookup can also start product research.                                                                           |
-| Object detector label        | Can supply an immediate local category candidate and help decide the OCR trigger. The label itself is not a separate field in this request.                                                           |
-| Local image classification   | Updates the local candidate and supplies a category hint to the local vision-language model. Its result is not included in the identification upload.                                                 |
-| Local vision-language result | Progressively updates local identity. It is not uploaded as the server's visual classification input.                                                                                                 |
+The on-device SSDLite detector supplies boxes, labels, and scores to object tracking. The capture policy then checks track stability, image quality, motion, cooldown, and similarity to saved views before requesting a photograph. On iOS, a fresh salient-object track can also provide a fallback when the inventory detector has no usable track. Saved photographs start OCR and backend identification.
 
-The OCR path is asynchronous. Saving a selected photo starts OCR and progressive identification without awaiting OCR first. The first upload therefore contains the OCR evidence available at that moment; useful text discovered afterward can request a refinement. We do not make every image wait for every local model before starting remote work.
+Object detection therefore contributes to the evidence pipeline by helping decide which photographs are taken. The backend receives the selected photographs and available OCR/barcode evidence:
+
+| Input or result | Application behavior |
+| --- | --- |
+| Selected JPEG images | Sends one to three views. During capture, prefers available previews targeted at 320×320; after finalization, prefers saved photos targeted at 1024×768 when they fit the 2 MB per-image limit. |
+| Local OCR | Merges recognized text into the item. Sends available extraction, an OCR request flag, and trigger reasons in `signals`. |
+| Barcode | Sends the observed format and value in `signals`. A separate barcode lookup can also start product research. |
+| Object detection and capture policy | Detection feeds tracking; stability, quality, motion, cooldown, and duplicate-view checks govern automatic photographs. A detector label can also inform an OCR trigger. Boxes and scores stay on the phone; selected photographs go downstream. |
+
+The detector also supplies early category feedback, and the local classifier can refine or correct it. An optional local vision-language model can supply a richer provisional identity. These predictions, including locally inferred color or capacity, stay on the phone. A September 3 iPhone trace records useful category feedback before the remote candidate, with the local VLM unavailable. Typical latency, device cost, and the richer model’s additional benefit remain open questions.
+
+Saving a selected photo starts OCR and progressive identification without awaiting OCR first. Useful new text from **photo OCR** can request refinement. Late **live OCR** updates the item but does not independently start another request; a later capture, finalization, or another identification trigger can forward it.
+
+The first remote request does not wait for local predictions. Subsequent requests for the same item can still wait for local work because the caller joins classification, remote identification, and local vision-language work before processing its pending replacement.
 
 The caller also coalesces changes. While an item's identification cycle is in flight, it retains the latest pending item snapshot instead of submitting every intermediate update. That policy belongs to the caller. The queue we will examine below supplies a separate execution guarantee.
 
 ### Across the network: images and observations, then progressive results
 
 The mobile client posts multipart data to `/v1/identify`: JPEG files under `images`, JSON-encoded observations under `signals`, and session, item, and image IDs in headers. This is selected image evidence, not a continuous video upload.
+
+The shared client-signal schema accepts OCR and barcode fields. Adding local predictions to the JSON alone would have no effect: the current schema strips unrecognized fields, and backend consumers would need explicit changes.
 
 The server then follows this sequence:
 
@@ -62,6 +72,10 @@ The visual provider's source default is `google/gemini-3.8-flash` through AI Gat
 
 Client OCR and search-result text are explicitly presented to the models as untrusted evidence. A recognized label is a clue, not proof of an exact model. The resolver can return an inferred, verified, or conflicted identity; the application must preserve that distinction as information arrives.
 
+OCR has three concrete consumers: the visual prompt, the Exa query builder, and evidence resolution. For example, visible text such as `OWALA` and `32 OZ` can refine a generic `water bottle` search. Color, capacity, and material returned by remote visual identification can also enter that query; the local vision-language model’s attributes do not. This demonstrates how evidence is used, without establishing an accuracy gain.
+
+Seller narration currently enters the final resolver. Spoken product names and model numbers do not inform the initial visual call or research query through this path.
+
 Exa is the research service in this implementation. The researched listing returns to the phone through the control stream; this flow does not publish it to a marketplace.
 
 ### Two return paths, different completion points
@@ -75,10 +89,10 @@ The client reconciles incoming candidates using identity specificity, source pri
 <AnimatedDiagram
   src="/diagrams/snap-to-post-identification.json"
   title="One item, useful results along the way"
-  description="Illustrative sequence, not measured timing or an executing Effect queue. Local and remote candidates can arrive in either order; local inference may be unavailable."
+  description="Selected JPEGs and available OCR/barcode observations enter visual identification, followed by text search and evidence resolution. Photo OCR can request refinement. HTTP and control WebSocket updates have different completion points. Illustrative sequence, not measured timing or an executing Effect queue."
 />
 
-The phone keeps local classification on device while selected JPEGs and available OCR/barcode signals go to the API. HTTP NDJSON carries acceptance and the identification result. Background text search and evidence resolution send progressive listing updates over the control WebSocket.
+Selected JPEGs and available OCR/barcode signals go to the API. Local identity predictions remain outside this evidence path. HTTP NDJSON carries acceptance and the identification result. Background text search and evidence resolution send progressive listing updates over the control WebSocket.
 
 _The first useful answer can appear before product research and listing generation finish. Each update retains its source and certainty._
 
@@ -114,7 +128,9 @@ Across the capture flow, HTTP results, WebSocket patches, and local candidates a
 
 There are three different outcomes to distinguish: time to the first useful visible candidate, throughput across several items, and time to a complete researched listing.
 
-Local candidates and streamed remote candidates target the first outcome. The person sees the application recognize something without waiting for the full research chain. Showing a useful category while refining the model is meaningful progress, provided the UI communicates its provisional status. An upload acknowledgement alone is feedback, not an identification result.
+Streamed remote candidates can provide an identity before research finishes. There is also recorded evidence for early local category feedback: a September 3 iPhone trace logged a detector category 69 ms after a photograph was requested, a classifier category at 211 ms, and the first remote candidate at 5.25 seconds. The remote candidate concerned the same photograph, which had since been superseded. On another view of the mouse, the classifier corrected the detector’s “smartphone” label to “computer mouse.” The local VLM was unavailable in that session.
+
+These candidate events demonstrate early category feedback in that recording. They do not measure screen-render latency, establish typical performance, or show whether the feedback changes scanning behavior. The richer local VLM’s additional benefit and the device-cost tradeoff remain unproven. The UI still needs to communicate provisional status. An upload acknowledgement confirms receipt; it does not identify the item.
 
 Overlapping remote requests targets throughput. Item B can make progress while item A waits for a network response. The Effect queue makes that overlap explicit and bounded, while preserving per-item serialization inside the queue. It does not make a single Google model call execute faster. Increasing concurrency may also encounter provider limits or resource contention, so four slots is an application setting rather than a universal optimum.
 
@@ -130,7 +146,7 @@ For a speed claim, we would measure capture-to-first-useful-candidate, queue wai
 
 ## The problem that makes Effect useful here
 
-Snap to Post turns a capture session into information about items someone wants to sell. While the user captures another item, earlier items can still be uploading images and waiting for remote identification. Multiple requests can also concern the same item as its evidence changes.
+Quick Catalog turns a capture session into information about items someone wants to sell. While the user captures another item, earlier items can still be uploading images and waiting for remote identification. Multiple requests can also concern the same item as its evidence changes.
 
 That gives the mobile remote queue two different constraints: independent items should make progress concurrently, but submitted task Promises for the same item must not overlap within that queue. We also need to handle a session being reset, a request failing, or a queued job becoming irrelevant.
 
@@ -542,7 +558,7 @@ Keep durations labeled as demonstration timing. `queueWaitMs` in a controlled de
 
 ### 0. Follow the evidence — existing system context
 
-The existing system `<AnimatedDiagram>` provides context: selected images and available OCR/barcode signals enter the upload, local classification remains on the phone, and HTTP and control WebSocket updates have different completion points. Keep its description's distinction between illustrative timing and executing queue behavior. The workshop illustrations are separate components, including the caller's coalescing example.
+The existing system `<AnimatedDiagram>` provides context: selected images and available OCR/barcode signals enter the upload, photo OCR can request refinement, and HTTP and control WebSocket updates have different completion points. Keep local prediction details in the caller-barrier explanation where they affect scheduling. Keep its description's distinction between illustrative timing and executing queue behavior. The workshop illustrations are separate components, including the caller's coalescing example.
 
 ### Describe, then run
 
@@ -601,7 +617,7 @@ Use an event strip—submit, task starts, resolve gate, process settlement, wait
 
 ### How to build the first prototype faithfully
 
-Import the current `ItemTaskQueue` while prototyping in the Snap to Post repository. If the blog needs a copied implementation, pin the reviewed source and Effect version, record the source commit, and port its behavioral tests. The reviewed queue is unchanged from HEAD `4a25aac`; the installed Effect version is `4.0.0-rc.112`. These source paths are authoring references, not imports available in the personal site.
+Import the current `ItemTaskQueue` while prototyping in the Quick Catalog repository. If the blog needs a copied implementation, pin the reviewed source and Effect version, record the source commit, and port its behavioral tests. The reviewed queue is unchanged from HEAD `4a25aac`; the installed Effect version is `4.0.0-rc.112`. These source paths are authoring references, not imports available in the personal site.
 
 Use manually resolvable/rejectable Promise tasks, following the deferred gates in the queue tests. Drive the view from actual submissions, `onQueued`, `onStarted`, cancellation requests, Promise outcomes, and queue snapshots. Avoid recreating the scheduling policy inside the animation.
 
@@ -641,7 +657,7 @@ Keep the fork for that validation. For upstream work, separate the frame-buffer 
 
 ### Source map for editing
 
-These source paths are relative to the Snap to Post repository, not the personal site, and are retained for authoring. Replace them with public permalinks if the source is published, or leave the implementation references in this appendix when moving the article to the personal site.
+These source paths are relative to the Quick Catalog repository, not the personal site, and are retained for authoring. Replace them with public permalinks if the source is published, or leave the implementation references in this appendix when moving the article to the personal site.
 
 | Source                                                                                                                                  | Claims to check when editing                                                                               |
 | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -671,7 +687,38 @@ These source paths are relative to the Snap to Post repository, not the personal
 | Forked OCR worker (`vendor/react-native-executorch/packages/react-native-executorch/common/rnexecutorch/models/ocr/OCR.cpp`)            | Active/pending work, replacement, result generation, inference mutex, thread teardown                      |
 | Installed Effect (`node_modules/effect/src/Semaphore.ts`, `node_modules/effect/src/Scheduler.ts`)                                       | Permit finalization, sync execution mode, microtask dispatcher                                             |
 
-### Evidence and validation notes
+### Recorded local category feedback — September 3
+
+The supplied analysis of `slice-1-1788463105713-b0n7g1-diagnostic.zip` reports these iPhone candidate events for one photograph:
+
+| Candidate | Time after photograph requested |
+| --- | --- |
+| Detector: “computer mouse” | 69 ms |
+| Classifier: “computer mouse” | 211 ms |
+| First remote candidate for the same photograph | 5.25 seconds |
+
+That photograph had been superseded before its remote candidate arrived. The local VLM was skipped because it was not ready. These are logged candidate events, not measurements of screen rendering.
+
+For a second photograph of the mouse’s underside, the detector reported “smartphone.” The classifier corrected it to “computer mouse” with about 27 ms of inference, roughly seven seconds before the remote candidate. The supplied assessment includes inspection of the photograph and confirms it is a mouse. The 27 ms figure is inference duration, not elapsed time since the photograph was requested.
+
+This is evidence for retaining fast local category feedback and evaluating the richer VLM separately. It does not establish representative latency, a measured change in user behavior, device cost, or what the user would miss with feedback disabled. September 1 VLM recordings concern an older implementation and cannot establish current VLM quality. No backend-accuracy improvement follows from these phone-side labels, which are not uploaded.
+
+These notes incorporate the supplied trace assessment; the recording and photograph were not independently reanalyzed during this article edit. The existing diagrams remain illustrative and do not replay this recording.
+
+### Evidence gaps to evaluate
+
+The October 15 source review confirms transport and consumers, not model accuracy or physical-device performance. Keep these implementation opportunities separate from the current flow:
+
+- Decide whether late live OCR should request refinement, with deduplication and request limits.
+- Separate pending remote refinements from slow local inference if measurements justify changing the caller barrier.
+- Evaluate forwarding observed attributes and using spoken identity clues before research. Both require explicit contract or consumer changes.
+- Evaluate local predictions as labeled hypotheses with source and supporting image IDs. Agreement between models viewing the same image is not independent verification.
+
+Compare the same labeled items and photographs with images only, then OCR/barcode, then local attributes, then local identity hypotheses. Measure model/variant correctness, false exact matches, source relevance, time to a useful identity, completed-draft latency, request count, and device cost. Include noisy OCR and wrong local predictions. The current visual benchmark supplies images without client signals, so it does not establish the benefit of those additions.
+
+### Evidence and validation notes — October 11, 2026
+
+The following results belong to the earlier revision. They are retained as historical evidence and are not fresh checks of the October 15 content update.
 
 The October 11, 2026 revision folds the workshop into the corresponding sections and adds client architecture context from the supplied September handoffs. Checked the current queue, progressive identification hook, speech-token procedure, camera/controller, speech paths, and forked frame/OCR implementation. The queue matches HEAD `4a25aac`, and the installed Effect package is `4.0.0-rc.112`. The older handoffs' pinned native commit and build results are historical evidence, not current validation claims.
 
@@ -680,6 +727,12 @@ Reran `node --experimental-strip-types --test apps/mobile/tests/item-task-queue.
 Checked the preview at desktop and 390px widths. The added sections render, but the existing three-column network-stage table produces about 21px of page overflow at 390px; its mobile layout remains a publication follow-up. Verified all 26 source-path references exist, balanced code fences, and unchanged protected text.
 
 The introduction, frontmatter, and existing system `<AnimatedDiagram>` remain unchanged. This is a content-only revision: no executable workshop demos, provider calls, production operations, upstream submissions, or mobile runtime changes. API integration tests, physical-device behavior, and performance benchmarks were not run. The hypothetical reversed-order and early-`finally` variants remain teaching analyses until separately tested as executable demos.
+
+### Content validation — October 15, 2026
+
+Updated part one, this broader draft, and their evidence-flow diagrams together. The Effect code excerpts and dated migration research were preserved. `bun run content:validate` compiled all 15 posts; diagram reference checks, Biome checks for the changed JSON, and `git diff --check` passed.
+
+Both article routes rendered at desktop and 390px widths with no page-level horizontal overflow in the current checkout. Checked both updated diagrams and their scene controls. This supersedes the earlier overflow observation for this checkout. No mobile runtime changes, provider evaluations, or physical-device benchmarks were performed.
 
 ## Research appendix: ExecuTorch 0.10 and the Snap to Post fork
 

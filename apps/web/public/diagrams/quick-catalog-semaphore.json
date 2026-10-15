@@ -1,0 +1,405 @@
+{
+  "title": "Two permits: acquire, wait, release",
+  "speed": 5600,
+  "elements": [
+    {
+      "id": "waiting",
+      "type": "rectangle",
+      "x": 0,
+      "y": 130,
+      "width": 200,
+      "content": [
+        {
+          "type": "title",
+          "text": "Waiting tasks"
+        }
+      ]
+    },
+    {
+      "id": "one",
+      "type": "rectangle",
+      "x": 310,
+      "y": 0,
+      "width": 200,
+      "content": [
+        {
+          "type": "title",
+          "text": "Permit 1"
+        }
+      ]
+    },
+    {
+      "id": "two",
+      "type": "rectangle",
+      "x": 310,
+      "y": 260,
+      "width": 200,
+      "content": [
+        {
+          "type": "title",
+          "text": "Permit 2"
+        }
+      ]
+    },
+    {
+      "id": "done",
+      "type": "rectangle",
+      "x": 620,
+      "y": 130,
+      "width": 200,
+      "content": [
+        {
+          "type": "title",
+          "text": "Completed"
+        }
+      ]
+    },
+    {
+      "id": "take-one",
+      "type": "arrow",
+      "start": {
+        "id": "waiting"
+      },
+      "end": {
+        "id": "one"
+      },
+      "label": {
+        "text": "Acquire"
+      }
+    },
+    {
+      "id": "take-two",
+      "type": "arrow",
+      "start": {
+        "id": "waiting"
+      },
+      "end": {
+        "id": "two"
+      },
+      "label": {
+        "text": "Acquire"
+      }
+    },
+    {
+      "id": "release-one",
+      "type": "arrow",
+      "start": {
+        "id": "one"
+      },
+      "end": {
+        "id": "done"
+      },
+      "label": {
+        "text": "Release"
+      }
+    },
+    {
+      "id": "release-two",
+      "type": "arrow",
+      "start": {
+        "id": "two"
+      },
+      "end": {
+        "id": "done"
+      },
+      "label": {
+        "text": "Release"
+      }
+    },
+    {
+      "id": "code-trace",
+      "type": "rectangle",
+      "x": 0,
+      "y": 510,
+      "width": 820,
+      "content": [
+        {
+          "type": "title",
+          "text": "Function trace"
+        },
+        {
+          "type": "subtitle",
+          "text": "▶ marks the expression explained by this step"
+        }
+      ]
+    }
+  ],
+  "scenes": [
+    {
+      "label": "1. Acquire and wait",
+      "beats": [
+        {
+          "edges": {
+            "edge": "take-one",
+            "data": "Task A"
+          },
+          "say": "A acquires one permit and starts. B and C are still waiting; the second permit is free.",
+          "show": {
+            "waiting": [
+              {
+                "type": "subtitle",
+                "text": "B and C waiting"
+              }
+            ],
+            "one": [
+              {
+                "type": "subtitle",
+                "text": "A running"
+              }
+            ],
+            "two": [
+              {
+                "type": "subtitle",
+                "text": "Free"
+              }
+            ],
+            "done": [
+              {
+                "type": "subtitle",
+                "text": "None"
+              }
+            ],
+            "code-trace": [
+              {
+                "type": "text",
+                "text": "**A: acquire, then call the task**"
+              },
+              {
+                "type": "code",
+                "text": "  01  const permits = Semaphore.makeUnsafe(2);\n  02  const executeTask = Effect.tryPromise({\n▶ 03    try: async () => task(context),\n  04    catch: (error) => error,\n  05  });\n▶ 06  const program = permits.withPermit(executeTask);\n  07  Effect.runPromise(program);"
+              },
+              {
+                "type": "text",
+                "text": "Permits held: 1 / 2 · Task calls: A = 1, B = 0, C = 0"
+              },
+              {
+                "type": "subtitle",
+                "text": "runPromise starts the program. withPermit admits A; only then does the tryPromise factory call task(context)."
+              }
+            ]
+          },
+          "light": ["one", "waiting"]
+        },
+        {
+          "edges": {
+            "edge": "take-two",
+            "data": "Task B"
+          },
+          "say": "B takes the second permit. A and B run together. C stays waiting because both permits are occupied.",
+          "show": {
+            "waiting": [
+              {
+                "type": "subtitle",
+                "text": "C waiting"
+              }
+            ],
+            "one": [
+              {
+                "type": "subtitle",
+                "text": "A running"
+              }
+            ],
+            "two": [
+              {
+                "type": "subtitle",
+                "text": "B running"
+              }
+            ],
+            "done": [
+              {
+                "type": "subtitle",
+                "text": "None"
+              }
+            ],
+            "code-trace": [
+              {
+                "type": "text",
+                "text": "**B starts; C waits at withPermit**"
+              },
+              {
+                "type": "code",
+                "text": "  01  const permits = Semaphore.makeUnsafe(2);\n  02  const executeTask = Effect.tryPromise({\n  03    try: async () => task(context),\n  04    catch: (error) => error,\n  05  });\n▶ 06  const program = permits.withPermit(executeTask);\n  07  Effect.runPromise(program);"
+              },
+              {
+                "type": "text",
+                "text": "Permits held: 2 / 2 · Task calls: A = 1, B = 1, C = 0"
+              },
+              {
+                "type": "subtitle",
+                "text": "C has a running Effect program, but its task factory has not been called. Both permits are held."
+              }
+            ]
+          },
+          "light": ["one", "two", "waiting"]
+        }
+      ]
+    },
+    {
+      "label": "2. Release and reuse",
+      "beats": [
+        {
+          "edges": {
+            "edge": "release-one",
+            "data": "A finishes"
+          },
+          "say": "Starting with A and B running and C waiting: A finishes and releases its permit. B continues. One permit is now free.",
+          "show": {
+            "waiting": [
+              {
+                "type": "subtitle",
+                "text": "C waiting"
+              }
+            ],
+            "one": [
+              {
+                "type": "subtitle",
+                "text": "Free"
+              }
+            ],
+            "two": [
+              {
+                "type": "subtitle",
+                "text": "B running"
+              }
+            ],
+            "done": [
+              {
+                "type": "subtitle",
+                "text": "A finished"
+              }
+            ],
+            "code-trace": [
+              {
+                "type": "text",
+                "text": "**A settles; withPermit releases**"
+              },
+              {
+                "type": "code",
+                "text": "  01  const permits = Semaphore.makeUnsafe(2);\n  02  const executeTask = Effect.tryPromise({\n  03    try: async () => task(context),\n  04    catch: (error) => error,\n  05  });\n▶ 06  const program = permits.withPermit(executeTask);\n  07  Effect.runPromise(program);"
+              },
+              {
+                "type": "text",
+                "text": "Permits held: 1 / 2 · Task calls: A = 1, B = 1, C = 0"
+              },
+              {
+                "type": "subtitle",
+                "text": "A’s Promise settles. The wrapper finalizes and returns its permit; no explicit release call is needed here."
+              }
+            ]
+          },
+          "light": ["one", "done"]
+        },
+        {
+          "edges": {
+            "edge": "take-one",
+            "data": "Task C"
+          },
+          "say": "C acquires the free permit and starts while B keeps running. Releasing capacity allows waiting work to proceed.",
+          "show": {
+            "waiting": [
+              {
+                "type": "subtitle",
+                "text": "None"
+              }
+            ],
+            "one": [
+              {
+                "type": "subtitle",
+                "text": "C running"
+              }
+            ],
+            "two": [
+              {
+                "type": "subtitle",
+                "text": "B running"
+              }
+            ],
+            "done": [
+              {
+                "type": "subtitle",
+                "text": "A finished"
+              }
+            ],
+            "code-trace": [
+              {
+                "type": "text",
+                "text": "**C resumes and enters the factory**"
+              },
+              {
+                "type": "code",
+                "text": "  01  const permits = Semaphore.makeUnsafe(2);\n  02  const executeTask = Effect.tryPromise({\n▶ 03    try: async () => task(context),\n  04    catch: (error) => error,\n  05  });\n  06  const program = permits.withPermit(executeTask);\n  07  Effect.runPromise(program);"
+              },
+              {
+                "type": "text",
+                "text": "Permits held: 2 / 2 · Task calls: A = 1, B = 1, C = 1"
+              },
+              {
+                "type": "subtitle",
+                "text": "C passes withPermit and calls task(context) for the first time. B is still running."
+              }
+            ]
+          },
+          "light": ["one", "two"]
+        },
+        {
+          "edges": [
+            {
+              "edge": "release-one",
+              "data": "C finishes"
+            },
+            {
+              "edge": "release-two",
+              "data": "B finishes"
+            }
+          ],
+          "say": "B and C finish and return their permits. Both permits are available again. This is an illustrative sequence, not measured timing.",
+          "show": {
+            "waiting": [
+              {
+                "type": "subtitle",
+                "text": "None"
+              }
+            ],
+            "one": [
+              {
+                "type": "subtitle",
+                "text": "Free"
+              }
+            ],
+            "two": [
+              {
+                "type": "subtitle",
+                "text": "Free"
+              }
+            ],
+            "done": [
+              {
+                "type": "subtitle",
+                "text": "A, B, C finished"
+              }
+            ],
+            "code-trace": [
+              {
+                "type": "text",
+                "text": "**B and C settle; both permits return**"
+              },
+              {
+                "type": "code",
+                "text": "  01  const permits = Semaphore.makeUnsafe(2);\n  02  const executeTask = Effect.tryPromise({\n  03    try: async () => task(context),\n  04    catch: (error) => error,\n  05  });\n▶ 06  const program = permits.withPermit(executeTask);\n  07  Effect.runPromise(program);"
+              },
+              {
+                "type": "text",
+                "text": "Permits held: 0 / 2 · Task calls: A = 1, B = 1, C = 1"
+              },
+              {
+                "type": "subtitle",
+                "text": "Both wrappers finalize. This condensed teaching example runs the same program shape separately for each task."
+              }
+            ]
+          },
+          "light": ["one", "two", "done"]
+        }
+      ]
+    }
+  ]
+}

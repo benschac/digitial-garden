@@ -2,62 +2,118 @@
 
 @layer components {
   .figure {
-    --fig-bg: var(--color-paper, #f7f4ed);
-    --fig-fg: var(--color-ink, #292621);
-    --fig-muted: #625c53;
-    --fig-surface: #fffcf6;
-    --fig-border: #b9b1a4;
-    --fig-accent: #8b3a2a;
+    --fig-bg: #f2eee3;
+    --fig-fg: #1c302b;
+    --fig-muted: #6f6a61;
+    --fig-surface: #faf7ee;
+    --fig-group: #e7e9dc;
+    --fig-border: #a6ac98;
+    --fig-accent: #46624d;
+    position: relative;
+    isolation: isolate;
     margin: 2rem 0;
     min-width: 0;
-    padding: clamp(0.75rem, 2vw, 1.25rem);
-    border: 1px solid var(--fig-border);
-    border-radius: 8px;
+    padding: clamp(1rem, 3vw, 2rem);
+    border: 1px solid color-mix(in srgb, var(--fig-border) 55%, transparent);
+    border-radius: var(--radius-2xl, 1rem);
+    box-shadow:
+      0 2px 3px #1c302b08,
+      0 12px 28px #1c302b06;
     background: var(--fig-bg);
     color: var(--fig-fg);
     font-family: var(--font-ui, system-ui), sans-serif;
-    font-size: 0.9375rem;
+    font-size: 1rem;
+    font-weight: 400;
+    font-optical-sizing: auto;
     line-height: 1.6;
   }
 
+  /* A shared paper sheet adds grain to the SVG's opaque cards as well as the
+     frame. Multiply retains the light/dark palette; controls stay interactive. */
+  .figure::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: url("/images/blog/paper-valley/paper.webp") center / cover;
+    mix-blend-mode: multiply;
+    opacity: 0.7;
+    pointer-events: none;
+  }
+
   .figure[data-diagram-theme="dark"] {
-    --fig-bg: #23211e;
+    --fig-bg: #202d27;
     --fig-fg: #f3eee4;
     --fig-muted: #c3bbad;
-    --fig-surface: #302d28;
-    --fig-border: #82786a;
-    --fig-accent: #e9a38e;
+    --fig-surface: #2c3b31;
+    --fig-group: #26362c;
+    --fig-border: #89947d;
+    --fig-accent: #bbcea4;
   }
 
   @media (prefers-color-scheme: dark) {
     .figure:not([data-diagram-theme="light"]) {
-      --fig-bg: #23211e;
+      --fig-bg: #202d27;
       --fig-fg: #f3eee4;
       --fig-muted: #c3bbad;
-      --fig-surface: #302d28;
-      --fig-border: #82786a;
-      --fig-accent: #e9a38e;
+      --fig-surface: #2c3b31;
+      --fig-group: #26362c;
+      --fig-border: #89947d;
+      --fig-accent: #bbcea4;
     }
   }
 
   .title {
-    font-weight: 600;
-    margin-bottom: 1rem;
+    font:
+      550 var(--blog-text-heading-3, 1.5rem) / 1.15
+      var(--font-editorial-display, Georgia, serif);
+    letter-spacing: calc(
+      -0.025em +
+      var(--font-editorial-display-tracking-adjustment, 0em)
+    );
+    text-wrap: balance;
+    overflow-wrap: break-word;
+    margin-bottom: 1.5rem;
   }
   .player {
     display: block;
     min-width: 0;
   }
+  .player::part(controls) {
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid
+      color-mix(in srgb, var(--fig-border) 55%, transparent);
+    margin-bottom: 0.75rem;
+  }
   .player::part(caption) {
     min-height: 4.5em;
+    max-inline-size: 65ch;
+    font-family: var(--font-editorial-reading, Georgia, serif);
+    font-size: 1rem;
+    line-height: 1.55;
+    text-wrap: pretty;
+    overflow-wrap: break-word;
   }
   .caption {
-    margin-top: 1rem;
+    margin: 1.25rem 0 0;
+    padding-top: 1rem;
+    border-top: 1px solid color-mix(in srgb, var(--fig-border) 55%, transparent);
     color: var(--fig-muted);
-    font-size: 0.875rem;
+    max-inline-size: 65ch;
+    font: 400 1rem / 1.55 var(--font-editorial-reading, Georgia, serif);
+    text-wrap: pretty;
+    overflow-wrap: break-word;
   }
   .status {
     margin: 1rem 0;
     color: var(--fig-muted);
+  }
+
+  @media (width <= 42rem) {
+    .title {
+      /* Long figure titles can wrap to three lines in the reading column. */
+      line-height: 1.4;
+    }
   }
 }

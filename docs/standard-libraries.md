@@ -68,6 +68,19 @@ Giotto client boundary, cancellable JSON loading, static description and scoped
 paper/ink theme. Giotto owns SVG rendering and playback. Use repository-owned
 `public/diagrams/*.json`; see [authoring and verification](animated-diagrams.md).
 
+[`EffectWalkthrough`](../apps/web/src/components/mdx/effect-walkthrough.tsx) owns
+the Effect article's compact code-and-state figures. Its literal `kind` selects
+`factory`, `coalescing`, `cancellation`, or `cleanup` from prepared source examples.
+It starts paused, supports direct steps and replay, and pauses when hidden or out
+of view. Reduced motion retains manual steps without automatic playback or motion.
+The examples illustrate source behavior; they do not execute Effect or requests.
+
+[`article-code-theme`](../apps/web/src/components/mdx/article-code-theme.ts)
+shares the article's `github-dark-dimmed` Shiki theme with walkthroughs and SVG
+function traces. It lazily loads only TypeScript and that theme, caches tokens,
+and retains readable plain code if highlighting fails. Giotto's SVG replacement
+observer is scoped to the player and disconnected when it is removed.
+
 ## Article typography inspection
 
 [`TypographyInspector`](../apps/web/src/app/typography-inspector.tsx) extends the

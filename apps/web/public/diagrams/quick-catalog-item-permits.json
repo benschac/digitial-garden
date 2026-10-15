@@ -1,0 +1,466 @@
+{
+  "title": "Item permits before shared capacity",
+  "speed": 5600,
+  "elements": [
+    {
+      "id": "item-a",
+      "type": "rectangle",
+      "x": 0,
+      "y": 0,
+      "width": 200,
+      "content": [
+        {
+          "type": "title",
+          "text": "Item A"
+        },
+        {
+          "type": "subtitle",
+          "text": "One item permit"
+        },
+        {
+          "type": "subtitle",
+          "text": "item.withPermit(...)"
+        }
+      ]
+    },
+    {
+      "id": "item-b",
+      "type": "rectangle",
+      "x": 0,
+      "y": 270,
+      "width": 200,
+      "content": [
+        {
+          "type": "title",
+          "text": "Item B"
+        },
+        {
+          "type": "subtitle",
+          "text": "One item permit"
+        },
+        {
+          "type": "subtitle",
+          "text": "item.withPermit(...)"
+        }
+      ]
+    },
+    {
+      "id": "slot-one",
+      "type": "rectangle",
+      "x": 320,
+      "y": 0,
+      "width": 200,
+      "content": [
+        {
+          "type": "title",
+          "text": "Shared slot 1"
+        },
+        {
+          "type": "subtitle",
+          "text": "global.withPermit(...)"
+        }
+      ]
+    },
+    {
+      "id": "slot-two",
+      "type": "rectangle",
+      "x": 320,
+      "y": 270,
+      "width": 200,
+      "content": [
+        {
+          "type": "title",
+          "text": "Shared slot 2"
+        },
+        {
+          "type": "subtitle",
+          "text": "global.withPermit(...)"
+        }
+      ]
+    },
+    {
+      "id": "done",
+      "type": "rectangle",
+      "x": 640,
+      "y": 135,
+      "width": 200,
+      "content": [
+        {
+          "type": "title",
+          "text": "Completed"
+        }
+      ]
+    },
+    {
+      "id": "a-start",
+      "type": "arrow",
+      "start": {
+        "id": "item-a"
+      },
+      "end": {
+        "id": "slot-one"
+      },
+      "label": {
+        "text": "Acquire shared"
+      }
+    },
+    {
+      "id": "b-start",
+      "type": "arrow",
+      "start": {
+        "id": "item-b"
+      },
+      "end": {
+        "id": "slot-two"
+      },
+      "label": {
+        "text": "Acquire shared"
+      }
+    },
+    {
+      "id": "a-done",
+      "type": "arrow",
+      "start": {
+        "id": "slot-one"
+      },
+      "end": {
+        "id": "done"
+      },
+      "label": {
+        "text": "Release both"
+      }
+    },
+    {
+      "id": "b-done",
+      "type": "arrow",
+      "start": {
+        "id": "slot-two"
+      },
+      "end": {
+        "id": "done"
+      },
+      "label": {
+        "text": "Release both"
+      }
+    },
+    {
+      "id": "code-trace",
+      "type": "rectangle",
+      "x": 0,
+      "y": 540,
+      "width": 840,
+      "content": [
+        {
+          "type": "title",
+          "text": "Function trace"
+        },
+        {
+          "type": "subtitle",
+          "text": "▶ marks the expression explained by this step"
+        }
+      ]
+    }
+  ],
+  "scenes": [
+    {
+      "label": "1. Different items",
+      "beats": [
+        {
+          "edges": {
+            "edge": "a-start",
+            "data": "A1 starts"
+          },
+          "say": "Submit A1, A2, and B1 in order. A1 holds item A’s permit and one shared permit. A2 waits for item A before it can take shared capacity.",
+          "show": {
+            "item-a": [
+              {
+                "type": "subtitle",
+                "text": "A1 holds; A2 waits"
+              }
+            ],
+            "item-b": [
+              {
+                "type": "subtitle",
+                "text": "Available"
+              }
+            ],
+            "slot-one": [
+              {
+                "type": "subtitle",
+                "text": "A1 running"
+              }
+            ],
+            "slot-two": [
+              {
+                "type": "subtitle",
+                "text": "Free"
+              }
+            ],
+            "done": [
+              {
+                "type": "subtitle",
+                "text": "None"
+              }
+            ],
+            "code-trace": [
+              {
+                "type": "text",
+                "text": "**A1: pass both gates, then call task**"
+              },
+              {
+                "type": "code",
+                "text": "  01  const executeTask = Effect.tryPromise({\n▶ 02    try: async () => task(context),\n  03    catch: (error) => error,\n  04  });\n▶ 05  const program = item.withPermit(\n▶ 06    global.withPermit(executeTask),\n  07  );\n  08  Effect.runPromise(program);"
+              },
+              {
+                "type": "text",
+                "text": "Held: A = 1 / 1 · B = 0 / 1 · Shared = 1 / 2"
+              },
+              {
+                "type": "subtitle",
+                "text": "A1 acquires the outer item permit, then the inner shared permit. A2 waits at line 05; its task-call count is still zero."
+              }
+            ]
+          },
+          "light": ["item-a", "slot-one"]
+        },
+        {
+          "edges": {
+            "edge": "b-start",
+            "data": "B1 starts"
+          },
+          "say": "B1 takes item B’s permit and the other shared permit. A1 and B1 run together; A2 still waits for A’s permit.",
+          "show": {
+            "item-a": [
+              {
+                "type": "subtitle",
+                "text": "A1 holds; A2 waits"
+              }
+            ],
+            "item-b": [
+              {
+                "type": "subtitle",
+                "text": "B1 holds"
+              }
+            ],
+            "slot-one": [
+              {
+                "type": "subtitle",
+                "text": "A1 running"
+              }
+            ],
+            "slot-two": [
+              {
+                "type": "subtitle",
+                "text": "B1 running"
+              }
+            ],
+            "done": [
+              {
+                "type": "subtitle",
+                "text": "None"
+              }
+            ],
+            "code-trace": [
+              {
+                "type": "text",
+                "text": "**A2: suspended at the outer withPermit**"
+              },
+              {
+                "type": "code",
+                "text": "  01  const executeTask = Effect.tryPromise({\n  02    try: async () => task(context),\n  03    catch: (error) => error,\n  04  });\n▶ 05  const program = item.withPermit(\n  06    global.withPermit(executeTask),\n  07  );\n  08  Effect.runPromise(program);"
+              },
+              {
+                "type": "text",
+                "text": "Task calls: A1 = 1 · A2 = 0 · B1 = 1"
+              },
+              {
+                "type": "subtitle",
+                "text": "B1 passes its own item gate and starts. A2 has not reached global.withPermit or the task factory."
+              }
+            ]
+          },
+          "light": ["item-a", "item-b", "slot-one", "slot-two"]
+        }
+      ]
+    },
+    {
+      "label": "2. Free is not eligible",
+      "beats": [
+        {
+          "edges": {
+            "edge": "b-done",
+            "data": "B1 finishes"
+          },
+          "say": "Starting with A1 and B1 running: B1 finishes and releases both permits. A shared slot is free, but A2 cannot start while A1 holds item A’s permit.",
+          "show": {
+            "item-a": [
+              {
+                "type": "subtitle",
+                "text": "A1 holds; A2 waits"
+              }
+            ],
+            "item-b": [
+              {
+                "type": "subtitle",
+                "text": "Available"
+              }
+            ],
+            "slot-one": [
+              {
+                "type": "subtitle",
+                "text": "A1 running"
+              }
+            ],
+            "slot-two": [
+              {
+                "type": "subtitle",
+                "text": "Free; A2 still waits"
+              }
+            ],
+            "done": [
+              {
+                "type": "subtitle",
+                "text": "B1 finished"
+              }
+            ],
+            "code-trace": [
+              {
+                "type": "text",
+                "text": "**B1 exits; A2 still waits at line 05**"
+              },
+              {
+                "type": "code",
+                "text": "  01  const executeTask = Effect.tryPromise({\n  02    try: async () => task(context),\n  03    catch: (error) => error,\n  04  });\n▶ 05  const program = item.withPermit(\n  06    global.withPermit(executeTask),\n  07  );\n  08  Effect.runPromise(program);"
+              },
+              {
+                "type": "text",
+                "text": "Held: A = 1 / 1 · B = 0 / 1 · Shared = 1 / 2"
+              },
+              {
+                "type": "subtitle",
+                "text": "A2 cannot use the spare shared slot: the outer item.withPermit has not admitted it. task(context) calls for A2 = 0."
+              }
+            ]
+          },
+          "light": ["item-a", "slot-two", "done"]
+        },
+        {
+          "edges": {
+            "edge": "a-done",
+            "data": "A1 finishes"
+          },
+          "say": "A1 finishes and releases both permits. Item A’s permit is now available, so A2 can proceed to shared admission.",
+          "show": {
+            "item-a": [
+              {
+                "type": "subtitle",
+                "text": "Available; A2 waits"
+              }
+            ],
+            "item-b": [
+              {
+                "type": "subtitle",
+                "text": "Available"
+              }
+            ],
+            "slot-one": [
+              {
+                "type": "subtitle",
+                "text": "Free"
+              }
+            ],
+            "slot-two": [
+              {
+                "type": "subtitle",
+                "text": "Free"
+              }
+            ],
+            "done": [
+              {
+                "type": "subtitle",
+                "text": "B1, A1 finished"
+              }
+            ],
+            "code-trace": [
+              {
+                "type": "text",
+                "text": "**A1 settles; nested wrappers release**"
+              },
+              {
+                "type": "code",
+                "text": "  01  const executeTask = Effect.tryPromise({\n  02    try: async () => task(context),\n  03    catch: (error) => error,\n  04  });\n▶ 05  const program = item.withPermit(\n▶ 06    global.withPermit(executeTask),\n  07  );\n  08  Effect.runPromise(program);"
+              },
+              {
+                "type": "text",
+                "text": "Held: A = 0 / 1 · B = 0 / 1 · Shared = 0 / 2"
+              },
+              {
+                "type": "subtitle",
+                "text": "The inner shared permit and outer item permit return. This step separates release from the following scheduler handoff."
+              }
+            ]
+          },
+          "light": ["item-a", "slot-one", "done"]
+        },
+        {
+          "edges": {
+            "edge": "a-start",
+            "data": "A2 starts"
+          },
+          "say": "A2 acquires item A’s permit, then a shared permit, and starts. Two shared slots make the rule easy to see; the app defaults to four.",
+          "show": {
+            "item-a": [
+              {
+                "type": "subtitle",
+                "text": "A2 holds"
+              }
+            ],
+            "item-b": [
+              {
+                "type": "subtitle",
+                "text": "Available"
+              }
+            ],
+            "slot-one": [
+              {
+                "type": "subtitle",
+                "text": "A2 running"
+              }
+            ],
+            "slot-two": [
+              {
+                "type": "subtitle",
+                "text": "Free"
+              }
+            ],
+            "done": [
+              {
+                "type": "subtitle",
+                "text": "B1, A1 finished"
+              }
+            ],
+            "code-trace": [
+              {
+                "type": "text",
+                "text": "**A2: resume, acquire, call task**"
+              },
+              {
+                "type": "code",
+                "text": "  01  const executeTask = Effect.tryPromise({\n▶ 02    try: async () => task(context),\n  03    catch: (error) => error,\n  04  });\n  05  const program = item.withPermit(\n  06    global.withPermit(executeTask),\n  07  );\n  08  Effect.runPromise(program);"
+              },
+              {
+                "type": "text",
+                "text": "Task calls: A1 = 1 · A2 = 1 · B1 = 1"
+              },
+              {
+                "type": "subtitle",
+                "text": "A2 now holds item A’s permit and one shared permit. The factory finally calls its task. These are condensed source aliases, not a live runtime trace."
+              }
+            ]
+          },
+          "light": ["item-a", "slot-one"]
+        }
+      ]
+    }
+  ]
+}

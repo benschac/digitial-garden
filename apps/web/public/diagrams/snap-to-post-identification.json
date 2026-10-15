@@ -28,11 +28,11 @@
       "content": [
         {
           "type": "title",
-          "text": "Local perception"
+          "text": "Read visible labels"
         },
         {
           "type": "subtitle",
-          "text": "Candidates stay on device"
+          "text": "OCR → observed text"
         }
       ]
     },
@@ -83,7 +83,7 @@
         },
         {
           "type": "subtitle",
-          "text": "Text query \u2192 evidence"
+          "text": "Text query → evidence"
         }
       ]
     },
@@ -100,7 +100,7 @@
         },
         {
           "type": "subtitle",
-          "text": "Evidence \u2192 listing"
+          "text": "Evidence → listing"
         }
       ]
     },
@@ -114,7 +114,7 @@
         "id": "local"
       },
       "label": {
-        "text": "On device"
+        "text": "Read text"
       }
     },
     {
@@ -207,10 +207,18 @@
         {
           "edges": {
             "edge": "perception",
-            "data": "Local clue",
+            "data": "Selected photo",
             "back": false
           },
-          "say": "On-device perception can show a category or identity; local classification is not uploaded."
+          "say": "On-device OCR reads visible labels. Local identity predictions serve provisional frontend feedback and stay outside the uploaded evidence."
+        },
+        {
+          "edges": {
+            "edge": "perception",
+            "data": "Observed text",
+            "back": true
+          },
+          "say": "Available OCR text joins the item’s evidence. Useful new photo OCR can request refinement; late live OCR needs another identification trigger."
         },
         {
           "edges": {
@@ -218,7 +226,7 @@
             "data": "JPEGs + signals",
             "back": false
           },
-          "say": "Selected images and available OCR/barcode signals enter the API. OCR may request a later refinement."
+          "say": "Selected JPEGs and available OCR/barcode signals enter the API. This upload can start before OCR finishes; the illustrated order is not a timing guarantee."
         },
         {
           "edges": {
@@ -276,7 +284,7 @@
             "data": "Evidence",
             "back": false
           },
-          "say": "The resolver combines candidate, signals, search evidence, and available narration\u2014not the original image upload."
+          "say": "The resolver receives the candidate, signals, search evidence, and available final narration as text. Narration enters here; it does not inform the initial visual call or search query."
         },
         {
           "edges": {

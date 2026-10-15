@@ -2,9 +2,17 @@ import { Typography } from "@personal-site/ui/components/typography";
 import type { MDXComponents } from "mdx/types";
 import Image from "next/image";
 import Link from "next/link";
-import { type ComponentPropsWithoutRef, isValidElement } from "react";
+import {
+  Children,
+  type ComponentPropsWithoutRef,
+  cloneElement,
+  isValidElement,
+  type ReactNode,
+} from "react";
 import { AnimatedDiagram } from "./components/mdx/animated-diagram";
 import { Callout } from "./components/mdx/callout";
+import { ComingSoon } from "./components/mdx/coming-soon";
+import { EffectWalkthrough } from "./components/mdx/effect-walkthrough";
 
 function MdxLink({ href = "", ...props }: ComponentPropsWithoutRef<"a">) {
   if (href.startsWith("/")) {
@@ -65,11 +73,77 @@ export function MdxParagraph({
   );
 }
 
-export function MdxTable(props: ComponentPropsWithoutRef<"table">) {
+function tableText(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node);
+  }
+  if (Array.isArray(node)) {
+    return node.map(tableText).join("");
+  }
+  return isValidElement<{ children?: ReactNode }>(node)
+    ? tableText(node.props.children)
+    : "";
+}
+
+export function MdxTable({
+  children,
+  ...props
+}: ComponentPropsWithoutRef<"table">) {
+  const head = Children.toArray(children).find(
+    (part) => isValidElement(part) && part.type === "thead",
+  );
+  const headerRow = isValidElement<{ children?: ReactNode }>(head)
+    ? Children.toArray(head.props.children)[0]
+    : null;
+  const labels = isValidElement<{ children?: ReactNode }>(headerRow)
+    ? Children.toArray(headerRow.props.children).map((cell) =>
+        isValidElement<{ children?: ReactNode }>(cell) && cell.type === "th"
+          ? tableText(cell.props.children)
+          : "",
+      )
+    : [];
+
+  const labeledChildren = Children.map(children, (part) => {
+    if (
+      !isValidElement<{ children?: ReactNode }>(part) ||
+      part.type !== "tbody"
+    ) {
+      return part;
+    }
+    return cloneElement(
+      part,
+      {},
+      Children.map(part.props.children, (row) => {
+        if (!isValidElement<{ children?: ReactNode }>(row)) return row;
+        return cloneElement(
+          row,
+          {},
+          Children.map(row.props.children, (cell, index) =>
+            isValidElement<
+              ComponentPropsWithoutRef<"td"> & { "data-column-label"?: string }
+            >(cell) && labels[index]
+              ? cloneElement(cell, { "data-column-label": labels[index] })
+              : cell,
+          ),
+        );
+      }),
+    );
+  });
+
   return (
-    // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to focus the overflow container to scroll the table.
-    <section data-mdx-table aria-label="Scrollable table" tabIndex={0}>
-      <table {...props} />
+    <section
+      data-mdx-table
+      data-mdx-table-labeled={
+        labels.length && labels.every(Boolean) ? "" : undefined
+      }
+      aria-label="Table"
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to focus the overflow container to scroll the table.
+      tabIndex={0}
+    >
+      <span data-mdx-table-hint aria-hidden="true">
+        Scroll to see all columns →
+      </span>
+      <table {...props}>{labeledChildren}</table>
     </section>
   );
 }
@@ -91,7 +165,9 @@ const components = {
   code: (props) => <Typography as="code" {...props} />,
   pre: (props) => <Typography as="pre" {...props} />,
   Callout,
+  ComingSoon,
   AnimatedDiagram,
+  EffectWalkthrough,
 } satisfies MDXComponents;
 
 export function useMDXComponents(): MDXComponents {
