@@ -2,8 +2,9 @@
 
 import { useAbortableEffect } from "@personal-site/react-hooks";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import type { ElementRef, Ref } from "react";
+import type { Ref } from "react";
 import { useEffect, useRef, useState } from "react";
+import type { PlaneGeometry } from "three";
 import { Typography, typographyVariants } from "@/components/page-typography";
 import { perlinNoise3D } from "@/lib/perlin-noise";
 import { loadParticleEngine } from "../wasm-canvas/wasm-engine";
@@ -346,8 +347,8 @@ function NoiseSurfacePair({
   yOffset,
   zOffset,
 }: NoiseSurfacePairProps) {
-  const typescriptGeometryRef = useRef<ElementRef<"planeGeometry">>(null);
-  const rustGeometryRef = useRef<ElementRef<"planeGeometry">>(null);
+  const typescriptGeometryRef = useRef<PlaneGeometry>(null);
+  const rustGeometryRef = useRef<PlaneGeometry>(null);
   const animatedZOffsetRef = useRef(zOffset);
   const parityElapsedRef = useRef(0);
   const invalidate = useThree((state) => state.invalidate);
@@ -438,7 +439,7 @@ function NoiseSurfaceMesh({
   geometryRef,
   position,
 }: {
-  geometryRef: Ref<ElementRef<"planeGeometry">>;
+  geometryRef: Ref<PlaneGeometry>;
   position: [number, number, number];
 }) {
   return (
@@ -511,7 +512,7 @@ function NoiseSlider({
  * @param zOffset - Depth of the current volume slice.
  */
 function updateSurfaceGeometry(
-  geometry: ElementRef<"planeGeometry"> | null,
+  geometry: PlaneGeometry | null,
   noise: Noise3D | null,
   frequency: number,
   xOffset: number,

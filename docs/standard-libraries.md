@@ -54,6 +54,9 @@ initializing after cancellation.
   browser behavior behind a client boundary.
 - Read installed Next.js guides in `apps/web/node_modules/next/dist/docs` for the
   repository's version before changing framework behavior.
+- Keep static VGPU shaders in `.wgsl` files. The web app's `wgslTurbopackRule()`
+  prepares typed shader imports at build time; keep `vgpu` and `@vgpu/wgsl` on
+  matching versions. See [`wet-ink-renderer`](../apps/web/src/app/wet-ink-renderer.ts).
 - Use existing Bun workspace scripts, native Bun lint/format, and TypeScript
   checks; do not add overlapping formatting, package-management, or validation
   tools. Run `bun run setup:tools` to install the pinned local lint/format binary;

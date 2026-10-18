@@ -1,11 +1,17 @@
 import { withContentCollections } from "@content-collections/next";
 import createMDX from "@next/mdx";
+import { wgslTurbopackRule } from "@vgpu/wgsl/next";
 import { withEve } from "eve/next";
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   reactCompiler: true,
   allowedDevOrigins: ["127.0.0.1"],
+  turbopack: {
+    rules: {
+      "*.wgsl": wgslTurbopackRule(),
+    },
+  },
   experimental: {
     // Restored production caches have served obsolete PostCSS output.
     turbopackFileSystemCacheForBuild: false,

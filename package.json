@@ -34,6 +34,6 @@
     "test:tools": "node --test scripts/*.test.mjs"
   },
   "devDependencies": {
-    "turbo": "2.10.11"
+    "turbo": "2.11.9"
   }
 }
