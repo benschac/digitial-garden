@@ -53,6 +53,7 @@
     "@videojs/mux-video": "10.1.0",
     "@videojs/react": "10.1.0",
     "ai": "7.0.143",
+    "effect": "4.0.5",
     "eve": "0.80.1",
     "giotto": "github:nicoloboschi/giotto#b0809dc037358f21e5e1ebe3dcbdf257b432a4aa",
     "katex": "^0.19.0",
@@ -77,8 +78,7 @@
     "three": "^0.186.1",
     "typegpu": "^0.12.8",
     "use-stick-to-bottom": "1.1.6",
-    "vgpu": "0.6.0",
-    "zod": "4.4.3"
+    "vgpu": "0.6.0"
   },
   "devDependencies": {
     "@shikijs/rehype": "^4.5.0",

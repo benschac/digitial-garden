@@ -3,12 +3,12 @@ import path from "node:path";
 import { defineCollection } from "@content-collections/core";
 import { compileMDX } from "@content-collections/mdx";
 import rehypeShiki from "@shikijs/rehype";
+import { Schema } from "effect";
 import rehypeKatex from "rehype-katex";
 import rehypeSlug from "rehype-slug";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import { z } from "zod";
-import { postMetadataSchema } from "./schema";
+import { postDocumentSchema, postMetadataParseOptions } from "./schema";
 import { assertLocalImageExists, validatePostRegistry } from "./source";
 import { validateTrustedMdx } from "./validate-mdx";
 
@@ -21,7 +21,9 @@ export function createPostsCollection(
     name: "posts",
     directory,
     include: "*.{md,mdx}",
-    schema: postMetadataSchema.safeExtend({ content: z.string() }),
+    schema: Schema.toStandardSchemaV1(postDocumentSchema, {
+      parseOptions: postMetadataParseOptions,
+    }),
     transform: async (document, context) => {
       const { content, _meta, ...metadata } = document;
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*\.(md|mdx)$/.test(_meta.fileName)) {

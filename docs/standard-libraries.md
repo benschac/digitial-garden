@@ -43,6 +43,13 @@ initializing after cancellation.
 
 ## Next.js and tooling
 
+- Runtime validation uses `effect/Schema` (Effect v4). Blog metadata and document
+  schemas live in `apps/web/src/lib/content/schema.ts`; use the exported parser
+  options to reject unknown frontmatter keys and collect all validation issues.
+  Content Collections consumes `Schema.toStandardSchemaV1`. Eve tools also need
+  `Schema.toStandardJSONSchemaV1`; expose the resulting `~standard` property in a
+  plain object because Eve's schema detection does not accept function values.
+
 - React Compiler is enabled through `reactCompiler: true` in
   `apps/web/next.config.mjs`, using the web package's pinned
   `babel-plugin-react-compiler` dependency. Next injects it before the existing

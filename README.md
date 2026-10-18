@@ -85,7 +85,8 @@ additional global watch utility.
 Published blog posts live in `apps/web/content/posts` as Markdown or MDX files.
 Markdown is the default; use MDX only when a post needs one of the explicitly
 allowlisted components from `apps/web/src/mdx-components.tsx`. YAML frontmatter
-is validated with Zod by `apps/web/content-collections.ts`. Content Collections
+is validated with Effect v4 Schema through Standard Schema by
+`apps/web/content-collections.ts`. Content Collections
 compiles the post bodies to MDX and generates typed data in
 `apps/web/.content-collections` (ignored by Git). The server-only content helpers
 serve that collection to the blog, RSS, sitemap, and tag routes.

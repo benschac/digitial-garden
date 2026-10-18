@@ -77,11 +77,11 @@ apps/api: Nest composition, auth adapter, controllers, application services,
 ### D5. HTTP and oRPC transport
 
 - Revise the original “oRPC later” decision only after the Phase 1 compatibility gate passes.
-- Put Zod input/output schemas and contract-first oRPC definitions in `packages/contracts`. This package may import `@orpc/contract`, `@orpc/openapi`, and Zod, but never NestJS, Drizzle, or server implementations.
+- Put Effect v4 Schema input/output schemas and contract-first oRPC definitions in `packages/contracts`. Expose them through Standard Schema for oRPC. This package may import `@orpc/contract`, `@orpc/openapi`, and `effect`, but never NestJS, Drizzle, or server implementations. Include JSON Schema generation in the compatibility gate for OpenAPI.
 - Implement contracts in Nest controllers with `@orpc/nest`; controller methods translate transport input/context, call application services, and map declared errors. They contain no SQL.
 - Give every procedure explicit OpenAPI routing metadata so the same implementation exposes conventional HTTP/OpenAPI routes and a typed client.
 - Pin all oRPC v2 packages to one exact beta version. Do not use a floating `@beta` range. Upgrade them as one reviewed set.
-- If the compatibility spike fails, keep the same Zod contracts and application services, use conventional Nest route decorators, and defer the oRPC adapter. Database and domain work must not be blocked by this fallback.
+- If the compatibility spike fails, keep the same Effect Schema contracts and application services, use conventional Nest route decorators, and defer the oRPC adapter. Database and domain work must not be blocked by this fallback.
 
 ### D6. Next.js consumption
 
@@ -97,7 +97,7 @@ apps/api: Nest composition, auth adapter, controllers, application services,
 Install dependencies only in the package that uses them and pin compatible versions in the lockfile:
 
 - `apps/api`: Nest core/config/platform packages, `reflect-metadata`, `rxjs`, `@orpc/nest`, `@orpc/server`, and the chosen auth verifier dependency.
-- `packages/contracts`: `@orpc/contract`, `@orpc/openapi`, and Zod.
+- `packages/contracts`: `@orpc/contract`, `@orpc/openapi`, and `effect`.
 - `packages/database`: `drizzle-orm` and `pg`; Drizzle Kit and PostgreSQL types are development-only.
 - `apps/web`: only the oRPC client/link package needed to consume the contract.
 - Tests: one repository-wide test runner strategy plus Nest's test utilities and an HTTP test client. Decide the runner in Phase 0 rather than installing Jest and Vitest together.

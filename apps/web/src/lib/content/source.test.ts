@@ -5,11 +5,13 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createBuilder } from "@content-collections/core";
 import { MDXContent } from "@content-collections/mdx/react";
+import { Schema } from "effect";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { useMDXComponents } from "../../mdx-components";
 import {
   type PostRecord,
+  postMetadataParseOptions,
   postMetadataSchema,
   sortPostsNewestFirst,
 } from "./schema";
@@ -110,6 +112,10 @@ Fixture content.
 }
 
 describe("post metadata schema", () => {
+  const parseMetadata = Schema.decodeUnknownSync(
+    postMetadataSchema,
+    postMetadataParseOptions,
+  );
   const validMetadata = {
     publishedAt: "2026-08-20",
     slug: "fixture-post",
@@ -118,22 +124,114 @@ describe("post metadata schema", () => {
     title: "Fixture post",
   } as const;
 
+  test("normalizes text and supplies fresh metadata defaults", () => {
+    const input = {
+      ...validMetadata,
+      title: "  Fixture post  ",
+      summary: "  Summary  ",
+      slug: "  fixture-post  ",
+      tags: ["  React Native  "],
+      image: " /cover.png ",
+      imageAlt: " Cover ",
+      series: " Series ",
+      order: 0,
+    };
+    expect(parseMetadata(input)).toEqual({
+      ...input,
+      title: "Fixture post",
+      summary: "Summary",
+      slug: "fixture-post",
+      tags: ["React Native"],
+      image: "/cover.png",
+      imageAlt: "Cover",
+      series: "Series",
+      featured: false,
+    });
+    const first = parseMetadata(validMetadata);
+    const second = parseMetadata({
+      ...validMetadata,
+      tags: undefined,
+      featured: undefined,
+      updatedAt: undefined,
+    });
+    expect(first.tags).toEqual([]);
+    expect(second.tags).toEqual([]);
+    expect(first.tags).not.toBe(second.tags);
+    expect(second.featured).toBe(false);
+  });
+
+  test("accepts leap days, optional fields, and absolute URL schemes", () => {
+    for (const canonicalUrl of [
+      "https://example.com/post",
+      "mailto:author@example.com",
+    ]) {
+      expect(
+        parseMetadata({
+          ...validMetadata,
+          publishedAt: "2024-02-29",
+          updatedAt: "2026-10-17",
+          canonicalUrl,
+          featured: true,
+        }).canonicalUrl,
+      ).toBe(canonicalUrl);
+    }
+  });
+
+  test("trims URLs and removes tabs and newlines without rewriting the URL", () => {
+    expect(
+      parseMetadata({
+        ...validMetadata,
+        canonicalUrl: "  HTTPS://EXAMPLE.com/a\tb\n  ",
+      }).canonicalUrl,
+    ).toBe("HTTPS://EXAMPLE.com/ab");
+  });
+
+  test.each([
+    { title: "   " },
+    { summary: "" },
+    { slug: "Not a slug" },
+    { publishedAt: "2026-02-29" },
+    { publishedAt: "2026-04-31" },
+    { publishedAt: "2026-8-20" },
+    { updatedAt: "2026-13-01" },
+    { status: "public" },
+    { tags: ["  "] },
+    { tags: null },
+    { featured: "true" },
+    { featured: null },
+    { image: " " },
+    { imageAlt: " " },
+    { series: " " },
+    { order: Number.NaN, series: "Series" },
+    { order: Number.POSITIVE_INFINITY, series: "Series" },
+    { order: "1", series: "Series" },
+    { canonicalUrl: "/relative" },
+    { canonicalUrl: "not a url" },
+  ])("rejects invalid metadata: %j", (invalid) => {
+    expect(() => parseMetadata({ ...validMetadata, ...invalid })).toThrow();
+  });
+
   test("rejects unknown metadata keys", () => {
-    expect(() =>
-      postMetadataSchema.parse({ ...validMetadata, unexpected: true }),
-    ).toThrow("Unrecognized key");
+    expect(() => parseMetadata({ ...validMetadata, unexpected: true })).toThrow(
+      "no excess property",
+    );
   });
 
   test("reports all cross-field metadata issues", () => {
-    const result = postMetadataSchema.safeParse({
+    const result = Schema.toStandardSchemaV1(postMetadataSchema)[
+      "~standard"
+    ].validate({
       ...validMetadata,
       image: "https://example.com/post.png",
       order: 1,
     });
 
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues.map((issue) => issue.path)).toEqual([
+    expect(result).not.toBeInstanceOf(Promise);
+    if (result instanceof Promise)
+      throw new Error("Expected synchronous metadata validation");
+    expect(result.issues).toBeDefined();
+    if (result.issues) {
+      expect(result.issues.map((issue) => issue.path)).toEqual([
         ["imageAlt"],
         ["series"],
       ]);
@@ -142,6 +240,26 @@ describe("post metadata schema", () => {
 });
 
 describe("file-based post registry", () => {
+  test.each([
+    { fields: "unexpected: true", error: "unexpected" },
+    { fields: 'updatedAt: "2026-02-29"', error: "valid ISO date" },
+    { fields: 'image: "/cover.png"\norder: 1', error: "imageAlt is required" },
+    { fields: 'image: "/cover.png"\norder: 1', error: "series is required" },
+  ])(
+    "rejects invalid frontmatter through the collection: %j",
+    async ({ fields, error }) => {
+      const paths = await createFixture();
+      await writeFile(
+        path.join(paths.contentDirectory, "invalid.md"),
+        postSource({ slug: "invalid" }).replace(
+          "\n---\n",
+          `\n${fields}\n---\n`,
+        ),
+      );
+      await expect(loadPostRegistry(paths)).rejects.toThrow(error);
+    },
+  );
+
   test("validates the repository posts", async () => {
     const posts = await loadPostRegistry({
       contentDirectory: path.join(process.cwd(), "content", "posts"),

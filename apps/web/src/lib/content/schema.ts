@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { Effect, Schema, SchemaGetter } from "effect";
 
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -12,47 +12,78 @@ function isRealIsoDate(value: string): boolean {
   return !Number.isNaN(date.valueOf()) && date.toISOString().startsWith(value);
 }
 
-const isoDateSchema = z
-  .string()
-  .refine(isRealIsoDate, "Expected a valid ISO date in YYYY-MM-DD format");
+const isoDateSchema = Schema.String.check(
+  Schema.makeFilter(isRealIsoDate, {
+    message: "Expected a valid ISO date in YYYY-MM-DD format",
+  }),
+);
+const textSchema = Schema.Trim.check(Schema.isMinLength(1));
+const urlSchema = Schema.Trim.pipe(
+  Schema.decodeTo(Schema.String, {
+    decode: SchemaGetter.transform((value) => value.replace(/[\t\n\r]/g, "")),
+    encode: SchemaGetter.passthrough(),
+  }),
+).check(
+  Schema.makeFilter((value) => URL.canParse(value), {
+    message: "Expected an absolute URL",
+  }),
+);
 
-export const postMetadataSchema = z
-  .strictObject({
-    title: z.string().trim().min(1),
-    slug: z.string().trim().regex(slugPattern, "Expected a URL-safe slug"),
-    summary: z.string().trim().min(1),
-    publishedAt: isoDateSchema,
-    status: z.enum(["draft", "published", "archived"]),
-    tags: z.array(z.string().trim().min(1)).default([]),
-    updatedAt: isoDateSchema.optional(),
-    featured: z.boolean().default(false),
-    image: z.string().trim().min(1).optional(),
-    imageAlt: z.string().trim().min(1).optional(),
-    canonicalUrl: z.url().optional(),
-    series: z.string().trim().min(1).optional(),
-    order: z.number().finite().optional(),
-  })
-  .check(({ value: metadata, issues }) => {
+const metadataSchema = Schema.Struct({
+  title: textSchema,
+  slug: Schema.Trim.check(
+    Schema.isPattern(slugPattern, { message: "Expected a URL-safe slug" }),
+  ),
+  summary: textSchema,
+  publishedAt: isoDateSchema,
+  status: Schema.Literals(["draft", "published", "archived"]),
+  tags: Schema.mutable(Schema.Array(textSchema)).pipe(
+    Schema.withDecodingDefault(Effect.sync(() => [])),
+  ),
+  updatedAt: Schema.optional(isoDateSchema),
+  featured: Schema.Boolean.pipe(
+    Schema.withDecodingDefault(Effect.succeed(false)),
+  ),
+  image: Schema.optional(textSchema),
+  imageAlt: Schema.optional(textSchema),
+  canonicalUrl: Schema.optional(urlSchema),
+  series: Schema.optional(textSchema),
+  order: Schema.optional(Schema.Finite),
+});
+
+const metadataChecks = Schema.makeFilter<typeof metadataSchema.Type>(
+  (metadata) => {
+    const issues: Schema.FilterIssue[] = [];
     if (metadata.image && !metadata.imageAlt) {
       issues.push({
-        code: "custom",
-        input: metadata,
-        message: "imageAlt is required when image is present",
+        issue: "imageAlt is required when image is present",
         path: ["imageAlt"],
       });
     }
 
     if (metadata.order !== undefined && !metadata.series) {
       issues.push({
-        code: "custom",
-        input: metadata,
-        message: "series is required when order is present",
+        issue: "series is required when order is present",
         path: ["series"],
       });
     }
-  });
+    return issues;
+  },
+);
 
-export type PostMetadata = z.infer<typeof postMetadataSchema>;
+export const postMetadataParseOptions = {
+  onExcessProperty: "error",
+  errors: "all",
+} as const;
+
+export const postMetadataSchema = metadataSchema.check(metadataChecks);
+
+export const postDocumentSchema = Schema.Struct({
+  ...metadataSchema.fields,
+  content: Schema.String,
+}).check(metadataChecks);
+
+export type PostMetadata = typeof postMetadataSchema.Type;
 
 export interface PostRecord extends PostMetadata {
   mdx: string;
