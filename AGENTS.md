@@ -1,11 +1,23 @@
 # Repository conventions
 
+## Code comments
+
+- Do not add new code comments, including JSDoc, unless the user explicitly requests them.
+- Prefer clear names and straightforward code. Explain non-obvious decisions in the change summary instead.
+
+## TypeScript assertions
+
+- Prefer inference, accurate generics, discriminated unions, narrowing, and `satisfies` over type assertions. Fix the owning type relationship before casting at a call site.
+- Assertions are appropriate at dynamic boundaries when TypeScript cannot express a verified runtime relationship, such as a heterogeneous registry or a library interop limitation. Dynamic data alone is not justification: validate external input, or identify the construction invariant that guarantees the asserted type.
+- Keep a necessary assertion narrow and local to the boundary. Explain the invariant and why inference or narrowing cannot express it in the change summary; verify that invariant with a focused check or test.
+- Do not use `any`, double assertions (`as unknown as T`), non-null assertions, or unchecked type guards to silence an error. `as const` is appropriate for preserving literal and readonly inference.
+
 ## Standard libraries and reusable hooks
 
 - Before adding a dependency, utility, or browser lifecycle effect, check [the standard-library directory](docs/standard-libraries.md) and the owning package's exports.
 - Reuse existing hooks for abortable work, animation frames, events, media queries, and observers when their lifecycle matches the feature. Extend a shared hook compatibly when a reusable capability is missing; keep feature-specific rendering and state in the app.
 - Do not hide reactive dependencies just to use a helper. Check cancellation on restart/unmount, Strict Mode replay, async initialization, and observer readiness when refactoring effects.
-- If a native API is needed because the shared helper cannot express its lifecycle, document that reason next to the effect rather than forcing the abstraction.
+- If a native API is needed because the shared helper cannot express its lifecycle, explain that reason in the change summary rather than forcing the abstraction.
 - Update the directory when adding or changing a shared API so future work can discover it. These are project-owned defaults, not permission to add dependencies.
 
 ## Tailwind class readability
