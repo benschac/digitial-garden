@@ -10,10 +10,12 @@ import {
 import { ArrowLeft, ArrowRight, Pause, Play, RotateCcw } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { ThemedToken } from "shiki";
+
 import {
   type ArticleCodeTokens,
   getArticleCodeTokenizer,
 } from "./article-code-theme";
+
 import styles from "./effect-walkthrough.module.css";
 
 function ColoredCode({
@@ -151,7 +153,7 @@ export function EffectWalkthrough({ kind }: { kind: EffectWalkthroughKind }) {
           <span>Highlighted expression ↓</span>
         </div>
         {/* Keyboard focus lets readers scroll long source lines on narrow screens. */}
-        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: The source region scrolls horizontally. */}
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- The source region scrolls horizontally. */}
         <pre className={styles.code} tabIndex={0}>
           <code>
             {walkthrough.code.map((line, index) => {

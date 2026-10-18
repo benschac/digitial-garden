@@ -215,7 +215,7 @@ export function ArticleContentOverlay({ revision }: { revision: string }) {
     return false;
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reconnect when newly loaded components add shadow roots
+  // reconnect when newly loaded components add shadow roots
   useEffect(() => {
     if (!enabled) return;
     const article = document.querySelector<HTMLElement>(
@@ -268,7 +268,7 @@ export function ArticleContentOverlay({ revision }: { revision: string }) {
     };
   }, [enabled, contentVersion, requestFrame]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: font tokens and dynamic article content restart exact-asset resolution
+  // font tokens and dynamic article content restart exact-asset resolution
   useEffect(() => {
     const article = articleRef.current;
     if (!enabled || !article) return;
@@ -298,7 +298,7 @@ export function ArticleContentOverlay({ revision }: { revision: string }) {
     return () => controller.abort();
   }, [enabled, contentVersion, displayFont, readingFont, requestFrame]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: these inputs invalidate the latest frame callback
+  // these inputs invalidate the latest frame callback
   useEffect(() => {
     requestFrame();
   }, [enabled, fontGuides, fonts, revision, requestFrame]);

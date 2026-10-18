@@ -2,6 +2,7 @@
 
 import type * as React from "react";
 import { tv, type VariantProps } from "tailwind-variants";
+
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Input } from "./input";
@@ -9,9 +10,9 @@ import { Textarea } from "./textarea";
 
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    // biome-ignore lint/a11y/useSemanticElements: This is a composite input shell, not a fieldset.
     <div
       data-slot="input-group"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- This is a composite input shell, not a fieldset.
       role="group"
       className={cn(
         "group/input-group relative flex w-full items-center rounded-md border border-input shadow-xs transition-[color,box-shadow] outline-none dark:bg-input/30",
@@ -61,7 +62,7 @@ function InputGroupAddon({
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/noStaticElementInteractions: Clicking the shell only forwards focus to its keyboard-accessible input.
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- Clicking the shell only forwards focus to its keyboard-accessible input.
     <div
       data-slot="input-group-addon"
       data-align={align}

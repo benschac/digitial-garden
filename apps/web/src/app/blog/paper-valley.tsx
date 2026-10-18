@@ -9,6 +9,7 @@ import {
   useWindowEvent,
 } from "@personal-site/react-hooks";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+
 import styles from "./paper-valley.module.css";
 
 const assets = "/images/blog/paper-valley";
@@ -158,7 +159,7 @@ export function PaperValley({ children }: { children: ReactNode }) {
         data-running={running}
         aria-hidden="true"
       >
-        {/* biome-ignore lint/performance/noImgElement: Preoptimized full-canvas fallback must match the registered layers. */}
+        {/* oxlint-disable-next-line @next/next/no-img-element -- Preoptimized full-canvas fallback must match the registered layers. */}
         <img
           className={styles.original}
           src={`${assets}/original.webp`}
@@ -169,7 +170,7 @@ export function PaperValley({ children }: { children: ReactNode }) {
         />
         <div className={styles.layers}>
           {layers.map((layer, index) => (
-            // biome-ignore lint/performance/noImgElement: Preserve supplied canvases and use native decode for atomic readiness.
+            // oxlint-disable-next-line @next/next/no-img-element -- Preserve supplied canvases and use native decode for atomic readiness.
             <img
               key={layer.name}
               ref={(image) => {

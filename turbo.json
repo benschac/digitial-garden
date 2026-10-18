@@ -26,7 +26,13 @@
       "outputs": ["storybook-static/**"]
     },
     "lint": {
-      "dependsOn": ["transit"]
+      "dependsOn": ["transit"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/bunfig.toml",
+        "$TURBO_ROOT$/scripts/bun-tool.mjs",
+        "$TURBO_ROOT$/scripts/bun-tools-version.mjs"
+      ]
     },
     "check-types": {
       "dependsOn": ["transit"],

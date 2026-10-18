@@ -180,9 +180,9 @@
   ::view-transition-old(*),
   ::view-transition-new(*),
   ::view-transition-group(*) {
-    /* biome-ignore lint/complexity/noImportantStyles: override every snapshot animation for reduced motion. */
+    /* override every snapshot animation for reduced motion. */
     animation-duration: 0s !important;
-    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must also remove entrance delays. */
+    /* reduced motion must also remove entrance delays. */
     animation-delay: 0s !important;
   }
 }

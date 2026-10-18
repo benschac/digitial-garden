@@ -4,11 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   Children,
-  type ComponentPropsWithoutRef,
   cloneElement,
+  type ComponentPropsWithoutRef,
   isValidElement,
   type ReactNode,
 } from "react";
+
 import { AnimatedDiagram } from "./components/mdx/animated-diagram";
 import { Callout } from "./components/mdx/callout";
 import { ComingSoon } from "./components/mdx/coming-soon";
@@ -137,7 +138,7 @@ export function MdxTable({
         labels.length && labels.every(Boolean) ? "" : undefined
       }
       aria-label="Table"
-      // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to focus the overflow container to scroll the table.
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users need to focus the overflow container to scroll the table.
       tabIndex={0}
     >
       <span data-mdx-table-hint aria-hidden="true">

@@ -74,7 +74,7 @@ export function TypographyInspector({ pathname }: { pathname: string }) {
   }, []);
 
   // Font preferences change CSS root tokens, so they must restart asset resolution.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reactive CSS font tokens and route own the inspected DOM
+  // reactive CSS font tokens and route own the inspected DOM
   useEffect(() => {
     const controller = new AbortController();
     const article = document.querySelector<HTMLElement>(

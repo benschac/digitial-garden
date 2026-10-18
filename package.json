@@ -1,7 +1,7 @@
 {
   "name": "personal-site",
   "private": true,
-  "packageManager": "bun@1.4.0",
+  "packageManager": "bun@1.4.3",
   "engines": {
     "node": ">=24"
   },
@@ -18,20 +18,22 @@
     "storybook": "turbo run storybook",
     "build-storybook": "turbo run build-storybook",
     "lint": "turbo run lint",
-    "format": "biome format --write .",
-    "format:check": "biome format .",
-    "check": "biome check .",
-    "check:write": "biome check --write .",
+    "format": "node scripts/bun-tool.mjs fmt .",
+    "format:check": "node scripts/bun-tool.mjs fmt --check .",
+    "check": "node scripts/bun-tool.mjs check .",
+    "check:write": "node scripts/bun-tool.mjs check:write .",
     "check-types": "turbo run check-types",
     "content:validate": "turbo run content:validate",
     "test": "turbo run test",
     "wasm:build": "turbo run wasm:build --filter=@personal-site/web",
     "wasm:dev": "turbo run wasm:dev --filter=@personal-site/web",
     "wasm:setup": "turbo run wasm:setup --filter=@personal-site/web",
-    "wasm:watch": "turbo run wasm:watch --filter=@personal-site/web"
+    "wasm:watch": "turbo run wasm:watch --filter=@personal-site/web",
+    "setup:tools": "node scripts/setup-bun-tools.mjs",
+    "lint:fix": "node scripts/bun-tool.mjs lint --fix .",
+    "test:tools": "node --test scripts/*.test.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.10",
     "turbo": "2.10.11"
   }
 }

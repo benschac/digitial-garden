@@ -6,6 +6,7 @@ A Bun workspace powered by Turborepo, with the Next.js application in `apps/web`
 
 ```bash
 bun install
+bun run setup:tools
 bun run dev
 ```
 
@@ -112,8 +113,33 @@ bun run check
 bun run check-types
 bun run content:validate
 bun run test
+bun run test:tools
 bun run build
 ```
 
-Run `bun run format` to format the workspace or `bun run check:write` to apply safe
-lint fixes, formatting, and import organization together.
+Linting and formatting use native Bun `lint` and `fmt`, configured in
+`bunfig.toml`. The project-local tooling pin is
+`1.4.4-canary.1+c0e1716f1`; stable Bun 1.4.3 remains the package manager.
+Run `bun run setup:tools` once (macOS/Linux arm64 or x64; requires `unzip`).
+The installer verifies the official archive checksum and exact revision. If the
+moving canary archive changes, it refuses to install; review and update
+`scripts/bun-tools-version.mjs` to upgrade. Global Bun is unchanged.
+
+Run `bun run format` to format the workspace, `bun run lint:fix` for safe lint
+fixes, or `bun run check:write` for both. Formatting also sorts imports; Tailwind
+class order is preserved. Bun's rules differ from Biome's, so migration may
+expose existing lint findings and formatting differences. There is no Biome
+fallback. Existing TypeScript checks still use TypeScript.
+
+The [rule coverage audit](docs/bun-rule-parity.md) maps the former Biome
+recommended preset and React/Next domains to explicit Bun rules and records the
+remaining JavaScript, CSS, and JSON gaps. Bun-only linting does not provide full
+Biome parity. Run `bun run test:tools` to verify mapped rule severities and
+representative diagnostics.
+
+The project Codex Stop hook in `.codex/hooks.json` runs native Bun formatting
+checks and lint on staged, unstaged, and untracked files. Checks are read-only,
+respect ignored/generated paths, and skip deleted files and symlinks. Failures
+request one follow-up pass; `stop_hook_active` prevents a continuation loop.
+Use `/hooks` in Codex to review and trust the new hook before it can run. See
+[official Codex hooks documentation](https://learn.chatgpt.com/docs/hooks).

@@ -1,0 +1,1878 @@
+{
+  "biomeVersion": "2.5.15",
+  "biomeSource": "https://github.com/biomejs/biome/tree/@biomejs/biome@2.5.15",
+  "bunRevision": "1.4.4-canary.1+c0e1716f1",
+  "baselineConfig": {
+    "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+    "vcs": {
+      "enabled": true,
+      "clientKind": "git",
+      "useIgnoreFile": true
+    },
+    "formatter": {
+      "enabled": true,
+      "indentStyle": "space"
+    },
+    "linter": {
+      "enabled": true,
+      "rules": {
+        "preset": "recommended"
+      },
+      "domains": {
+        "next": "recommended",
+        "react": "recommended"
+      }
+    },
+    "assist": {
+      "enabled": true,
+      "actions": {
+        "source": {
+          "organizeImports": "on"
+        }
+      }
+    },
+    "javascript": {
+      "formatter": {
+        "quoteStyle": "double"
+      }
+    },
+    "css": {
+      "parser": {
+        "tailwindDirectives": true
+      }
+    }
+  },
+  "scope": "Non-nursery recommended JavaScript/TypeScript, CSS and JSON rules, explicit React/Next domains, and auto-detected Tailwind/Turborepo domains. No Test dependency was declared. Other languages are not used by this repository.",
+  "caveat": "Mappings identify coverage, not identical diagnostics or fix semantics. Source-same/source-inspired reflect Biome metadata. Related mappings were reviewed against Bun descriptions. Partial and unavailable rows remain parity gaps. Bun defaults and stricter project assertions also remain enabled.",
+  "rules": [
+    {
+      "biome": "a11y/noAccessKey",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/no-access-key"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_access_key.rs"
+    },
+    {
+      "biome": "a11y/noAmbiguousAnchorText",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/anchor-ambiguous-text"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_ambiguous_anchor_text.rs"
+    },
+    {
+      "biome": "a11y/noAriaHiddenOnFocusable",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/no-aria-hidden-on-focusable"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_aria_hidden_on_focusable.rs"
+    },
+    {
+      "biome": "a11y/noAriaUnsupportedElements",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/aria-unsupported-elements"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_aria_unsupported_elements.rs"
+    },
+    {
+      "biome": "a11y/noAutofocus",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/no-autofocus"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_autofocus.rs"
+    },
+    {
+      "biome": "a11y/noDistractingElements",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/no-distracting-elements"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_distracting_elements.rs"
+    },
+    {
+      "biome": "a11y/noHeaderScope",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/scope"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_header_scope.rs"
+    },
+    {
+      "biome": "a11y/noInteractiveElementToNoninteractiveRole",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/no-interactive-element-to-noninteractive-role"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_interactive_element_to_noninteractive_role.rs"
+    },
+    {
+      "biome": "a11y/noLabelWithoutControl",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/label-has-associated-control"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_label_without_control.rs"
+    },
+    {
+      "biome": "a11y/noNoninteractiveElementToInteractiveRole",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/no-noninteractive-element-to-interactive-role"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_noninteractive_element_to_interactive_role.rs"
+    },
+    {
+      "biome": "a11y/noNoninteractiveTabindex",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/no-noninteractive-tabindex"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_noninteractive_tabindex.rs"
+    },
+    {
+      "biome": "a11y/noPositiveTabindex",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/tabindex-no-positive"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_positive_tabindex.rs"
+    },
+    {
+      "biome": "a11y/noRedundantAlt",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/img-redundant-alt"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_redundant_alt.rs"
+    },
+    {
+      "biome": "a11y/noRedundantRoles",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/no-redundant-roles"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_redundant_roles.rs"
+    },
+    {
+      "biome": "a11y/noStaticElementInteractions",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/no-static-element-interactions"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_static_element_interactions.rs"
+    },
+    {
+      "biome": "a11y/noSvgWithoutTitle",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_js_analyze/src/lint/a11y/no_svg_without_title.rs",
+      "note": "No native equivalent identified in the pinned Bun rule catalog."
+    },
+    {
+      "biome": "a11y/useAltText",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/alt-text"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_alt_text.rs"
+    },
+    {
+      "biome": "a11y/useAnchorContent",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/anchor-has-content"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_anchor_content.rs"
+    },
+    {
+      "biome": "a11y/useAriaActivedescendantWithTabindex",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/aria-activedescendant-has-tabindex"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_aria_activedescendant_with_tabindex.rs"
+    },
+    {
+      "biome": "a11y/useAriaPropsForRole",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/role-has-required-aria-props"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_aria_props_for_role.rs"
+    },
+    {
+      "biome": "a11y/useAriaPropsSupportedByRole",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/role-supports-aria-props"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_aria_props_supported_by_role.rs"
+    },
+    {
+      "biome": "a11y/useButtonType",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["react/button-has-type"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_button_type.rs"
+    },
+    {
+      "biome": "a11y/useFocusableInteractive",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/interactive-supports-focus"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_focusable_interactive.rs"
+    },
+    {
+      "biome": "a11y/useHeadingContent",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/heading-has-content"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_heading_content.rs"
+    },
+    {
+      "biome": "a11y/useHtmlLang",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/html-has-lang"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_html_lang.rs"
+    },
+    {
+      "biome": "a11y/useIframeTitle",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/iframe-has-title"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_iframe_title.rs"
+    },
+    {
+      "biome": "a11y/useKeyWithClickEvents",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/click-events-have-key-events"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_key_with_click_events.rs"
+    },
+    {
+      "biome": "a11y/useKeyWithMouseEvents",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/mouse-events-have-key-events"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_key_with_mouse_events.rs"
+    },
+    {
+      "biome": "a11y/useMediaCaption",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/media-has-caption"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_media_caption.rs"
+    },
+    {
+      "biome": "a11y/useSemanticElements",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/prefer-tag-over-role"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_semantic_elements.rs"
+    },
+    {
+      "biome": "a11y/useValidAnchor",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/anchor-is-valid"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_valid_anchor.rs"
+    },
+    {
+      "biome": "a11y/useValidAriaProps",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/aria-props"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_valid_aria_props.rs"
+    },
+    {
+      "biome": "a11y/useValidAriaRole",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/aria-role"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_valid_aria_role.rs"
+    },
+    {
+      "biome": "a11y/useValidAriaValues",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/aria-proptypes"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_valid_aria_values.rs"
+    },
+    {
+      "biome": "a11y/useValidAutocomplete",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/autocomplete-valid"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_valid_autocomplete.rs"
+    },
+    {
+      "biome": "a11y/useValidLang",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["jsx-a11y/lang"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/a11y/use_valid_lang.rs"
+    },
+    {
+      "biome": "complexity/noAdjacentSpacesInRegex",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["no-regex-spaces"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_adjacent_spaces_in_regex.rs"
+    },
+    {
+      "biome": "complexity/noArguments",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["prefer-rest-params"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_arguments.rs"
+    },
+    {
+      "biome": "complexity/noBannedTypes",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/ban-types"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_banned_types.rs",
+      "note": "Uses the native compatibility ban-types rule from the official Biome source mapping."
+    },
+    {
+      "biome": "complexity/noCommaOperator",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["no-sequences"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_comma_operator.rs"
+    },
+    {
+      "biome": "complexity/noEmptyTypeParameters",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": [],
+      "match": "syntax",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_empty_type_parameters.rs",
+      "note": "Native Bun parser rejects empty type parameter lists; verified with a syntax probe."
+    },
+    {
+      "biome": "complexity/noExtraBooleanCast",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-extra-boolean-cast"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_extra_boolean_cast.rs"
+    },
+    {
+      "biome": "complexity/noFlatMapIdentity",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["unicorn/prefer-array-flat"],
+      "match": "related",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_flat_map_identity.rs",
+      "note": "Verified flatMap identity callbacks; Bun also flags other flattening patterns."
+    },
+    {
+      "biome": "complexity/noStaticOnlyClass",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["unicorn/no-static-only-class"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_static_only_class.rs"
+    },
+    {
+      "biome": "complexity/noThisInStatic",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_this_in_static.rs",
+      "note": "No native equivalent identified in the pinned Bun rule catalog."
+    },
+    {
+      "biome": "complexity/noUselessCatch",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-useless-catch"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_catch.rs"
+    },
+    {
+      "biome": "complexity/noUselessConstructor",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/no-useless-constructor"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_constructor.rs"
+    },
+    {
+      "biome": "complexity/noUselessContinue",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_continue.rs",
+      "note": "No native equivalent identified in the pinned Bun rule catalog."
+    },
+    {
+      "biome": "complexity/noUselessEmptyExport",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/no-useless-empty-export"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_empty_export.rs"
+    },
+    {
+      "biome": "complexity/noUselessEscapeInRegex",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-useless-escape"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_escape_in_regex.rs"
+    },
+    {
+      "biome": "complexity/noUselessFragments",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["react/jsx-no-useless-fragment"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_fragments.rs"
+    },
+    {
+      "biome": "complexity/noUselessLabel",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-extra-label"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_label.rs"
+    },
+    {
+      "biome": "complexity/noUselessLoneBlockStatements",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-lone-blocks"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_lone_block_statements.rs"
+    },
+    {
+      "biome": "complexity/noUselessRename",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-useless-rename"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_rename.rs"
+    },
+    {
+      "biome": "complexity/noUselessStringRaw",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_string_raw.rs",
+      "note": "No native equivalent identified in the pinned Bun rule catalog."
+    },
+    {
+      "biome": "complexity/noUselessSwitchCase",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["unicorn/no-useless-switch-case"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_switch_case.rs"
+    },
+    {
+      "biome": "complexity/noUselessTernary",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-unneeded-ternary"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_ternary.rs"
+    },
+    {
+      "biome": "complexity/noUselessThisAlias",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/no-this-alias"],
+      "match": "source-inspired",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_this_alias.rs"
+    },
+    {
+      "biome": "complexity/noUselessTypeConstraint",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/no-unnecessary-type-constraint"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_type_constraint.rs"
+    },
+    {
+      "biome": "complexity/noUselessUndefinedInitialization",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-undef-init"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_undefined_initialization.rs"
+    },
+    {
+      "biome": "complexity/useArrowFunction",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["prefer-arrow-callback"],
+      "match": "source-inspired",
+      "source": "crates/biome_js_analyze/src/lint/complexity/use_arrow_function.rs"
+    },
+    {
+      "biome": "complexity/useDateNow",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["unicorn/prefer-date-now"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/use_date_now.rs"
+    },
+    {
+      "biome": "complexity/useFlatMap",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["unicorn/prefer-array-flat-map"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/use_flat_map.rs"
+    },
+    {
+      "biome": "complexity/useIndexOf",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["unicorn/prefer-array-index-of"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/use_index_of.rs"
+    },
+    {
+      "biome": "complexity/useLiteralKeys",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/dot-notation", "no-useless-computed-key"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/use_literal_keys.rs"
+    },
+    {
+      "biome": "complexity/useNumericLiterals",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["prefer-numeric-literals"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/use_numeric_literals.rs"
+    },
+    {
+      "biome": "complexity/useOptionalChain",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/prefer-optional-chain"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/use_optional_chain.rs"
+    },
+    {
+      "biome": "complexity/useRegexLiterals",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["prefer-regex-literals"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/complexity/use_regex_literals.rs"
+    },
+    {
+      "biome": "complexity/useSimpleNumberKeys",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_js_analyze/src/lint/complexity/use_simple_number_keys.rs",
+      "note": "No native equivalent identified in the pinned Bun rule catalog."
+    },
+    {
+      "biome": "correctness/noChildrenProp",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["react/no-children-prop"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_children_prop.rs"
+    },
+    {
+      "biome": "correctness/noConstAssign",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-const-assign"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_const_assign.rs"
+    },
+    {
+      "biome": "correctness/noConstantMathMinMaxClamp",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["oxc/bad-min-max-func"],
+      "match": "related",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_constant_math_min_max_clamp.rs",
+      "note": "Native check for constant Math.min/Math.max combinations."
+    },
+    {
+      "biome": "correctness/noConstructorReturn",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-constructor-return"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_constructor_return.rs"
+    },
+    {
+      "biome": "correctness/noEmptyCharacterClassInRegex",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-empty-character-class"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_empty_character_class_in_regex.rs"
+    },
+    {
+      "biome": "correctness/noEmptyPattern",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-empty-pattern"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_empty_pattern.rs"
+    },
+    {
+      "biome": "correctness/noGlobalObjectCalls",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-obj-calls"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_global_object_calls.rs"
+    },
+    {
+      "biome": "correctness/noInnerDeclarations",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-inner-declarations"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_inner_declarations.rs"
+    },
+    {
+      "biome": "correctness/noInvalidBuiltinInstantiation",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["unicorn/new-for-builtins"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_invalid_builtin_instantiation.rs"
+    },
+    {
+      "biome": "correctness/noInvalidConstructorSuper",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["constructor-super"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_invalid_constructor_super.rs"
+    },
+    {
+      "biome": "correctness/noInvalidUseBeforeDeclaration",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/no-use-before-define"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_invalid_use_before_declaration.rs",
+      "note": "Functions, type references and named exports are allowed; closure execution analysis can differ."
+    },
+    {
+      "biome": "correctness/noNonoctalDecimalEscape",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-nonoctal-decimal-escape"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_nonoctal_decimal_escape.rs"
+    },
+    {
+      "biome": "correctness/noPrecisionLoss",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/no-loss-of-precision"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_precision_loss.rs"
+    },
+    {
+      "biome": "correctness/noRenderReturnValue",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["react/no-render-return-value"],
+      "match": "related",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_render_return_value.rs",
+      "note": "Same ReactDOM.render return-value restriction."
+    },
+    {
+      "biome": "correctness/noSelfAssign",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-self-assign"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_self_assign.rs"
+    },
+    {
+      "biome": "correctness/noSetterReturn",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-setter-return"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_setter_return.rs"
+    },
+    {
+      "biome": "correctness/noStringCaseMismatch",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_string_case_mismatch.rs",
+      "note": "No native equivalent identified in the pinned Bun rule catalog."
+    },
+    {
+      "biome": "correctness/noSwitchDeclarations",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-case-declarations"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_switch_declarations.rs"
+    },
+    {
+      "biome": "correctness/noUnreachable",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-unreachable"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_unreachable.rs"
+    },
+    {
+      "biome": "correctness/noUnreachableSuper",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-this-before-super"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_unreachable_super.rs"
+    },
+    {
+      "biome": "correctness/noUnsafeFinally",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-unsafe-finally"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_unsafe_finally.rs"
+    },
+    {
+      "biome": "correctness/noUnsafeOptionalChaining",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-unsafe-optional-chaining"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_unsafe_optional_chaining.rs"
+    },
+    {
+      "biome": "correctness/noUnusedFunctionParameters",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/no-unused-vars"],
+      "match": "related",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_unused_function_parameters.rs",
+      "note": "Shared unused binding rule configured with args=all; underscore-prefixed bindings are ignored."
+    },
+    {
+      "biome": "correctness/noUnusedImports",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/no-unused-vars"],
+      "match": "related",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_unused_imports.rs",
+      "note": "Unused imports are reported; fix behavior differs from Biome."
+    },
+    {
+      "biome": "correctness/noUnusedLabels",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["no-unused-labels"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_unused_labels.rs"
+    },
+    {
+      "biome": "correctness/noUnusedPrivateClassMembers",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/no-unused-private-class-members"],
+      "match": "source-inspired",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_unused_private_class_members.rs"
+    },
+    {
+      "biome": "correctness/noUnusedVariables",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/no-unused-vars"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_unused_variables.rs"
+    },
+    {
+      "biome": "correctness/noVoidElementsWithChildren",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["react/void-dom-elements-no-children"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_void_elements_with_children.rs"
+    },
+    {
+      "biome": "correctness/noVoidTypeReturn",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_js_analyze/src/lint/correctness/no_void_type_return.rs",
+      "note": "No native equivalent identified in the pinned Bun rule catalog."
+    },
+    {
+      "biome": "correctness/useExhaustiveDependencies",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["react-hooks/exhaustive-deps"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/use_exhaustive_dependencies.rs"
+    },
+    {
+      "biome": "correctness/useHookAtTopLevel",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["react-hooks/rules-of-hooks"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/use_hook_at_top_level.rs"
+    },
+    {
+      "biome": "correctness/useInlineScriptId",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["@next/next/inline-script-id"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/use_inline_script_id.rs"
+    },
+    {
+      "biome": "correctness/useIsNan",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["use-isnan"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/use_is_nan.rs"
+    },
+    {
+      "biome": "correctness/useJsxKeyInIterable",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["react/jsx-key"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/use_jsx_key_in_iterable.rs"
+    },
+    {
+      "biome": "correctness/useParseIntRadix",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["radix"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/use_parse_int_radix.rs"
+    },
+    {
+      "biome": "correctness/useValidForDirection",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["for-direction"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/use_valid_for_direction.rs"
+    },
+    {
+      "biome": "correctness/useValidTypeof",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["valid-typeof"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/use_valid_typeof.rs"
+    },
+    {
+      "biome": "correctness/useYield",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["require-yield"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/correctness/use_yield.rs"
+    },
+    {
+      "biome": "performance/noAccumulatingSpread",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["oxc/no-accumulating-spread"],
+      "match": "related",
+      "source": "crates/biome_js_analyze/src/lint/performance/no_accumulating_spread.rs",
+      "note": "Native accumulator spread check."
+    },
+    {
+      "biome": "performance/noDynamicNamespaceImportAccess",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_js_analyze/src/lint/performance/no_dynamic_namespace_import_access.rs",
+      "note": "No native equivalent identified in the pinned Bun rule catalog."
+    },
+    {
+      "biome": "performance/noImgElement",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["@next/next/no-img-element"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/performance/no_img_element.rs"
+    },
+    {
+      "biome": "performance/noUnwantedPolyfillio",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["@next/next/no-unwanted-polyfillio"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/performance/no_unwanted_polyfillio.rs"
+    },
+    {
+      "biome": "performance/useGoogleFontPreconnect",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["@next/next/google-font-preconnect"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/performance/use_google_font_preconnect.rs"
+    },
+    {
+      "biome": "security/noBlankTarget",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["react/jsx-no-target-blank"],
+      "match": "source-inspired",
+      "source": "crates/biome_js_analyze/src/lint/security/no_blank_target.rs",
+      "note": "Configured to permit noopener or noreferrer; Bun targets anchors and forms. Biome additionally checks area elements."
+    },
+    {
+      "biome": "security/noDangerouslySetInnerHtml",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["react/no-danger"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/security/no_dangerously_set_inner_html.rs"
+    },
+    {
+      "biome": "security/noDangerouslySetInnerHtmlWithChildren",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["react/no-danger-with-children"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/security/no_dangerously_set_inner_html_with_children.rs"
+    },
+    {
+      "biome": "security/noGlobalEval",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-eval"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/security/no_global_eval.rs"
+    },
+    {
+      "biome": "security/noScriptUrl",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-script-url", "react/jsx-no-script-url"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/security/no_script_url.rs"
+    },
+    {
+      "biome": "style/noHeadElement",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["@next/next/no-head-element"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/style/no_head_element.rs"
+    },
+    {
+      "biome": "style/noNonNullAssertion",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/no-non-null-assertion"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/style/no_non_null_assertion.rs"
+    },
+    {
+      "biome": "style/useArrayLiterals",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/no-array-constructor"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/style/use_array_literals.rs"
+    },
+    {
+      "biome": "style/useConst",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["prefer-const"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/style/use_const.rs"
+    },
+    {
+      "biome": "style/useExponentiationOperator",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["prefer-exponentiation-operator"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/style/use_exponentiation_operator.rs"
+    },
+    {
+      "biome": "style/useExportType",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/consistent-type-exports"],
+      "match": "source-inspired",
+      "source": "crates/biome_js_analyze/src/lint/style/use_export_type.rs",
+      "note": "Bun requires type information; type-only export grouping and fixes can differ."
+    },
+    {
+      "biome": "style/useImportType",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/consistent-type-imports"],
+      "match": "source-inspired",
+      "source": "crates/biome_js_analyze/src/lint/style/use_import_type.rs",
+      "note": "Type imports are preferred; mixed inline/separate grouping and fixes can differ."
+    },
+    {
+      "biome": "style/useLiteralEnumMembers",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/prefer-literal-enum-member"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/style/use_literal_enum_members.rs"
+    },
+    {
+      "biome": "style/useNodejsImportProtocol",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["unicorn/prefer-node-protocol"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/style/use_nodejs_import_protocol.rs"
+    },
+    {
+      "biome": "style/useShorthandFunctionType",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/prefer-function-type"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/style/use_shorthand_function_type.rs"
+    },
+    {
+      "biome": "style/useTemplate",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["prefer-template"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/style/use_template.rs"
+    },
+    {
+      "biome": "suspicious/noApproximativeNumericConstant",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["oxc/approx-constant"],
+      "match": "related",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_approximative_numeric_constant.rs",
+      "note": "Native approximate Math constant check."
+    },
+    {
+      "biome": "suspicious/noArrayIndexKey",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["react/no-array-index-key"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_array_index_key.rs"
+    },
+    {
+      "biome": "suspicious/noAssignInExpressions",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-cond-assign"],
+      "match": "partial",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_assign_in_expressions.rs",
+      "note": "Partial: no-cond-assign covers conditional assignments, not all expression positions checked by Biome."
+    },
+    {
+      "biome": "suspicious/noAsyncPromiseExecutor",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-async-promise-executor"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_async_promise_executor.rs"
+    },
+    {
+      "biome": "suspicious/noCatchAssign",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["no-ex-assign"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_catch_assign.rs"
+    },
+    {
+      "biome": "suspicious/noClassAssign",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-class-assign"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_class_assign.rs"
+    },
+    {
+      "biome": "suspicious/noCommentText",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["react/jsx-no-comment-textnodes"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_comment_text.rs"
+    },
+    {
+      "biome": "suspicious/noCompareNegZero",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-compare-neg-zero"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_compare_neg_zero.rs"
+    },
+    {
+      "biome": "suspicious/noConfusingLabels",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["no-labels"],
+      "match": "source-inspired",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_confusing_labels.rs",
+      "note": "Related: no-labels disallows labels more broadly than Biome."
+    },
+    {
+      "biome": "suspicious/noConfusingVoidType",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/no-invalid-void-type"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_confusing_void_type.rs"
+    },
+    {
+      "biome": "suspicious/noConstEnum",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["oxc/no-const-enum"],
+      "match": "related",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_const_enum.rs",
+      "note": "Native const enum restriction."
+    },
+    {
+      "biome": "suspicious/noControlCharactersInRegex",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-control-regex"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_control_characters_in_regex.rs"
+    },
+    {
+      "biome": "suspicious/noDebugger",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-debugger"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_debugger.rs"
+    },
+    {
+      "biome": "suspicious/noDocumentCookie",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["unicorn/no-document-cookie"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_document_cookie.rs"
+    },
+    {
+      "biome": "suspicious/noDocumentImportInPage",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["@next/next/no-document-import-in-page"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_document_import_in_page.rs"
+    },
+    {
+      "biome": "suspicious/noDoubleEquals",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["eqeqeq"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_double_equals.rs"
+    },
+    {
+      "biome": "suspicious/noDuplicateCase",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-duplicate-case"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_duplicate_case.rs"
+    },
+    {
+      "biome": "suspicious/noDuplicateClassMembers",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/no-dupe-class-members"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_duplicate_class_members.rs"
+    },
+    {
+      "biome": "suspicious/noDuplicateElseIf",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-dupe-else-if"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_duplicate_else_if.rs"
+    },
+    {
+      "biome": "suspicious/noDuplicateEnumValues",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/no-duplicate-enum-values"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_duplicate_enum_values.rs"
+    },
+    {
+      "biome": "suspicious/noDuplicateObjectKeys",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-dupe-keys"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_duplicate_object_keys.rs"
+    },
+    {
+      "biome": "suspicious/noDuplicateParameters",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-dupe-args"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_duplicate_parameters.rs"
+    },
+    {
+      "biome": "suspicious/noEmptyInterface",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/no-empty-interface"],
+      "match": "source-inspired",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_empty_interface.rs"
+    },
+    {
+      "biome": "suspicious/noExplicitAny",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/no-explicit-any"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_explicit_any.rs"
+    },
+    {
+      "biome": "suspicious/noExtraNonNullAssertion",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/no-extra-non-null-assertion"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_extra_non_null_assertion.rs"
+    },
+    {
+      "biome": "suspicious/noFallthroughSwitchClause",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-fallthrough"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_fallthrough_switch_clause.rs"
+    },
+    {
+      "biome": "suspicious/noFunctionAssign",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-func-assign"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_function_assign.rs"
+    },
+    {
+      "biome": "suspicious/noGlobalAssign",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-global-assign"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_global_assign.rs"
+    },
+    {
+      "biome": "suspicious/noGlobalIsFinite",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["no-restricted-globals"],
+      "match": "related",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_global_is_finite.rs",
+      "note": "Restricts isFinite and global-object access; use Number.isFinite."
+    },
+    {
+      "biome": "suspicious/noGlobalIsNan",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["no-restricted-globals"],
+      "match": "related",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_global_is_nan.rs",
+      "note": "Restricts isNaN and global-object access; use Number.isNaN."
+    },
+    {
+      "biome": "suspicious/noHeadImportInDocument",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["@next/next/no-head-import-in-document"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_head_import_in_document.rs"
+    },
+    {
+      "biome": "suspicious/noImplicitAnyLet",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_implicit_any_let.rs",
+      "note": "No native equivalent identified in the pinned Bun rule catalog."
+    },
+    {
+      "biome": "suspicious/noImportAssign",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-import-assign"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_import_assign.rs"
+    },
+    {
+      "biome": "suspicious/noIrregularWhitespace",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["no-irregular-whitespace"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_irregular_whitespace.rs"
+    },
+    {
+      "biome": "suspicious/noLabelVar",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-label-var"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_label_var.rs"
+    },
+    {
+      "biome": "suspicious/noMisleadingCharacterClass",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-misleading-character-class"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_misleading_character_class.rs"
+    },
+    {
+      "biome": "suspicious/noMisleadingInstantiator",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/no-misused-new"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_misleading_instantiator.rs"
+    },
+    {
+      "biome": "suspicious/noMisrefactoredShorthandAssign",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["oxc/misrefactored-assign-op"],
+      "match": "related",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_misrefactored_shorthand_assign.rs",
+      "note": "Native assignment target repetition check."
+    },
+    {
+      "biome": "suspicious/noNonNullAssertedOptionalChain",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/no-non-null-asserted-optional-chain"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_non_null_asserted_optional_chain.rs"
+    },
+    {
+      "biome": "suspicious/noOctalEscape",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["no-octal-escape"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_octal_escape.rs"
+    },
+    {
+      "biome": "suspicious/noProto",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["no-proto"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_proto.rs"
+    },
+    {
+      "biome": "suspicious/noPrototypeBuiltins",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["no-prototype-builtins"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_prototype_builtins.rs"
+    },
+    {
+      "biome": "suspicious/noRedeclare",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/no-redeclare"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_redeclare.rs"
+    },
+    {
+      "biome": "suspicious/noSelfCompare",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-self-compare"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_self_compare.rs"
+    },
+    {
+      "biome": "suspicious/noShadowRestrictedNames",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-shadow-restricted-names"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_shadow_restricted_names.rs"
+    },
+    {
+      "biome": "suspicious/noSparseArray",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-sparse-arrays"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_sparse_array.rs"
+    },
+    {
+      "biome": "suspicious/noSuspiciousSemicolonInJsx",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_suspicious_semicolon_in_jsx.rs",
+      "note": "No native equivalent identified in the pinned Bun rule catalog."
+    },
+    {
+      "biome": "suspicious/noTemplateCurlyInString",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["no-template-curly-in-string"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_template_curly_in_string.rs"
+    },
+    {
+      "biome": "suspicious/noThenProperty",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["unicorn/no-thenable"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_then_property.rs"
+    },
+    {
+      "biome": "suspicious/noTsIgnore",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/ban-ts-comment"],
+      "match": "source-inspired",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_ts_ignore.rs"
+    },
+    {
+      "biome": "suspicious/noUndeclaredEnvVars",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_undeclared_env_vars.rs",
+      "note": "Auto-enabled by the root turbo dependency; Bun has no built-in turbo rule."
+    },
+    {
+      "biome": "suspicious/noUnsafeDeclarationMerging",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/no-unsafe-declaration-merging"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_unsafe_declaration_merging.rs"
+    },
+    {
+      "biome": "suspicious/noUnsafeNegation",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-unsafe-negation"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_unsafe_negation.rs"
+    },
+    {
+      "biome": "suspicious/noUselessEscapeInString",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["no-useless-escape"],
+      "match": "related",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_useless_escape_in_string.rs",
+      "note": "Shared string and regex escape check."
+    },
+    {
+      "biome": "suspicious/noUselessRegexBackrefs",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["no-useless-backreference"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_useless_regex_backrefs.rs"
+    },
+    {
+      "biome": "suspicious/noWith",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["no-with"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_with.rs"
+    },
+    {
+      "biome": "suspicious/useAdjacentOverloadSignatures",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["typescript/adjacent-overload-signatures"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/use_adjacent_overload_signatures.rs"
+    },
+    {
+      "biome": "suspicious/useDefaultSwitchClauseLast",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["default-case-last"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/use_default_switch_clause_last.rs"
+    },
+    {
+      "biome": "suspicious/useGetterReturn",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["getter-return"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/use_getter_return.rs"
+    },
+    {
+      "biome": "suspicious/useGoogleFontDisplay",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["@next/next/google-font-display"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/use_google_font_display.rs"
+    },
+    {
+      "biome": "suspicious/useIsArray",
+      "language": "js",
+      "severity": "warn",
+      "nativeRules": ["unicorn/no-instanceof-array"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/use_is_array.rs"
+    },
+    {
+      "biome": "suspicious/useIterableCallbackReturn",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["array-callback-return"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/use_iterable_callback_return.rs"
+    },
+    {
+      "biome": "suspicious/useNamespaceKeyword",
+      "language": "js",
+      "severity": "error",
+      "nativeRules": ["typescript/prefer-namespace-keyword"],
+      "match": "source-same",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/use_namespace_keyword.rs"
+    },
+    {
+      "biome": "a11y/useGenericFontNames",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/a11y/use_generic_font_names.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "complexity/noImportantStyles",
+      "language": "css",
+      "severity": "warn",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/complexity/no_important_styles.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "correctness/noInvalidDirectionInLinearGradient",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/correctness/no_invalid_direction_in_linear_gradient.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "correctness/noInvalidGridAreas",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/correctness/no_invalid_grid_areas.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "correctness/noInvalidPositionAtImportRule",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/correctness/no_invalid_position_at_import_rule.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "correctness/noMissingVarFunction",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/correctness/no_missing_var_function.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "correctness/noUnknownFunction",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/correctness/no_unknown_function.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "correctness/noUnknownMediaFeatureName",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/correctness/no_unknown_media_feature_name.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "correctness/noUnknownProperty",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/correctness/no_unknown_property.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "correctness/noUnknownPseudoClass",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/correctness/no_unknown_pseudo_class.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "correctness/noUnknownPseudoElement",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/correctness/no_unknown_pseudo_element.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "correctness/noUnknownTypeSelector",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/correctness/no_unknown_type_selector.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "correctness/noUnknownUnit",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/correctness/no_unknown_unit.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "correctness/noUnmatchableAnbSelector",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/correctness/no_unmatchable_anb_selector.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "style/noDescendingSpecificity",
+      "language": "css",
+      "severity": "warn",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/style/no_descending_specificity.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "suspicious/noDeprecatedMediaType",
+      "language": "css",
+      "severity": "warn",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/suspicious/no_deprecated_media_type.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "suspicious/noDuplicateAtImportRules",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/suspicious/no_duplicate_at_import_rules.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "suspicious/noDuplicateCustomProperties",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/suspicious/no_duplicate_custom_properties.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "suspicious/noDuplicateFontNames",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/suspicious/no_duplicate_font_names.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "suspicious/noDuplicateProperties",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/suspicious/no_duplicate_properties.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "suspicious/noDuplicateSelectorsKeyframeBlock",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/suspicious/no_duplicate_selectors_keyframe_block.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "suspicious/noEmptyBlock",
+      "language": "css",
+      "severity": "warn",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/suspicious/no_empty_block.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "suspicious/noImportantInKeyframe",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/suspicious/no_important_in_keyframe.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "suspicious/noIrregularWhitespace",
+      "language": "css",
+      "severity": "warn",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/suspicious/no_irregular_whitespace.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "suspicious/noShorthandPropertyOverrides",
+      "language": "css",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/suspicious/no_shorthand_property_overrides.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "suspicious/noUselessEscapeInString",
+      "language": "css",
+      "severity": "warn",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_css_analyze/src/lint/suspicious/no_useless_escape_in_string.rs",
+      "note": "Bun native lint does not analyze CSS."
+    },
+    {
+      "biome": "suspicious/noBiomeFirstException",
+      "language": "json",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "not-applicable",
+      "source": "crates/biome_json_analyze/src/lint/suspicious/no_biome_first_exception.rs",
+      "note": "Biome configuration-specific rule; biome.json has been removed."
+    },
+    {
+      "biome": "suspicious/noDuplicateObjectKeys",
+      "language": "json",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_json_analyze/src/lint/suspicious/no_duplicate_object_keys.rs",
+      "note": "Bun native lint does not analyze JSON."
+    },
+    {
+      "biome": "suspicious/noQuickfixBiome",
+      "language": "json",
+      "severity": "error",
+      "nativeRules": [],
+      "match": "not-applicable",
+      "source": "crates/biome_json_analyze/src/lint/suspicious/no_quickfix_biome.rs",
+      "note": "Biome configuration-specific rule; biome.json has been removed."
+    },
+    {
+      "biome": "suspicious/useBiomeIgnoreFolder",
+      "language": "json",
+      "severity": "warn",
+      "nativeRules": [],
+      "match": "not-applicable",
+      "source": "crates/biome_json_analyze/src/lint/suspicious/use_biome_ignore_folder.rs",
+      "note": "Biome configuration-specific rule; biome.json has been removed."
+    }
+  ]
+}

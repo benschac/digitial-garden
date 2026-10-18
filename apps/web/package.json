@@ -12,7 +12,7 @@
     "eve:build": "eve build",
     "eve:dev": "eve dev",
     "eve:info": "eve info",
-    "lint": "biome lint .",
+    "lint": "node ../../scripts/bun-tool.mjs lint .",
     "test": "bun run content:validate && bun test",
     "check-types": "bun run content:validate && tsc --noEmit",
     "wasm:build": "CARGO_TARGET_DIR=/tmp/personal-site-wasm-target cargo build --manifest-path ../../packages/wasm-canvas-engine/Cargo.toml --target wasm32-unknown-unknown --release && mkdir -p public/wasm && cp /tmp/personal-site-wasm-target/wasm32-unknown-unknown/release/wasm_canvas_engine.wasm public/wasm/particle-engine.wasm",

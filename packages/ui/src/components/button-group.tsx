@@ -2,6 +2,7 @@
 
 import { useRender } from "@base-ui/react";
 import { tv, type VariantProps } from "tailwind-variants";
+
 import { cn } from "../lib/utils";
 import { Separator } from "./separator";
 
@@ -26,8 +27,8 @@ function ButtonGroup({
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof buttonGroupVariants>) {
   return (
-    // biome-ignore lint/a11y/useSemanticElements: This groups controls without fieldset semantics.
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- This groups controls without fieldset semantics.
       role="group"
       data-slot="button-group"
       data-orientation={orientation}

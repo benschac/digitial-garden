@@ -54,8 +54,10 @@ initializing after cancellation.
   browser behavior behind a client boundary.
 - Read installed Next.js guides in `apps/web/node_modules/next/dist/docs` for the
   repository's version before changing framework behavior.
-- Use existing Bun workspace scripts, Biome, and TypeScript checks; do not add
-  overlapping formatting, package-management, or validation tools.
+- Use existing Bun workspace scripts, native Bun lint/format, and TypeScript
+  checks; do not add overlapping formatting, package-management, or validation
+  tools. Run `bun run setup:tools` to install the pinned local lint/format binary;
+  see [tooling setup and the Codex hook](../README.md#checks).
 
 When introducing a reusable API, add its export, document ownership and lifecycle
 here, and verify both its new caller and existing callers. Prefer the smallest

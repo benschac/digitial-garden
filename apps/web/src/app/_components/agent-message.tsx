@@ -21,6 +21,7 @@ import {
   XCircleIcon,
 } from "lucide-react";
 import { useState } from "react";
+
 import {
   Message,
   MessageContent,
@@ -321,7 +322,7 @@ function AttachmentPart({ part }: { readonly part: EveFilePart }) {
       className="flex max-w-sm items-center gap-3 rounded-md border bg-background/60 p-2"
     >
       {isImage ? (
-        // biome-ignore lint/performance/noImgElement: Attachments may use arbitrary or temporary browser URLs that Next Image cannot safely optimize.
+        // oxlint-disable-next-line @next/next/no-img-element -- Attachments may use arbitrary or temporary browser URLs that Next Image cannot safely optimize.
         <img
           alt={label}
           className="size-12 shrink-0 rounded-sm object-cover"

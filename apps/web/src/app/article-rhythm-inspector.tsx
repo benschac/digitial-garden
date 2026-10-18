@@ -340,7 +340,7 @@ export function ArticleRhythmInspector({ onChange }: { onChange: () => void }) {
   ]);
 
   useResizeObserver(articleRef, requestFrame);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: checkbox changes invalidate the latest frame callback
+  // checkbox changes invalidate the latest frame callback
   useEffect(() => {
     requestFrame();
   }, [showGaps, nestedGaps, requestFrame]);
