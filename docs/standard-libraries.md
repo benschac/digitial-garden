@@ -40,6 +40,11 @@ initializing after cancellation.
   shares GPU-to-WASM fallback across the particle experiments and header. Inject
   factories and the hook's abort signal; cancellation never starts fallback and
   late results are destroyed. React still owns activation, state and teardown.
+- [`code-block-highlighting`](../apps/web/src/components/ai-elements/code-block-highlighting.ts)
+  coalesces chat highlighting by full source and language, bounds token storage,
+  and expires failures immediately. Subscriptions return cleanup callbacks;
+  unsubscribing leaves shared work available to other consumers. Article
+  highlighting retains its separate language and theme configuration.
 
 ## UI, styling, and motion
 

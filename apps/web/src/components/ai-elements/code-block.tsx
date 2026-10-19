@@ -25,13 +25,10 @@ import {
   useRef,
   useState,
 } from "react";
-import type {
-  BundledLanguage,
-  BundledTheme,
-  HighlighterGeneric,
-  ThemedToken,
-} from "shiki";
-import { createHighlighter } from "shiki";
+import type { BundledLanguage, ThemedToken } from "shiki";
+
+import { codeHighlighting } from "./code-block-highlighting";
+import type { TokenizedCode } from "./code-block-highlighting";
 
 // Shiki uses bitflags for font styles: 1=italic, 2=bold, 4=underline
 const isItalic = (fontStyle: number | undefined) => fontStyle && fontStyle & 1;
@@ -115,12 +112,6 @@ type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   showLineNumbers?: boolean;
 };
 
-interface TokenizedCode {
-  tokens: ThemedToken[][];
-  fg: string;
-  bg: string;
-}
-
 interface CodeBlockContextType {
   code: string;
 }
@@ -130,117 +121,32 @@ const CodeBlockContext = createContext<CodeBlockContextType>({
   code: "",
 });
 
-// Highlighter cache (singleton per language)
-const highlighterCache = new Map<
-  string,
-  Promise<HighlighterGeneric<BundledLanguage, BundledTheme>>
->();
-
-// Token cache
-const tokensCache = new Map<string, TokenizedCode>();
-
-// Subscribers for async token updates
-const subscribers = new Map<string, Set<(result: TokenizedCode) => void>>();
-
-const getTokensCacheKey = (code: string, language: BundledLanguage) => {
-  const start = code.slice(0, 100);
-  const end = code.length > 100 ? code.slice(-100) : "";
-  return `${language}:${code.length}:${start}:${end}`;
-};
-
-const getHighlighter = (
-  language: BundledLanguage,
-): Promise<HighlighterGeneric<BundledLanguage, BundledTheme>> => {
-  const cached = highlighterCache.get(language);
-  if (cached) {
-    return cached;
-  }
-
-  const highlighterPromise = createHighlighter({
-    langs: [language],
-    themes: ["github-light", "github-dark"],
-  });
-
-  highlighterCache.set(language, highlighterPromise);
-  return highlighterPromise;
-};
-
 // Create raw tokens for immediate display while highlighting loads
-const createRawTokens = (code: string): TokenizedCode => ({
-  bg: "transparent",
-  fg: "inherit",
-  tokens: code.split("\n").map((line) =>
-    line === ""
-      ? []
-      : [
-          {
-            color: "inherit",
-            content: line,
-          } as ThemedToken,
-        ],
-  ),
-});
+const createRawTokens = (code: string): TokenizedCode => {
+  let offset = 0;
+  return {
+    bg: "transparent",
+    fg: "inherit",
+    tokens: code.split("\n").map((line) => {
+      const tokens =
+        line === "" ? [] : [{ color: "inherit", content: line, offset }];
+      offset += line.length + 1;
+      return tokens;
+    }),
+  };
+};
 
-// Synchronous highlight with callback for async results
 export const highlightCode = (
   code: string,
   language: BundledLanguage,
   callback?: (result: TokenizedCode) => void,
 ): TokenizedCode | null => {
-  const tokensCacheKey = getTokensCacheKey(code, language);
-
-  // Return cached result if available
-  const cached = tokensCache.get(tokensCacheKey);
-  if (cached) {
-    return cached;
+  const cached = codeHighlighting.getCached(code, language);
+  if (!cached) {
+    if (callback) codeHighlighting.subscribe(code, language, callback);
+    else void codeHighlighting.highlight(code, language);
   }
-
-  // Subscribe callback if provided
-  if (callback) {
-    if (!subscribers.has(tokensCacheKey)) {
-      subscribers.set(tokensCacheKey, new Set());
-    }
-    subscribers.get(tokensCacheKey)?.add(callback);
-  }
-
-  // Start highlighting in background - fire-and-forget async pattern
-  getHighlighter(language)
-    .then((highlighter) => {
-      const availableLangs = highlighter.getLoadedLanguages();
-      const langToUse = availableLangs.includes(language) ? language : "text";
-
-      const result = highlighter.codeToTokens(code, {
-        lang: langToUse,
-        themes: {
-          dark: "github-dark",
-          light: "github-light",
-        },
-      });
-
-      const tokenized: TokenizedCode = {
-        bg: result.bg ?? "transparent",
-        fg: result.fg ?? "inherit",
-        tokens: result.tokens,
-      };
-
-      // Cache the result
-      tokensCache.set(tokensCacheKey, tokenized);
-
-      // Notify all subscribers
-      const subs = subscribers.get(tokensCacheKey);
-      if (subs) {
-        for (const sub of subs) {
-          sub(tokenized);
-        }
-        subscribers.delete(tokensCacheKey);
-      }
-    })
-    .catch((error) => {
-      console.error("Failed to highlight code:", error);
-      subscribers.delete(tokensCacheKey);
-    });
-
-  return null;
+  return cached;
 };
 
 const CodeBlockBody = memo(
@@ -384,43 +290,25 @@ export const CodeBlockContent = ({
   language: BundledLanguage;
   showLineNumbers?: boolean;
 }) => {
-  // Memoized raw tokens for immediate display
   const rawTokens = useMemo(() => createRawTokens(code), [code]);
+  const [highlighted, setHighlighted] = useState<{
+    code: string;
+    language: BundledLanguage;
+    result: TokenizedCode;
+  } | null>(null);
 
-  // Synchronous cache lookup — avoids setState in effect for cached results
-  const syncTokens = useMemo(
-    () => highlightCode(code, language) ?? rawTokens,
-    [code, language, rawTokens],
+  useEffect(
+    () =>
+      codeHighlighting.subscribe(code, language, (result) => {
+        setHighlighted({ code, language, result });
+      }),
+    [code, language],
   );
 
-  // Async highlighting result (populated after shiki loads)
-  const [asyncTokens, setAsyncTokens] = useState<TokenizedCode | null>(null);
-  const asyncKeyRef = useRef({ code, language });
-
-  // Invalidate stale async tokens synchronously during render
-  if (
-    asyncKeyRef.current.code !== code ||
-    asyncKeyRef.current.language !== language
-  ) {
-    asyncKeyRef.current = { code, language };
-    setAsyncTokens(null);
-  }
-
-  useEffect(() => {
-    let cancelled = false;
-
-    highlightCode(code, language, (result) => {
-      if (!cancelled) {
-        setAsyncTokens(result);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [code, language]);
-
-  const tokenized = asyncTokens ?? syncTokens;
+  const tokenized =
+    highlighted?.code === code && highlighted.language === language
+      ? highlighted.result
+      : (codeHighlighting.getCached(code, language) ?? rawTokens);
 
   return (
     <div className="relative overflow-auto">
