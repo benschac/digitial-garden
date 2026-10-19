@@ -47,6 +47,8 @@ initializing after cancellation.
   highlighting retains its separate language and theme configuration.
 - [`typography-metrics-schema`](../apps/web/src/app/typography-metrics-schema.ts)
   validates external font metrics before measurement and caching.
+  [`conversation-scroll`](../apps/web/src/components/ai-elements/conversation-scroll.ts)
+  validates persisted scroll state and contains storage access failures.
 
 ## UI, styling, and motion
 

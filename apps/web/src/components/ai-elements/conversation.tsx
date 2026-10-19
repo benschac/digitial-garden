@@ -15,6 +15,11 @@ import {
 } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 
+import {
+  restoreScrollPosition,
+  saveScrollPosition,
+} from "./conversation-scroll";
+
 export type ConversationProps = ComponentProps<typeof StickToBottom> & {
   scrollRestorationKey?: string;
 };
@@ -66,7 +71,7 @@ function ConversationScrollRestoration({
     if (scrollElement === null) return;
 
     if (restoredKeyRef.current !== storageKey) {
-      const saved = readScrollPosition(sessionStorage.getItem(storageKey));
+      const saved = restoreScrollPosition(storageKey);
       if (saved?.atBottom === false) {
         scrollElement.scrollTop = saved.scrollTop;
         requestAnimationFrame(() => {
@@ -80,13 +85,10 @@ function ConversationScrollRestoration({
     }
 
     const saveNow = () => {
-      sessionStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          atBottom: state.isAtBottom || state.isNearBottom,
-          scrollTop: scrollElement.scrollTop,
-        }),
-      );
+      saveScrollPosition(storageKey, {
+        atBottom: state.isAtBottom || state.isNearBottom,
+        scrollTop: scrollElement.scrollTop,
+      });
     };
     let frame: number | undefined;
     const scheduleSave = () => {
@@ -107,27 +109,6 @@ function ConversationScrollRestoration({
   }, [scrollRef, scrollToBottom, state, storageKey]);
 
   return null;
-}
-
-function readScrollPosition(value: string | null):
-  | {
-      readonly atBottom: boolean;
-      readonly scrollTop: number;
-    }
-  | undefined {
-  if (value === null) return undefined;
-  try {
-    const parsed = JSON.parse(value) as {
-      atBottom?: unknown;
-      scrollTop?: unknown;
-    };
-    return typeof parsed.atBottom === "boolean" &&
-      typeof parsed.scrollTop === "number"
-      ? { atBottom: parsed.atBottom, scrollTop: parsed.scrollTop }
-      : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 export type ConversationContentProps = ComponentProps<
