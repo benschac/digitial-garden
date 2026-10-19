@@ -1,4 +1,5 @@
 import type { ParticleFrame, ParticleRenderer } from "./particle-renderer";
+import { withRendererScope } from "./renderer-lifecycle";
 import { loadParticleEngine } from "./wasm-engine";
 
 type GpuAdapter = {
@@ -429,450 +430,457 @@ export async function createWebGpuParticleRenderer(
   initialPixelRatio: number,
   onDeviceLost: (message: string) => void,
 ): Promise<ParticleRenderer | null> {
-  const gpu = getGpuApi();
-  if (!gpu) {
-    return null;
-  }
-
-  const adapter = await gpu.requestAdapter({
-    powerPreference: "high-performance",
-  });
-  if (!adapter || signal.aborted) {
-    return null;
-  }
-
-  const device = await adapter.requestDevice();
-  if (signal.aborted) {
-    device.destroy();
-    throw new DOMException("The renderer load was aborted.", "AbortError");
-  }
-
-  let engine: Awaited<ReturnType<typeof loadParticleEngine>>;
-  try {
-    engine = await loadParticleEngine(signal);
-  } catch (error) {
-    device.destroy();
-    throw error;
-  }
-
-  const maxParticleCount = Math.max(
-    1,
-    Math.min(
-      MAX_GPU_PARTICLE_COUNT,
-      Math.floor(device.limits.maxStorageBufferBindingSize / PARTICLE_STRIDE),
-      device.limits.maxComputeWorkgroupsPerDimension * WORKGROUP_SIZE,
-    ),
-  );
-  if (engine.gpu_frame_command_byte_length() !== UNIFORM_SIZE) {
-    device.destroy();
-    throw new Error("The Rust/WASM and WebGPU frame command layouts differ.");
-  }
-  let activeParticleCount = engine.initialize_gpu_controller(
-    maxParticleCount,
-    initialParticleCount,
-    Math.max(initialWidth, 1),
-    Math.max(initialHeight, 1),
-  );
-  const particleBuffer = device.createBuffer({
-    label: "particle-state",
-    size: maxParticleCount * PARTICLE_STRIDE,
-    usage: BUFFER_USAGE_STORAGE,
-  });
-  const uniformBuffer = device.createBuffer({
-    label: "particle-frame-uniforms",
-    size: UNIFORM_SIZE,
-    usage: BUFFER_USAGE_UNIFORM | BUFFER_USAGE_COPY_DST,
-  });
-
-  const computeModule = device.createShaderModule({
-    code: COMPUTE_SHADER,
-    label: "particle-compute-shader",
-  });
-  const particleModule = device.createShaderModule({
-    code: PARTICLE_SHADER,
-    label: "particle-render-shader",
-  });
-  const fullscreenModule = device.createShaderModule({
-    code: FULLSCREEN_SHADER,
-    label: "particle-trail-shader",
-  });
-  await Promise.all([
-    assertShaderCompiled(computeModule, "Particle compute shader"),
-    assertShaderCompiled(particleModule, "Particle render shader"),
-    assertShaderCompiled(fullscreenModule, "Particle trail shader"),
-  ]);
-
-  const canvasFormat = gpu.getPreferredCanvasFormat();
-  device.pushErrorScope("validation");
-  const computePipeline = device.createComputePipeline({
-    compute: { entryPoint: "compute_main", module: computeModule },
-    label: "particle-compute-pipeline",
-    layout: "auto",
-  });
-  const particlePipeline = device.createRenderPipeline({
-    fragment: {
-      entryPoint: "sprite_fragment_main",
-      module: particleModule,
-      targets: [
-        {
-          blend: {
-            alpha: { dstFactor: "one", operation: "add", srcFactor: "one" },
-            color: { dstFactor: "one", operation: "add", srcFactor: "one" },
-          },
-          format: "rgba8unorm",
-        },
-      ],
-    },
-    label: "particle-render-pipeline",
-    layout: "auto",
-    primitive: { topology: "triangle-list" },
-    vertex: { entryPoint: "sprite_vertex_main", module: particleModule },
-  });
-  const pointParticlePipeline = device.createRenderPipeline({
-    fragment: {
-      entryPoint: "point_fragment_main",
-      module: particleModule,
-      targets: [
-        {
-          blend: {
-            alpha: { dstFactor: "one", operation: "add", srcFactor: "one" },
-            color: { dstFactor: "one", operation: "add", srcFactor: "one" },
-          },
-          format: "rgba8unorm",
-        },
-      ],
-    },
-    label: "dense-particle-render-pipeline",
-    layout: "auto",
-    primitive: { topology: "point-list" },
-    vertex: { entryPoint: "point_vertex_main", module: particleModule },
-  });
-  const fadePipeline = device.createRenderPipeline({
-    fragment: {
-      entryPoint: "fade_fragment",
-      module: fullscreenModule,
-      targets: [{ format: "rgba8unorm" }],
-    },
-    label: "particle-trail-fade-pipeline",
-    layout: "auto",
-    primitive: { topology: "triangle-list" },
-    vertex: { entryPoint: "vertex_main", module: fullscreenModule },
-  });
-  const compositePipeline = device.createRenderPipeline({
-    fragment: {
-      entryPoint: "composite_fragment",
-      module: fullscreenModule,
-      targets: [{ format: canvasFormat }],
-    },
-    label: "particle-composite-pipeline",
-    layout: "auto",
-    primitive: { topology: "triangle-list" },
-    vertex: { entryPoint: "vertex_main", module: fullscreenModule },
-  });
-  const pipelineError = await device.popErrorScope();
-  if (pipelineError) {
-    particleBuffer.destroy();
-    uniformBuffer.destroy();
-    device.destroy();
-    throw new Error(
-      `WebGPU pipeline validation failed: ${pipelineError.message}`,
-    );
-  }
-
-  const computeBindGroup = device.createBindGroup({
-    entries: [
-      { binding: 0, resource: { buffer: particleBuffer } },
-      { binding: 1, resource: { buffer: uniformBuffer } },
-    ],
-    label: "particle-compute-bind-group",
-    layout: computePipeline.getBindGroupLayout(0),
-  });
-  const particleBindGroup = device.createBindGroup({
-    entries: [
-      { binding: 0, resource: { buffer: particleBuffer } },
-      { binding: 1, resource: { buffer: uniformBuffer } },
-    ],
-    label: "particle-render-bind-group",
-    layout: particlePipeline.getBindGroupLayout(0),
-  });
-  const pointParticleBindGroup = device.createBindGroup({
-    entries: [
-      { binding: 0, resource: { buffer: particleBuffer } },
-      { binding: 1, resource: { buffer: uniformBuffer } },
-    ],
-    label: "dense-particle-render-bind-group",
-    layout: pointParticlePipeline.getBindGroupLayout(0),
-  });
-  const sampler = device.createSampler({
-    magFilter: "linear",
-    minFilter: "linear",
-  });
-
-  const context = canvas.getContext(
-    "webgpu",
-  ) as unknown as GpuCanvasContext | null;
-  if (!context) {
-    particleBuffer.destroy();
-    uniformBuffer.destroy();
-    device.destroy();
-    return null;
-  }
-  context.configure({ alphaMode: "opaque", device, format: canvasFormat });
-
-  let commandAddress = -1;
-  let commandBuffer: ArrayBufferLike | null = null;
-  let commandBytes = new Uint8Array();
-  let commandWords = new Uint32Array();
-  let currentTrailIndex = 0;
-  let pointRenderPhase = 0;
-  let cssWidth = Math.max(initialWidth, 1);
-  let cssHeight = Math.max(initialHeight, 1);
-  let requestedPixelRatio = Math.max(initialPixelRatio, 1);
-  let destroyed = false;
-  let trailTextures: [GpuTexture, GpuTexture] | null = null;
-  let trailViews: [GpuTextureView, GpuTextureView] | null = null;
-  let fadeBindGroups: [GpuBindGroup, GpuBindGroup] | null = null;
-  let compositeBindGroups: [GpuBindGroup, GpuBindGroup] | null = null;
-
-  const clearTrailTextures = () => {
-    if (!trailViews) {
-      return;
+  return withRendererScope(signal, async (scope) => {
+    const gpu = getGpuApi();
+    if (!gpu) {
+      return null;
     }
 
-    const encoder = device.createCommandEncoder({
-      label: "clear-particle-trails",
+    const adapter = await gpu.requestAdapter({
+      powerPreference: "high-performance",
     });
-    for (const view of trailViews) {
-      const pass = encoder.beginRenderPass({
-        colorAttachments: [
+    if (!adapter || signal.aborted) {
+      return null;
+    }
+
+    const device = await scope.acquirePromise(
+      () => adapter.requestDevice(),
+      (device) => device.destroy(),
+    );
+    signal.throwIfAborted();
+
+    const engine = await loadParticleEngine(signal);
+
+    const maxParticleCount = Math.max(
+      1,
+      Math.min(
+        MAX_GPU_PARTICLE_COUNT,
+        Math.floor(device.limits.maxStorageBufferBindingSize / PARTICLE_STRIDE),
+        device.limits.maxComputeWorkgroupsPerDimension * WORKGROUP_SIZE,
+      ),
+    );
+    if (engine.gpu_frame_command_byte_length() !== UNIFORM_SIZE) {
+      throw new Error("The Rust/WASM and WebGPU frame command layouts differ.");
+    }
+    let activeParticleCount = engine.initialize_gpu_controller(
+      maxParticleCount,
+      initialParticleCount,
+      Math.max(initialWidth, 1),
+      Math.max(initialHeight, 1),
+    );
+    const particleBuffer = scope.acquire(
+      () =>
+        device.createBuffer({
+          label: "particle-state",
+          size: maxParticleCount * PARTICLE_STRIDE,
+          usage: BUFFER_USAGE_STORAGE,
+        }),
+      (buffer) => buffer.destroy(),
+    );
+    const uniformBuffer = scope.acquire(
+      () =>
+        device.createBuffer({
+          label: "particle-frame-uniforms",
+          size: UNIFORM_SIZE,
+          usage: BUFFER_USAGE_UNIFORM | BUFFER_USAGE_COPY_DST,
+        }),
+      (buffer) => buffer.destroy(),
+    );
+
+    const computeModule = device.createShaderModule({
+      code: COMPUTE_SHADER,
+      label: "particle-compute-shader",
+    });
+    const particleModule = device.createShaderModule({
+      code: PARTICLE_SHADER,
+      label: "particle-render-shader",
+    });
+    const fullscreenModule = device.createShaderModule({
+      code: FULLSCREEN_SHADER,
+      label: "particle-trail-shader",
+    });
+    await Promise.all([
+      assertShaderCompiled(computeModule, "Particle compute shader"),
+      assertShaderCompiled(particleModule, "Particle render shader"),
+      assertShaderCompiled(fullscreenModule, "Particle trail shader"),
+    ]);
+
+    const canvasFormat = gpu.getPreferredCanvasFormat();
+    device.pushErrorScope("validation");
+    const computePipeline = device.createComputePipeline({
+      compute: { entryPoint: "compute_main", module: computeModule },
+      label: "particle-compute-pipeline",
+      layout: "auto",
+    });
+    const particlePipeline = device.createRenderPipeline({
+      fragment: {
+        entryPoint: "sprite_fragment_main",
+        module: particleModule,
+        targets: [
           {
-            clearValue: BACKGROUND,
-            loadOp: "clear",
-            storeOp: "store",
-            view,
+            blend: {
+              alpha: { dstFactor: "one", operation: "add", srcFactor: "one" },
+              color: { dstFactor: "one", operation: "add", srcFactor: "one" },
+            },
+            format: "rgba8unorm",
           },
         ],
-      });
-      pass.end();
-    }
-    device.queue.submit([encoder.finish()]);
-  };
-
-  const recreateTrailTargets = (width: number, height: number) => {
-    trailTextures?.[0].destroy();
-    trailTextures?.[1].destroy();
-
-    const createTrailTexture = (label: string) =>
-      device.createTexture({
-        format: "rgba8unorm",
-        label,
-        size: { height, width },
-        usage: TEXTURE_USAGE_TEXTURE_BINDING | TEXTURE_USAGE_RENDER_ATTACHMENT,
-      });
-    trailTextures = [
-      createTrailTexture("particle-trail-a"),
-      createTrailTexture("particle-trail-b"),
-    ];
-    trailViews = [trailTextures[0].createView(), trailTextures[1].createView()];
-    fadeBindGroups = [0, 1].map((index) =>
-      device.createBindGroup({
-        entries: [
-          { binding: 0, resource: sampler },
-          { binding: 1, resource: trailViews?.[index] },
-          { binding: 2, resource: { buffer: uniformBuffer } },
+      },
+      label: "particle-render-pipeline",
+      layout: "auto",
+      primitive: { topology: "triangle-list" },
+      vertex: { entryPoint: "sprite_vertex_main", module: particleModule },
+    });
+    const pointParticlePipeline = device.createRenderPipeline({
+      fragment: {
+        entryPoint: "point_fragment_main",
+        module: particleModule,
+        targets: [
+          {
+            blend: {
+              alpha: { dstFactor: "one", operation: "add", srcFactor: "one" },
+              color: { dstFactor: "one", operation: "add", srcFactor: "one" },
+            },
+            format: "rgba8unorm",
+          },
         ],
-        label: `particle-fade-bind-group-${index}`,
-        layout: fadePipeline.getBindGroupLayout(0),
-      }),
-    ) as [GpuBindGroup, GpuBindGroup];
-    compositeBindGroups = [0, 1].map((index) =>
-      device.createBindGroup({
-        entries: [
-          { binding: 0, resource: sampler },
-          { binding: 1, resource: trailViews?.[index] },
-        ],
-        label: `particle-composite-bind-group-${index}`,
-        layout: compositePipeline.getBindGroupLayout(0),
-      }),
-    ) as [GpuBindGroup, GpuBindGroup];
-    currentTrailIndex = 0;
-    clearTrailTextures();
-  };
-
-  const resize = (width: number, height: number, pixelRatio: number) => {
-    const nextWidth = Math.max(width, 1);
-    const nextHeight = Math.max(height, 1);
-    const dimensionLimit = device.limits.maxTextureDimension2D;
-    requestedPixelRatio = Math.max(pixelRatio, 1);
-    const densityPixelRatioLimit =
-      activeParticleCount > HIGH_DENSITY_PARTICLE_COUNT ? 1 : 2;
-    const limitedPixelRatio = Math.min(
-      requestedPixelRatio,
-      densityPixelRatioLimit,
-      dimensionLimit / nextWidth,
-      dimensionLimit / nextHeight,
-    );
-    const physicalWidth = Math.max(
-      1,
-      Math.round(nextWidth * limitedPixelRatio),
-    );
-    const physicalHeight = Math.max(
-      1,
-      Math.round(nextHeight * limitedPixelRatio),
-    );
-    const dimensionsChanged =
-      nextWidth !== cssWidth || nextHeight !== cssHeight;
-    const textureSizeChanged =
-      physicalWidth !== canvas.width || physicalHeight !== canvas.height;
-
-    cssWidth = nextWidth;
-    cssHeight = nextHeight;
-    if (dimensionsChanged) {
-      engine.resize_gpu_controller(nextWidth, nextHeight);
+      },
+      label: "dense-particle-render-pipeline",
+      layout: "auto",
+      primitive: { topology: "point-list" },
+      vertex: { entryPoint: "point_vertex_main", module: particleModule },
+    });
+    const fadePipeline = device.createRenderPipeline({
+      fragment: {
+        entryPoint: "fade_fragment",
+        module: fullscreenModule,
+        targets: [{ format: "rgba8unorm" }],
+      },
+      label: "particle-trail-fade-pipeline",
+      layout: "auto",
+      primitive: { topology: "triangle-list" },
+      vertex: { entryPoint: "vertex_main", module: fullscreenModule },
+    });
+    const compositePipeline = device.createRenderPipeline({
+      fragment: {
+        entryPoint: "composite_fragment",
+        module: fullscreenModule,
+        targets: [{ format: canvasFormat }],
+      },
+      label: "particle-composite-pipeline",
+      layout: "auto",
+      primitive: { topology: "triangle-list" },
+      vertex: { entryPoint: "vertex_main", module: fullscreenModule },
+    });
+    const pipelineError = await device.popErrorScope();
+    if (pipelineError) {
+      throw new Error(
+        `WebGPU pipeline validation failed: ${pipelineError.message}`,
+      );
     }
-    if (textureSizeChanged || !trailTextures) {
-      canvas.width = physicalWidth;
-      canvas.height = physicalHeight;
-      recreateTrailTargets(physicalWidth, physicalHeight);
-    }
-  };
 
-  resize(cssWidth, cssHeight, initialPixelRatio);
-  void device.lost.then((info) => {
-    if (!destroyed) {
-      onDeviceLost(info.message || "The WebGPU device was lost.");
-    }
-  });
+    const computeBindGroup = device.createBindGroup({
+      entries: [
+        { binding: 0, resource: { buffer: particleBuffer } },
+        { binding: 1, resource: { buffer: uniformBuffer } },
+      ],
+      label: "particle-compute-bind-group",
+      layout: computePipeline.getBindGroupLayout(0),
+    });
+    const particleBindGroup = device.createBindGroup({
+      entries: [
+        { binding: 0, resource: { buffer: particleBuffer } },
+        { binding: 1, resource: { buffer: uniformBuffer } },
+      ],
+      label: "particle-render-bind-group",
+      layout: particlePipeline.getBindGroupLayout(0),
+    });
+    const pointParticleBindGroup = device.createBindGroup({
+      entries: [
+        { binding: 0, resource: { buffer: particleBuffer } },
+        { binding: 1, resource: { buffer: uniformBuffer } },
+      ],
+      label: "dense-particle-render-bind-group",
+      layout: pointParticlePipeline.getBindGroupLayout(0),
+    });
+    const sampler = device.createSampler({
+      magFilter: "linear",
+      minFilter: "linear",
+    });
 
-  return {
-    destroy() {
-      destroyed = true;
-      trailTextures?.[0].destroy();
-      trailTextures?.[1].destroy();
-      particleBuffer.destroy();
-      uniformBuffer.destroy();
-      context.unconfigure?.();
-      device.destroy();
-    },
-    kind: "Rust/WASM + WebGPU",
-    maxParticleCount,
-    render(frame: ParticleFrame) {
-      if (destroyed || !trailViews || !fadeBindGroups || !compositeBindGroups) {
+    signal.throwIfAborted();
+    const context = canvas.getContext(
+      "webgpu",
+    ) as unknown as GpuCanvasContext | null;
+    if (!context) {
+      return null;
+    }
+    scope.defer(() => context.unconfigure?.());
+    context.configure({ alphaMode: "opaque", device, format: canvasFormat });
+
+    let commandAddress = -1;
+    let commandBuffer: ArrayBufferLike | null = null;
+    let commandBytes = new Uint8Array();
+    let commandWords = new Uint32Array();
+    let currentTrailIndex = 0;
+    let pointRenderPhase = 0;
+    let cssWidth = Math.max(initialWidth, 1);
+    let cssHeight = Math.max(initialHeight, 1);
+    let requestedPixelRatio = Math.max(initialPixelRatio, 1);
+    let destroyed = false;
+    let trailTextures: GpuTexture[] = [];
+    const destroyTrailTextures = () => {
+      const previous = trailTextures;
+      trailTextures = [];
+      for (const texture of previous) texture.destroy();
+    };
+    scope.defer(destroyTrailTextures);
+    let trailViews: [GpuTextureView, GpuTextureView] | null = null;
+    let fadeBindGroups: [GpuBindGroup, GpuBindGroup] | null = null;
+    let compositeBindGroups: [GpuBindGroup, GpuBindGroup] | null = null;
+
+    const clearTrailTextures = () => {
+      if (!trailViews) {
         return;
       }
 
-      const nextCommandAddress = engine.prepare_gpu_frame(
-        frame.elapsedSeconds,
-        frame.deltaSeconds,
-        frame.pointerX,
-        frame.pointerY,
-        frame.interaction,
-        frame.simulationSpeed,
-      );
-      if (
-        commandBuffer !== engine.memory.buffer ||
-        commandAddress !== nextCommandAddress
-      ) {
-        commandAddress = nextCommandAddress;
-        commandBuffer = engine.memory.buffer;
-        commandBytes = new Uint8Array(
-          commandBuffer,
-          commandAddress,
-          UNIFORM_SIZE,
-        );
-        commandWords = new Uint32Array(
-          commandBuffer,
-          commandAddress,
-          UNIFORM_FLOATS,
-        );
+      const encoder = device.createCommandEncoder({
+        label: "clear-particle-trails",
+      });
+      for (const view of trailViews) {
+        const pass = encoder.beginRenderPass({
+          colorAttachments: [
+            {
+              clearValue: BACKGROUND,
+              loadOp: "clear",
+              storeOp: "store",
+              view,
+            },
+          ],
+        });
+        pass.end();
       }
-      device.queue.writeBuffer(uniformBuffer, 0, commandBytes);
-
-      const nextTrailIndex = 1 - currentTrailIndex;
-      const encoder = device.createCommandEncoder({ label: "particle-frame" });
-      const computePass = encoder.beginComputePass({
-        label: "particle-simulation-pass",
-      });
-      computePass.setPipeline(computePipeline);
-      computePass.setBindGroup(0, computeBindGroup);
-      const updateCount = commandWords[UPDATE_PARTICLE_COUNT_WORD];
-      computePass.dispatchWorkgroups(Math.ceil(updateCount / WORKGROUP_SIZE));
-      computePass.end();
-
-      const fadePass = encoder.beginRenderPass({
-        colorAttachments: [
-          {
-            clearValue: BACKGROUND,
-            loadOp: "clear",
-            storeOp: "store",
-            view: trailViews[nextTrailIndex],
-          },
-        ],
-        label: "particle-trail-fade-pass",
-      });
-      fadePass.setPipeline(fadePipeline);
-      fadePass.setBindGroup(0, fadeBindGroups[currentTrailIndex]);
-      fadePass.draw(3);
-      fadePass.end();
-
-      const particlePass = encoder.beginRenderPass({
-        colorAttachments: [
-          {
-            loadOp: "load",
-            storeOp: "store",
-            view: trailViews[nextTrailIndex],
-          },
-        ],
-        label: "particle-draw-pass",
-      });
-      if (activeParticleCount > HIGH_DENSITY_PARTICLE_COUNT) {
-        particlePass.setPipeline(pointParticlePipeline);
-        particlePass.setBindGroup(0, pointParticleBindGroup);
-        const renderCohortCount = Math.ceil(
-          activeParticleCount / MAX_POINT_PARTICLES_PER_FRAME,
-        );
-        const renderCohortSize = Math.ceil(
-          activeParticleCount / renderCohortCount,
-        );
-        const firstParticle = pointRenderPhase * renderCohortSize;
-        const renderedParticleCount = Math.min(
-          renderCohortSize,
-          activeParticleCount - firstParticle,
-        );
-        particlePass.draw(1, renderedParticleCount, 0, firstParticle);
-        pointRenderPhase = (pointRenderPhase + 1) % renderCohortCount;
-      } else {
-        particlePass.setPipeline(particlePipeline);
-        particlePass.setBindGroup(0, particleBindGroup);
-        particlePass.draw(3, activeParticleCount);
-      }
-      particlePass.end();
-
-      const compositePass = encoder.beginRenderPass({
-        colorAttachments: [
-          {
-            clearValue: BACKGROUND,
-            loadOp: "clear",
-            storeOp: "store",
-            view: context.getCurrentTexture().createView(),
-          },
-        ],
-        label: "particle-composite-pass",
-      });
-      compositePass.setPipeline(compositePipeline);
-      compositePass.setBindGroup(0, compositeBindGroups[nextTrailIndex]);
-      compositePass.draw(3);
-      compositePass.end();
-
       device.queue.submit([encoder.finish()]);
-      currentTrailIndex = nextTrailIndex;
-    },
-    resize,
-    setParticleCount(count: number) {
-      activeParticleCount = engine.set_gpu_particle_count(Math.round(count));
-      pointRenderPhase = 0;
-      resize(cssWidth, cssHeight, requestedPixelRatio);
-      return activeParticleCount;
-    },
-  };
+    };
+
+    const recreateTrailTargets = (width: number, height: number) => {
+      destroyTrailTextures();
+
+      const createTrailTexture = (label: string) =>
+        device.createTexture({
+          format: "rgba8unorm",
+          label,
+          size: { height, width },
+          usage:
+            TEXTURE_USAGE_TEXTURE_BINDING | TEXTURE_USAGE_RENDER_ATTACHMENT,
+        });
+      trailTextures.push(createTrailTexture("particle-trail-a"));
+      trailTextures.push(createTrailTexture("particle-trail-b"));
+      trailViews = [
+        trailTextures[0].createView(),
+        trailTextures[1].createView(),
+      ];
+      fadeBindGroups = [0, 1].map((index) =>
+        device.createBindGroup({
+          entries: [
+            { binding: 0, resource: sampler },
+            { binding: 1, resource: trailViews?.[index] },
+            { binding: 2, resource: { buffer: uniformBuffer } },
+          ],
+          label: `particle-fade-bind-group-${index}`,
+          layout: fadePipeline.getBindGroupLayout(0),
+        }),
+      ) as [GpuBindGroup, GpuBindGroup];
+      compositeBindGroups = [0, 1].map((index) =>
+        device.createBindGroup({
+          entries: [
+            { binding: 0, resource: sampler },
+            { binding: 1, resource: trailViews?.[index] },
+          ],
+          label: `particle-composite-bind-group-${index}`,
+          layout: compositePipeline.getBindGroupLayout(0),
+        }),
+      ) as [GpuBindGroup, GpuBindGroup];
+      currentTrailIndex = 0;
+      clearTrailTextures();
+    };
+
+    const resize = (width: number, height: number, pixelRatio: number) => {
+      const nextWidth = Math.max(width, 1);
+      const nextHeight = Math.max(height, 1);
+      const dimensionLimit = device.limits.maxTextureDimension2D;
+      requestedPixelRatio = Math.max(pixelRatio, 1);
+      const densityPixelRatioLimit =
+        activeParticleCount > HIGH_DENSITY_PARTICLE_COUNT ? 1 : 2;
+      const limitedPixelRatio = Math.min(
+        requestedPixelRatio,
+        densityPixelRatioLimit,
+        dimensionLimit / nextWidth,
+        dimensionLimit / nextHeight,
+      );
+      const physicalWidth = Math.max(
+        1,
+        Math.round(nextWidth * limitedPixelRatio),
+      );
+      const physicalHeight = Math.max(
+        1,
+        Math.round(nextHeight * limitedPixelRatio),
+      );
+      const dimensionsChanged =
+        nextWidth !== cssWidth || nextHeight !== cssHeight;
+      const textureSizeChanged =
+        physicalWidth !== canvas.width || physicalHeight !== canvas.height;
+
+      cssWidth = nextWidth;
+      cssHeight = nextHeight;
+      if (dimensionsChanged) {
+        engine.resize_gpu_controller(nextWidth, nextHeight);
+      }
+      if (textureSizeChanged || trailTextures.length === 0) {
+        canvas.width = physicalWidth;
+        canvas.height = physicalHeight;
+        recreateTrailTargets(physicalWidth, physicalHeight);
+      }
+    };
+
+    resize(cssWidth, cssHeight, initialPixelRatio);
+    void device.lost.then((info) => {
+      if (!destroyed) {
+        onDeviceLost(info.message || "The WebGPU device was lost.");
+      }
+    });
+
+    return {
+      destroy() {
+        destroyed = true;
+      },
+      kind: "Rust/WASM + WebGPU",
+      maxParticleCount,
+      render(frame: ParticleFrame) {
+        if (
+          destroyed ||
+          !trailViews ||
+          !fadeBindGroups ||
+          !compositeBindGroups
+        ) {
+          return;
+        }
+
+        const nextCommandAddress = engine.prepare_gpu_frame(
+          frame.elapsedSeconds,
+          frame.deltaSeconds,
+          frame.pointerX,
+          frame.pointerY,
+          frame.interaction,
+          frame.simulationSpeed,
+        );
+        if (
+          commandBuffer !== engine.memory.buffer ||
+          commandAddress !== nextCommandAddress
+        ) {
+          commandAddress = nextCommandAddress;
+          commandBuffer = engine.memory.buffer;
+          commandBytes = new Uint8Array(
+            commandBuffer,
+            commandAddress,
+            UNIFORM_SIZE,
+          );
+          commandWords = new Uint32Array(
+            commandBuffer,
+            commandAddress,
+            UNIFORM_FLOATS,
+          );
+        }
+        device.queue.writeBuffer(uniformBuffer, 0, commandBytes);
+
+        const nextTrailIndex = 1 - currentTrailIndex;
+        const encoder = device.createCommandEncoder({
+          label: "particle-frame",
+        });
+        const computePass = encoder.beginComputePass({
+          label: "particle-simulation-pass",
+        });
+        computePass.setPipeline(computePipeline);
+        computePass.setBindGroup(0, computeBindGroup);
+        const updateCount = commandWords[UPDATE_PARTICLE_COUNT_WORD];
+        computePass.dispatchWorkgroups(Math.ceil(updateCount / WORKGROUP_SIZE));
+        computePass.end();
+
+        const fadePass = encoder.beginRenderPass({
+          colorAttachments: [
+            {
+              clearValue: BACKGROUND,
+              loadOp: "clear",
+              storeOp: "store",
+              view: trailViews[nextTrailIndex],
+            },
+          ],
+          label: "particle-trail-fade-pass",
+        });
+        fadePass.setPipeline(fadePipeline);
+        fadePass.setBindGroup(0, fadeBindGroups[currentTrailIndex]);
+        fadePass.draw(3);
+        fadePass.end();
+
+        const particlePass = encoder.beginRenderPass({
+          colorAttachments: [
+            {
+              loadOp: "load",
+              storeOp: "store",
+              view: trailViews[nextTrailIndex],
+            },
+          ],
+          label: "particle-draw-pass",
+        });
+        if (activeParticleCount > HIGH_DENSITY_PARTICLE_COUNT) {
+          particlePass.setPipeline(pointParticlePipeline);
+          particlePass.setBindGroup(0, pointParticleBindGroup);
+          const renderCohortCount = Math.ceil(
+            activeParticleCount / MAX_POINT_PARTICLES_PER_FRAME,
+          );
+          const renderCohortSize = Math.ceil(
+            activeParticleCount / renderCohortCount,
+          );
+          const firstParticle = pointRenderPhase * renderCohortSize;
+          const renderedParticleCount = Math.min(
+            renderCohortSize,
+            activeParticleCount - firstParticle,
+          );
+          particlePass.draw(1, renderedParticleCount, 0, firstParticle);
+          pointRenderPhase = (pointRenderPhase + 1) % renderCohortCount;
+        } else {
+          particlePass.setPipeline(particlePipeline);
+          particlePass.setBindGroup(0, particleBindGroup);
+          particlePass.draw(3, activeParticleCount);
+        }
+        particlePass.end();
+
+        const compositePass = encoder.beginRenderPass({
+          colorAttachments: [
+            {
+              clearValue: BACKGROUND,
+              loadOp: "clear",
+              storeOp: "store",
+              view: context.getCurrentTexture().createView(),
+            },
+          ],
+          label: "particle-composite-pass",
+        });
+        compositePass.setPipeline(compositePipeline);
+        compositePass.setBindGroup(0, compositeBindGroups[nextTrailIndex]);
+        compositePass.draw(3);
+        compositePass.end();
+
+        device.queue.submit([encoder.finish()]);
+        currentTrailIndex = nextTrailIndex;
+      },
+      resize,
+      setParticleCount(count: number) {
+        activeParticleCount = engine.set_gpu_particle_count(Math.round(count));
+        pointRenderPhase = 0;
+        resize(cssWidth, cssHeight, requestedPixelRatio);
+        return activeParticleCount;
+      },
+    };
+  });
 }
