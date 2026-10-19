@@ -1,3 +1,5 @@
+import { Effect, Predicate, Schema } from "effect";
+
 export type ParticleEngine = {
   gpu_frame_command_byte_length: () => number;
   initialize: (
@@ -39,34 +41,105 @@ export type ParticleEngine = {
 
 const WASM_PATH = "/wasm/particle-engine.wasm";
 
-/**
- * Fetches and instantiates the shared Rust/WASM engine used by the visual
- * experiments.
- *
- * The module currently has no JavaScript imports, so it can be instantiated
- * with an empty import object. The caller owns cancellation and should abort
- * when its component unmounts to prevent stale initialization work.
- *
- * @param signal - Cancels the artifact request and rejects work that completed
- * after the caller stopped caring about the result.
- * @returns The engine's typed WebAssembly exports, including particle controls,
- * linear memory, and `perlin_noise_2d`.
- * @throws If the artifact request fails, WebAssembly compilation fails, or the
- * signal is aborted before the instance can be returned.
- */
-export async function loadParticleEngine(signal: AbortSignal) {
-  const response = await fetch(WASM_PATH, { signal });
+export class ParticleEngineFetchError extends Schema.TaggedError<ParticleEngineFetchError>()(
+  "ParticleEngineFetchError",
+  { cause: Schema.Defect() },
+) {}
+
+export class ParticleEngineBodyError extends Schema.TaggedError<ParticleEngineBodyError>()(
+  "ParticleEngineBodyError",
+  { cause: Schema.Defect() },
+) {}
+
+export class ParticleEngineInstantiateError extends Schema.TaggedError<ParticleEngineInstantiateError>()(
+  "ParticleEngineInstantiateError",
+  { cause: Schema.Defect() },
+) {}
+
+export class ParticleEngineAbiError extends Schema.TaggedError<ParticleEngineAbiError>()(
+  "ParticleEngineAbiError",
+  { cause: Schema.Defect() },
+) {}
+
+class ParticleEngineAborted extends Schema.TaggedError<ParticleEngineAborted>()(
+  "ParticleEngineAborted",
+  { cause: Schema.Defect() },
+) {}
+
+const CallableExport = Schema.declare(Predicate.isFunction);
+
+const ParticleEngineExports = Schema.Struct({
+  gpu_frame_command_byte_length: CallableExport,
+  initialize: CallableExport,
+  initialize_gpu_controller: CallableExport,
+  memory: Schema.instanceOf(WebAssembly.Memory),
+  particle_count: CallableExport,
+  perlin_noise_2d: CallableExport,
+  perlin_noise_3d: CallableExport,
+  prepare_gpu_frame: CallableExport,
+  resize: CallableExport,
+  resize_gpu_controller: CallableExport,
+  set_gpu_particle_count: CallableExport,
+  set_particle_count: CallableExport,
+  step: CallableExport,
+});
+
+export const decodeParticleEngineExports = Effect.fnUntraced(function* (
+  exports: unknown,
+) {
+  const decoded = yield* Schema.decodeUnknownEffect(ParticleEngineExports)(
+    exports,
+  ).pipe(Effect.mapError((cause) => new ParticleEngineAbiError({ cause })));
+  return decoded as ParticleEngine;
+});
+
+const loadParticleEngineEffect = Effect.fnUntraced(function* (
+  signal: AbortSignal,
+) {
+  const checkAborted = Effect.try({
+    try: () => signal.throwIfAborted(),
+    catch: (cause) => new ParticleEngineAborted({ cause }),
+  });
+
+  yield* checkAborted;
+  const response = yield* Effect.tryPromise({
+    try: () => fetch(WASM_PATH, { signal }),
+    catch: (cause) =>
+      signal.aborted
+        ? new ParticleEngineAborted({ cause: signal.reason })
+        : new ParticleEngineFetchError({ cause }),
+  });
+  yield* checkAborted;
   if (!response.ok) {
-    throw new Error(`WASM request failed with ${response.status}`);
+    return yield* new ParticleEngineFetchError({
+      cause: new Error(`WASM request failed with ${response.status}`),
+    });
   }
 
-  const module = await WebAssembly.instantiate(
-    await response.arrayBuffer(),
-    {},
-  );
-  if (signal.aborted) {
-    throw new DOMException("The renderer load was aborted.", "AbortError");
-  }
+  const bytes = yield* Effect.tryPromise({
+    try: () => response.arrayBuffer(),
+    catch: (cause) =>
+      signal.aborted
+        ? new ParticleEngineAborted({ cause: signal.reason })
+        : new ParticleEngineBodyError({ cause }),
+  });
+  yield* checkAborted;
+  const module = yield* Effect.tryPromise({
+    try: () => WebAssembly.instantiate(bytes, {}),
+    catch: (cause) =>
+      signal.aborted
+        ? new ParticleEngineAborted({ cause: signal.reason })
+        : new ParticleEngineInstantiateError({ cause }),
+  });
+  yield* checkAborted;
+  return yield* decodeParticleEngineExports(module.instance.exports);
+});
 
-  return module.instance.exports as ParticleEngine;
+export async function loadParticleEngine(signal: AbortSignal) {
+  try {
+    return await Effect.runPromise(loadParticleEngineEffect(signal));
+  } catch (error) {
+    if (error instanceof ParticleEngineAborted) throw error.cause;
+    throw error;
+  }
 }
