@@ -45,6 +45,8 @@ initializing after cancellation.
   and expires failures immediately. Subscriptions return cleanup callbacks;
   unsubscribing leaves shared work available to other consumers. Article
   highlighting retains its separate language and theme configuration.
+- [`typography-metrics-schema`](../apps/web/src/app/typography-metrics-schema.ts)
+  validates external font metrics before measurement and caching.
 
 ## UI, styling, and motion
 

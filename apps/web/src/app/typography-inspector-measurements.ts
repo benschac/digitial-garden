@@ -5,6 +5,9 @@ import {
   precomputeValues,
 } from "@capsizecss/core";
 import georgia from "@capsizecss/metrics/georgia";
+
+import { decodeTypographyMetrics } from "./typography-metrics-schema";
+
 import styles from "./typography-inspector.module.css";
 
 export type TrimMode = "original" | "capsize" | "native";
@@ -125,7 +128,7 @@ export async function resolveFont(
     { signal },
   );
   if (!response.ok) throw new Error("Metrics unavailable for this font asset");
-  const result = await response.json();
+  const result = decodeTypographyMetrics(await response.json());
   const source: FontSource = { ...result, verified: true };
   if (!signal.aborted) metricCache.set(asset, source);
   return source;
