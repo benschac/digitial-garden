@@ -5,8 +5,14 @@ import {
   useAnimationFrame,
 } from "@personal-site/react-hooks";
 import { useRef, useState } from "react";
+
 import { typographyVariants } from "@/components/page-typography";
+
 import { frameDeltaSeconds } from "../wasm-canvas/animation-timing";
+import {
+  initializeParticleRenderer,
+  isRendererAbort,
+} from "../wasm-canvas/particle-initialization";
 import type { ParticleRenderer } from "../wasm-canvas/particle-renderer";
 import styles from "../wasm-canvas/wasm-canvas-styles";
 import { createWasmParticleRenderer } from "../wasm-canvas/wasm-particle-renderer";
@@ -17,10 +23,6 @@ const DEFAULT_SIMULATION_SPEED = 2.5;
 const GPU_PARTICLE_LIMIT = 32_000_000;
 const GPU_PARTICLE_MINIMUM = 10_000;
 const GPU_PARTICLE_STEP = 10_000;
-
-function isAbortError(error: unknown) {
-  return error instanceof DOMException && error.name === "AbortError";
-}
 
 export function TypeGpuParticles() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -136,57 +138,53 @@ export function TypeGpuParticles() {
     }
 
     const loadRenderer = async () => {
-      let renderer: ParticleRenderer | null = null;
-
+      let renderer: ParticleRenderer;
       try {
-        renderer = await createTypeGpuParticleRenderer(
-          canvas,
+        renderer = await initializeParticleRenderer({
           signal,
-          densityRef.current,
-          canvasSize.width,
-          canvasSize.height,
-          canvasSize.pixelRatio,
-          (message) => {
-            if (signal.aborted) {
-              return;
-            }
-            cancelFrame();
-            pausedRef.current = true;
-            setPaused(true);
-            setStatus(`WebGPU device lost · ${message}`);
-          },
-        );
+          createGpu: () =>
+            createTypeGpuParticleRenderer(
+              canvas,
+              signal,
+              densityRef.current,
+              canvasSize.width,
+              canvasSize.height,
+              canvasSize.pixelRatio,
+              (message) => {
+                if (signal.aborted) {
+                  return;
+                }
+                cancelFrame();
+                pausedRef.current = true;
+                setPaused(true);
+                setStatus(`WebGPU device lost · ${message}`);
+              },
+            ),
+          createFallback: () =>
+            createWasmParticleRenderer(
+              canvas,
+              signal,
+              densityRef.current,
+              canvasSize.width,
+              canvasSize.height,
+              canvasSize.pixelRatio,
+            ),
+          onGpuFailure: (error) =>
+            console.warn(
+              "TypeGPU initialization failed; using WASM fallback.",
+              error,
+            ),
+        });
       } catch (error) {
-        if (isAbortError(error)) {
-          return;
+        if (!isRendererAbort(error, signal)) {
+          console.error(error);
+          setStatus("The particle renderer could not be loaded.");
         }
-        console.warn(
-          "TypeGPU initialization failed; using WASM fallback.",
-          error,
-        );
+        return;
       }
 
-      if (!renderer && !signal.aborted) {
-        try {
-          renderer = await createWasmParticleRenderer(
-            canvas,
-            signal,
-            densityRef.current,
-            canvasSize.width,
-            canvasSize.height,
-            canvasSize.pixelRatio,
-          );
-        } catch (error) {
-          if (!isAbortError(error)) {
-            console.error(error);
-            setStatus("The particle renderer could not be loaded.");
-          }
-          return;
-        }
-      }
-
-      if (!renderer || signal.aborted) {
-        renderer?.destroy();
+      if (signal.aborted) {
+        renderer.destroy();
         return;
       }
 

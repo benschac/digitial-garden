@@ -36,6 +36,10 @@ initializing after cancellation.
   native allocation immediately; the returned renderer keeps the scope alive
   until its idempotent `destroy()`. Nonabortable acquisitions finish under
   ownership before cancellation releases them. Drawing remains synchronous.
+- [`particle-initialization`](../apps/web/src/app/experiments/wasm-canvas/particle-initialization.ts)
+  shares GPU-to-WASM fallback across the particle experiments and header. Inject
+  factories and the hook's abort signal; cancellation never starts fallback and
+  late results are destroyed. React still owns activation, state and teardown.
 
 ## UI, styling, and motion
 

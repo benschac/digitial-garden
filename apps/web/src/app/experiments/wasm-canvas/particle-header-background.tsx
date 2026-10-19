@@ -11,8 +11,13 @@ import {
 } from "@personal-site/react-hooks";
 import { cn } from "@personal-site/ui/lib/utils";
 import { useEffectEvent, useId, useRef, useState } from "react";
+
 import { frameDeltaSeconds } from "./animation-timing";
 import styles from "./particle-header-background-styles";
+import {
+  initializeParticleRenderer,
+  isRendererAbort,
+} from "./particle-initialization";
 import type { ParticleRenderer } from "./particle-renderer";
 import { createWasmParticleRenderer } from "./wasm-particle-renderer";
 import { createWebGpuParticleRenderer } from "./webgpu-particle-renderer";
@@ -31,10 +36,6 @@ type HeaderControlStatus = "loading" | "ready" | "unavailable";
 interface ParticleHeaderBackgroundProps {
   canvasClassName?: string;
   controlsClassName?: string;
-}
-
-function isAbortError(error: unknown) {
-  return error instanceof DOMException && error.name === "AbortError";
 }
 
 export function ParticleHeaderBackground({
@@ -198,54 +199,50 @@ export function ParticleHeaderBackground({
     const canvasSize = canvasSizeRef.current;
 
     const loadRenderer = async () => {
-      let renderer: ParticleRenderer | null = null;
-
+      let renderer: ParticleRenderer;
       try {
-        renderer = await createWebGpuParticleRenderer(
-          canvas,
+        renderer = await initializeParticleRenderer({
           signal,
-          HEADER_PARTICLE_COUNT,
-          canvasSize.width,
-          canvasSize.height,
-          canvasSize.pixelRatio,
-          () => {
-            if (!signal.aborted) {
-              cancelFrame();
-              setControlStatus("unavailable");
-            }
-          },
-        );
+          createGpu: () =>
+            createWebGpuParticleRenderer(
+              canvas,
+              signal,
+              HEADER_PARTICLE_COUNT,
+              canvasSize.width,
+              canvasSize.height,
+              canvasSize.pixelRatio,
+              () => {
+                if (!signal.aborted) {
+                  cancelFrame();
+                  setControlStatus("unavailable");
+                }
+              },
+            ),
+          createFallback: () =>
+            createWasmParticleRenderer(
+              canvas,
+              signal,
+              HEADER_PARTICLE_COUNT,
+              canvasSize.width,
+              canvasSize.height,
+              canvasSize.pixelRatio,
+            ),
+          onGpuFailure: (error) =>
+            console.warn(
+              "WebGPU header initialization failed; using WASM fallback.",
+              error,
+            ),
+        });
       } catch (error) {
-        if (isAbortError(error)) {
-          return;
+        if (!isRendererAbort(error, signal)) {
+          console.error("The particle header could not be loaded.", error);
+          setControlStatus("unavailable");
         }
-        console.warn(
-          "WebGPU header initialization failed; using WASM fallback.",
-          error,
-        );
+        return;
       }
 
-      if (!renderer && !signal.aborted) {
-        try {
-          renderer = await createWasmParticleRenderer(
-            canvas,
-            signal,
-            HEADER_PARTICLE_COUNT,
-            canvasSize.width,
-            canvasSize.height,
-            canvasSize.pixelRatio,
-          );
-        } catch (error) {
-          if (!isAbortError(error)) {
-            console.error("The particle header could not be loaded.", error);
-            setControlStatus("unavailable");
-          }
-          return;
-        }
-      }
-
-      if (!renderer || signal.aborted) {
-        renderer?.destroy();
+      if (signal.aborted) {
+        renderer.destroy();
         return;
       }
 
