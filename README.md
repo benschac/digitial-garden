@@ -103,7 +103,27 @@ shared MDX components. `@next/mdx` remains for MDX experiment routes outside the
 blog.
 
 Set `SITE_URL` to the canonical production origin when building for deployment.
-Local builds default to `http://localhost:3000`.
+Without an explicit value, Vercel builds use `VERCEL_PROJECT_PRODUCTION_URL`,
+then `VERCEL_URL`. Local builds default to `http://localhost:3000`.
+
+## Animated link preview
+
+The homepage advertises `public/social/home.mp4` through `og:video`, with
+`public/social/home.jpg` as the Open Graph and Twitter image fallback. The
+eight-second, silent H.264 loop uses the hero's `AvatarArtwork` and local
+Bonbance font, with deterministic eye tracking and blinks.
+
+Regenerate both committed assets from `apps/web` with `bun run social:render`.
+This optional authoring step requires Chromium (`CHROMIUM_PATH` overrides the
+`chromium` executable) and FFmpeg with libx264. Normal builds serve the committed
+files and require neither tool. Keep `SITE_URL` set to the public HTTPS origin
+so crawlers receive absolute media URLs. Video playback, looping, and autoplay
+depend on the receiving app; clients that ignore `og:video` use the still image.
+After deployment, test a fresh homepage link in Messages to verify its preview.
+Visit `/social/preview.html` to watch the video with muted autoplay and looping
+enabled. The clip returns to its starting pose for a seamless repeat. Open Graph
+has no standard loop flag, so the receiving app controls whether link previews
+repeat the video.
 
 ## Checks
 

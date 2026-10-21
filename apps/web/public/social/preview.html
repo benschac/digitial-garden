@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Benjamin Schachter — animated preview</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100svh;
+        display: grid;
+        place-items: center;
+        background: #f8f5ee;
+      }
+      video {
+        display: block;
+        width: min(100%, 1200px);
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <video
+      aria-label="Benjamin Schachter's portrait looking around and blinking"
+      width="1200"
+      height="630"
+      autoplay
+      loop
+      muted
+      playsinline
+      controls
+      poster="./home.jpg"
+    >
+      <source src="./home.mp4" type="video/mp4" />
+      <a href="./home.mp4">Play the animated portrait</a>
+    </video>
+  </body>
+</html>

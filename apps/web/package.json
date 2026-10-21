@@ -8,6 +8,7 @@
   "scripts": {
     "build": "next build",
     "content:validate": "content-collections build",
+    "social:render": "bun scripts/render-social-preview.tsx",
     "dev": "next dev",
     "eve:build": "eve build",
     "eve:dev": "eve dev",
