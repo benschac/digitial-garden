@@ -2,12 +2,14 @@ import { headingVariants } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
+
 import { InkHeading } from "../../ink-heading";
 import { AnimatedAvatar } from "./animated-avatar";
 import { AvatarArtwork } from "./avatar-artwork";
-import styles from "./hero.module.css";
 import { NavigationHighlight, PrimaryNavigation } from "./primary-navigation";
 import { focusRing } from "./styles";
+
+import styles from "./hero.module.css";
 
 const primaryLink = cn(
   "inline-flex min-h-11 items-center",
@@ -123,6 +125,15 @@ export function Hero() {
         </div>
       </header>
       <PrimaryNavigation>
+        {process.env.NODE_ENV === "development" ? (
+          <Link
+            className={primaryLink}
+            href="/about"
+            transitionTypes={["nav-forward"]}
+          >
+            About
+          </Link>
+        ) : null}
         <Link
           className={primaryLink}
           href="/blog"

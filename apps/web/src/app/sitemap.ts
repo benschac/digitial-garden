@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+
 import { getPublishedPosts } from "@/lib/content";
 import { getSiteUrl } from "@/lib/site";
 
@@ -9,6 +10,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     { url: new URL("/", siteUrl).toString() },
     { url: new URL("/blog", siteUrl).toString() },
+    ...(process.env.NODE_ENV === "development"
+      ? [{ url: new URL("/about", siteUrl).toString() }]
+      : []),
     ...posts.map((post) => ({
       url: new URL(`/blog/${post.slug}`, siteUrl).toString(),
       lastModified: post.updatedAt ?? post.publishedAt,
