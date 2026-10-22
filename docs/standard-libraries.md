@@ -82,6 +82,11 @@ initializing after cancellation.
   browser behavior behind a client boundary.
 - Read installed Next.js guides in `apps/web/node_modules/next/dist/docs` for the
   repository's version before changing framework behavior.
+- [`dev-port.mjs`](../apps/web/scripts/dev-port.mjs) owns development port
+  selection: CLI port flags override shell `PORT`, then default to 3000. It probes
+  the requested bind address and subsequent ports, releasing the probe before
+  [`dev.mjs`](../apps/web/scripts/dev.mjs) launches Next's CLI. Only address-in-use
+  errors trigger fallback; production startup is unchanged.
 - Keep static VGPU shaders in `.wgsl` files. The web app's `wgslTurbopackRule()`
   prepares typed shader imports at build time; keep `vgpu` and `@vgpu/wgsl` on
   matching versions. See [`wet-ink-renderer`](../apps/web/src/app/wet-ink-renderer.ts).

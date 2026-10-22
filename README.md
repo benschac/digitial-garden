@@ -10,7 +10,25 @@ bun run setup:tools
 bun run dev
 ```
 
-The site runs at [http://localhost:3000](http://localhost:3000).
+The development server prefers [http://localhost:3000](http://localhost:3000).
+If that port is occupied, it checks subsequent ports until it finds a free one
+and prints the selected URL. It does not stop the process using the original port.
+
+Set a different preferred port through the shell or a CLI flag:
+
+```bash
+PORT=4000 bun run dev
+bun run --cwd apps/web dev --port 4000
+```
+
+Both commands fall back to the next available port if `4000` is busy. CLI flags
+take precedence over `PORT`; do not put `PORT` in `.env.local`. This also applies
+to `bun run wasm:dev` and the web workspace's `dev` command. Production
+`next start` retains its fixed-port behavior.
+
+This handles ports occupied by other projects. Next.js still permits only one
+development server per checkout because they share `.next/dev`; use a separate
+checkout or worktree to run two copies of this project.
 
 ## Eve agent
 
