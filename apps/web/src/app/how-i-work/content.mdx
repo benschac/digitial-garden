@@ -1,0 +1,45 @@
+I use AI throughout my software development process. Today, [Codex](https://openai.com/codex/) is my main tool, but I’ve been working with AI coding tools since the early days of [GitHub Copilot](https://github.com/features/copilot).
+
+## How I got here
+
+I started using GitHub Copilot during its early preview. When [Cursor](https://cursor.com/) came out, I picked it up early too.
+
+From there, I moved to [Claude Code](https://code.claude.com/docs/en/overview), which I used until August 2025. That’s when I switched to Codex, and I’ve been using it ever since.
+
+## The tools around the model
+
+Over time, I’ve built up a collection of [skills](https://developers.openai.com/codex/skills/) that capture how I work and the practices I want my agents to follow. I’m a heavy user of [OMX (Oh My Codex)](https://github.com/Yeachan-Heo/oh-my-codex), [Mermaid diagrams](https://mermaid.js.org/), [MCP servers](https://modelcontextprotocol.io/), and [plugins](https://github.com/openai/plugins).
+
+I also use durable work plans in Markdown files, so the plan lives alongside the work and is easy to return to across sessions.
+
+## Orchestrating agents
+
+One of the most useful features of OMX for me was agent orchestration through [tmux](https://github.com/tmux/tmux/wiki). It gave me a way to run and coordinate agents in terminal sessions.
+
+OMX also had a well-defined subagent system, with roles for system design, code review, and adversarial review. Having those distinct roles became an important part of how I worked with agents.
+
+## What’s changed along the way
+
+I’ve become a heavy user of [Wispr Flow](https://wisprflow.ai/) for voice dictation, and I’ve moved over to the [Zed editor](https://zed.dev/). Codex is still a big part of my day-to-day work, often with multiple Codex panes open.
+
+More recently, I’ve been exploring [Pi](https://pi.dev/) and [Herdr](https://herdr.dev/), as well as moving more of my workflow into agent loops: giving an agent a task, having it work through implementation and checks, and using the results to guide the next iteration.
+
+## TypeScript as a first line of defense
+
+I enjoy working with [TypeScript](https://www.typescriptlang.org/) and getting better at its type system. I like working through [Type Challenges](https://github.com/type-challenges/type-challenges) and [Type-Level TypeScript](https://type-level-typescript.com/), both for the puzzles themselves and for what they teach me about designing stronger types in everyday code.
+
+For me, using TypeScript well is a first line of defense in agentic engineering. Good types describe the data, the valid states, and the relationships the implementation needs to preserve. That gives an agent concrete guardrails to work within and compiler feedback when a change breaks those relationships.
+
+A dependable suite of static checks and type-level tests is an investment in the product’s long-term health. Alongside runtime tests and validation at system boundaries, it gives me and my team the confidence to make changes and ship more often. The same feedback helps agents stay on track as they iterate.
+
+## Finding my way into Effect
+
+I first started exploring [Effect](https://effect.website/) out of curiosity. I started moving toward it because I was already using [TS-Pattern](https://github.com/gvergnaud/ts-pattern) for pattern matching and [Zod](https://zod.dev/) for schema validation. Effect had its own modules for both, which gave me a practical reason to bring it into my workflow.
+
+TS-Pattern is an incredible library by Gabriel Vergnaud, who also created Type-Level TypeScript. Effect’s own [Match module](https://effect.website/docs/v4/code-style/pattern-matching) covers similar ground, and [Effect Schema](https://effect.website/docs/v4/schema/introduction) provides its own approach to defining and validating data. Those two familiar capabilities were my way into the broader Effect ecosystem.
+
+## Type safety across the stack
+
+That same interest carries through to tools like [tRPC](https://trpc.io/) and [oRPC](https://orpc.dev/). I want the types to connect the system: from the data layer and the types derived from its schema, through the API, all the way to the client.
+
+When those contracts line up, a change in one layer can surface a mismatch in another before it ships. It also gives an agent a path to follow through the application. The data structures, API contracts, and client code all help explain the design, so the agent can work within that design as it implements end-to-end functionality.
