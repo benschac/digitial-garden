@@ -150,11 +150,11 @@ The first three adoption steps are implemented in this worktree:
   storage access failures fall back safely. WASM exports are validated before
   the native ABI assertion, with a fresh mutable instance for each caller.
 
-The watcher refactor remains deferred: its serial worker already preserves the
-initial build and one pending rebuild. A future focused change should protect
-partial watcher acquisition, spawn exceptions and shutdown guards before
-considering Streams. The other medium/low and conditional candidates remain
-opportunities, not migration requirements; screenshot capture is still unused.
+At this snapshot, the watcher refactor remained deferred: its serial worker
+already preserved the initial build and one pending rebuild. The follow-up below
+records its implementation alongside database ownership and attachment conversion.
+Other medium/low and conditional candidates remain opportunities, not migration
+requirements; screenshot capture is still unused.
 No dependencies, shared-hook contracts, agent instructions or pure calculations
 are changed.
 
@@ -165,3 +165,84 @@ physical-device behavior require separate acceptance. One existing limitation
 remains: after a canvas has acquired a WebGPU context, it cannot switch to a 2D
 context on that same element; failures after that point can report unavailable
 instead of completing the WASM fallback.
+
+## Workflow implementation follow-up (2026-10-29)
+
+Three isolated workers implemented the remaining workflows selected for this
+follow-up. The coordinator integrated only their owned files, preserving existing
+source and content changes. No dependencies, SQL authorization policy, screenshot
+capture, shared-hook contracts, or render loops changed.
+
+### WASM watcher
+
+`apps/web/scripts/watch-wasm-lifecycle.ts` owns signal handlers, filesystem
+watchers, debounce queues and processes through Effect scopes. The CLI in
+`watch-wasm.ts` retains native filesystem and Bun adapters. The initial build,
+120ms debounce, serial execution and one pending rebuild remain. Partial watcher
+acquisition unwinds; spawn and exit failures are reported without poisoning later
+builds. Shutdown stops accepting changes, discards pending work, terminates the
+direct child and waits for its exit. It does not add process-group termination or
+a forced-kill deadline.
+
+`watch-wasm.test.ts` covers burst edits, changes during builds, partial acquisition,
+spawn/wait failures, nonzero exits, signal removal and shutdown. The worker also
+ran a native CLI smoke test with a controlled build process. Real Cargo compilation
+was not part of that check.
+
+### Sample database
+
+`apps/web/agent/lib/sample-db-service.ts` provides a scoped Effect service for
+sql.js. Successful initialization is shared for the owner's lifetime; failures
+expire immediately so a later request can try again. Failed seeding closes its
+database, and SQL queries are never retried. `sample-db.ts` preserves the existing
+Promise boundary using one lazy module-lifetime ManagedRuntime. `createSampleDb`
+creates independently disposable owners; `disposeSampleDb` closes the default
+owner permanently. Hosts must invoke disposal when ending the database lifetime;
+no global shutdown handlers were installed.
+
+`sample-db.test.ts` exercises real sql.js queries and persistent mutations,
+concurrent initialization, failure recovery, layer substitution and disposal before,
+during and after initialization. The historical `runReadOnlySql` name is not an
+authorization guarantee; its existing SQL execution semantics are unchanged.
+
+### Attachment conversion and submission
+
+`apps/web/src/components/ai-elements/prompt-input-attachments.ts` provides typed
+Effect adapters for fetch and FileReader, with ordered conversion concurrency
+limited to three. `PromptInput` uses the existing abort-controller hook. Failed
+conversion never submits an unresolved blob URL; conversion/send failures preserve
+input and use the existing optional `onError` callback with `attachment_conversion`
+or `submit` codes. Unchanged duplicate submissions are suppressed, while a changed
+draft can submit a steering message before the previous streamed response ends.
+Canceled or stale completions cannot clear newer text or files.
+
+The regression suite covers aborted reads/fetches, cleanup, HTTP/read failures,
+ordered bounded conversion, sibling cancellation, retry after failure, duplicate
+submission and stale completion. Once the consumer's `onSubmit` has begun, its
+unchanged callback contract does not allow cancellation of that external send.
+A disposable headless Chrome harness mounted the actual component in local and
+provider modes under development Strict Mode. All 22 checks passed, covering
+native FileReader/blob conversion, failure preservation, retries, duplicate
+suppression, changed-draft steering, stale completion and unmount cancellation.
+The harness recorded source hashes and no uncaught errors. This does not verify
+the complete AgentChat/backend streaming stack or visual styling.
+
+### Integrated verification
+
+- The three new suites plus the five existing schema boundary suites passed:
+  113 tests, zero failures.
+- `bun run test` passed: 172 tests across 21 files, zero failures. This task does
+  not replace the explicit watcher and agent test invocation above.
+- `bun run check-types` passed for all three workspace packages, with the shared
+  packages served from cache and the web package checked after content generation.
+- Native headless Chrome acceptance passed 22 mounted-component checks in both
+  local and provider modes. The disposable runner and source-hashed report are at
+  `/tmp/prompt-input-browser-HxnRIy/run.ts` and `report.json`; rerun with
+  `bun /tmp/prompt-input-browser-HxnRIy/run.ts` while those temporary artifacts exist.
+- Owned-file lint and formatting checks passed, as did `git diff --check`.
+- The repository-wide formatting baseline already reported 115 files. This
+  follow-up formats only its owned files rather than rewriting unrelated code.
+
+The other audit candidates remain conditional opportunities, not completed work
+or requirements to introduce Effect everywhere. Third-party Zod internals remain
+outside this workflow conversion.
