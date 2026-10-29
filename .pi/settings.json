@@ -1,0 +1,9 @@
+{
+  "packages": [
+    {
+      "source": "/Users/benjaminschachter/.pi/agent/npm/local-packages/pi-pstack-namespaced",
+      "autoload": false,
+      "skills": ["!skills/tdd/**", "!skills/teach/**"]
+    }
+  ]
+}
