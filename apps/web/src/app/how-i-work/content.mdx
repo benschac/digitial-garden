@@ -22,7 +22,13 @@ OMX also had a well-defined subagent system, with roles for system design, code 
 
 I’ve become a heavy user of [Wispr Flow](https://wisprflow.ai/) for voice dictation, and I’ve moved over to the [Zed editor](https://zed.dev/). Codex is still a big part of my day-to-day work, often with multiple Codex panes open.
 
-More recently, I’ve been exploring [Pi](https://pi.dev/) and [Herdr](https://herdr.dev/), as well as moving more of my workflow into agent loops: giving an agent a task, having it work through implementation and checks, and using the results to guide the next iteration.
+More recently, I’ve been using [Pi](https://pi.dev/) and [HERDR](https://herdr.dev/), as well as moving more of my workflow into agent loops: giving an agent a task, having it work through implementation and checks, and using the results to guide the next iteration.
+
+## Keeping my hands on the keyboard
+
+I like to keep my hands on the keyboard, including when I’m browsing. I use [Vimium](https://vimium.github.io/) to bring Vim-style navigation to the browser, so moving around a page and following links doesn’t always mean reaching for the mouse.
+
+That preference carries over to my editor and the rest of my setup. Keyboard shortcuts are part of how I make these tools feel like my own, and I want to document the ones I actually use alongside the configs that define them.
 
 ## TypeScript as a first line of defense
 
@@ -43,3 +49,62 @@ TS-Pattern is an incredible library by Gabriel Vergnaud, who also created Type-L
 That same interest carries through to tools like [tRPC](https://trpc.io/) and [oRPC](https://orpc.dev/). I want the types to connect the system: from the data layer and the types derived from its schema, through the API, all the way to the client.
 
 When those contracts line up, a change in one layer can surface a mismatch in another before it ships. It also gives an agent a path to follow through the application. The data structures, API contracts, and client code all help explain the design, so the agent can work within that design as it implements end-to-end functionality.
+
+## My configs, in one place
+
+I want this page to be a reference I can return to when I set up a new machine or start a new job. Not just a list of tools, but the settings, shortcuts, and setup steps that make them useful to me.
+
+I’m collecting the public, sanitized versions here. The config snippets and GitHub links below are still to add.
+
+### Pi and HERDR
+
+Pi and HERDR are separate parts of my setup. I want to share a config snippet for each, along with a little context about how I use them together.
+
+To add:
+
+- My Pi config snippet.
+- My HERDR config snippet.
+- GitHub links to the full configs and the steps to use them.
+
+### Coding agents
+
+The instructions and configuration around an agent are part of my working environment too. I want to keep the reusable pieces together so I can bring them into a new project deliberately, rather than reconstructing them from memory.
+
+To add:
+
+- My coding agent configs and reusable instructions.
+- The skills, plugins, and MCP servers I use, with a short explanation of what each is for.
+- GitHub links and setup steps, with personal defaults kept separate from project-specific rules.
+
+### Zed
+
+I’ve put together a new Zed config and keyboard shortcuts. I want to share both the files and the choices behind the bindings I use most.
+
+To add:
+
+- My Zed settings and keymap.
+- The extensions I use and what I use them for.
+- GitHub links and any installation steps that aren’t captured in the config files.
+
+### Vimium
+
+To add:
+
+- The browsing shortcuts I use most.
+- Any custom mappings or settings I want to carry to a new browser setup.
+
+### My shell
+
+I also want to share a sanitized `.zshrc`, so my shell setup is part of the same reference.
+
+To add:
+
+- A public `.zshrc` with credentials, tokens, private hosts, and work-specific paths removed.
+- The shell plugins, aliases, and tools it depends on, with installation steps.
+- A GitHub link to the sanitized version.
+
+### Setting up again
+
+Once the configs are collected, I want a short checklist for getting back to a familiar environment: install the tools, copy the public configs, install their dependencies, and check that the shortcuts work.
+
+Anything sensitive stays outside the published files. This page should help me rebuild my setup without becoming a copy of a private or employer-specific environment.
