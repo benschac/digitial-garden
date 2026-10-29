@@ -1,5 +1,6 @@
 "use client";
 
+import { useAbortController } from "@personal-site/react-hooks";
 import {
   Command,
   CommandEmpty,
@@ -66,30 +67,17 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 
+import { createPromptInputAttachmentSubmission } from "./prompt-input-attachments";
+
 // ============================================================================
 // Helpers
 // ============================================================================
-
-const convertBlobUrlToDataUrl = async (url: string): Promise<string | null> => {
-  try {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    // FileReader uses callback-based API, wrapping in Promise is necessary
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
-};
 
 const captureScreenshot = async (): Promise<File | null> => {
   if (
@@ -489,7 +477,12 @@ export type PromptInputProps = Omit<
   // bytes
   maxFileSize?: number;
   onError?: (err: {
-    code: "max_files" | "max_file_size" | "accept";
+    code:
+      | "max_files"
+      | "max_file_size"
+      | "accept"
+      | "attachment_conversion"
+      | "submit";
     message: string;
   }) => void;
   onSubmit: (
@@ -508,12 +501,18 @@ export const PromptInput = ({
   maxFileSize,
   onError,
   onSubmit,
+  onChangeCapture,
   children,
   ...props
 }: PromptInputProps) => {
   // Try to use a provider controller if present
   const controller = useOptionalPromptInputController();
   const usingProvider = !!controller;
+  const createController = useAbortController();
+  const [submitAttachments] = useState(() =>
+    createPromptInputAttachmentSubmission(),
+  );
+  const inputRevision = useRef(0);
 
   // Refs
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -527,6 +526,10 @@ export const PromptInput = ({
   const [referencedSources, setReferencedSources] = useState<
     (SourceDocumentUIPart & { id: string })[]
   >([]);
+
+  useLayoutEffect(() => {
+    inputRevision.current += 1;
+  }, [controller, files, referencedSources]);
 
   // Keep a ref to files for cleanup on unmount (avoids stale closure)
   const filesRef = useRef(files);
@@ -833,60 +836,52 @@ export const PromptInput = ({
       event.preventDefault();
 
       const form = event.currentTarget;
-      const text = usingProvider
-        ? controller.textInput.value
-        : (() => {
-            const formData = new FormData(form);
-            return (formData.get("message") as string) || "";
-          })();
+      const readFormText = () => {
+        const value = new FormData(form).get("message");
+        return typeof value === "string" ? value : "";
+      };
+      const text = usingProvider ? controller.textInput.value : readFormText();
+      const revision = inputRevision.current;
 
-      // Reset form immediately after capturing text to avoid race condition
-      // where user input during async blob conversion would be lost
-      if (!usingProvider) {
-        form.reset();
-      }
-
-      try {
-        // Convert blob URLs to data URLs asynchronously
-        const convertedFiles: FileUIPart[] = await Promise.all(
-          files.map(async ({ id: _id, ...item }) => {
-            if (item.url?.startsWith("blob:")) {
-              const dataUrl = await convertBlobUrlToDataUrl(item.url);
-              // If conversion failed, keep the original blob URL
-              return {
-                ...item,
-                url: dataUrl ?? item.url,
-              };
-            }
-            return item;
-          }),
-        );
-
-        const result = onSubmit({ files: convertedFiles, text }, event);
-
-        // Handle both sync and async onSubmit
-        if (result instanceof Promise) {
-          try {
-            await result;
-            clear();
-            if (usingProvider) {
-              controller.textInput.clear();
-            }
-          } catch {
-            // Don't clear on error - user may want to retry
-          }
-        } else {
-          // Sync function completed without throwing, clear inputs
+      await submitAttachments({
+        message: {
+          text,
+          files: files.map(({ id: _id, ...file }) => file),
+        },
+        createController,
+        send: (message) => onSubmit(message, event),
+        isCurrent: () =>
+          inputRevision.current === revision &&
+          (usingProvider || readFormText() === text),
+        onSuccess: () => {
           clear();
           if (usingProvider) {
             controller.textInput.clear();
+          } else {
+            form.reset();
           }
-        }
-      } catch {
-        // Don't clear on error - user may want to retry
-      }
+        },
+        onError: (error) => onError?.(error),
+      });
     },
-    [usingProvider, controller, files, onSubmit, clear],
+    [
+      usingProvider,
+      controller,
+      files,
+      onSubmit,
+      onError,
+      clear,
+      createController,
+      submitAttachments,
+    ],
+  );
+
+  const handleChangeCapture: ChangeEventHandler<HTMLFormElement> = useCallback(
+    (event) => {
+      inputRevision.current += 1;
+      onChangeCapture?.(event);
+    },
+    [onChangeCapture],
   );
 
   // Render with or without local provider
@@ -902,7 +897,13 @@ export const PromptInput = ({
         title="Upload files"
         type="file"
       />
-      <form className="w-full" onSubmit={handleSubmit} ref={formRef} {...props}>
+      <form
+        className="w-full"
+        onSubmit={handleSubmit}
+        ref={formRef}
+        {...props}
+        onChangeCapture={handleChangeCapture}
+      >
         <InputGroup
           className={cn(
             "overflow-hidden rounded-2xl bg-card/80 shadow-sm backdrop-blur-md",

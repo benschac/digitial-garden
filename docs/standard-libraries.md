@@ -50,6 +50,13 @@ initializing after cancellation.
   [`conversation-scroll`](../apps/web/src/components/ai-elements/conversation-scroll.ts)
   validates persisted scroll state and contains storage access failures.
 
+- [`prompt-input-attachments`](../apps/web/src/components/ai-elements/prompt-input-attachments.ts)
+  converts blob attachments with abortable fetch and FileReader adapters, at most
+  three at a time. Its submission coordinator suppresses duplicate sends and
+  clears input only after successful, current completion. `PromptInput` supplies
+  the shared abort-controller hook and retains text/files on conversion or send
+  failure. An already-running consumer `onSubmit` cannot be canceled through its
+  existing callback contract.
 - [`sample-db`](../apps/web/agent/lib/sample-db.ts) keeps one lazy module-lifetime
   Effect runtime behind the existing Promise API. `createSampleDb` creates an
   isolated owner; its `dispose` permanently closes that owner. The default owner
