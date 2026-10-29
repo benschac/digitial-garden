@@ -1,34 +1,194 @@
 ---
-title: "Creating Double-Sided Accounting"
+title: "How I Built Treasure It's Credit Ledger with Postgres"
 slug: "creating-double-sided-accounting"
-summary: "Building a ledger with double-entry accounting."
+summary: "Reserving credits, handling payment retries, and connecting marketplace policy to the inbox in Treasure It."
 publishedAt: "2026-10-27"
 status: "draft"
 tags:
-  - "Accounting"
+  - "Postgres"
+  - "TypeScript"
+  - "Architecture"
 featured: false
 ---
 
-<Callout title="Work in progress">
+In Treasure It, buyers and sellers pay each other for items in person. You use platform credits to pay for the match itself.
 
-Working title: Creating Double-Sided Accounting. Alternate title: Creating a Ledger and Treasure It.
+At first, a credit balance sounds like a single number on a user profile. Add to it when someone buys credits, subtract from it when they make a match.
 
-This is an outline to develop into a post. The accounting term is "double-entry accounting."
+That falls apart as soon as two people actually try to coordinate a pickup. When you accept a match, your credits need to be held so you can't spend them on three other items at the same time. If the other person backs out under a rule that refunds you, you should get those credits back. Only when the pickup happens are those credits gone for good.
+
+A single `credits` column can't tell you which credits are locked up in an active match, why a balance dropped, or whether a Stripe webhook just fired twice. I built the credit ledger in Postgres to handle that lifecycle and connect the database math to what each person sees in their inbox.
+
+<Callout title="Note on the title">
+
+My original working title for this post was "Creating Double-Sided Accounting," which is still in the URL slug. When you reserve or release credits, the math moves cleanly between two columns, `available` and `reserved`. Buying or spending credits only updates the user's account without a matching platform account on the other side, so this is a credit ledger rather than full double-entry bookkeeping.
 
 </Callout>
 
-## Why build a ledger?
+## Walking through a match
 
-What problem are we trying to solve, and why isn't a stored balance enough?
+Say you buy three credits and accept a match for a $20 item. The match costs one credit from each person. Here is what happens to your account from start to finish:
 
-## Accounts, transactions, and entries
+| Operation                                       | Available credits | Reserved credits |
+| ----------------------------------------------- | ----------------: | ---------------: |
+| Buy three credits                               |                 3 |                0 |
+| Reserve one for a match                         |                 2 |                1 |
+| Release it after a policy-approved cancellation |                 3 |                0 |
+| Reserve one for a later match                   |                 2 |                1 |
+| Complete that pickup                            |                 2 |                0 |
 
-Introduce the pieces of the ledger through one concrete example.
+Reserving a credit is a hold. It stops you from double-spending that credit on another offer while keeping it around in case the match falls through and you're owed a refund. Completing the pickup burns the reserved credit.
 
-## Keeping the books balanced
+If we only stored a single number, we'd constantly be guessing. Did your balance drop because a pickup finished, because of a cancellation penalty, or because of a bug? Which match is holding your credit right now? Did we accidentally charge you twice?
 
-Walk through the debits and credits for that example, and explain what the ledger must enforce.
+The ledger answers those questions by recording every movement alongside the reason it happened.
 
-## Correcting mistakes
+## Keeping the balance and the paper trail together
 
-Show how to fix an incorrect transaction without losing its history.
+Everything runs through two tables:
+
+- `match_credit_accounts` holds each profile's current `available` and `reserved` balances.
+- `match_credit_ledger` is the paper trail. Every time an account changes, we insert a row with the deltas, the balances after the move, the reason, the related purchase or offer thread, and an idempotency key.
+
+Having a dedicated row in `match_credit_accounts` gives the app a fast way to read your current balance. More importantly, it gives Postgres a single row to lock when credits move.
+
+Here is that same match from earlier, this time as rows in `match_credit_ledger`. We store credits as integer **milliunits**, with 1,000 milliunits per credit, so we never have to deal with floating-point math:
+
+| Reason           | Available delta | Reserved delta | Available after | Reserved after |
+| ---------------- | --------------: | -------------: | --------------: | -------------: |
+| `purchase_grant` |           +3000 |              0 |            3000 |              0 |
+| `reserve`        |           -1000 |          +1000 |            2000 |           1000 |
+| `release`        |           +1000 |          -1000 |            3000 |              0 |
+| `reserve`        |           -1000 |          +1000 |            2000 |           1000 |
+| `consume`        |               0 |          -1000 |            2000 |              0 |
+
+Notice how `reserve` and `release` move the exact same amount between `available` and `reserved`. `purchase_grant` adds to `available`, and `consume` drains `reserved` once the pickup is done.
+
+As long as every balance change goes through the ledger functions, the account row always equals the sum of its ledger rows:
+
+```text
+account.available = sum(ledger.delta_available)
+account.reserved  = sum(ledger.delta_reserved)
+```
+
+We keep those in sync by updating the account row and inserting the ledger row inside the same Postgres function and transaction.
+
+## Locking the account row when reserving credits
+
+Let's look at `reserve_match_credit`, the Postgres function that puts a hold on your credits.
+
+When you call it, it makes sure your account row exists, locks that row, checks whether we've already processed this exact request, checks that you can afford the hold, updates your balances, and writes the ledger entry.
+
+First things first, we lock the account row:
+
+```sql
+SELECT *
+  INTO v_account
+FROM public.match_credit_accounts
+WHERE match_credit_accounts.profile_id = p_profile_id
+FOR UPDATE;
+```
+
+Why lock the row? Say you have one credit left and you try to accept two different matches at the exact same time. Without `FOR UPDATE`, both requests could read `available_credits = 1000` in the app and let both holds through. With the row lock, the second transaction has to wait until the first one finishes and commits. By the time the second transaction reads the row, `available_credits` is `0`.
+
+Right after acquiring the lock, the function checks if you have enough credits and updates the account:
+
+```sql
+IF v_account.available_credits < v_credit_milliunits THEN
+  RAISE EXCEPTION 'MATCH_CREDIT_INSUFFICIENT_CREDITS'
+    USING ERRCODE = 'P0001';
+END IF;
+
+UPDATE public.match_credit_accounts AS account
+SET
+  available_credits = account.available_credits - v_credit_milliunits,
+  reserved_credits = account.reserved_credits + v_credit_milliunits,
+  updated_at = now()
+WHERE account.profile_id = p_profile_id
+RETURNING account.* INTO v_account;
+```
+
+The ledger `INSERT` happens right after this inside the same function. If writing the ledger row fails for any reason, Postgres rolls back the balance update too. The app never updates a balance in one query and hopes a second history query succeeds.
+
+When a transaction touches two people at once, like activating a match, the SQL function locks both `match_credit_accounts` rows sorted by `profile_id` so two concurrent operations can't deadlock each other. It also re-checks the offer state, accepted fee, and items inside the transaction. If anything changed between when the app read the match and when the SQL mutation ran, the database rejects the write.
+
+## Making retries safe with idempotency keys
+
+Networks drop and jobs retry. An idempotency key lets the app safely repeat a call without charging someone twice.
+
+Simply checking "does this idempotency key already exist?" isn't enough, though. When `reserve_match_credit` finds an existing key, it also checks that the profile, offer thread, reason, and credit deltas match the original row. If caller code accidentally reuses an idempotency key for a different match or a different amount, Postgres throws a conflict error instead of silently pretending the new operation succeeded.
+
+When a retry is legitimate, the function returns the original ledger row ID alongside the account's **current** balances. Meanwhile, the ledger row itself keeps the `available_after` and `reserved_after` snapshot from when that move originally happened.
+
+Webhook retries have a similar trap. It's tempting to use the Stripe webhook event ID as your idempotency key when someone buys credits, but Stripe can send more than one event type for the same payment. Instead, we log the webhook event ID separately and tie the credit grant key directly to the PaymentIntent:
+
+```text
+stripe:payment_intent:<id>
+```
+
+If the database commits the credit grant and the server crashes a millisecond later before returning `200` to Stripe, Stripe is going to send that webhook again. Keying the grant off the PaymentIntent means the retry sees the existing grant and exits cleanly instead of handing out double credits.
+
+## Keeping cents and credit milliunits straight
+
+Item prices and credits use different units. Item prices are stored in integer cents, while the ledger stores credits in integer milliunits, even on a couple of older columns whose names still end in `_credits`.
+
+Here is the function that calculates the base credit fee from an accepted offer price:
+
+```ts
+export const resolveBaseMatchFeeCreditMilliunits = (
+  acceptedAmountCents: number,
+): number => Math.ceil(acceptedAmountCents / 2);
+```
+
+For a $20 item, `2000` cents comes out to `1000` milliunits, or 1 credit per person. For $20.01, `2001` cents rounds up to `1001` milliunits.
+
+When an offer is accepted, we snapshot that result into `base_match_fee_credit_milliunits` on the offer thread. When the pickup finishes days later, settlement reads that snapshot rather than recalculating the fee. That way, if we ever change our fee formula, we won't pull the rug out from under matches that are already in progress.
+
+## Pulling marketplace rules into pure functions
+
+Getting the SQL math right was only half the problem. Early on, marketplace rules were scattered across the codebase, and testing them was a pain. What a buyer, seller, or giver is allowed to do next depends on both the action they're taking and the current state of the match.
+
+I didn't want to spin up database fixtures and mock push notifications just to test whether cancelling a pickup should refund a credit. For match scheduling and funding, I pulled those rules into pure TypeScript functions built around a `decide -> evolve -> react` loop:
+
+1. `decide` takes the current state, a command, and context, and returns either a rejection or a list of typed events.
+2. `evolveAll` folds those events into the next state.
+3. `reactions` turns those events into side effects like notifications.
+
+Here is how those pieces fit together once `decide` accepts a command:
+
+```ts
+return {
+  kind: "accepted",
+  state,
+  nextState: evolveAll(state, decision.events),
+  events: decision.events,
+  effects: decision.events.flatMap((event) =>
+    reactions(event, decisionContext),
+  ),
+  decisionContext,
+};
+```
+
+Because `decide`, `evolveAll`, and `reactions` are pure functions, unit tests can throw weird state combinations at them in milliseconds. Credit events describe who gets charged or refunded, why, and how many milliunits to move, without touching balance fields directly.
+
+Once the policy layer decides what should happen, the service layer calls the Postgres function with the expected state and an idempotency key. Only after the database transaction commits do we fire off the notification effects.
+
+## Connecting the ledger to the inbox
+
+A match has two people in it, and at any given moment one person usually needs to act while the other waits. Showing a generic "Accepted" badge to both of them isn't helpful.
+
+Take credit funding right after an offer is accepted. To accept an offer, you have to have enough credits in your account right then. But what if the person who originally sent you the offer doesn't have enough credits yet?
+
+When that happens, we reserve the acceptor's credits, lock the items to the match, and put the thread into `awaiting_credits`. That gives the person who made the offer five hours to buy credits and finish funding their side of the match before pickup scheduling can move forward.
+
+On the server, `toActionView` figures out who the match is waiting on, which buttons they should see, what happens if they back out now, and when the current deadline expires. The inbox turns that into `ActivityInboxRowViewModel`, a discriminated union keyed by `kind`, with cases like `offer_pickup_confirmation`, `offer_scheduled_pickup`, and the funding states.
+
+Because each `kind` carries only the fields for that specific state, the UI can switch on `row.kind` and render the right call to action without piecing together a bunch of boolean flags.
+
+One bug we had to guard against here was leftover scheduling data on finished pickups. The inbox mapper always checks whether the pickup is already completed before looking at scheduling fields, so an old timestamp can't make a finished match look like it still needs action.
+
+## Cleaning up unfinished settlements
+
+Sometimes a pickup finishes, the state transitions, and the credit settlement step needs a retry. To catch those, I set up a Trigger.dev job that runs every 15 minutes, queries Postgres for completed pickups with unfinished credit work, and steps through them one by one so a failure on one match doesn't block the rest of the batch.
+
+Keeping the accounts, the ledger, and the state checks inside Postgres has been the right call for Treasure It's size. When someone asks why their balance changed or what a match is waiting on, I don't have to dig through application logs to piece the story together. It's all sitting right there in `match_credit_ledger`.
