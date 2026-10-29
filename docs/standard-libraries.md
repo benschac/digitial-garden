@@ -101,6 +101,13 @@ abstraction that handles the real lifecycle.
 
 ## Animated article figures
 
+[`MermaidDiagram`](../apps/web/src/components/mdx/mermaid-diagram.tsx) renders
+trusted, repository-authored Mermaid source with Pele on the client. Pass literal
+`source`, `title`, and `description` strings in MDX. It owns the SVG IDs, paper/ink
+palette and server-rendered caption; links and images are disabled. Pele owns
+responsive layout, font observation and keyboard zoom. The wrapper cancels pending
+imports and destroys mounted diagrams on restart/unmount. Failures retain the caption. See [authoring](animated-diagrams.md#static-mermaid-figures).
+
 [`AnimatedDiagram`](../apps/web/src/components/mdx/animated-diagram.tsx) owns the
 Giotto client boundary, cancellable JSON loading, static description and scoped
 paper/ink theme. Giotto owns SVG rendering and playback. Use repository-owned

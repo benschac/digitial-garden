@@ -43,6 +43,12 @@ If we only stored a single number, we'd constantly be guessing. Did your balance
 
 The ledger answers those questions by recording every movement alongside the reason it happened.
 
+<MermaidDiagram
+  title="A credit reservation follows the match"
+  source="flowchart TD; A[Available credits] -->|Reserve for a match| B[Reserved credits]; B -->|Policy-approved release| A; B -->|Complete pickup| C[Consumed entitlement];"
+  description="Reserving moves credits from available to reserved. A policy-approved release returns them to available; pickup completion consumes the reservation. This shows one participant's credit lifecycle."
+/>
+
 ## Keeping the balance and the paper trail together
 
 Everything runs through two tables:
@@ -112,6 +118,12 @@ The ledger `INSERT` happens right after this inside the same function. If writin
 
 When a transaction touches two people at once, like activating a match, the SQL function locks both `match_credit_accounts` rows sorted by `profile_id` so two concurrent operations can't deadlock each other. It also re-checks the offer state, accepted fee, and items inside the transaction. If anything changed between when the app read the match and when the SQL mutation ran, the database rejects the write.
 
+<MermaidDiagram
+  title="Balance and history commit together"
+  source="flowchart TD; A[Reservation request] --> B[Lock account row]; B --> C{Existing idempotency key?}; C -->|Yes| D[Validate replay semantics]; D --> E[Return existing ledger ID]; C -->|No| F[Validate reservation and affordability]; F --> G[Update account balances]; G --> H[Insert ledger movement]; H --> I[Commit transaction];"
+  description="The reservation function locks the account before checking for a replay. A valid replay returns the existing ledger identity. A new reservation validates its outstanding hold and available balance, then commits the account update and ledger insert in one transaction. Validation failures reject the operation; write failures roll it back."
+/>
+
 ## Making retries safe with idempotency keys
 
 Networks drop and jobs retry. An idempotency key lets the app safely repeat a call without charging someone twice.
@@ -172,6 +184,12 @@ return {
 Because `decide`, `evolveAll`, and `reactions` are pure functions, unit tests can throw weird state combinations at them in milliseconds. Credit events describe who gets charged or refunded, why, and how many milliunits to move, without touching balance fields directly.
 
 Once the policy layer decides what should happen, the service layer calls the Postgres function with the expected state and an idempotency key. Only after the database transaction commits do we fire off the notification effects.
+
+<MermaidDiagram
+  title="From a command to a guarded mutation"
+  source="flowchart TD; A[State, command, and context] --> B[decide]; B -->|Accepted events| C[evolveAll]; B -->|Accepted events| D[reactions]; C --> E[Projected next state]; D --> F[Notification effects]; B -->|Accepted events| G[Service translates decision]; G --> H[SQL locks and revalidates]; H --> I[Commit database mutation]; I --> J[Handle notifications after commit]; F -.-> J;"
+  description="The accepted-match adapter derives next state and notification effects from accepted events. The service translates the decision into a SQL mutation that locks and revalidates persisted facts. Notification handling follows a successful commit; it is outside the database transaction."
+/>
 
 ## Connecting the ledger to the inbox
 

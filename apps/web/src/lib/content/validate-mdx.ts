@@ -7,6 +7,7 @@ const allowedComponents = new Set([
   "AnimatedDiagram",
   "ComingSoon",
   "EffectWalkthrough",
+  "MermaidDiagram",
 ]);
 
 interface MdxNode {

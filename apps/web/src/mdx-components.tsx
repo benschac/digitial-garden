@@ -14,6 +14,7 @@ import { AnimatedDiagram } from "./components/mdx/animated-diagram";
 import { Callout } from "./components/mdx/callout";
 import { ComingSoon } from "./components/mdx/coming-soon";
 import { EffectWalkthrough } from "./components/mdx/effect-walkthrough";
+import { MermaidDiagram } from "./components/mdx/mermaid-diagram";
 
 function MdxLink({ href = "", ...props }: ComponentPropsWithoutRef<"a">) {
   if (href.startsWith("/")) {
@@ -169,6 +170,7 @@ const components = {
   ComingSoon,
   AnimatedDiagram,
   EffectWalkthrough,
+  MermaidDiagram,
 } satisfies MDXComponents;
 
 export function useMDXComponents(): MDXComponents {

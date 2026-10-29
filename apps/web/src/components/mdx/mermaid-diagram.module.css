@@ -1,0 +1,53 @@
+@layer theme, base, reset, components, utilities;
+
+@layer components {
+  .figure {
+    --pele-bg: #f2eee3;
+    --pele-fg: #1c302b;
+    --pele-muted: #625c53;
+    --pele-line: #46624d;
+    --pele-surface: #faf7ee;
+    --pele-surface-alt: #e7e9dc;
+    --pele-border: #a6ac98;
+    --pele-font: var(--font-ui, system-ui), sans-serif;
+    margin: 2rem 0;
+    min-width: 0;
+    padding: clamp(1rem, 3vw, 2rem);
+    border: 1px solid var(--pele-border);
+    border-radius: var(--radius-2xl, 1rem);
+    background: var(--pele-bg);
+    color: var(--pele-fg);
+    font:
+      400 1rem / 1.6 var(--font-ui, system-ui),
+      sans-serif;
+  }
+
+  .title {
+    margin-bottom: 1.5rem;
+    font: 550 1.5rem / 1.3 var(--font-editorial-display, Georgia, serif);
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+
+  .diagram {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .caption {
+    margin: 1.25rem 0 0;
+    padding-top: 1rem;
+    border-top: 1px solid var(--pele-border);
+    color: var(--pele-muted);
+    max-inline-size: 65ch;
+    font: 400 1rem / 1.55 var(--font-editorial-reading, Georgia, serif);
+    text-wrap: pretty;
+    overflow-wrap: break-word;
+  }
+
+  .status {
+    display: block;
+    margin: 1rem 0;
+    color: var(--pele-muted);
+  }
+}
