@@ -50,6 +50,12 @@ initializing after cancellation.
   [`conversation-scroll`](../apps/web/src/components/ai-elements/conversation-scroll.ts)
   validates persisted scroll state and contains storage access failures.
 
+- [`watch-wasm-lifecycle`](../apps/web/scripts/watch-wasm-lifecycle.ts) owns
+  filesystem watchers, signal handlers, debounce queues and child processes in an
+  Effect scope. Native adapters remain in `watch-wasm.ts`. Builds run serially
+  with a 120ms debounce and one pending rebuild; shutdown discards queued work,
+  terminates the direct child and waits for its exit before releasing the scope.
+
 ## UI, styling, and motion
 
 | Need                                    | Existing owner                                                                                                                                                                                                                                                                                                                                                                                                                          |
