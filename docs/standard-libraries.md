@@ -50,6 +50,14 @@ initializing after cancellation.
   [`conversation-scroll`](../apps/web/src/components/ai-elements/conversation-scroll.ts)
   validates persisted scroll state and contains storage access failures.
 
+- [`sample-db`](../apps/web/agent/lib/sample-db.ts) keeps one lazy module-lifetime
+  Effect runtime behind the existing Promise API. `createSampleDb` creates an
+  isolated owner; its `dispose` permanently closes that owner. The default owner
+  exposes `disposeSampleDb`. The host must call disposal when ending that lifetime.
+  [`sample-db-service`](../apps/web/agent/lib/sample-db-service.ts) coalesces
+  initialization, expires initialization failures immediately, and owns database
+  cleanup. SQL queries are never retried, and this service does not enforce
+  read-only SQL authorization.
 - [`watch-wasm-lifecycle`](../apps/web/scripts/watch-wasm-lifecycle.ts) owns
   filesystem watchers, signal handlers, debounce queues and child processes in an
   Effect scope. Native adapters remain in `watch-wasm.ts`. Builds run serially
