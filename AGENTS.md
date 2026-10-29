@@ -38,3 +38,7 @@
 - Put app component/module styles in `@layer components`. Declare `@layer theme, base, reset, components, utilities;` before each component stylesheet block: Next may load a module before globals, so the first loaded stylesheet must establish the same order.
 - Authored prose must honor `data-prose-exclude` on embedded component roots and descendants. Inherited fonts/colors remain an explicit consumer choice.
 - Verify boundary changes with the development `/style-boundaries` fixture at desktop and mobile widths, alongside relevant checks.
+
+## Blog writing style
+
+- Before drafting or editing blog posts in `apps/web/content/posts/`, read [the blog writing style guide](docs/writing-style-guide.md).
