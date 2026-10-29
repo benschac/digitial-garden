@@ -3,16 +3,18 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+
 import { createBuilder } from "@content-collections/core";
 import { MDXContent } from "@content-collections/mdx/react";
 import { Schema } from "effect";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+
 import { useMDXComponents } from "../../mdx-components";
 import {
-  type PostRecord,
   postMetadataParseOptions,
   postMetadataSchema,
+  type PostRecord,
   sortPostsNewestFirst,
 } from "./schema";
 import {
@@ -267,6 +269,7 @@ describe("file-based post registry", () => {
     });
 
     expect(posts.map((post) => post.slug)).toEqual([
+      "creating-double-sided-accounting",
       "coordinating-identification-with-effect",
       "build-snap-to-post",
       "how-we-use-effect-in-snap-to-post",
@@ -286,6 +289,19 @@ describe("file-based post registry", () => {
     const draft = posts.find(
       (post) => post.slug === "how-we-use-effect-in-snap-to-post",
     );
+    const ledgerSlug = "creating-double-sided-accounting";
+    expect(posts.find((post) => post.slug === ledgerSlug)?.status).toBe(
+      "draft",
+    );
+    expect(
+      getBlogPostSummaries(posts, "development").map((post) => post.slug),
+    ).toContain(ledgerSlug);
+    expect(
+      getBlogPostSummaries(posts, "production").map((post) => post.slug),
+    ).not.toContain(ledgerSlug);
+    expect(
+      getPublishedPostSummaries(posts).map((post) => post.slug),
+    ).not.toContain(ledgerSlug);
     expect(draft?.status).toBe("draft");
     expect(
       getPublishedPostSummaries(posts).map((post) => post.slug),
