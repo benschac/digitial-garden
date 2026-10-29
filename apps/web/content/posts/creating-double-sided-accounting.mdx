@@ -11,6 +11,107 @@ tags:
 featured: false
 ---
 
+## tl;dr
+
+Treasure It Was initially built for free item exchange. About 4 or 5 months ago I added the ability to buy and sell to the app. I ended up needing to build my own internal ledger and currency functionality from scratch to handle double sided accounting and app logic that depends on the amount of credits a user has.
+
+This was our solution to pricing time.
+
+## Intro
+
+Treasure takes a unique approach to commerce because our users have the luxury of meeting each other face-to-face for hyperlocal peer-to-peer exchange Rather than shipping something across the country.
+
+This means paying in cash or Venmo, the preferred way of payment for most users While making us competitive with Facebook Marketplace and Craigslist.
+
+But there needs to be a way for the platform to monetize and an incentive structure for people to show up and be courteous to others. Additionally, there needs to be some sort of financial incentive for people to be considerate. That was the product thinking behind creating a ledger and a credit system.
+
+## How does it work at a high level?
+
+Credits become the main policy and enforcement mechanism for taking action on the platform for both free and items that are for sale.
+
+## Policy
+
+This is outside of the scope of this blog post, but all Credit action is determined by policies. They are organized and derived via the [Functional Event Sourcing Decider](https://thinkbeforecoding.com/post/2021/12/17/functional-event-sourcing-decider) which organizes and derives credit policies from a set of events. Maybe it'll be a part two.
+
+A **policy** takes the facts of an exchange—who is acting, what has already happened, and which deadline applies—and decides which action is allowed and what credit movement it requires. The ledger records the resulting grant, reservation, release, consumption, or penalty. A deadline becoming eligible and a background worker processing it are separate events.
+
+These tables describe the implemented credit and exchange rules in the source reviewed on October 29, 2026. They are a source snapshot, rather than a check of production configuration or job execution.
+
+**Units:** one credit is 1,000 integer milliunits. **F** below means one participant's accepted base match fee, saved on the offer thread. It is `Math.ceil(acceptedAmountCents / 2)` milliunits: for a $20 item, F is one credit. A penalty of 2F means twice that match's fee, which isn't always two credits. **Reserve** moves available credits into a hold; **release** returns a hold to available; **consume** removes the held entitlement. A penalty can instead debit available credits directly.
+
+#### Credit grants and pricing
+
+| Situation        | Policy                                                                                                                                                                     | Credit effect                                                                                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| New account      | The current signup trigger attempts a one-time grant, keyed to the profile.                                                                                                | Add 2 available credits. The trigger reports grant failures as warnings, so creating an account alone doesn't prove the grant succeeded.                                         |
+| Credit purchase  | Validate the paid purchase and its identity before granting the purchased entitlement. Purchase protection and the PaymentIntent key prevent duplicate grants on retries.  | Add the purchase's credit count × 1,000 milliunits; increment the purchased-credit counter. Pack prices and quantities come from the catalog.                                    |
+| Referral         | Reward eligible inviter and invitee when the referral is redeemed. A valid experiment payload can set each reward independently; otherwise the fallback is 5 credits each. | Grant each configured amount. Experiment values must be positive integer milliunits, no more than 50 credits per person; 5 credits is the fallback, not a universal live amount. |
+| Paid match price | Calculate F when the offer is accepted and save it with the thread.                                                                                                        | Charge each participant using that snapshot, including later settlement and fee-based penalties. A later formula change doesn't reprice the accepted match.                      |
+
+Sources: [signup grant](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100738_grant_two_match_credits_on_account_creation.sql), [purchase grant](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261023197115_migrate_match_credit_milliunits.sql), [referral reward policy](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/growth/referral-reward-policy.ts), and [match fee](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/match-fee-policy.ts).
+
+#### Paid offers and pickups
+
+| Situation                                           | Policy and timing                                                                                                                                                                                             | Credit effect                                                                                                                                               |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accept a proposal                                   | Only the other participant can accept the current proposal. The acceptor must afford F; seller acceptance also requires available scheduling facts.                                                           | Reject unaffordable acceptance. If both people can fund the fee, reserve F from each and activate the match.                                                |
+| Proposal maker lacks credits                        | Reserve the acceptor's fee and hold the items exclusively in `awaiting_credits`. The maker must finish funding strictly before acceptance +5 hours. Send a reminder at 150 minutes if still awaiting funding. | Reserve only the acceptor's F initially; reserve the maker's F when funding completes, then activate. The reminder has no credit effect.                    |
+| Funded acceptor leaves during funding               | The acceptor cancels before the funding deadline.                                                                                                                                                             | Consume the acceptor's reserved F. There is no maker reservation to release.                                                                                |
+| Unfunded maker leaves or funding expires            | The maker abandons before the deadline, or the 5-hour deadline is reached.                                                                                                                                    | Release the acceptor's F and debit the maker's available balance by F.                                                                                      |
+| Scheduling response                                 | The required participant normally has 18 hours from the relevant response anchor. Exact legacy 12-hour deadlines are upgraded; other explicit deadlines remain.                                               | No automatic charge simply for reaching the deadline. The counterparty can take a protected exit for inactivity.                                            |
+| Rescheduling or declining times                     | Each participant has a cap of 2 scheduling turns. Reaching it identifies the accountable participant and enables the other person's protected exit.                                                           | Reaching the cap alone doesn't charge credits. Settlement happens if the protected backout is taken.                                                        |
+| Protected exit for inactivity or scheduling impasse | The other participant missed their required response deadline or reached the scheduling cap.                                                                                                                  | Consume the accountable participant's reserved F; release the protected participant's F.                                                                    |
+| Voluntary exit while scheduling is pending          | Either participant leaves without a protected-exit reason.                                                                                                                                                    | Consume the exiting participant's F; release the other's F.                                                                                                 |
+| Voluntary exit after a pickup time is agreed        | Either participant leaves a scheduled pickup without a protected-exit reason.                                                                                                                                 | Exiting participant pays 2F: forfeit reserved F plus an extra F from available credits. Release the other's F.                                              |
+| Buyer confirms pickup                               | At or after the scheduled pickup time; early completion is rejected.                                                                                                                                          | Complete the pickup and consume both participants' reserved F.                                                                                              |
+| Seller says pickup happened                         | At or after pickup time, the seller asserts completion.                                                                                                                                                       | Open a 10-hour buyer review window from the assertion; no immediate credit movement.                                                                        |
+| Buyer disputes or doesn't dispute that assertion    | Buyer may contest through the review deadline, inclusive. Auto-completion is allowed strictly after the deadline if uncontested.                                                                              | A contest enters dispute without an immediate credit movement. Uncontested auto-completion consumes both reserved fees.                                     |
+| Paid no-show / ghost report                         | One report per pickup, from 15 minutes after the scheduled time through scheduled time +10 hours, inclusive, in an allowed pickup phase.                                                                      | Debit the accused's available balance by 10F and grant the reporter 10F; mark the pickup disputed. These effects leave the existing reserved fees in place. |
+
+The 10-hour review clock starts at the **seller's assertion**; the ghost-report window ends 10 hours after the **scheduled pickup**. They have different anchors. The funding worker is configured to run every five minutes, so the 5-hour deadline defines eligibility rather than an exact cancellation execution time.
+
+Sources: [funding decisions](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/offer-funding.decider.ts), [accepted-match decisions](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/accepted-match.decider.ts), [deadline adapter](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/accepted-match-scheduling-policy-adapter.ts), and [scheduling service](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/pickup-scheduling-policy.service.ts).
+
+#### Free exchange
+
+Free exchange doesn't use the paid-match fee F. Its credit gate and response penalties are separate policies.
+
+| Situation                           | Policy and timing                                                                                                                                                                                                                        | Credit effect                                                                                                                                                  |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| New interest or Flash claim         | Require a positive available balance: greater than zero milliunits, not necessarily a whole credit. Removing existing interest is a separate action.                                                                                     | Eligibility check only; no reservation or fee merely for expressing interest.                                                                                  |
+| Giver chooses a recipient           | Open one response obligation per chosen Free item when future pickup times are proposed. Explicit later handoffs can open obligations too; no duplicate open obligation for the same item.                                               | No immediate deduction. No future proposed times means no new response obligation.                                                                             |
+| Recipient response clock            | Allow 240 working minutes, counted daily from 08:00 to 21:45 in `America/New_York`. Overnight pauses the clock; weekends count.                                                                                                          | No deduction while within the response window. This is four working hours, not four elapsed hours.                                                             |
+| Halfway reminder                    | Eligible after 120 working minutes and before expiry; group reminders by handoff and recipient.                                                                                                                                          | No credit movement.                                                                                                                                            |
+| Valid response                      | Confirm a time matching the giver's current availability or the proposed-time snapshots for every targeted obligation; alternatively submit validated future availability. Chat alone isn't a structured response.                       | An on-time valid response avoids the response penalty.                                                                                                         |
+| No response or late response        | An open, still-chargeable obligation is overdue at its deadline. A late structured reply also settles an overdue obligation.                                                                                                             | Debit 2 available credits **per item**, leaving reserved credits unchanged. One penalty per obligation; a late reply doesn't refund a penalty already applied. |
+| Selection becomes obsolete          | Recipient switched or removed, item removed, pickup completed, or automatic scheduling supersedes the obligation. Settlement also rechecks ownership, Free status, chosen recipient and whether the item is already in an active pickup. | Cancel obsolete or no-longer-chargeable obligations instead of charging a timeout penalty.                                                                     |
+| Existing selection with credit debt | Manual scheduling remains eligible for an existing selection, including after a late-response penalty.                                                                                                                                   | Debt blocks new interest and Flash claims through the positive-balance gate; it doesn't block every action on an existing selection.                           |
+| Cancel or reschedule a Free pickup  | Scheduled participants can reschedule; the receiver can cancel; the giver can remove scheduled items. Completed states expose no lifecycle commands.                                                                                     | The Free decider emits no standalone cancellation or rescheduling credit fee. Response-obligation cancellation is a separate effect.                           |
+| Complete a Free pickup              | A scheduled pickup cannot be marked taken before its scheduled time. An unscheduled pickup has no such time gate.                                                                                                                        | No standard paid-match fee consumption or completion reward is attached to this Free lifecycle command.                                                        |
+| Report a Free pickup no-show        | Reporting opens 10 minutes after the scheduled pickup.                                                                                                                                                                                   | Update pickup/item state and record a reliability event. This path doesn't impose the paid 10F ghost penalty or grant matching compensation.                   |
+
+The free-response settlement task is configured every five minutes. As with paid funding, a deadline establishes when settlement is allowed; it doesn't guarantee the worker runs at that exact instant. The **2-credit signup grant**, **2-credit per-item response penalty**, and **5-credit referral fallback** are independent rules, even when their amounts happen to overlap.
+
+Sources: [Free decision rules](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/free-pickup/free.decider.ts), [working-hours clock](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100373_create_free_recipient_response_due_at.sql), [per-item obligation creation](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100443_globalize_free_response_selection.sql), [settlement and chargeability checks](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100442_globalize_free_response_settlement.sql), and [Free no-show grace](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/pickups/pickup-no-show-policy.ts).
+
+#### Rules the ledger must enforce
+
+| Rule                                                | Meaning                                                                                                                                                                                                                   |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ordinary reservations require funding               | A new hold must be affordable. Explicit penalties are different: funding default, scheduled backout, paid ghosting and Free response timeout can debit available credits into a negative balance.                         |
+| Balance and history move together                   | The guarded database operation updates the account projection and appends the corresponding ledger movement atomically, rechecking relevant state under locks.                                                            |
+| Retries preserve the business operation             | A reservation replay must match the original profile, thread, reason and amounts. Purchases and Free response penalties also have business-specific replay protection. A retry is not a new charge.                       |
+| History explains normal mutations                   | Normal service operations append movements instead of editing old ones. This is not permanent or tamper-proof storage: privileged migrations and profile-delete cascades remain possible.                                 |
+| Notifications and recovery have separate boundaries | Notifications follow successful mutations. The completion-retry task is configured every 15 minutes to revisit unfinished pickup settlement; it isn't a general audit of every balance or a guarantee of delivery timing. |
+
+These policies describe why a movement is permitted. The SQL transaction is still responsible for ensuring that the facts supporting it remain true when the movement commits.
+
+## Credit use in free exchange
+
+The biggest pain point was users both not getting back to one another in a timely fashion, constantly rescheduling, or just ghosting. This was the primary problem we were trying to solve with Treasure it from the start. Having an embedded schedule as well as inventory and recipient management was step one.
+
+Step two is leveraging our credit and accounting system to put a financial cost to inconveniencing Someone who's just trying to give something away.
+
 In Treasure It, buyers and sellers pay each other for items in person. You use platform credits to pay for the match itself.
 
 At first, a credit balance sounds like a single number on a user profile. Add to it when someone buys credits, subtract from it when they make a match.
@@ -57,6 +158,81 @@ Everything runs through two tables:
 - `match_credit_ledger` is the paper trail. Every time an account changes, we insert a row with the deltas, the balances after the move, the reason, the related purchase or offer thread, and an idempotency key.
 
 Having a dedicated row in `match_credit_accounts` gives the app a fast way to read your current balance. More importantly, it gives Postgres a single row to lock when credits move.
+
+### The data model
+
+The balance and history tables sit alongside purchases, credit packs, and the marketplace's existing profiles and offer threads. This view shows selected columns and the declared foreign keys; it leaves out unrelated profile, payment, and scheduling fields.
+
+<MermaidDiagram
+  title="The credit ledger and its related tables"
+  source="erDiagram
+    profiles {
+      uuid id PK
+    }
+    match_credit_accounts {
+      uuid profile_id PK,FK
+      integer available_credits
+      integer reserved_credits
+      integer lifetime_purchased_credits
+    }
+    match_credit_ledger {
+      uuid id PK
+      uuid profile_id FK
+      uuid purchase_id FK
+      uuid offer_thread_id FK
+      text reason
+      integer delta_available_credits
+      integer delta_reserved_credits
+      integer balance_available_after
+      integer balance_reserved_after
+      text idempotency_key UK
+    }
+    match_credit_purchases {
+      uuid id PK
+      uuid profile_id FK
+      uuid profile_stripe_customer_id FK
+      text pack_id FK
+      integer credit_count
+      integer amount_cents
+      text currency
+      text status
+      text idempotency_key UK
+      timestamptz granted_at
+    }
+    match_credit_packs {
+      text id PK
+      integer credit_count
+      integer price_cents
+      text currency
+      boolean active
+    }
+    profile_stripe_customers {
+      uuid id PK
+      uuid profile_id FK,UK
+      text stripe_customer_id UK
+    }
+    item_offer_threads {
+      uuid id PK
+      integer base_match_fee_credit_milliunits
+    }
+    profiles ||--o| match_credit_accounts : owns
+    profiles ||--o| profile_stripe_customers : identifies
+    profiles ||--o{ match_credit_purchases : buys
+    profiles ||--o{ match_credit_ledger : records
+    match_credit_packs ||--o{ match_credit_purchases : defines
+    profile_stripe_customers o|--o{ match_credit_purchases : links
+    match_credit_purchases o|--o{ match_credit_ledger : explains
+    item_offer_threads o|--o{ match_credit_ledger : explains"
+  description="Seven tables connect a profile's current credit balance to its ledger history, purchases, pack catalog, Stripe customer identity, and offer threads. Purchase, customer, and offer-thread provenance links can be absent. The account and ledger independently reference profiles; there is no direct account-to-ledger foreign key. This is a selected schema view, not every column or relationship in the application. Use the diagram's zoom controls to inspect the columns."
+/>
+
+**Reading the diagram:** PK marks a primary key, FK a foreign key, and UK a unique key. A circle means zero is allowed; a bar means one; the crow's foot means many. For example, a profile can have zero or many ledger rows, while each ledger row belongs to exactly one profile. A purchase or thread reference on a ledger row is optional.
+
+The important distinction is that **the account-to-ledger relationship is an invariant maintained by the mutation functions**, not a direct foreign key. Both tables reference the same profile. Likewise, the purchase foreign key allows multiple ledger rows to reference a purchase; the grant function and idempotency checks enforce a single purchase grant.
+
+The counters in the account and ledger tables are milliunits. Pack and purchase `credit_count` values are whole credits, while `price_cents` and `amount_cents` are money. Purchase rows preserve the purchased quantity and amount separately from the current catalog. Nullable purchase and thread references can be cleared when the referenced row is deleted; deleting a profile cascades to its account and ledger history.
+
+### Reading the ledger rows
 
 Here is that same match from earlier, this time as rows in `match_credit_ledger`. We store credits as integer **milliunits**, with 1,000 milliunits per credit, so we never have to deal with floating-point math:
 
