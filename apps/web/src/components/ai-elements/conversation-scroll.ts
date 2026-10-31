@@ -6,36 +6,42 @@ const scrollPositionSchema = Schema.Struct({
 });
 
 type ScrollPosition = typeof scrollPositionSchema.Type;
+
 const decodeScrollPosition = Schema.decodeUnknownSync(scrollPositionSchema);
 
-export function readScrollPosition(
-  value: string | null,
-): ScrollPosition | undefined {
-  if (value === null) return undefined;
+export const readScrollPosition = (
+  value: string | null
+): ScrollPosition | undefined => {
+  if (value === null) {
+    return undefined;
+  }
+
   try {
     return decodeScrollPosition(JSON.parse(value));
   } catch {
     return undefined;
   }
-}
+};
 
-export function restoreScrollPosition(
-  storageKey: string,
-): ScrollPosition | undefined {
+export const restoreScrollPosition = (
+  storageKey: string
+): ScrollPosition | undefined => {
   try {
     return readScrollPosition(sessionStorage.getItem(storageKey));
   } catch {
     return undefined;
   }
-}
+};
 
-export function saveScrollPosition(
+export const saveScrollPosition = (
   storageKey: string,
-  position: ScrollPosition,
-) {
+  position: ScrollPosition
+) => {
   try {
     sessionStorage.setItem(storageKey, JSON.stringify(position));
+
+    return true;
   } catch {
-    return;
+    return false;
   }
-}
+};

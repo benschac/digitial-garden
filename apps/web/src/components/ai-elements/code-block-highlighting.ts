@@ -14,7 +14,7 @@ type ChatHighlighter = Pick<
 >;
 
 type InitializeHighlighter = (
-  language: BundledLanguage,
+  language: BundledLanguage
 ) => Promise<ChatHighlighter>;
 
 class HighlightRequest extends Data.Class<{
@@ -28,9 +28,13 @@ const initializeHighlighter: InitializeHighlighter = (language) =>
     themes: ["github-light", "github-dark"],
   });
 
+interface HighlightSubscription {
+  callback: ((result: TokenizedCode) => void) | null;
+}
+
 export const createCodeHighlighting = (
   initialize: InitializeHighlighter = initializeHighlighter,
-  capacity = 100,
+  capacity = 100
 ) => {
   const highlighters = Effect.runSync(
     Cache.makeWith(
@@ -39,14 +43,15 @@ export const createCodeHighlighting = (
       {
         capacity: Infinity,
         timeToLive: (exit) => (Exit.isSuccess(exit) ? Infinity : 0),
-      },
-    ),
+      }
+    )
   );
 
   const tokens = Effect.runSync(
     Cache.makeWith(
-      Effect.fnUntraced(function* ({ code, language }: HighlightRequest) {
+      Effect.fnUntraced(function* tokens({ code, language }: HighlightRequest) {
         const highlighter = yield* Cache.get(highlighters, language);
+
         return yield* Effect.try(() => {
           const result = highlighter.codeToTokens(code, {
             lang: highlighter.getLoadedLanguages().includes(language)
@@ -54,6 +59,7 @@ export const createCodeHighlighting = (
               : "text",
             themes: { dark: "github-dark", light: "github-light" },
           });
+
           return {
             bg: result.bg ?? "transparent",
             fg: result.fg ?? "inherit",
@@ -64,35 +70,45 @@ export const createCodeHighlighting = (
       {
         capacity,
         timeToLive: (exit) => (Exit.isSuccess(exit) ? Infinity : 0),
-      },
-    ),
+      }
+    )
   );
 
   const getCached = (code: string, language: BundledLanguage) =>
     Option.getOrNull(
       Effect.runSync(
-        Cache.getSuccess(tokens, new HighlightRequest({ code, language })),
-      ),
+        Cache.getSuccess(tokens, new HighlightRequest({ code, language }))
+      )
     );
 
   const highlight = (code: string, language: BundledLanguage) =>
     Effect.runPromise(
       Cache.get(tokens, new HighlightRequest({ code, language })).pipe(
-        Effect.catch(() => Effect.succeed(null)),
-      ),
+        Effect.catch(() => Effect.succeed(null))
+      )
     );
 
   const subscribe = (
     code: string,
     language: BundledLanguage,
-    callback: (result: TokenizedCode) => void,
+    onHighlight: (result: TokenizedCode) => void
   ) => {
-    const subscription: { callback: typeof callback | null } = { callback };
-    void highlight(code, language).then((result) => {
+    const subscription: HighlightSubscription = {
+      callback: onHighlight,
+    };
+
+    const notify = async () => {
+      const result = await highlight(code, language);
       const listener = subscription.callback;
       subscription.callback = null;
-      if (result) listener?.(result);
-    });
+
+      if (result) {
+        listener?.(result);
+      }
+    };
+
+    void notify();
+
     return () => {
       subscription.callback = null;
     };

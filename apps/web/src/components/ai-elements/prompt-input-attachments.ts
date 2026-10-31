@@ -1,30 +1,30 @@
 import type { FileUIPart } from "ai";
-import { Effect, Schema } from "effect";
+import { Predicate, Effect, Schema } from "effect";
 
 export class PromptInputAttachmentError extends Schema.TaggedError<PromptInputAttachmentError>()(
   "PromptInputAttachmentError",
-  { message: Schema.String, cause: Schema.Defect() }
+  { cause: Schema.Defect(), message: Schema.String }
 ) {}
 
 export class PromptInputSendError extends Schema.TaggedError<PromptInputSendError>()(
   "PromptInputSendError",
-  { message: Schema.String, cause: Schema.Defect() }
+  { cause: Schema.Defect(), message: Schema.String }
 ) {}
 
 export interface PromptInputAttachmentReader {
   readonly result: string | ArrayBuffer | null;
   readonly error: DOMException | null;
   readonly readyState: number;
-  addEventListener(
+  addEventListener: (
     type: "load" | "error" | "abort",
     listener: () => void
-  ): void;
-  removeEventListener(
+  ) => void;
+  removeEventListener: (
     type: "load" | "error" | "abort",
     listener: () => void
-  ): void;
-  readAsDataURL(blob: Blob): void;
-  abort(): void;
+  ) => void;
+  readAsDataURL: (blob: Blob) => void;
+  abort: () => void;
 }
 
 export interface PromptInputAttachmentBrowser {
@@ -45,66 +45,85 @@ export const readPromptInputAttachment = (
     Effect.yieldNow,
     Effect.callback<string, PromptInputAttachmentError>((resume) => {
       let reader: PromptInputAttachmentReader;
+
       try {
         reader = boundaries.createFileReader();
-      } catch (cause) {
+      } catch (error) {
         resume(
           Effect.fail(
             new PromptInputAttachmentError({
+              cause: error,
               message: "Unable to open the attachment reader.",
-              cause,
             })
           )
         );
+
         return;
       }
 
+      const listeners = new Map<"load" | "error" | "abort", () => void>();
+
       const detach = () => {
-        reader.removeEventListener("load", onLoad);
-        reader.removeEventListener("error", onError);
-        reader.removeEventListener("abort", onAbort);
+        for (const [type, listener] of listeners) {
+          reader.removeEventListener(type, listener);
+        }
       };
-      const fail = (cause: unknown) => {
+
+      const fail = (cause: PromptInputAttachmentError["cause"]) => {
         detach();
+
         if (reader.readyState === 1) {
           reader.abort();
         }
+
         resume(
           Effect.fail(
             new PromptInputAttachmentError({
-              message: "Unable to read the attachment.",
               cause,
+              message: "Unable to read the attachment.",
             })
           )
         );
       };
-      function onLoad() {
+
+      const onLoad = () => {
         const { result } = reader;
-        if (typeof result !== "string" || !result.startsWith("data:")) {
+
+        if (!Predicate.isString(result) || !result.startsWith("data:")) {
           fail(new Error("The attachment reader did not return a data URL."));
+
           return;
         }
+
         detach();
         resume(Effect.succeed(result));
-      }
-      function onError() {
+      };
+
+      const onError = () => {
         fail(reader.error);
-      }
-      function onAbort() {
+      };
+
+      const onAbort = () => {
         fail(new DOMException("Attachment read aborted.", "AbortError"));
+      };
+
+      listeners.set("load", onLoad);
+      listeners.set("error", onError);
+      listeners.set("abort", onAbort);
+
+      for (const [type, listener] of listeners) {
+        reader.addEventListener(type, listener);
       }
 
-      reader.addEventListener("load", onLoad);
-      reader.addEventListener("error", onError);
-      reader.addEventListener("abort", onAbort);
       try {
         reader.readAsDataURL(blob);
-      } catch (cause) {
-        fail(cause);
+      } catch (error) {
+        fail(error);
       }
 
       return Effect.sync(() => {
         detach();
+
         if (reader.readyState === 1) {
           reader.abort();
         }
@@ -112,33 +131,41 @@ export const readPromptInputAttachment = (
     })
   );
 
-const convertPromptInputAttachment = Effect.fnUntraced(function* (
-  file: FileUIPart,
-  boundaries: PromptInputAttachmentBrowser
-) {
-  if (!file.url.startsWith("blob:")) {
-    return file;
+const convertPromptInputAttachment = Effect.fnUntraced(
+  function* convertPromptInputAttachment(
+    file: FileUIPart,
+    boundaries: PromptInputAttachmentBrowser
+  ) {
+    if (!file.url.startsWith("blob:")) {
+      return file;
+    }
+
+    const blob = yield* Effect.tryPromise({
+      catch: (cause) =>
+        new PromptInputAttachmentError({
+          cause,
+          message: "Unable to load the attachment.",
+        }),
+      try: async (signal) => {
+        const response = await boundaries.fetch(file.url, signal);
+        signal.throwIfAborted();
+
+        if (!response.ok) {
+          throw new Error(`Attachment request failed (${response.status}).`);
+        }
+
+        const responseBlob = await response.blob();
+        signal.throwIfAborted();
+
+        return responseBlob;
+      },
+    });
+
+    const url = yield* readPromptInputAttachment(blob, boundaries);
+
+    return { ...file, url };
   }
-  const blob = yield* Effect.tryPromise({
-    try: async (signal) => {
-      const response = await boundaries.fetch(file.url, signal);
-      signal.throwIfAborted();
-      if (!response.ok) {
-        throw new Error(`Attachment request failed (${response.status}).`);
-      }
-      const blob = await response.blob();
-      signal.throwIfAborted();
-      return blob;
-    },
-    catch: (cause) =>
-      new PromptInputAttachmentError({
-        message: "Unable to load the attachment.",
-        cause,
-      }),
-  });
-  const url = yield* readPromptInputAttachment(blob, boundaries);
-  return { ...file, url };
-});
+);
 
 export const convertPromptInputAttachments = (
   files: readonly FileUIPart[],
@@ -201,30 +228,32 @@ export const createPromptInputAttachmentSubmission = (
     if (active && !active.signal.aborted && active.isCurrent()) {
       return;
     }
+
     const { signal } = submission.createController();
-    const operation = { signal, isCurrent: submission.isCurrent };
+    const operation = { isCurrent: submission.isCurrent, signal };
     active = operation;
     const isActive = () => active === operation && !signal.aborted;
 
-    const workflow = Effect.gen(function* () {
+    const workflow = Effect.gen(function* workflow() {
       const files = yield* convertPromptInputAttachments(
         submission.message.files,
         boundaries
       );
 
       const outcome = yield* Effect.tryPromise({
+        catch: (cause) =>
+          new PromptInputSendError({
+            cause,
+            message: "Unable to send the message.",
+          }),
         try: async () => {
           signal.throwIfAborted();
+
           return await submission.send(
-            { text: submission.message.text, files },
+            { files, text: submission.message.text },
             { signal }
           );
         },
-        catch: (cause) =>
-          new PromptInputSendError({
-            message: "Unable to send the message.",
-            cause,
-          }),
       });
 
       if (outcome?.status === "unconfirmed") {
@@ -240,10 +269,9 @@ export const createPromptInputAttachmentSubmission = (
         onFailure: (error) => ({
           accepted: false,
           error: {
-            code:
-              error._tag === "PromptInputAttachmentError"
-                ? ("attachment_conversion" as const)
-                : ("submit" as const),
+            code: Predicate.isTagged(error, "PromptInputAttachmentError")
+              ? ("attachment_conversion" as const)
+              : ("submit" as const),
             message: error.message,
           },
         }),
@@ -253,17 +281,19 @@ export const createPromptInputAttachmentSubmission = (
 
     try {
       const result = await Effect.runPromise(workflow, { signal });
+
       if (!isActive()) {
         return;
       }
+
       if (result.error) {
         submission.onError(result.error);
       } else if (result.accepted && submission.isCurrent()) {
         submission.onSuccess();
       }
-    } catch (cause) {
+    } catch (error) {
       if (!signal.aborted) {
-        throw cause;
+        throw error;
       }
     } finally {
       if (active === operation) {

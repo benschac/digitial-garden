@@ -36,8 +36,9 @@ describe("conversation scroll position", () => {
   test("returns undefined when session storage access throws", () => {
     const originalDescriptor = Object.getOwnPropertyDescriptor(
       globalThis,
-      "sessionStorage",
+      "sessionStorage"
     );
+
     Object.defineProperty(globalThis, "sessionStorage", {
       configurable: true,
       get() {
@@ -48,7 +49,7 @@ describe("conversation scroll position", () => {
     try {
       expect(restoreScrollPosition("conversation")).toBeUndefined();
       expect(() =>
-        saveScrollPosition("conversation", { atBottom: true, scrollTop: 0 }),
+        saveScrollPosition("conversation", { atBottom: true, scrollTop: 0 })
       ).not.toThrow();
     } finally {
       if (originalDescriptor) {

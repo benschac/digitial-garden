@@ -6,9 +6,11 @@ import { Effect } from "effect";
 import {
   convertPromptInputAttachments,
   createPromptInputAttachmentSubmission,
-  type PromptInputAttachmentBrowser,
-  type PromptInputAttachmentReader,
   readPromptInputAttachment,
+} from "./prompt-input-attachments";
+import type {
+  PromptInputAttachmentBrowser,
+  PromptInputAttachmentReader,
 } from "./prompt-input-attachments";
 
 class AttachmentReader
@@ -56,31 +58,50 @@ class AttachmentReader
   }
 }
 
+interface SubmissionState {
+  text: string;
+  files: FileUIPart[];
+  revision: number;
+}
+
 const file = (url = "blob:attachment"): FileUIPart => ({
+  filename: url,
+  mediaType: "text/plain",
   type: "file",
   url,
-  mediaType: "text/plain",
-  filename: url,
 });
 
 const browserWith = (
-  reader: AttachmentReader,
+  reader: AttachmentReader
 ): PromptInputAttachmentBrowser => ({
   createFileReader: () => reader,
-  fetch: async () => new Response("attachment"),
+  fetch: () => Promise.try(() => new Response("attachment")),
 });
 
-const waitFor = async (predicate: () => boolean) => {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    if (predicate()) return;
-    await Bun.sleep(1);
+const waitFor = async (
+  predicate: () => boolean,
+  attempt = 0
+): Promise<void> => {
+  if (predicate()) {
+    return;
   }
-  throw new Error("Attachment operation did not reach the expected state.");
+
+  if (attempt === 100) {
+    throw new Error("Attachment operation did not reach the expected state.");
+  }
+
+  await Bun.sleep(1);
+
+  return waitFor(predicate, attempt + 1);
 };
 
 const readerAt = (readers: AttachmentReader[], index: number) => {
   const reader = readers[index];
-  if (!reader) throw new Error(`Missing reader ${index}`);
+
+  if (!reader) {
+    throw new Error(`Missing reader ${index}`);
+  }
+
   return reader;
 };
 
@@ -89,12 +110,14 @@ describe("readPromptInputAttachment", () => {
     const reader = new AttachmentReader();
     const controller = new AbortController();
     controller.abort();
+
     const result = Effect.runPromise(
       readPromptInputAttachment(new Blob(), browserWith(reader)),
       {
         signal: controller.signal,
-      },
+      }
     );
+
     await expect(result).rejects.toThrow();
     expect(reader.reads).toBe(0);
     expect(reader.listeners.size).toBe(0);
@@ -103,12 +126,14 @@ describe("readPromptInputAttachment", () => {
   test("aborts an in-flight reader and removes every listener", async () => {
     const reader = new AttachmentReader();
     const controller = new AbortController();
+
     const result = Effect.runPromise(
       readPromptInputAttachment(new Blob(), browserWith(reader)),
       {
         signal: controller.signal,
-      },
+      }
     );
+
     await waitFor(() => reader.reads === 1);
     controller.abort();
     await expect(result).rejects.toThrow();
@@ -120,9 +145,11 @@ describe("readPromptInputAttachment", () => {
 
   test("returns a data URL and detaches listeners on success", async () => {
     const reader = new AttachmentReader();
+
     const result = Effect.runPromise(
-      readPromptInputAttachment(new Blob(), browserWith(reader)),
+      readPromptInputAttachment(new Blob(), browserWith(reader))
     );
+
     await waitFor(() => reader.reads === 1);
     reader.succeed();
     expect(await result).toBe("data:text/plain;base64,b2s=");
@@ -134,16 +161,29 @@ describe("readPromptInputAttachment", () => {
     "types %s failures and detaches listeners",
     async (failure) => {
       const reader = new AttachmentReader();
+
       const result = Effect.runPromise(
-        Effect.flip(readPromptInputAttachment(new Blob(), browserWith(reader))),
+        Effect.flip(readPromptInputAttachment(new Blob(), browserWith(reader)))
       );
+
       await waitFor(() => reader.reads === 1);
-      if (failure === "error") reader.fail();
-      if (failure === "abort") reader.abort();
-      if (failure === "invalid") reader.succeed(new ArrayBuffer(1));
-      expect((await result)._tag).toBe("PromptInputAttachmentError");
+
+      if (failure === "error") {
+        reader.fail();
+      }
+
+      if (failure === "abort") {
+        reader.abort();
+      }
+
+      if (failure === "invalid") {
+        reader.succeed(new ArrayBuffer(1));
+      }
+
+      const attachmentError = await result;
+      expect(attachmentError._tag).toBe("PromptInputAttachmentError");
       expect(reader.listeners.size).toBe(0);
-    },
+    }
   );
 
   test("types factory and synchronous read exceptions", async () => {
@@ -151,11 +191,14 @@ describe("readPromptInputAttachment", () => {
     reader.readAsDataURL = () => {
       throw new Error("Cannot start read");
     };
+
     const error = await Effect.runPromise(
-      Effect.flip(readPromptInputAttachment(new Blob(), browserWith(reader))),
+      Effect.flip(readPromptInputAttachment(new Blob(), browserWith(reader)))
     );
+
     expect(error._tag).toBe("PromptInputAttachmentError");
     expect(reader.listeners.size).toBe(0);
+
     const factoryError = await Effect.runPromise(
       Effect.flip(
         readPromptInputAttachment(new Blob(), {
@@ -163,9 +206,10 @@ describe("readPromptInputAttachment", () => {
           createFileReader: () => {
             throw new Error("No reader");
           },
-        }),
-      ),
+        })
+      )
     );
+
     expect(factoryError._tag).toBe("PromptInputAttachmentError");
   });
 });
@@ -175,16 +219,20 @@ describe("convertPromptInputAttachments", () => {
     let fetches = 0;
     const controller = new AbortController();
     controller.abort();
+
     const result = Effect.runPromise(
       convertPromptInputAttachments([file()], {
         ...browserWith(new AttachmentReader()),
-        fetch: async () => {
-          fetches += 1;
-          return new Response("attachment");
-        },
+        fetch: () =>
+          Promise.try(() => {
+            fetches += 1;
+
+            return new Response("attachment");
+          }),
       }),
-      { signal: controller.signal },
+      { signal: controller.signal }
     );
+
     await expect(result).rejects.toThrow();
     expect(fetches).toBe(0);
   });
@@ -197,19 +245,26 @@ describe("convertPromptInputAttachments", () => {
       const body = Promise.withResolvers<Blob>();
       const requested = Promise.withResolvers<AbortSignal>();
       const controller = new AbortController();
+
       const result = Effect.runPromise(
         convertPromptInputAttachments([file()], {
           ...browserWith(reader),
           fetch: (_url, signal) => {
             requested.resolve(signal);
-            if (phase === "response") return response.promise;
+
+            if (phase === "response") {
+              return response.promise;
+            }
+
             const value = new Response("attachment");
             value.blob = () => body.promise;
+
             return Promise.resolve(value);
           },
         }),
-        { signal: controller.signal },
+        { signal: controller.signal }
       );
+
       const signal = await requested.promise;
       await Bun.sleep(0);
       controller.abort();
@@ -219,57 +274,73 @@ describe("convertPromptInputAttachments", () => {
       body.resolve(new Blob(["late"]));
       await Bun.sleep(0);
       expect(reader.reads).toBe(0);
-    },
+    }
   );
 
   test.each(["network", "http", "body"] as const)(
     "types %s failure without reading",
     async (phase) => {
       const reader = new AttachmentReader();
+
       const error = await Effect.runPromise(
         Effect.flip(
           convertPromptInputAttachments([file()], {
             ...browserWith(reader),
-            fetch: async () => {
-              if (phase === "network") throw new Error("Offline");
-              const response = new Response("attachment", {
-                status: phase === "http" ? 503 : 200,
-              });
-              if (phase === "body")
-                response.blob = async () => {
-                  throw new Error("Bad body");
-                };
-              return response;
-            },
-          }),
-        ),
+            fetch: () =>
+              Promise.try(() => {
+                if (phase === "network") {
+                  throw new Error("Offline");
+                }
+
+                const response = new Response("attachment", {
+                  status: phase === "http" ? 503 : 200,
+                });
+
+                if (phase === "body") {
+                  response.blob = () =>
+                    Promise.try(() => {
+                      throw new Error("Bad body");
+                    });
+                }
+
+                return response;
+              }),
+          })
+        )
       );
+
       expect(error._tag).toBe("PromptInputAttachmentError");
       expect(reader.reads).toBe(0);
-    },
+    }
   );
 
   test("bounds concurrency to three and preserves order, metadata and non-blob URLs", async () => {
     const readers: AttachmentReader[] = [];
     let fetches = 0;
+
     const files = [
       file("https://example.com/file"),
       ...Array.from({ length: 5 }, (_, index) => file(`blob:${index}`)),
       file("data:text/plain,existing"),
     ];
+
     const result = Effect.runPromise(
       convertPromptInputAttachments(files, {
         createFileReader: () => {
           const reader = new AttachmentReader();
           readers.push(reader);
+
           return reader;
         },
-        fetch: async () => {
-          fetches += 1;
-          return new Response("attachment");
-        },
-      }),
+        fetch: () =>
+          Promise.try(() => {
+            fetches += 1;
+
+            return new Response("attachment");
+          }),
+      })
     );
+
     await waitFor(() => readers.length === 3);
     expect(fetches).toBe(3);
     readerAt(readers, 2).succeed("data:text/plain,2");
@@ -290,7 +361,7 @@ describe("convertPromptInputAttachments", () => {
       "data:text/plain,existing",
     ]);
     expect(converted.map(({ filename }) => filename)).toEqual(
-      files.map(({ filename }) => filename),
+      files.map(({ filename }) => filename)
     );
     expect(files[1]?.url).toBe("blob:0");
     expect(readers.every((reader) => reader.listeners.size === 0)).toBe(true);
@@ -298,6 +369,7 @@ describe("convertPromptInputAttachments", () => {
 
   test("a failed conversion interrupts sibling readers and queued conversions", async () => {
     const readers: AttachmentReader[] = [];
+
     const result = Effect.runPromise(
       Effect.flip(
         convertPromptInputAttachments(
@@ -306,16 +378,19 @@ describe("convertPromptInputAttachments", () => {
             createFileReader: () => {
               const reader = new AttachmentReader();
               readers.push(reader);
+
               return reader;
             },
-            fetch: async () => new Response("attachment"),
-          },
-        ),
-      ),
+            fetch: () => Promise.try(() => new Response("attachment")),
+          }
+        )
+      )
     );
+
     await waitFor(() => readers.length === 3);
     readerAt(readers, 0).fail();
-    expect((await result)._tag).toBe("PromptInputAttachmentError");
+    const failure = await result;
+    expect(failure._tag).toBe("PromptInputAttachmentError");
     expect(readers).toHaveLength(3);
     expect(readerAt(readers, 1).aborts).toBe(1);
     expect(readerAt(readers, 2).aborts).toBe(1);
@@ -324,37 +399,39 @@ describe("convertPromptInputAttachments", () => {
 });
 
 const submissionFixture = (files: FileUIPart[] = []) => {
-  const state = { text: "original input", files };
+  const state = { files, text: "original input" };
   const controller = new AbortController();
   const errors: { code: string; message: string }[] = [];
   const sent: { text: string; files: FileUIPart[] }[] = [];
   const snapshot = { ...state };
   let clears = 0;
+
   const options = {
-    message: snapshot,
     createController: () => controller,
-    send: (message: typeof snapshot): void | Promise<void> => {
-      sent.push(message);
-    },
     isCurrent: () =>
       state.text === snapshot.text && state.files === snapshot.files,
+    message: snapshot,
+    onError: (error: { code: string; message: string }) => {
+      errors.push(error);
+    },
     onSuccess: () => {
       clears += 1;
       state.text = "";
       state.files = [];
     },
-    onError: (error: { code: string; message: string }) => {
-      errors.push(error);
+    send: (message: typeof snapshot): void | Promise<void> => {
+      sent.push(message);
     },
   };
+
   return {
-    state,
-    snapshot,
+    clears: () => clears,
     controller,
     errors,
-    sent,
     options,
-    clears: () => clears,
+    sent,
+    snapshot,
+    state,
   };
 };
 
@@ -381,7 +458,10 @@ describe("createPromptInputAttachmentSubmission", () => {
       await submit({
         ...fixture.options,
         send: () => {
-          if (failure === "throw") throw new Error("Send failed");
+          if (failure === "throw") {
+            throw new Error("Send failed");
+          }
+
           return Promise.reject(new Error("Send failed"));
         },
       });
@@ -391,20 +471,23 @@ describe("createPromptInputAttachmentSubmission", () => {
       await submit(fixture.options);
       expect(fixture.sent).toEqual([fixture.snapshot]);
       expect(fixture.clears()).toBe(1);
-    },
+    }
   );
 
   test("retains original blob attachments after conversion succeeds but sending fails", async () => {
     const fixture = submissionFixture([file()]);
     const reader = new AttachmentReader();
     const submit = createPromptInputAttachmentSubmission(browserWith(reader));
+
     const result = submit({
       ...fixture.options,
-      send: async (message) => {
-        fixture.sent.push(message);
-        throw new Error("Send failed");
-      },
+      send: (message) =>
+        Promise.try(() => {
+          fixture.sent.push(message);
+          throw new Error("Send failed");
+        }),
     });
+
     await waitFor(() => reader.reads === 1);
     reader.succeed();
     await result;
@@ -420,13 +503,16 @@ describe("createPromptInputAttachmentSubmission", () => {
     const reader = new AttachmentReader();
     const submit = createPromptInputAttachmentSubmission(browserWith(reader));
     const send = Promise.withResolvers<undefined>();
+
     const options = {
       ...fixture.options,
       send: (message: typeof fixture.snapshot) => {
         fixture.sent.push(message);
+
         return send.promise;
       },
     };
+
     const first = submit(options);
     await submit(options);
     await waitFor(() => reader.reads === 1);
@@ -438,49 +524,56 @@ describe("createPromptInputAttachmentSubmission", () => {
     expect(fixture.sent[0]?.files[0]?.url.startsWith("data:")).toBe(true);
     send.resolve(undefined);
     await first;
-    expect(fixture.state).toEqual({ text: "", files: [] });
+    expect(fixture.state).toEqual({ files: [], text: "" });
     expect(fixture.clears()).toBe(1);
   });
 
   test.each(["programmatic text", "attachments", "provider revision"] as const)(
     "dispatches changed %s while the previous send is pending and ignores its late completion",
     async (change) => {
-      const state: { text: string; files: FileUIPart[]; revision: number } = {
-        text: "message A",
+      const state: SubmissionState = {
         files: [],
         revision: 0,
+        text: "message A",
       };
+
       const sent: { text: string; files: FileUIPart[] }[] = [];
       const errors: string[] = [];
       const cleared: string[] = [];
       const controllers: AbortController[] = [];
+
       const createController = () => {
         controllers.at(-1)?.abort();
         const controller = new AbortController();
         controllers.push(controller);
+
         return controller;
       };
+
       const captureSubmission = (send: Promise<undefined>) => {
         const { text, files, revision } = state;
+
         return {
-          message: { text, files },
           createController,
-          send: (message: { text: string; files: FileUIPart[] }) => {
-            sent.push(message);
-            return send;
-          },
           isCurrent: () =>
             state.text === text &&
             state.files === files &&
             state.revision === revision,
-          onSuccess: () => {
-            cleared.push(text);
-          },
+          message: { files, text },
           onError: (error: { message: string }) => {
             errors.push(error.message);
           },
+          onSuccess: () => {
+            cleared.push(text);
+          },
+          send: (message: { text: string; files: FileUIPart[] }) => {
+            sent.push(message);
+
+            return send;
+          },
         };
       };
+
       const firstSend = Promise.withResolvers<undefined>();
       const secondSend = Promise.withResolvers<undefined>();
       const submit = createPromptInputAttachmentSubmission();
@@ -491,9 +584,18 @@ describe("createPromptInputAttachmentSubmission", () => {
       expect(sent).toHaveLength(1);
       expect(controllers).toHaveLength(1);
 
-      if (change === "programmatic text") state.text = "message B";
-      if (change === "attachments") state.files = [file("data:text/plain,B")];
-      if (change === "provider revision") state.revision += 1;
+      if (change === "programmatic text") {
+        state.text = "message B";
+      }
+
+      if (change === "attachments") {
+        state.files = [file("data:text/plain,B")];
+      }
+
+      if (change === "provider revision") {
+        state.revision += 1;
+      }
+
       const second = captureSubmission(secondSend.promise);
       const secondOperation = submit(second);
       await waitFor(() => sent.length === 2);
@@ -520,7 +622,7 @@ describe("createPromptInputAttachmentSubmission", () => {
       expect(state.text).toBe("new unsent message C");
       expect(cleared).toEqual([]);
       expect(errors).toEqual([]);
-    },
+    }
   );
 
   test.each(["text", "files"] as const)(
@@ -530,26 +632,36 @@ describe("createPromptInputAttachmentSubmission", () => {
       const send = Promise.withResolvers<undefined>();
       const submit = createPromptInputAttachmentSubmission();
       let sending = false;
+
       const result = submit({
         ...fixture.options,
         send: () => {
           sending = true;
+
           return send.promise;
         },
       });
+
       await waitFor(() => sending);
-      if (change === "text") fixture.state.text = "new input";
-      if (change === "files") fixture.state.files = [file("blob:new")];
+
+      if (change === "text") {
+        fixture.state.text = "new input";
+      }
+
+      if (change === "files") {
+        fixture.state.files = [file("blob:new")];
+      }
+
       send.resolve(undefined);
       await result;
       expect(fixture.clears()).toBe(0);
       expect(fixture.state.text).toBe(
-        change === "text" ? "new input" : "original input",
+        change === "text" ? "new input" : "original input"
       );
       expect(fixture.state.files).toEqual(
-        change === "files" ? [file("blob:new")] : [],
+        change === "files" ? [file("blob:new")] : []
       );
-    },
+    }
   );
 
   test("unmount cancellation aborts reading without sending, clearing or reporting an error", async () => {
@@ -573,22 +685,28 @@ describe("createPromptInputAttachmentSubmission", () => {
     const secondSend = Promise.withResolvers<undefined>();
     const submit = createPromptInputAttachmentSubmission();
     let sending = false;
+
     const oldOperation = submit({
       ...first.options,
       send: () => {
         sending = true;
+
         return firstSend.promise;
       },
     });
+
     await waitFor(() => sending);
     first.controller.abort();
+
     const newOperation = submit({
       ...second.options,
       send: (message) => {
         second.sent.push(message);
+
         return secondSend.promise;
       },
     });
+
     await oldOperation;
     firstSend.resolve(undefined);
     await Bun.sleep(0);

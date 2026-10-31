@@ -8,6 +8,7 @@ import {
 import { Typography } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import type { DynamicToolUIPart, ToolUIPart } from "ai";
+import { Option, Predicate, Schema } from "effect";
 import { ChevronRightIcon, TerminalIcon, WrenchIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { isValidElement } from "react";
@@ -16,7 +17,7 @@ import { CodeBlock } from "./code-block";
 
 const compactCodeBlockClassName = cn(
   "rounded-none border-0 bg-transparent [&_pre]:!bg-transparent [&_pre]:px-3 [&_pre]:pt-2 [&_pre]:pb-3",
-  "[&_pre]:text-xs [&_code]:text-xs",
+  "[&_pre]:text-xs [&_code]:text-xs"
 );
 
 export type ToolProps = ComponentProps<typeof Collapsible>;
@@ -70,13 +71,14 @@ export const ToolHeader = ({
 }: ToolHeaderProps) => {
   const derivedName =
     type === "dynamic-tool" ? toolName : type.split("-").slice(1).join("-");
+
   const displayName = title ?? derivedName;
 
   return (
     <CollapsibleTrigger
       className={cn(
         "flex w-full items-center gap-2 py-0.5 text-left text-muted-foreground transition-colors hover:text-foreground",
-        className,
+        className
       )}
       {...props}
     >
@@ -89,7 +91,7 @@ export const ToolHeader = ({
         {displayName}
       </Typography>
       {getStatusIndicator(state)}
-      <ChevronRightIcon className="size-3.5 shrink-0 transition-transform group-data-[open]:rotate-90" />
+      <ChevronRightIcon className="size-3.5 shrink-0 transition-transform group-data-open:rotate-90" />
     </CollapsibleTrigger>
   );
 };
@@ -99,8 +101,8 @@ export type ToolContentProps = ComponentProps<typeof CollapsibleContent>;
 export const ToolContent = ({ className, ...props }: ToolContentProps) => (
   <CollapsibleContent
     className={cn(
-      "data-[closed]:fade-out-0 data-[closed]:slide-out-to-top-2 data-[open]:slide-in-from-top-2 space-y-4 py-2 text-popover-foreground outline-none data-[closed]:animate-out data-[open]:animate-in",
-      className,
+      "data-closed:fade-out-0 data-closed:slide-out-to-top-2 data-open:slide-in-from-top-2 space-y-4 py-2 text-popover-foreground outline-none data-closed:animate-out data-open:animate-in",
+      className
     )}
     {...props}
   />
@@ -112,6 +114,27 @@ export type BashToolContentProps = ComponentProps<"div"> & {
   errorText: ToolPart["errorText"];
 };
 
+const decodeToolRecord = Schema.decodeUnknownOption(
+  Schema.Record(Schema.String, Schema.Unknown)
+);
+
+const getRecordValue = <Value,>(
+  value: Value,
+  key: string
+): string | number | undefined => {
+  const record = decodeToolRecord(value);
+
+  if (Option.isNone(record)) {
+    return undefined;
+  }
+
+  const property = record.value[key];
+
+  return Predicate.isString(property) || Predicate.isNumber(property)
+    ? property
+    : undefined;
+};
+
 export const BashToolContent = ({
   className,
   input,
@@ -120,13 +143,16 @@ export const BashToolContent = ({
   ...props
 }: BashToolContentProps) => {
   const command = getRecordValue(input, "command");
+
   const stdout =
     getRecordValue(output, "stdout") ??
-    (typeof output === "string" ? output : "");
+    (Predicate.isString(output) ? output : "");
+
   const stderr = getRecordValue(output, "stderr") ?? errorText ?? "";
   const exitCode = getRecordValue(output, "exitCode");
+
   const hasResult = Boolean(
-    stdout || stderr || (typeof exitCode === "number" && exitCode !== 0),
+    stdout || stderr || (Predicate.isNumber(exitCode) && exitCode !== 0)
   );
 
   return (
@@ -163,7 +189,7 @@ export const BashToolContent = ({
                 {String(stderr).trimEnd()}
               </span>
             ) : null}
-            {typeof exitCode === "number" && exitCode !== 0 ? (
+            {Predicate.isNumber(exitCode) && exitCode !== 0 ? (
               <span className="block text-muted-foreground">
                 Exited with code {exitCode}
               </span>
@@ -173,20 +199,6 @@ export const BashToolContent = ({
       ) : null}
     </div>
   );
-};
-
-const getRecordValue = (
-  value: unknown,
-  key: string,
-): string | number | undefined => {
-  if (typeof value !== "object" || value === null || !(key in value)) {
-    return undefined;
-  }
-
-  const property = value[key as keyof typeof value];
-  return typeof property === "string" || typeof property === "number"
-    ? property
-    : undefined;
 };
 
 export type ToolInputProps = ComponentProps<"div"> & {
@@ -232,7 +244,7 @@ export const ToolOutput = ({
 
   let Output = <div>{output as ReactNode}</div>;
 
-  if (typeof output === "object" && !isValidElement(output)) {
+  if (Predicate.isObjectOrArray(output) && !isValidElement(output)) {
     Output = (
       <CodeBlock
         className={compactCodeBlockClassName}
@@ -240,7 +252,7 @@ export const ToolOutput = ({
         language="json"
       />
     );
-  } else if (typeof output === "string") {
+  } else if (Predicate.isString(output)) {
     Output = (
       <CodeBlock
         className={compactCodeBlockClassName}
@@ -259,7 +271,7 @@ export const ToolOutput = ({
         errorText
           ? "bg-destructive/10 text-destructive"
           : "bg-muted/50 text-foreground",
-        className,
+        className
       )}
       {...props}
     >
