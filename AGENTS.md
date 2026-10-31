@@ -4,6 +4,14 @@
 
 This repository uses the Effect TypeScript library. Before writing Effect code, read `apps/web/node_modules/effect/AGENTS.md` completely and follow its required links. For APIs and concepts the guide does not cover, search `apps/web/node_modules/effect/src`.
 
+## Review Effect and framework ownership
+
+- Source-mirror checks prove dependency identity, not correct application architecture. Reviewers must connect a cited installed API behavior to the owning code and a relevant behavioral test.
+- Submission coordinators use Effect callbacks or Deferred for one-shot settlement and explicit finalizers for registrations. Keep native Promise adapters at Eve/React integration boundaries; completing an acceptance waiter must not interrupt an accepted stream. Scoped lint rules and `scripts/review-boundaries.test.mjs` enforce the known manual-settlement regression.
+- Classify expected domain failures separately from programmer defects and interruption. Do not replace a synchronous React missing-provider exception with a returned Effect, or remove a Promise-boundary catch merely because typed failures are already matched.
+- For manual React memoization, state whether it preserves an external store/subscription identity or only avoids recomputation. Check the compiler configuration and owner lifecycle before removing it. Compiler enablement alone does not prove that removing a memo preserves behavior.
+- Before submitting or updating a PR, run `bun run test:tools` as well as the verification fence. Existing lint debt is not evidence that architecture checks passed; report each result separately.
+
 ## Code comments
 
 - Do not add new code comments, including JSDoc, unless the user explicitly requests them.

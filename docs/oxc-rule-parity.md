@@ -19,3 +19,11 @@ The [coverage manifest](biome-rule-coverage.json) retains the repository's forme
 This migration replaces the project-local Bun canary runner, installer, and `bunfig.toml` lint/format configuration. `bun install` now installs all tooling. The workspace scripts and read-only Codex changed-file hook invoke the installed Oxlint and Oxfmt packages through `scripts/oxc-tool.mjs`.
 
 Ultracite and anti-slop expose existing application violations, including spacing, assertion explanations, runtime narrowing, and React patterns. Repository-wide lint and format checks can therefore fail until that source backlog is resolved. The migration does not bulk-rewrite application code or authored articles, or suppress those findings. Tooling tests verify integration independently of that backlog.
+
+## Submission ownership guard
+
+The two chat submission coordinators reject `Promise.withResolvers` through a scoped `no-restricted-properties` rule. Their one-shot acceptance waits belong to Effect; native Promise boundaries and test-controlled deferred responses remain supported. This is a check for a known regression, not a general proof of cancellation correctness.
+
+`bun run test:tools` exercises rejecting and accepting fixtures with the real lint configuration and checks the actual coordinator sources for this rule and the existing Promise-constructor rule. That targeted source check remains meaningful while unrelated style diagnostics exist; the full lint check still reports and fails on them. Cleanup tests separately prove release after accepted, cancelled and unconfirmed outcomes.
+
+CI runs lint/format, tooling tests, typechecks, application tests and the build as separate steps after a successful dependency installation. A failing lint step still fails the workflow, but no longer prevents the other checks from running. The local `bun run verify` sequence remains unchanged.

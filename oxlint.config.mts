@@ -33,6 +33,23 @@ export default defineConfig({
   ],
   overrides: [
     {
+      files: [
+        "**/apps/web/src/app/_components/agent-chat-submission.ts",
+        "**/apps/web/src/components/ai-elements/prompt-input-attachments.ts",
+      ],
+      rules: {
+        "no-restricted-properties": [
+          "error",
+          {
+            message:
+              "Submission coordinators use Effect.callback or Deferred for settlement and an explicit finalizer for registration cleanup.",
+            object: "Promise",
+            property: "withResolvers",
+          },
+        ],
+      },
+    },
+    {
       files: ["**/packages/*/src/**/*"],
       rules: {
         "no-restricted-imports": [
