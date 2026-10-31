@@ -7,11 +7,11 @@ import {
 } from "@personal-site/react-hooks";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+
 import { ArticleContentOverlay } from "./article-content-overlay";
 import { ArticleRhythmInspector } from "./article-rhythm-inspector";
 import { useEditorialFontPreference } from "./editorial-font-preference";
 import controls from "./editorial-font-switcher-styles";
-import styles from "./typography-inspector.module.css";
 import {
   type BoxMeasurement,
   clearTrim,
@@ -25,6 +25,9 @@ import {
   type TrimMode,
   trimValues,
 } from "./typography-inspector-measurements";
+import { InspectorSelect } from "./typography-inspector-select";
+
+import styles from "./typography-inspector.module.css";
 
 type Inspection = {
   rect: { top: number; left: number; width: number; height: number };
@@ -45,7 +48,19 @@ const modeLabels: Record<TrimMode, string> = {
   native: "Native CSS",
 };
 
-export function TypographyInspector({ pathname }: { pathname: string }) {
+export function TypographyInspector({
+  pathname,
+  contentOverlay,
+  onContentOverlayChange,
+  spacingOverlay,
+  onSpacingOverlayChange,
+}: {
+  pathname: string;
+  contentOverlay: boolean;
+  onContentOverlayChange: (enabled: boolean) => void;
+  spacingOverlay: boolean;
+  onSpacingOverlayChange: (enabled: boolean) => void;
+}) {
   const { displayFont, readingFont } = useEditorialFontPreference();
   const [mode, setMode] = useState<TrimMode>("native");
   const [scope, setScope] = useState("headings");
@@ -243,20 +258,18 @@ export function TypographyInspector({ pathname }: { pathname: string }) {
       </p>
       <label className={styles.label} htmlFor={scopeId}>
         Apply comparison to
-        <select
-          className={`${controls.select} ${styles.select}`}
+        <InspectorSelect
           id={scopeId}
           value={scope}
           onChange={(event) => setScope(event.target.value)}
         >
           <option value="headings">Article headings</option>
           <option value="text">Headings and paragraphs</option>
-        </select>
+        </InspectorSelect>
       </label>
       <label className={styles.label} htmlFor={modeId}>
         Typography comparison
-        <select
-          className={`${controls.select} ${styles.select}`}
+        <InspectorSelect
           id={modeId}
           value={mode}
           onChange={(event) => setMode(event.target.value as TrimMode)}
@@ -267,10 +280,16 @@ export function TypographyInspector({ pathname }: { pathname: string }) {
             Native CSS · editorial default
             {nativeSupported ? "" : " · unsupported"}
           </option>
-        </select>
+        </InspectorSelect>
       </label>
-      <ArticleRhythmInspector onChange={requestFrame} />
+      <ArticleRhythmInspector
+        onChange={requestFrame}
+        showGaps={spacingOverlay}
+        onShowGapsChange={onSpacingOverlayChange}
+      />
       <ArticleContentOverlay
+        enabled={contentOverlay}
+        onEnabledChange={onContentOverlayChange}
         revision={`${mode}/${scope}/${inspection?.leading ?? ""}/${inspection?.rect.height ?? ""}`}
       />
       <details>
@@ -293,11 +312,10 @@ export function TypographyInspector({ pathname }: { pathname: string }) {
           </div>
         ))}
       </details>
-      {loading ? <p role="status">Loading font files and metrics…</p> : null}
+      {loading ? <output>Loading font files and metrics…</output> : null}
       <label className={styles.label} htmlFor={targetId}>
         Inspect an existing text block
-        <select
-          className={`${controls.select} ${styles.select}`}
+        <InspectorSelect
           id={targetId}
           value={selected}
           onChange={(event) => {
@@ -312,7 +330,7 @@ export function TypographyInspector({ pathname }: { pathname: string }) {
               {target.label}
             </option>
           ))}
-        </select>
+        </InspectorSelect>
       </label>
       <button
         type="button"
@@ -440,7 +458,7 @@ export function TypographyInspector({ pathname }: { pathname: string }) {
             >
               Copy CSS
             </button>
-            <span role="status">{copyStatus}</span>
+            <output>{copyStatus}</output>
           </details>
         </>
       ) : null}

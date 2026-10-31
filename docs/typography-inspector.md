@@ -1,6 +1,7 @@
 # Article typography inspector
 
-In development or production, open a blog article and choose **Typography**. The inspector
+In development or production, open a blog article and choose the circular **Aa**
+typography button at the bottom right (accessible name: **Typography**). The inspector
 starts with native heading trim, matching the published editorial default.
 The blog title and authored h2–h4 use `text-box-trim: trim-both` and
 `text-box-edge: cap alphabetic` where both are supported; older browsers retain
@@ -9,9 +10,32 @@ Choosing Trim off or Capsize previews an alternative, including an optional
 headings-and-paragraphs scope. **Close typography** hides the controls while
 keeping the inspector mounted, so spacing, trim, selected block and overlay
 choices remain active. **Show typography** reopens the same controls. **Reset
-preview** clears article spacing/trim overrides and removes overlays; saved font
+preview** in the panel toolbar clears article spacing/trim overrides and removes
+overlays while keeping the panel open; saved font
 preferences remain selected. Leaving the article also tears down its preview.
 Preview state is retained on close, but is not stored across a page reload.
+
+The rounded panel is 360px wide where space allows, with a scrolling controls
+area capped at 480px and a fixed toolbar. Smaller viewports reduce its available
+width and height. The toolbar's **Animate** switch (accessible name:
+**Panel animation**) enables or disables
+the 260ms Motion pointer-open/close fade and subtle scale. The panel remains
+visible until its exit finishes. The setting survives closing and reopening
+the panel on the current route. Reduced motion keeps the fade without scaling.
+Keyboard opening, closing and Escape are instant. Escape also
+returns focus to the circular launcher. Measured overlays never animate.
+
+Inspector selects retain native keyboard and option behavior, with a consistent
+44px minimum height, 12px corners and an inset decorative chevron. Their app-owned
+radius does not depend on the opt-in shared UI theme.
+
+On any blog article, **Ctrl/⌘ + Shift + U** toggles content overlays and spacing
+guides together, even before opening the panel. If either is off, the shortcut
+turns both on; if both are on, it turns both off. The first use keeps the controls
+minimized so the article stays visible. The checkboxes stay in sync with the
+shortcut. Typing in inputs, selects, textareas or editable content, composing
+text, and holding the shortcut do not toggle overlays. Reset preview and route
+changes clear the overlays. Chat routes keep the typography control hidden.
 
 Font sources are resolved from the computed primary family, CSS font-face rules,
 style and CSS weight matching. Metrics come from the exact compiled Next font asset with
@@ -104,8 +128,9 @@ All scales preserve zero margins and embedded component interiors. Grid steps
 follow common [Carbon spacing conventions](https://www.carbondesignsystem.com/building-blocks/foundations/spacing/overview);
 Fluid is a project-specific experiment inspired by [Utopia's fluid space system](https://utopia.fyi/space/calculator/).
 
-Closing the main panel preserves the active preview and shows **Show typography**
-and **Reset preview**. Reset clears all article preview overrides while keeping
+Closing the main panel preserves the active preview and shows the circular
+**Show typography** launcher. **Reset preview** lives inside the panel toolbar.
+Reset clears all article preview overrides while keeping
 published native heading trim. **Reset to editorial default** inside the panel
 only resets rhythm sliders and spacing, preserving the selected trim comparison.
 No preview styles leak into another route when the article inspector unmounts.
@@ -115,3 +140,23 @@ with deliberate classes to add to the relevant owned elements. Adapt snapshots
 to the article's responsive tokens before adopting them. Trimming first/last
 line edges does not change baseline-to-baseline spacing inside a multiline
 heading. Evaluate those two decisions separately.
+
+## Motion audit
+
+The `improve-animations` and `find-animation-opportunities` audit keeps
+diagnostic measurements and typography comparisons instant.
+`packages/ui/src/components/typography.tsx` owns static visual roles; motion
+belongs to the interactive consumer. The panel already stays outside page
+view-transition animations. Its optional surface animation is controlled
+independently by **Panel animation**.
+
+| Candidate                               | Gate decision                                                                                                                              |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Keyboard overlay toggle                 | Keep instant: keyboard actions must not wait on animation.                                                                                 |
+| Content boxes, baselines and gap guides | Keep instant: interpolated coordinates would misrepresent the measured layout.                                                             |
+| Font, trim and spacing comparisons      | Keep instant: users need to compare the final typography and exact gaps.                                                                   |
+| Panel surface                           | Optional pointer transition: 260ms Motion opacity and scale from 0.97, using the existing page easing; reduced motion keeps only the fade. |
+| Native disclosures                      | Keep stable: dense diagnostic content needs no decorative reveal.                                                                          |
+
+The animation switch changes only the panel surface. It does not interpolate
+font size, line height, margins, trim, content boxes or spacing guides.

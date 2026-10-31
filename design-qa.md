@@ -102,7 +102,6 @@ The temporary audit screenshots were removed during cleanup; the observations be
 
 Final result remains blocked for source-fidelity QA: missing source visual. The two P2 implementation findings also remain open. This does not indicate a build failure.
 
-
 ## Implementation follow-up — 2026-09-20
 
 - Fixed the development overlay: Typography starts collapsed. Open and Close controls were tested by pointer and keyboard Enter; closed controls have zero visible selects and aria-expanded=false. Native-select Escape handling was unreliable during testing and was removed; Close typography is the explicit dismissal control.
@@ -117,3 +116,37 @@ Final result remains blocked for source-fidelity QA: missing source visual. The 
 final result: blocked
 
 Formal source-fidelity acceptance still lacks an independent visual target. The replacement screenshot also remains pending; the working implementation uses the existing asset safely.
+
+## Typography inspector QA - 2026-10-31
+
+Scope: compact the existing inspector, round its frame and selects, animate both
+opening and closing with Motion, and move reset into the panel. Existing article
+content and typography controls remain the reference.
+
+Reference capture: `/private/tmp/typography-panel-before.png`.
+Final capture: `/private/tmp/typography-panel-final.png`.
+
+### Visual comparison
+
+- The desktop frame changed from approximately 404 × 1292px to 360 × 551px.
+- The controls scroll inside a 480px area; the toolbar remains visible.
+- The frame has 16px corners. Native selects have 12px corners, a 44px minimum
+  height and 40px right padding for the inset chevron.
+- At 390 × 844px and 320 × 640px, the frame stays within the viewport without
+  horizontal scrolling. The 320px toolbar's scroll width equals its client width.
+- The corner contains only the circular typography launcher when minimized.
+
+### Interaction checks
+
+- Both pointer directions use a 260ms Motion transition. Closing was observed
+  with intermediate opacity while still visible, then opacity zero and hidden.
+- Turning Animate off closes instantly and remains off after reopening.
+- Escape closes instantly and returns focus to the launcher.
+- Reset clears an Airy preset and both overlays, restores Editorial, retains
+  focus on reset, and leaves the panel open.
+- Independent review verified reduced-motion handling through Motion's scale
+  path. The operating-system preference was not changed during browser checks.
+
+No remaining P0, P1 or P2 issues in the requested scope.
+
+Final result: passed.

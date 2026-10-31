@@ -7,8 +7,10 @@ import {
 } from "@personal-site/react-hooks";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+
 import { useEditorialFontPreference } from "./editorial-font-preference";
-import controls from "./editorial-font-switcher-styles";
+import { InspectorSelect } from "./typography-inspector-select";
+
 import styles from "./typography-inspector.module.css";
 
 type Gap = {
@@ -89,7 +91,15 @@ function rhythmBlocks(article: HTMLElement) {
   ];
 }
 
-export function ArticleRhythmInspector({ onChange }: { onChange: () => void }) {
+export function ArticleRhythmInspector({
+  onChange,
+  showGaps,
+  onShowGapsChange,
+}: {
+  onChange: () => void;
+  showGaps: boolean;
+  onShowGapsChange: (enabled: boolean) => void;
+}) {
   const { displayFont, readingFont } = useEditorialFontPreference();
   const [preset, setPreset] = useState<RhythmPreset>("current");
   const [spacingScale, setSpacingScale] = useState<SpacingScale>("editorial");
@@ -98,7 +108,6 @@ export function ArticleRhythmInspector({ onChange }: { onChange: () => void }) {
   const [heading, setHeading] = useState(1);
   const [body, setBody] = useState(1);
   const [spacing, setSpacing] = useState(1);
-  const [showGaps, setShowGaps] = useState(false);
   const [gaps, setGaps] = useState<Gap[]>([]);
   const [css, setCss] = useState("");
   const id = useId();
@@ -351,8 +360,7 @@ export function ArticleRhythmInspector({ onChange }: { onChange: () => void }) {
       <div className={styles.rhythm}>
         <label className={styles.label} htmlFor={`${id}-preset`}>
           Spacing preset
-          <select
-            className={`${controls.select} ${styles.select}`}
+          <InspectorSelect
             id={`${id}-preset`}
             value={preset}
             onChange={(event) => {
@@ -404,7 +412,7 @@ export function ArticleRhythmInspector({ onChange }: { onChange: () => void }) {
             <option value="custom" disabled>
               Custom sliders
             </option>
-          </select>
+          </InspectorSelect>
         </label>
         <p className={styles.note} aria-live="polite">
           {presetNotes[preset]}
@@ -465,7 +473,7 @@ export function ArticleRhythmInspector({ onChange }: { onChange: () => void }) {
             type="checkbox"
             checked={showGaps}
             onChange={(event) => {
-              setShowGaps(event.target.checked);
+              onShowGapsChange(event.target.checked);
               requestFrame();
             }}
           />{" "}
@@ -540,7 +548,11 @@ export function ArticleRhythmInspector({ onChange }: { onChange: () => void }) {
       </div>
       {showGaps
         ? createPortal(
-            <div className={styles.overlay} aria-hidden="true">
+            <div
+              className={styles.overlay}
+              aria-hidden="true"
+              data-article-spacing-overlay=""
+            >
               {gaps.map((gap) => (
                 <div
                   key={gap.key}

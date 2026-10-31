@@ -7,14 +7,16 @@ import {
 } from "@personal-site/react-hooks";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+
 import { useEditorialFontPreference } from "./editorial-font-preference";
-import styles from "./typography-inspector.module.css";
 import {
   type FontSource,
   measureBox,
   resolveFont,
   scaledMetrics,
 } from "./typography-inspector-measurements";
+
+import styles from "./typography-inspector.module.css";
 
 const textSelector =
   "h1,h2,h3,h4,h5,h6,p,pre,li,dt,dd,th,td,figcaption,blockquote,button,summary";
@@ -106,9 +108,16 @@ function clippedRect(element: Element): Rect | undefined {
   return { top, left, width: right - left, height: bottom - top };
 }
 
-export function ArticleContentOverlay({ revision }: { revision: string }) {
+export function ArticleContentOverlay({
+  revision,
+  enabled,
+  onEnabledChange,
+}: {
+  revision: string;
+  enabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
+}) {
   const { displayFont, readingFont } = useEditorialFontPreference();
-  const [enabled, setEnabled] = useState(false);
   const [fontGuides, setFontGuides] = useState(true);
   const [boxes, setBoxes] = useState<ContentBox[]>([]);
   const [guides, setGuides] = useState<Guide[]>([]);
@@ -312,7 +321,7 @@ export function ArticleContentOverlay({ revision }: { revision: string }) {
         <input
           type="checkbox"
           checked={enabled}
-          onChange={(event) => setEnabled(event.target.checked)}
+          onChange={(event) => onEnabledChange(event.target.checked)}
         />
         Show all content overlays
       </label>
