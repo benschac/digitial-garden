@@ -33,6 +33,130 @@ export default defineConfig({
   ],
   overrides: [
     {
+      files: [
+        "**/apps/web/agent/lib/sample-db-service.ts",
+        "**/apps/web/agent/lib/sample-db.ts",
+        "**/apps/web/scripts/watch-wasm-lifecycle.ts",
+        "**/apps/web/src/app/experiments/wasm-canvas/particle-initialization.ts",
+        "**/apps/web/src/app/experiments/wasm-canvas/wasm-engine.ts",
+        "**/apps/web/src/components/ai-elements/prompt-input-attachments.ts",
+      ],
+      rules: { "unicorn/throw-new-error": "off" },
+    },
+    {
+      files: ["**/apps/web/agent/lib/sample-db-service.ts"],
+      rules: { "max-classes-per-file": ["error", 3] },
+    },
+    {
+      files: [
+        "**/apps/web/src/app/experiments/wasm-canvas/particle-initialization.ts",
+        "**/apps/web/src/components/ai-elements/prompt-input-attachments.ts",
+      ],
+      rules: { "max-classes-per-file": ["error", 2] },
+    },
+    {
+      files: ["**/apps/web/src/app/experiments/wasm-canvas/wasm-engine.ts"],
+      rules: { "max-classes-per-file": ["error", 5] },
+    },
+    {
+      files: [
+        "**/apps/web/src/app/experiments/typegpu-particles/typegpu-particle-shaders.ts",
+        "**/apps/web/src/app/experiments/typegpu-particles/typegpu-particle-renderer.ts",
+        "**/apps/web/src/app/experiments/wasm-canvas/webgpu-particle-renderer.ts",
+        "**/apps/web/src/lib/perlin-noise.ts",
+      ],
+      rules: { "no-bitwise": "off" },
+    },
+    {
+      files: [
+        "**/apps/web/src/app/experiments/perlin-noise/perlin-noise-experiment.tsx",
+        "**/apps/web/src/app/experiments/typegpu-particles/typegpu-particles.tsx",
+        "**/apps/web/src/app/experiments/forces/forces-experiment.tsx",
+        "**/apps/web/src/app/experiments/wasm-canvas/wasm-canvas.tsx",
+      ],
+      rules: { "jsx-a11y/prefer-tag-over-role": "off" },
+    },
+    {
+      files: ["**/packages/ui/src/index.ts"],
+      rules: { "oxc/no-barrel-file": "off" },
+    },
+    {
+      files: ["**/apps/web/src/mdx-components.tsx"],
+      rules: {
+        "react/no-clone-element": "off",
+        "react/no-react-children": "off",
+      },
+    },
+    {
+      files: ["**/apps/web/src/components/ai-elements/shimmer.tsx"],
+      rules: { "react/static-components": "off" },
+    },
+    {
+      files: ["**/apps/web/src/components/ai-elements/prompt-input.tsx"],
+      rules: {
+        "promise/avoid-new": "off",
+        "react/hook-use-state": "off",
+        "react/no-react-children": "off",
+      },
+    },
+    {
+      files: ["**/packages/ui/src/components/spinner.tsx"],
+      rules: { "jsx-a11y/prefer-tag-over-role": "off" },
+    },
+    {
+      files: [
+        "**/apps/web/src/app/typography-inspector.tsx",
+        "**/apps/web/src/app/article-content-overlay.tsx",
+        "**/apps/web/src/app/article-rhythm-inspector.tsx",
+        "**/apps/web/src/app/experiments/forces/forces-experiment.tsx",
+      ],
+      rules: { "react/exhaustive-effect-dependencies": "off" },
+    },
+    {
+      files: ["**/apps/web/src/app/_components/agent-chat-submission.ts"],
+      rules: {
+        "func-style": ["error", "declaration", { allowArrowFunctions: true }],
+      },
+    },
+    {
+      files: [
+        "**/apps/web/src/app/experiments/typegpu-particles/typegpu-particle-shaders.ts",
+        "**/apps/web/src/lib/content/collection.ts",
+      ],
+      rules: { "sort-keys": "off" },
+    },
+    {
+      files: [
+        "**/apps/web/src/app/experiments/typegpu-particles/typegpu-particle-shaders.ts",
+      ],
+      rules: { "prefer-destructuring": "off" },
+    },
+    {
+      files: [
+        "**/apps/web/src/app/experiments/wasm-canvas/wasm-particle-renderer.ts",
+      ],
+      rules: { "no-empty-function": "off" },
+    },
+    {
+      files: [
+        "**/apps/web/src/components/ai-elements/prompt-input.tsx",
+        "**/apps/web/src/components/ai-elements/question.tsx",
+        "**/apps/web/src/mdx-components.tsx",
+      ],
+      rules: {
+        "react/jsx-no-target-blank": [
+          "error",
+          {
+            allowReferrer: true,
+            enforceDynamicLinks: "always",
+            forms: true,
+            links: true,
+            warnOnSpreadAttributes: false,
+          },
+        ],
+      },
+    },
+    {
       files: ["**/packages/*/src/**/*"],
       rules: {
         "no-restricted-imports": [
