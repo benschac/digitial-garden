@@ -16,6 +16,12 @@ interface MdxNode {
     value?: null | object | string;
   }>;
   children?: MdxNode[];
+  data?: {
+    estree?: {
+      body?: readonly unknown[];
+      type: string;
+    };
+  };
   depth?: number;
   name?: string | null;
   type: string;
@@ -28,11 +34,12 @@ function visit(node: MdxNode): void {
     );
   }
 
-  if (
-    node.type === "mdxjsEsm" ||
-    node.type === "mdxFlowExpression" ||
-    node.type === "mdxTextExpression"
-  ) {
+  const isExpression =
+    node.type === "mdxFlowExpression" || node.type === "mdxTextExpression";
+  const isEmptyProgram =
+    node.data?.estree?.type === "Program" &&
+    node.data.estree.body?.length === 0;
+  if (node.type === "mdxjsEsm" || (isExpression && !isEmptyProgram)) {
     throw new Error(
       "MDX imports, exports, and arbitrary JavaScript expressions are disabled.",
     );
