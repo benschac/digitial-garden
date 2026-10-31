@@ -124,7 +124,9 @@ export async function resolveFont(
   const cached = metricCache.get(asset);
   if (cached) return cached;
   const response = await fetch(
-    `/api/typography-metrics?asset=${encodeURIComponent(asset)}`,
+    process.env.NODE_ENV === "production"
+      ? `/_next/static/typography-metrics/${encodeURIComponent(asset)}.json`
+      : `/api/typography-metrics?asset=${encodeURIComponent(asset)}`,
     { signal },
   );
   if (!response.ok) throw new Error("Metrics unavailable for this font asset");
@@ -298,9 +300,5 @@ export function exportTrimCss(target: Target, mode: TrimMode) {
     return `${comment}.${className} { --blog-heading-trim: none; text-box-trim: none; }`;
   if (mode === "native")
     return `${comment}@supports (text-box-trim: trim-both) and (text-box-edge: cap alphabetic) {\n  .${className} { text-box-trim: trim-both; text-box-edge: cap alphabetic; }\n}`;
-  return (
-    comment +
-    `.${className} { --blog-heading-trim: none; text-box-trim: none; }\n` +
-    createStyleString(className, values)
-  );
+  return `${comment}.${className} { --blog-heading-trim: none; text-box-trim: none; }\n${createStyleString(className, values)}`;
 }

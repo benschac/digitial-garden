@@ -3,10 +3,15 @@ import createMDX from "@next/mdx";
 import { wgslTurbopackRule } from "@vgpu/wgsl/next";
 import { withEve } from "eve/next";
 
+import { prepareTypographyMetrics } from "./scripts/prepare-typography-metrics.mjs";
+
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   reactCompiler: true,
   allowedDevOrigins: ["127.0.0.1"],
+  compiler: {
+    runAfterProductionCompile: prepareTypographyMetrics,
+  },
   turbopack: {
     rules: {
       "*.wgsl": wgslTurbopackRule(),

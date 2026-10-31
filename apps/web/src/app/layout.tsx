@@ -127,9 +127,7 @@ export default function RootLayout({
           <EditorialFontPreference>
             {children}
             <InteractionSounds />
-            {process.env.NODE_ENV === "development" ? (
-              <EditorialFontSwitcher />
-            ) : null}
+            <EditorialFontSwitcher />
           </EditorialFontPreference>
         </div>
       </body>

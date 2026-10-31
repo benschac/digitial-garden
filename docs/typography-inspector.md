@@ -1,6 +1,6 @@
 # Article typography inspector
 
-In development, open a blog article and choose **Typography**. The inspector
+In development or production, open a blog article and choose **Typography**. The inspector
 starts with native heading trim, matching the published editorial default.
 The blog title and authored h2–h4 use `text-box-trim: trim-both` and
 `text-box-edge: cap alphabetic` where both are supported; older browsers retain
@@ -14,13 +14,22 @@ preferences remain selected. Leaving the article also tears down its preview.
 Preview state is retained on close, but is not stored across a page reload.
 
 Font sources are resolved from the computed primary family, CSS font-face rules,
-style and CSS weight matching. After the face loads, the development-only metrics
-route extracts its metrics from the exact compiled Next font asset with
+style and CSS weight matching. Metrics come from the exact compiled Next font asset with
 `@capsizecss/unpack/fs`. This covers custom OTF/WOFF/WOFF2 files and self-hosted
 Google fonts. LT Superior Serif and Bonbance are the repository defaults;
 the existing font preference can choose different fonts. System fonts cannot be
 verified through this API, so they retain original CSS; Georgia's Capsize catalog
 entry is explicitly a reference. Missing metrics never trigger fallback trimming.
+
+In development, the metrics API reads `.next/dev/static/media`. Requests accept
+only a bare font filename; URLs, absolute paths, traversal and symlinks outside
+that directory are rejected. The API continues to return 404 in production.
+After production compilation, `scripts/prepare-typography-metrics.mjs` extracts
+metrics into `.next/static/typography-metrics/<font-asset>.json`. The inspector
+loads these static files beside the compiled fonts, so serverless deployments
+do not need runtime filesystem access to font assets. Build extraction failures
+fail the build. A production build and local production-server check are separate
+from deploying the change to the hosted site.
 
 Capsize's `precomputeValues` preserves the computed font size and line height and
 supplies pseudo-element edge margins. Trim off and Capsize explicitly suppress
@@ -78,13 +87,13 @@ existing gaps, which can produce identical results when gaps already fit both
 grids. Both retain body leading at 1.55 and preserve zero margins. They organize
 gaps, not every text baseline.
 
-| Owned outer spacing | 4px grid | 8px grid |
-| --- | --- | --- |
-| Paragraphs | 20px | 24px |
-| Grouped content / title | 32px | 40px |
-| h2 before / after | 48px / 16px | 64px / 24px |
-| h3 before / after | 32px / 12px | 40px / 16px |
-| h4 before / after | 24px / 8px | 32px / 16px |
+| Owned outer spacing     | 4px grid    | 8px grid    |
+| ----------------------- | ----------- | ----------- |
+| Paragraphs              | 20px        | 24px        |
+| Grouped content / title | 32px        | 40px        |
+| h2 before / after       | 48px / 16px | 64px / 24px |
+| h3 before / after       | 32px / 12px | 40px / 16px |
+| h4 before / after       | 24px / 8px  | 32px / 16px |
 
 The fine-tune multiplier applies to these recipes, so Custom values may
 intentionally leave the grid. Fluid retains body leading
