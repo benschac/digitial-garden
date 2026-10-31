@@ -11,51 +11,69 @@ interface MermaidDiagramProps {
   description: string;
 }
 
-export function MermaidDiagram({
+const loadPele = () => import("pele");
+
+export const MermaidDiagram = ({
   source,
   title,
   description,
-}: MermaidDiagramProps) {
+}: MermaidDiagramProps) => {
   const host = useRef<HTMLDivElement>(null);
-  const id = `mermaid-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const id = `mermaid-${useId().replaceAll(/[^a-zA-Z0-9_-]/gu, "")}`;
   const createController = useAbortController();
   const [status, setStatus] = useState("Loading diagram…");
 
   useEffect(() => {
     const container = host.current;
-    if (!container) return;
+
+    if (!container) {
+      return;
+    }
+
     const controller = createController();
     let destroy: (() => void) | undefined;
 
-    async function initialize(target: HTMLDivElement) {
+    const initialize = async (target: HTMLDivElement) => {
       setStatus("Loading diagram…");
+
       try {
-        const { mount } = await import("pele");
-        if (controller.signal.aborted) return;
+        const { mount } = await loadPele();
+
+        if (controller.signal.aborted) {
+          return;
+        }
+
         const diagram = mount(target, source, {
           idPrefix: `${id}-svg`,
-          links: false,
           images: false,
+          links: false,
           onError: () => {
-            if (!controller.signal.aborted)
+            if (!controller.signal.aborted) {
               setStatus("Diagram unavailable. Read the description below.");
+            }
           },
           onRender: () => {
-            if (!controller.signal.aborted) setStatus("");
+            if (!controller.signal.aborted) {
+              setStatus("");
+            }
           },
         });
+
         destroy = () => diagram.destroy();
+
         if (controller.signal.aborted) {
           destroy();
           target.replaceChildren();
         }
       } catch {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
           setStatus("Diagram unavailable. Read the description below.");
+        }
       }
-    }
+    };
 
     void initialize(container);
+
     return () => {
       controller.abort();
       destroy?.();
@@ -67,6 +85,7 @@ export function MermaidDiagram({
     <figure
       className={styles.figure}
       data-prose-exclude
+      data-mdx-interactive
       aria-labelledby={`${id}-title`}
     >
       <div className={styles.title} id={`${id}-title`}>
@@ -83,4 +102,4 @@ export function MermaidDiagram({
       </figcaption>
     </figure>
   );
-}
+};

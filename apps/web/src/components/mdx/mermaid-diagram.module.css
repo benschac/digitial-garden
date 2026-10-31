@@ -34,6 +34,11 @@
     min-width: 0;
   }
 
+  .diagram > svg {
+    display: block;
+    margin-inline: auto;
+  }
+
   .caption {
     margin: 1.25rem 0 0;
     padding-top: 1rem;
