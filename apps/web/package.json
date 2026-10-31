@@ -50,6 +50,7 @@
     "@vgpu/wgsl": "0.6.0",
     "@videojs/mux-video": "10.1.0",
     "@videojs/react": "10.1.0",
+    "@xstate/effect": "1.0.0-alpha.10",
     "ai": "7.0.143",
     "cuelume": "0.2.8",
     "effect": "4.0.5",
@@ -78,7 +79,8 @@
     "three": "^0.186.1",
     "typegpu": "^0.12.8",
     "use-stick-to-bottom": "1.1.6",
-    "vgpu": "0.6.0"
+    "vgpu": "0.6.0",
+    "xstate": "6.0.0-alpha.71"
   },
   "devDependencies": {
     "@shikijs/rehype": "^4.5.0",

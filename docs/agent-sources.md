@@ -5,10 +5,10 @@ Use these checkouts to verify library behavior when a skill, example, or documen
 | Reference | Version | Local source |
 | --- | --- | --- |
 | Effect | 4.0.5, matching the web dependency | `.agent_sources/effect/packages/effect/` |
-| XState Effect | 1.0.0-alpha.10, reference only | `.agent_sources/xstate-effect/packages/xstate-effect/` |
+| XState Effect | 1.0.0-alpha.10, matching the web dependency | `.agent_sources/xstate-effect/packages/xstate-effect/` |
 | XState core | 6.0.0-alpha.71, same checkout | `.agent_sources/xstate-effect/packages/core/` |
 
-XState core and XState Effect are not installed as runtime dependencies by these commands. Downloading source does not execute upstream package installation or lifecycle scripts. Root-level mirrors are outside the workspace build, typecheck, and application-test directories; Git, Oxlint, and Oxfmt ignore them. Use the workspace test scripts rather than recursively running tests from the repository root.
+The web package separately declares these exact Effect, XState core and XState Effect runtime dependencies. The source commands only maintain reference checkouts: downloading source does not install runtime dependencies or execute upstream lifecycle scripts. Root-level mirrors are outside the workspace build, typecheck, and application-test directories; Git, Oxlint, and Oxfmt ignore them. Use the workspace test scripts rather than recursively running tests from the repository root.
 
 ## Git ownership and downloaded documentation
 
@@ -43,7 +43,7 @@ At setup on 2026-10-31, npm's `@xstate/effect` `alpha` tag resolved to `0.1.0-al
 
 The pinned bridge README uses `createEffectLogic`, and its `src/index.ts` exports that API rather than the quick-start's `fromEffect`. Follow the pinned source when adapting the example.
 
-These are source and declared peer-compatibility checks, not an application integration test. XState v6 and its Effect bridge remain prerelease references. Compare both `latest` and `alpha` when checking updates; a channel name does not establish which version is newer.
+These checks establish source identity and declared peer compatibility; application integration requires its own tests. XState v6 and its Effect bridge remain prereleases. Compare both `latest` and `alpha` when checking updates; a channel name does not establish which version is newer.
 
 ## Reading order
 
