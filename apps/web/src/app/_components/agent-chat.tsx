@@ -4,9 +4,21 @@ import { Button } from "@personal-site/ui/components/button";
 import { Typography } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
 import type { UserContent } from "ai";
-import { useEveAgent } from "eve/react";
+import type {
+  ConversationState,
+  EveAgentStoreSnapshot,
+  SendTurnOptions,
+} from "eve/client";
 import { AlertCircleIcon, BrainIcon, PlusIcon, SquareIcon } from "lucide-react";
-import { useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import type { FormEvent } from "react";
+
 import {
   Conversation,
   ConversationContent,
@@ -22,7 +34,13 @@ import {
   PromptInputTextarea,
   usePromptInputAttachments,
 } from "@/components/ai-elements/prompt-input";
+import type {
+  PromptInputSubmissionContext,
+  PromptInputSubmissionOutcome,
+} from "@/components/ai-elements/prompt-input-attachments";
 import { Shimmer } from "@/components/ai-elements/shimmer";
+
+import { createAgentChatSubmission } from "./agent-chat-submission";
 import { AgentMessage } from "./agent-message";
 
 const AGENT_NAME = "Workbench analyst";
@@ -35,16 +53,33 @@ export function AgentChat({
   readonly sessionless?: boolean;
 }) {
   const [cancellationError, setCancellationError] = useState<string>();
+  const [submissionError, setSubmissionError] = useState<string>();
   const [hasInputText, setHasInputText] = useState(false);
-  const agent = useEveAgent({
-    initialSession:
-      sessionId === undefined
-        ? undefined
-        : {
-            sessionId,
-            streamIndex: 0,
-          },
-    resume: sessionId !== undefined,
+  const submission = useMemo(
+    () =>
+      createAgentChatSubmission({
+        initialSession:
+          sessionId === undefined
+            ? undefined
+            : {
+                sessionId,
+                streamIndex: 0,
+              },
+      }),
+    [sessionId]
+  );
+
+  const { store } = submission;
+
+  const subscribe = useCallback(
+    (notify: () => void) => store.subscribe(notify),
+    [store]
+  );
+
+  const getSnapshot = useCallback(() => store.snapshot, [store]);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const [resuming, setResuming] = useState(sessionId !== undefined);
+  store.setCallbacks({
     onSessionChange(session) {
       if (sessionId === undefined && session !== undefined) {
         // Next patches window.history to navigate, which would detach the active stream.
@@ -52,11 +87,18 @@ export function AgentChat({
           window.history,
           window.history.state,
           "",
-          `/s/${encodeURIComponent(session.sessionId)}`,
+          `/s/${encodeURIComponent(session.sessionId)}`
         );
       }
     },
   });
+  useEffect(() => submission.mount(() => setResuming(false)), [submission]);
+
+  const agent = {
+    ...snapshot,
+    status:
+      resuming && snapshot.status === "ready" ? "resuming" : snapshot.status,
+  };
 
   const isBusy = agent.status === "submitted" || agent.status === "streaming";
   const isResuming = agent.status === "resuming";
@@ -72,7 +114,8 @@ export function AgentChat({
       isPendingAssistantShell);
   const turnFailure =
     isBusy || isResuming ? undefined : getLatestTurnFailure(agent.events);
-  const errorMessage = cancellationError ?? agent.error?.message ?? turnFailure;
+  const errorMessage =
+    cancellationError ?? submissionError ?? agent.error?.message ?? turnFailure;
   const hasConversationContent =
     sessionless || !isEmpty || errorMessage !== undefined;
   const showConversationLayout = isResuming || hasConversationContent;
@@ -80,22 +123,30 @@ export function AgentChat({
 
   const requestCancellation = () => {
     setCancellationError(undefined);
-    void agent.cancel().catch((error: unknown) => {
+    void store.cancel().catch((error: unknown) => {
       setCancellationError(toErrorMessage(error));
     });
   };
 
-  const handleSubmit = async (message: PromptInputMessage) => {
+  const handleSubmit = (
+    message: PromptInputMessage,
+    _event: FormEvent<HTMLFormElement>,
+    context: PromptInputSubmissionContext
+  ): Promise<PromptInputSubmissionOutcome> => {
     const text = message.text.trim();
-    if ((text.length === 0 && message.files.length === 0) || isResuming) return;
+    if ((text.length === 0 && message.files.length === 0) || isResuming) {
+      return Promise.resolve({ status: "cancelled" });
+    }
 
-    setHasInputText(false);
+    setSubmissionError(undefined);
     setCancellationError(undefined);
-    const options = isBusy ? { turnPolicy: "steer" as const } : undefined;
+    const options: SendTurnOptions = {
+      signal: context.signal,
+      turnPolicy: isBusy ? "steer" : undefined,
+    };
 
     if (message.files.length === 0) {
-      await agent.send(text, options);
-      return;
+      return submission.send(text, options);
     }
 
     const parts: UserContent = [];
@@ -111,11 +162,15 @@ export function AgentChat({
       });
     }
 
-    await agent.send(parts, options);
+    return submission.send(parts, options);
   };
 
   const composer = (
-    <PromptInput onSubmit={handleSubmit}>
+    <PromptInput
+      onSubmit={handleSubmit}
+      onError={(error) => setSubmissionError(error.message)}
+      onReset={() => setHasInputText(false)}
+    >
       <PromptInputTextarea
         disabled={isResuming}
         onChange={(event) =>
@@ -168,10 +223,10 @@ export function AgentChat({
                   message={message}
                   onInputResponses={(inputResponses) => {
                     setCancellationError(undefined);
-                    return agent.respond(inputResponses);
+                    return store.send({ inputResponses });
                   }}
                 />
-              ),
+              )
             )}
             {showPendingThinking ? <PendingThinking /> : null}
             {errorMessage ? <ErrorMessage message={errorMessage} /> : null}
@@ -185,7 +240,7 @@ export function AgentChat({
           "mx-auto w-full px-4 sm:px-6",
           showConversationLayout
             ? "fixed bottom-0 left-1/2 z-20 max-w-3xl -translate-x-1/2 bg-gradient-to-t from-background via-background to-transparent pt-4 pb-6"
-            : "flex max-w-xl flex-1 flex-col items-center justify-center gap-8 pb-[10vh]",
+            : "flex max-w-xl flex-1 flex-col items-center justify-center gap-8 pb-[10vh]"
         )}
       >
         {showConversationLayout ? null : (
@@ -317,7 +372,7 @@ function toErrorMessage(error: unknown): string {
 }
 
 function getLatestTurnFailure(
-  events: ReturnType<typeof useEveAgent>["events"],
+  events: EveAgentStoreSnapshot<ConversationState>["events"]
 ): string | undefined {
   for (let index = events.length - 1; index >= 0; index -= 1) {
     const event = events[index];
