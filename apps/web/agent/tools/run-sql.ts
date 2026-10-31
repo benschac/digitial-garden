@@ -1,5 +1,6 @@
 import { Schema } from "effect";
 import { defineTool } from "eve/tools";
+
 import { runReadOnlySql } from "../lib/sample-db";
 
 const sqlInputSchema = Schema.Struct({
@@ -15,9 +16,10 @@ export default defineTool({
   description:
     "Run a read-only SQL query against the analytics tables (orders, customers) " +
     "and return the columns and rows.",
-  inputSchema: runSqlInputSchema,
   async execute({ sql }) {
     const { columns, rows } = await runReadOnlySql(sql);
+
     return { columns, rows: rows.slice(0, 500), truncated: rows.length > 500 };
   },
+  inputSchema: runSqlInputSchema,
 });

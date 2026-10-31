@@ -18,9 +18,9 @@ export interface SampleDbResult {
 }
 
 export interface SampleDbConnection {
-  run(sql: string): unknown;
-  exec(sql: string): QueryExecResult[];
-  close(): void;
+  run: (sql: string) => void;
+  exec: (sql: string) => QueryExecResult[];
+  close: () => void;
 }
 
 export type InitializeSampleDb = () => Promise<{
@@ -29,20 +29,20 @@ export type InitializeSampleDb = () => Promise<{
 
 export class SampleDbInitializationError extends Schema.TaggedError<SampleDbInitializationError>()(
   "SampleDbInitializationError",
-  { cause: Schema.Defect() },
+  { cause: Schema.Defect() }
 ) {}
 
 export class SampleDbQueryError extends Schema.TaggedError<SampleDbQueryError>()(
   "SampleDbQueryError",
-  { cause: Schema.Defect() },
+  { cause: Schema.Defect() }
 ) {}
 
 export class SampleDb extends Context.Service<
   SampleDb,
   {
-    query(
-      sql: string,
-    ): Effect.Effect<
+    query: (
+      sql: string
+    ) => Effect.Effect<
       SampleDbResult,
       SampleDbInitializationError | SampleDbQueryError
     >;
@@ -52,51 +52,60 @@ export class SampleDb extends Context.Service<
 export const makeSampleDbLayer = (initialize: InitializeSampleDb = initSqlJs) =>
   Layer.effect(
     SampleDb,
-    Effect.gen(function* () {
+    Effect.gen(function* initializeSampleDbService() {
       const lifetime = yield* Effect.scope;
+
       const database = yield* Effect.cachedWithTTL(
-        Effect.gen(function* () {
+        Effect.gen(function* initializeSampleDb() {
           const SQL = yield* Effect.tryPromise({
-            try: initialize,
             catch: (cause) => new SampleDbInitializationError({ cause }),
+            try: initialize,
           });
+
           const attempt = yield* Scope.fork(lifetime, "sequential");
-          return yield* Effect.gen(function* () {
+
+          return yield* Effect.gen(function* seedSampleDb() {
             const connection = yield* Effect.acquireRelease(
               Effect.try({
-                try: () => new SQL.Database(),
                 catch: (cause) => new SampleDbInitializationError({ cause }),
+                try: () => new SQL.Database(),
               }),
-              (connection) => Effect.sync(() => connection.close()),
+              (acquired) => Effect.sync(() => acquired.close())
             );
+
             yield* Effect.try({
-              try: () => connection.run(SEED),
               catch: (cause) => new SampleDbInitializationError({ cause }),
+              try: () => connection.run(SEED),
             });
+
             return connection;
           }).pipe(
             Effect.provideService(Scope.Scope, attempt),
             Effect.onExit((exit) =>
-              Exit.isFailure(exit) ? Scope.close(attempt, exit) : Effect.void,
-            ),
+              Exit.isFailure(exit) ? Scope.close(attempt, exit) : Effect.void
+            )
           );
         }),
-        (exit) => (Exit.isSuccess(exit) ? Infinity : 0),
+        (exit) => (Exit.isSuccess(exit) ? Infinity : 0)
       );
 
-      const query = Effect.fn("SampleDb.query")(function* (sql: string) {
+      const query = Effect.fn("SampleDb.query")(function* query(sql: string) {
         const connection = yield* database;
+
         return yield* Effect.try({
+          catch: (cause) => new SampleDbQueryError({ cause }),
           try: (): SampleDbResult => {
             const [result] = connection.exec(sql);
+
             return result
               ? { columns: result.columns, rows: result.values }
               : { columns: [], rows: [] };
           },
-          catch: (cause) => new SampleDbQueryError({ cause }),
         });
       });
 
       return SampleDb.of({ query });
-    }),
+    })
   );
+
+export const sampleDbLive = makeSampleDbLayer();
