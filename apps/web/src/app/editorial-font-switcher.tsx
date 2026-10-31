@@ -2,13 +2,15 @@
 
 import { usePathname } from "next/navigation";
 import { useId, useState } from "react";
+
 import { Typography, typographyVariants } from "@/components/page-typography";
+
 import { useEditorialFontPreference } from "./editorial-font-preference";
 import styles from "./editorial-font-switcher-styles";
 import {
   type EditorialFontId,
-  type EntryFontId,
   editorialFontOptions,
+  type EntryFontId,
   entryFontOptions,
 } from "./editorial-fonts";
 import { TypographyInspector } from "./typography-inspector";
@@ -48,6 +50,8 @@ export function EditorialFontSwitcher() {
         className={styles.toggle}
         type="button"
         aria-expanded={isOpen && !isMinimized}
+        data-cuelume-open={isOpen && !isMinimized ? "close" : "open"}
+        data-cuelume-emphasis="subtle"
         aria-controls={panelId}
         onClick={() => {
           if (isMinimized) setIsMinimized(false);
@@ -91,6 +95,8 @@ export function EditorialFontSwitcher() {
               Entry titles
             </Typography>
             <select
+              data-cuelume-select=""
+              data-cuelume-emphasis="subtle"
               className={styles.select}
               id={entrySelectId}
               value={entryFont}
@@ -115,6 +121,8 @@ export function EditorialFontSwitcher() {
           Display
         </Typography>
         <select
+          data-cuelume-select=""
+          data-cuelume-emphasis="subtle"
           className={styles.select}
           id={displaySelectId}
           onChange={(event) =>
@@ -137,6 +145,8 @@ export function EditorialFontSwitcher() {
           Reading
         </Typography>
         <select
+          data-cuelume-select=""
+          data-cuelume-emphasis="subtle"
           className={styles.select}
           id={readingSelectId}
           onChange={(event) =>

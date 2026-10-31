@@ -54,6 +54,7 @@
     "@videojs/mux-video": "10.1.0",
     "@videojs/react": "10.1.0",
     "ai": "7.0.143",
+    "cuelume": "0.2.8",
     "effect": "4.0.5",
     "eve": "0.80.1",
     "giotto": "github:nicoloboschi/giotto#b0809dc037358f21e5e1ebe3dcbdf257b432a4aa",

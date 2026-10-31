@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ViewTransition } from "react";
+
 import { ParticleHeaderBackground } from "@/app/experiments/wasm-canvas/particle-header-background";
 import { Typography, typographyVariants } from "@/components/page-typography";
 import {
@@ -10,12 +11,14 @@ import {
   getAllPostSlugs,
   getPostBySlug,
 } from "@/lib/content";
+
 import { ArticleSurface } from "../article-surface";
 import { BlogTransition } from "../blog-transition";
 import { ColorfulSVGPattern } from "../colorful-svg-pattern";
 import { PaperValley } from "../paper-valley";
-import paperStyles from "../paper-valley.module.css";
 import styles from "./article-styles";
+
+import paperStyles from "../paper-valley.module.css";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -96,6 +99,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             )}
           >
             <Link
+              data-cuelume-navigate=""
+              data-cuelume-emphasis="subtle"
               className={typographyVariants({
                 variant: "articleBackLink",
                 className: `${styles.link} ${styles.backLink}`,
@@ -112,7 +117,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           {hasLandscapeHeader ? (
             <PaperValley>
               <nav className={paperStyles.back} aria-label="Blog navigation">
-                <Link href="/blog" transitionTypes={["blog-close"]}>
+                <Link
+                  data-cuelume-navigate=""
+                  data-cuelume-emphasis="subtle"
+                  href="/blog"
+                  transitionTypes={["blog-close"]}
+                >
                   ← All posts
                 </Link>
               </nav>
@@ -227,6 +237,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <div>
             {adjacentPosts.previous ? (
               <Link
+                data-cuelume-navigate=""
+                data-cuelume-emphasis="subtle"
                 className={typographyVariants({
                   variant: "articleNavigationTitle",
                   className: `${styles.link} ${styles.navigationLink}`,
@@ -247,6 +259,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <div className={styles.nextPost}>
             {adjacentPosts.next ? (
               <Link
+                data-cuelume-navigate=""
+                data-cuelume-emphasis="subtle"
                 className={typographyVariants({
                   variant: "articleNavigationTitle",
                   className: `${styles.link} ${styles.navigationLink}`,

@@ -1,6 +1,7 @@
 import { cn } from "@personal-site/ui/lib/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
+
 import { PageTransition } from "@/app/_components/page-transition";
 import { Typography, typographyVariants } from "@/components/page-typography";
 
@@ -44,6 +45,8 @@ export default function PlaygroundPage() {
           className="flex flex-col items-start gap-3"
         >
           <Link
+            data-cuelume-navigate=""
+            data-cuelume-emphasis="subtle"
             className={playgroundLink}
             href="/experiments/wasm-canvas"
             transitionTypes={["nav-forward"]}
@@ -51,6 +54,8 @@ export default function PlaygroundPage() {
             Explore WebGPU particles →
           </Link>
           <Link
+            data-cuelume-navigate=""
+            data-cuelume-emphasis="subtle"
             className={playgroundLink}
             href="/experiments/perlin-noise"
             transitionTypes={["nav-forward"]}
@@ -58,6 +63,8 @@ export default function PlaygroundPage() {
             Compare Perlin noise →
           </Link>
           <Link
+            data-cuelume-navigate=""
+            data-cuelume-emphasis="subtle"
             className={playgroundLink}
             href="/experiments/vector-math"
             transitionTypes={["nav-forward"]}
@@ -65,6 +72,8 @@ export default function PlaygroundPage() {
             Play with vector math →
           </Link>
           <Link
+            data-cuelume-navigate=""
+            data-cuelume-emphasis="subtle"
             className={playgroundLink}
             href="/experiments/forces"
             transitionTypes={["nav-forward"]}
@@ -72,6 +81,8 @@ export default function PlaygroundPage() {
             Explore forces →
           </Link>
           <Link
+            data-cuelume-navigate=""
+            data-cuelume-emphasis="subtle"
             className={playgroundLink}
             href="/"
             transitionTypes={["nav-back"]}

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ViewTransition } from "react";
+
 import { Typography } from "@/components/page-typography";
 import { getBlogPosts } from "@/lib/content";
+
 import { ArticleSurface } from "./article-surface";
 import { BlogTransition } from "./blog-transition";
 import styles from "./index-styles";
@@ -54,6 +56,8 @@ export default async function BlogIndexPage() {
                         className={styles.postTitle}
                       >
                         <Link
+                          data-cuelume-navigate=""
+                          data-cuelume-emphasis="subtle"
                           className={`${styles.link} ${styles.postLink}`}
                           href={`/blog/${post.slug}`}
                           transitionTypes={["blog-open"]}

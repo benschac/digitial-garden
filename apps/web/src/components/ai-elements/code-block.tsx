@@ -13,6 +13,7 @@ import {
   typographyVariants,
 } from "@personal-site/ui/components/typography";
 import { cn } from "@personal-site/ui/lib/utils";
+import { play } from "cuelume";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import type { ComponentProps, CSSProperties, HTMLAttributes } from "react";
 import {
@@ -368,6 +369,7 @@ export const CodeBlockCopyButton = ({
     try {
       if (!isCopied) {
         await navigator.clipboard.writeText(code);
+        play("success", { emphasis: "subtle" });
         setIsCopied(true);
         onCopy?.();
         timeoutRef.current = window.setTimeout(

@@ -3,10 +3,13 @@ import { Newsreader, Sorts_Mill_Goudy } from "next/font/google";
 import localFont from "next/font/local";
 import Script from "next/script";
 import type { ReactNode } from "react";
+
 import { getSiteUrl } from "@/lib/site";
+
 import { EditorialFontPreference } from "./editorial-font-preference";
 import { EditorialFontSwitcher } from "./editorial-font-switcher";
 import { editorialFontPreferenceInitScript } from "./editorial-fonts";
+import { InteractionSounds } from "./interaction-sounds";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
@@ -123,6 +126,7 @@ export default function RootLayout({
         <div style={{ isolation: "isolate" }}>
           <EditorialFontPreference>
             {children}
+            <InteractionSounds />
             {process.env.NODE_ENV === "development" ? (
               <EditorialFontSwitcher />
             ) : null}

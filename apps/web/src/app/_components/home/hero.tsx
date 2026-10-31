@@ -51,6 +51,8 @@ export function Hero() {
               paddingY={0}
             >
               <Link
+                data-cuelume-navigate=""
+                data-cuelume-emphasis="subtle"
                 className={socialLink}
                 data-highlight-color="#24292f"
                 href="https://github.com/benschac"
@@ -70,6 +72,8 @@ export function Hero() {
                 </svg>
               </Link>
               <Link
+                data-cuelume-navigate=""
+                data-cuelume-emphasis="subtle"
                 className={socialLink}
                 data-highlight-color="#0a66c2"
                 href="https://www.linkedin.com/in/benjaminschachter/"
@@ -89,6 +93,8 @@ export function Hero() {
                 </svg>
               </Link>
               <Link
+                data-cuelume-navigate=""
+                data-cuelume-emphasis="subtle"
                 className={socialLink}
                 data-highlight-color="#0085ff"
                 href="https://bsky.app/profile/benschac.bsky.social"
@@ -105,6 +111,8 @@ export function Hero() {
                 />
               </Link>
               <Link
+                data-cuelume-navigate=""
+                data-cuelume-emphasis="subtle"
                 className={socialLink}
                 data-highlight-color="#1da1f2"
                 href="https://x.com/benschac"
@@ -127,6 +135,8 @@ export function Hero() {
       <PrimaryNavigation>
         {process.env.NODE_ENV === "development" ? (
           <Link
+            data-cuelume-navigate=""
+            data-cuelume-emphasis="subtle"
             className={primaryLink}
             href="/about"
             transitionTypes={["nav-forward"]}
@@ -136,6 +146,8 @@ export function Hero() {
         ) : null}
         {process.env.NODE_ENV === "development" ? (
           <Link
+            data-cuelume-navigate=""
+            data-cuelume-emphasis="subtle"
             className={primaryLink}
             href="/how-i-work"
             transitionTypes={["nav-forward"]}
@@ -144,6 +156,8 @@ export function Hero() {
           </Link>
         ) : null}
         <Link
+          data-cuelume-navigate=""
+          data-cuelume-emphasis="subtle"
           className={primaryLink}
           href="/blog"
           transitionTypes={["nav-forward"]}
@@ -152,6 +166,8 @@ export function Hero() {
         </Link>
         {process.env.NODE_ENV === "development" ? (
           <Link
+            data-cuelume-navigate=""
+            data-cuelume-emphasis="subtle"
             className={primaryLink}
             href="/reading"
             transitionTypes={["nav-forward"]}
@@ -160,6 +176,8 @@ export function Hero() {
           </Link>
         ) : null}
         <Link
+          data-cuelume-navigate=""
+          data-cuelume-emphasis="subtle"
           className={primaryLink}
           href="/playground"
           transitionTypes={["nav-forward"]}
@@ -168,6 +186,8 @@ export function Hero() {
         </Link>
         {process.env.NODE_ENV === "development" ? (
           <Link
+            data-cuelume-navigate=""
+            data-cuelume-emphasis="subtle"
             className={primaryLink}
             href="/s"
             transitionTypes={["nav-forward"]}
