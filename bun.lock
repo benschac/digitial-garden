@@ -42,6 +42,7 @@
         "@vgpu/wgsl": "0.6.0",
         "@videojs/mux-video": "10.1.0",
         "@videojs/react": "10.1.0",
+        "@xstate/effect": "1.0.0-alpha.10",
         "ai": "7.0.143",
         "cuelume": "0.2.8",
         "effect": "4.0.5",
@@ -71,6 +72,7 @@
         "typegpu": "^0.12.8",
         "use-stick-to-bottom": "1.1.6",
         "vgpu": "0.6.0",
+        "xstate": "6.0.0-alpha.71",
       },
       "devDependencies": {
         "@shikijs/rehype": "^4.5.0",
@@ -983,6 +985,8 @@
     "@webgpu/types": ["@webgpu/types@0.1.74", "", {}, "sha512-lgiI4hbuLcI9unnm2cL/tvCaQU45dp0xcLWJh5uB/9MBGvIA4F8XIk7nSiBeg+K4xWGYwgZKn80LmERI5CxoTA=="],
 
     "@workflow/serde": ["@workflow/serde@4.1.0", "", {}, "sha512-pav4F2BoirECWR7Nf1TKt+2eETcBj7jj4cBefQ8VXQCA6NPkaKeLfj/zMgi+3zYV5ZIBT4GuUiphsj0/b9hPQQ=="],
+
+    "@xstate/effect": ["@xstate/effect@1.0.0-alpha.10", "", { "peerDependencies": { "@oxlint/plugins": "^1.76.0", "effect": "^4.0.0", "xstate": "^6.0.0-alpha.71" }, "optionalPeers": ["@oxlint/plugins"] }, "sha512-Wh0eRE2o6xT9uhY2w7vGHFE/pcTTfEXq5IVGRYgR7TmvXk4HPb6RovKLodhSEr7KjOAF9KeVCHbIaisKYXvCLg=="],
 
     "acorn": ["acorn@8.19.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-oJlA3XiRm7Cyk6qFD2Jn8ak9B7jSy0qy00ADO3+8dpT0LSjFihQYv4C02LFCSYJV3Q37xYwwRy5m+IpIiUzqWw=="],
 
@@ -1915,6 +1919,8 @@
     "ws": ["ws@8.22.0", "", { "peerDependencies": { "bufferutil": "^4.0.1", "utf-8-validate": ">=5.0.2" }, "optionalPeers": ["bufferutil", "utf-8-validate"] }, "sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg=="],
 
     "wsl-utils": ["wsl-utils@0.1.0", "", { "dependencies": { "is-wsl": "^3.1.0" } }, "sha512-h3Fbisa2nKGPxCpm89Hk33lBLsnaGBvctQopaBSOW/uIs6FTe1ATyAnKFJrzVs9vpGdsTe73WF3V4lIsk4Gacw=="],
+
+    "xstate": ["xstate@6.0.0-alpha.71", "", { "bin": { "xstate": "./bin/xstate.js" } }, "sha512-ABNE8jHjqzpQd/gX8huQYvSlbrOEaJcvzBtt6qWMooQuvxKoarkEKT0JFr3ymhI5Jza72YmfsWnFEophersmhQ=="],
 
     "yallist": ["yallist@3.1.1", "", {}, "sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g=="],
 

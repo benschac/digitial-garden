@@ -5,7 +5,7 @@ import type { ParticleRenderer } from "./particle-renderer";
 
 function makeRenderer(
   kind: ParticleRenderer["kind"],
-  destroy: () => void = () => undefined,
+  destroy: () => void = () => undefined
 ): ParticleRenderer {
   return {
     destroy,
@@ -46,7 +46,7 @@ describe("particle renderer initialization", () => {
           return makeRenderer("WebAssembly + Canvas 2D");
         },
         onGpuFailure: () => undefined,
-      }),
+      })
     ).rejects.toBe(reason);
     expect(factoryCalls).toBe(0);
   });
@@ -65,7 +65,7 @@ describe("particle renderer initialization", () => {
           return makeRenderer("WebAssembly + Canvas 2D");
         },
         onGpuFailure: () => failureCalls++,
-      }),
+      })
     ).resolves.toBe(gpu);
     expect(fallbackCalls).toBe(0);
     expect(failureCalls).toBe(0);
@@ -84,7 +84,7 @@ describe("particle renderer initialization", () => {
         },
         createFallback: async () => fallback,
         onGpuFailure: (error) => reported.push(error),
-      }),
+      })
     ).resolves.toBe(fallback);
     expect(reported).toEqual([gpuError]);
   });
@@ -99,7 +99,7 @@ describe("particle renderer initialization", () => {
         createGpu: async () => null,
         createFallback: async () => fallback,
         onGpuFailure: () => failureCalls++,
-      }),
+      })
     ).resolves.toBe(fallback);
     expect(failureCalls).toBe(0);
   });
@@ -183,7 +183,7 @@ describe("particle renderer initialization", () => {
     await started.promise;
     controller.abort(reason);
     fallback.resolve(
-      makeRenderer("WebAssembly + Canvas 2D", () => destroyCount++),
+      makeRenderer("WebAssembly + Canvas 2D", () => destroyCount++)
     );
 
     await expect(initialization).rejects.toBe(reason);
@@ -205,8 +205,35 @@ describe("particle renderer initialization", () => {
           throw fallbackError;
         },
         onGpuFailure: (error) => reported.push(error),
-      }),
+      })
     ).rejects.toBe(fallbackError);
     expect(reported).toEqual([gpuError]);
+  });
+  test("initial setup failure disposes the renderer without starting fallback", async () => {
+    const error = new Error("Initial count failed");
+    let destroys = 0;
+    let fallbacks = 0;
+    await expect(
+      initializeParticleRenderer({
+        configure: () => {
+          throw error;
+        },
+        createFallback: () => {
+          fallbacks += 1;
+
+          return Promise.resolve(makeRenderer("WebAssembly + Canvas 2D"));
+        },
+        createGpu: () =>
+          Promise.resolve(
+            makeRenderer("Rust/WASM + WebGPU", () => {
+              destroys += 1;
+            })
+          ),
+        onGpuFailure: () => {},
+        signal: new AbortController().signal,
+      })
+    ).rejects.toBe(error);
+    expect(destroys).toBe(1);
+    expect(fallbacks).toBe(0);
   });
 });

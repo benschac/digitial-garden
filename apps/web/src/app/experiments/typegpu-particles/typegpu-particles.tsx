@@ -3,17 +3,15 @@
 import {
   useAbortableEffect,
   useAnimationFrame,
+  useMediaQuery,
 } from "@personal-site/react-hooks";
 import { useRef, useState } from "react";
 
 import { typographyVariants } from "@/components/page-typography";
 
 import { frameDeltaSeconds } from "../wasm-canvas/animation-timing";
-import {
-  initializeParticleRenderer,
-  isRendererAbort,
-} from "../wasm-canvas/particle-initialization";
-import type { ParticleRenderer } from "../wasm-canvas/particle-renderer";
+import { createParticleLifecycle } from "../wasm-canvas/particle-lifecycle";
+import type { ParticleLifecycle } from "../wasm-canvas/particle-lifecycle";
 import styles from "../wasm-canvas/wasm-canvas-styles";
 import { createWasmParticleRenderer } from "../wasm-canvas/wasm-particle-renderer";
 import { createTypeGpuParticleRenderer } from "./typegpu-particle-renderer";
@@ -26,12 +24,13 @@ const GPU_PARTICLE_STEP = 10_000;
 
 export function TypeGpuParticles() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rendererRef = useRef<ParticleRenderer | null>(null);
+  const lifecycleRef = useRef<ParticleLifecycle | null>(null);
   const fpsRef = useRef<HTMLOutputElement>(null);
   const densityRef = useRef(DEFAULT_PARTICLE_COUNT);
   const intensityRef = useRef(0.85);
   const speedRef = useRef(DEFAULT_SIMULATION_SPEED);
   const pausedRef = useRef(false);
+  const reducedMotionRef = useRef(false);
   const pointerRef = useRef({ active: false, x: 0, y: 0 });
   const frameCountRef = useRef(0);
   const lastFpsUpdateRef = useRef<number | null>(null);
@@ -43,14 +42,14 @@ export function TypeGpuParticles() {
   const [paused, setPaused] = useState(false);
   const [status, setStatus] = useState("Checking for WebGPU…");
   const { cancelFrame, requestFrame } = useAnimationFrame((milliseconds) => {
-    const renderer = rendererRef.current;
-    if (!renderer || pausedRef.current || document.hidden) {
+    const renderer = lifecycleRef.current;
+    if (!renderer?.canAnimate()) {
       return false;
     }
 
     const deltaSeconds = frameDeltaSeconds(
       previousFrameTimeRef.current,
-      milliseconds,
+      milliseconds
     );
     previousFrameTimeRef.current = milliseconds;
     renderer.render({
@@ -69,7 +68,7 @@ export function TypeGpuParticles() {
     ) {
       const framesPerSecond = Math.round(
         (frameCountRef.current * 1_000) /
-          (milliseconds - lastFpsUpdateRef.current),
+          (milliseconds - lastFpsUpdateRef.current)
       );
       if (fpsRef.current) {
         fpsRef.current.value = `${framesPerSecond} fps`;
@@ -79,6 +78,11 @@ export function TypeGpuParticles() {
     }
 
     return true;
+  });
+
+  useMediaQuery("(prefers-reduced-motion: reduce)", (matches) => {
+    reducedMotionRef.current = matches;
+    lifecycleRef.current?.setEligibility({ reducedMotion: matches });
   });
 
   useAbortableEffect((signal) => {
@@ -98,10 +102,10 @@ export function TypeGpuParticles() {
       canvasSize.width = Math.max(bounds.width, 1);
       canvasSize.height = Math.max(bounds.height, 1);
       canvasSize.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-      rendererRef.current?.resize(
+      lifecycleRef.current?.resize(
         canvasSize.width,
         canvasSize.height,
-        canvasSize.pixelRatio,
+        canvasSize.pixelRatio
       );
     };
 
@@ -119,94 +123,90 @@ export function TypeGpuParticles() {
       pointerRef.current.active = false;
     };
     const handleVisibility = () => {
-      if (document.hidden) {
-        cancelFrame();
-      } else {
-        previousFrameTimeRef.current = null;
-        requestFrame();
-      }
+      lifecycleRef.current?.setEligibility({ hidden: document.hidden });
     };
 
     canvas.addEventListener("pointermove", updatePointer);
     canvas.addEventListener("pointerleave", clearPointer);
     document.addEventListener("visibilitychange", handleVisibility);
 
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (reducedMotion.matches) {
+    if (reducedMotionRef.current) {
       pausedRef.current = true;
       setPaused(true);
     }
 
-    const loadRenderer = async () => {
-      let renderer: ParticleRenderer;
-      try {
-        renderer = await initializeParticleRenderer({
-          signal,
-          createGpu: () =>
-            createTypeGpuParticleRenderer(
-              canvas,
-              signal,
-              densityRef.current,
-              canvasSize.width,
-              canvasSize.height,
-              canvasSize.pixelRatio,
-              (message) => {
-                if (signal.aborted) {
-                  return;
-                }
-                cancelFrame();
-                pausedRef.current = true;
-                setPaused(true);
-                setStatus(`WebGPU device lost · ${message}`);
-              },
-            ),
-          createFallback: () =>
-            createWasmParticleRenderer(
-              canvas,
-              signal,
-              densityRef.current,
-              canvasSize.width,
-              canvasSize.height,
-              canvasSize.pixelRatio,
-            ),
-          onGpuFailure: (error) =>
-            console.warn(
-              "TypeGPU initialization failed; using WASM fallback.",
-              error,
-            ),
-        });
-      } catch (error) {
-        if (!isRendererAbort(error, signal)) {
-          console.error(error);
+    let readyStatus = "";
+    const lifecycle = createParticleLifecycle({
+      signal,
+      eligibility: {
+        hidden: document.hidden,
+        paused: pausedRef.current,
+        reducedMotion: reducedMotionRef.current,
+      },
+      createGpu: (rendererSignal, lost) =>
+        createTypeGpuParticleRenderer(
+          canvas,
+          rendererSignal,
+          densityRef.current,
+          canvasSize.width,
+          canvasSize.height,
+          canvasSize.pixelRatio,
+          lost
+        ),
+      createFallback: (rendererSignal) =>
+        createWasmParticleRenderer(
+          canvas,
+          rendererSignal,
+          densityRef.current,
+          canvasSize.width,
+          canvasSize.height,
+          canvasSize.pixelRatio
+        ),
+      configure: (renderer, rendererSignal) => {
+        renderer.resize(
+          canvasSize.width,
+          canvasSize.height,
+          canvasSize.pixelRatio
+        );
+        rendererSignal.throwIfAborted();
+        const actualDensity = renderer.setParticleCount(densityRef.current);
+        densityRef.current = actualDensity;
+        setDensity(actualDensity);
+        setParticleLimit(renderer.maxParticleCount);
+        readyStatus =
+          renderer.kind === "Rust/WASM + WebGPU"
+            ? "Rust/WASM control + TypeGPU compute online"
+            : "Rust/WASM fallback online";
+      },
+      onGpuFailure: (error) =>
+        console.warn(
+          "TypeGPU initialization failed; using WASM fallback.",
+          error
+        ),
+      onState: (state, detail) => {
+        if (state === "ready") {
+          setStatus(readyStatus);
+        }
+        if (state === "lost") {
+          pausedRef.current = true;
+          setPaused(true);
+          setStatus(`WebGPU device lost · ${String(detail)}`);
+        }
+        if (state === "failed") {
+          console.error(detail);
           setStatus("The particle renderer could not be loaded.");
         }
-        return;
-      }
-
-      if (signal.aborted) {
-        renderer.destroy();
-        return;
-      }
-
-      rendererRef.current = renderer;
-      renderer.resize(
-        canvasSize.width,
-        canvasSize.height,
-        canvasSize.pixelRatio,
-      );
-      const actualDensity = renderer.setParticleCount(densityRef.current);
-      densityRef.current = actualDensity;
-      setDensity(actualDensity);
-      setParticleLimit(renderer.maxParticleCount);
-      setStatus(
-        renderer.kind === "Rust/WASM + WebGPU"
-          ? "Rust/WASM control + TypeGPU compute online"
-          : "Rust/WASM fallback online",
-      );
-      requestFrame();
-    };
-
-    void loadRenderer();
+      },
+      onAnimationChange: (canAnimate) => {
+        if (canAnimate) {
+          previousFrameTimeRef.current = null;
+          requestFrame();
+        } else {
+          cancelFrame();
+        }
+      },
+    });
+    lifecycleRef.current = lifecycle;
 
     return () => {
       resizeObserver.disconnect();
@@ -214,13 +214,14 @@ export function TypeGpuParticles() {
       canvas.removeEventListener("pointerleave", clearPointer);
       document.removeEventListener("visibilitychange", handleVisibility);
       cancelFrame();
-      rendererRef.current?.destroy();
-      rendererRef.current = null;
+      void lifecycle.dispose();
+      lifecycleRef.current = null;
     };
   });
 
   const updateDensity = (value: number) => {
-    const actualDensity = rendererRef.current?.setParticleCount(value) ?? value;
+    const actualDensity =
+      lifecycleRef.current?.setParticleCount(value) ?? value;
     setDensity(actualDensity);
     densityRef.current = actualDensity;
   };
@@ -239,9 +240,7 @@ export function TypeGpuParticles() {
     const nextPaused = !pausedRef.current;
     pausedRef.current = nextPaused;
     setPaused(nextPaused);
-    if (!nextPaused) {
-      requestFrame();
-    }
+    lifecycleRef.current?.setEligibility({ paused: nextPaused });
   };
 
   return (

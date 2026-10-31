@@ -10,15 +10,12 @@ import {
   useWindowEvent,
 } from "@personal-site/react-hooks";
 import { cn } from "@personal-site/ui/lib/utils";
-import { useEffectEvent, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { frameDeltaSeconds } from "./animation-timing";
 import styles from "./particle-header-background-styles";
-import {
-  initializeParticleRenderer,
-  isRendererAbort,
-} from "./particle-initialization";
-import type { ParticleRenderer } from "./particle-renderer";
+import { createParticleLifecycle } from "./particle-lifecycle";
+import type { ParticleLifecycle } from "./particle-lifecycle";
 import { createWasmParticleRenderer } from "./wasm-particle-renderer";
 import { createWebGpuParticleRenderer } from "./webgpu-particle-renderer";
 
@@ -47,7 +44,7 @@ export function ParticleHeaderBackground({
   const speedInputId = useId();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasSizeRef = useRef({ height: 1, pixelRatio: 1, width: 1 });
-  const rendererRef = useRef<ParticleRenderer | null>(null);
+  const lifecycleRef = useRef<ParticleLifecycle | null>(null);
   const densityRef = useRef(HEADER_PARTICLE_COUNT);
   const gravityRef = useRef(HEADER_GRAVITY);
   const isVisibleRef = useRef(true);
@@ -62,19 +59,14 @@ export function ParticleHeaderBackground({
   const [particleLimit, setParticleLimit] = useState(GPU_PARTICLE_LIMIT);
   const [speed, setSpeed] = useState(HEADER_SIMULATION_SPEED);
   const { cancelFrame, requestFrame } = useAnimationFrame((milliseconds) => {
-    const renderer = rendererRef.current;
-    if (
-      !renderer ||
-      document.hidden ||
-      !isVisibleRef.current ||
-      reducedMotionRef.current
-    ) {
+    const renderer = lifecycleRef.current;
+    if (!renderer?.canAnimate()) {
       return false;
     }
 
     const deltaSeconds = frameDeltaSeconds(
       previousFrameTimeRef.current,
-      milliseconds,
+      milliseconds
     );
     previousFrameTimeRef.current = milliseconds;
     renderer.render({
@@ -90,7 +82,7 @@ export function ParticleHeaderBackground({
   });
 
   const renderStaticFrame = () => {
-    const renderer = rendererRef.current;
+    const renderer = lifecycleRef.current;
     if (!renderer) {
       return;
     }
@@ -121,10 +113,10 @@ export function ParticleHeaderBackground({
       pointerRef.current.x = canvasSize.width / 2;
       pointerRef.current.y = canvasSize.height / 2;
     }
-    rendererRef.current?.resize(
+    lifecycleRef.current?.resize(
       canvasSize.width,
       canvasSize.height,
-      canvasSize.pixelRatio,
+      canvasSize.pixelRatio
     );
 
     if (reducedMotionRef.current) {
@@ -133,13 +125,11 @@ export function ParticleHeaderBackground({
   };
 
   const resumeWhenEligible = () => {
-    if (document.hidden || !isVisibleRef.current || reducedMotionRef.current) {
-      cancelFrame();
-      return;
-    }
-
-    previousFrameTimeRef.current = null;
-    requestFrame();
+    lifecycleRef.current?.setEligibility({
+      hidden: document.hidden,
+      reducedMotion: reducedMotionRef.current,
+      visible: isVisibleRef.current,
+    });
   };
 
   useMediaQuery("(prefers-reduced-motion: reduce)", (matches) => {
@@ -179,16 +169,16 @@ export function ParticleHeaderBackground({
         ? event.clientY - bounds.top
         : canvasSize.height / 2;
     },
-    PASSIVE_EVENT_LISTENER,
+    PASSIVE_EVENT_LISTENER
   );
 
-  const onRendererLoaded = useEffectEvent(() => {
+  const onRendererLoaded = () => {
     if (reducedMotionRef.current) {
       renderStaticFrame();
     } else {
       resumeWhenEligible();
     }
-  });
+  };
 
   useAbortableEffect((signal) => {
     const canvas = canvasRef.current;
@@ -198,75 +188,76 @@ export function ParticleHeaderBackground({
 
     const canvasSize = canvasSizeRef.current;
 
-    const loadRenderer = async () => {
-      let renderer: ParticleRenderer;
-      try {
-        renderer = await initializeParticleRenderer({
-          signal,
-          createGpu: () =>
-            createWebGpuParticleRenderer(
-              canvas,
-              signal,
-              HEADER_PARTICLE_COUNT,
-              canvasSize.width,
-              canvasSize.height,
-              canvasSize.pixelRatio,
-              () => {
-                if (!signal.aborted) {
-                  cancelFrame();
-                  setControlStatus("unavailable");
-                }
-              },
-            ),
-          createFallback: () =>
-            createWasmParticleRenderer(
-              canvas,
-              signal,
-              HEADER_PARTICLE_COUNT,
-              canvasSize.width,
-              canvasSize.height,
-              canvasSize.pixelRatio,
-            ),
-          onGpuFailure: (error) =>
-            console.warn(
-              "WebGPU header initialization failed; using WASM fallback.",
-              error,
-            ),
-        });
-      } catch (error) {
-        if (!isRendererAbort(error, signal)) {
-          console.error("The particle header could not be loaded.", error);
+    const lifecycle = createParticleLifecycle({
+      signal,
+      eligibility: {
+        hidden: document.hidden,
+        reducedMotion: reducedMotionRef.current,
+        visible: isVisibleRef.current,
+      },
+      createGpu: (rendererSignal, lost) =>
+        createWebGpuParticleRenderer(
+          canvas,
+          rendererSignal,
+          HEADER_PARTICLE_COUNT,
+          canvasSize.width,
+          canvasSize.height,
+          canvasSize.pixelRatio,
+          lost
+        ),
+      createFallback: (rendererSignal) =>
+        createWasmParticleRenderer(
+          canvas,
+          rendererSignal,
+          HEADER_PARTICLE_COUNT,
+          canvasSize.width,
+          canvasSize.height,
+          canvasSize.pixelRatio
+        ),
+      configure: (renderer, rendererSignal) => {
+        renderer.resize(
+          canvasSize.width,
+          canvasSize.height,
+          canvasSize.pixelRatio
+        );
+        rendererSignal.throwIfAborted();
+        const actualDensity = renderer.setParticleCount(densityRef.current);
+        densityRef.current = actualDensity;
+        setDensity(actualDensity);
+        setParticleLimit(renderer.maxParticleCount);
+      },
+      onGpuFailure: (error) =>
+        console.warn(
+          "WebGPU header initialization failed; using WASM fallback.",
+          error
+        ),
+      onState: (state, detail) => {
+        if (state === "ready") {
+          setControlStatus("ready");
+          onRendererLoaded();
+        }
+        if (state === "lost" || state === "failed") {
+          if (state === "failed") {
+            console.error("The particle header could not be loaded.", detail);
+          }
           setControlStatus("unavailable");
         }
-        return;
-      }
-
-      if (signal.aborted) {
-        renderer.destroy();
-        return;
-      }
-
-      rendererRef.current = renderer;
-      renderer.resize(
-        canvasSize.width,
-        canvasSize.height,
-        canvasSize.pixelRatio,
-      );
-      const actualDensity = renderer.setParticleCount(densityRef.current);
-      densityRef.current = actualDensity;
-      setDensity(actualDensity);
-      setParticleLimit(renderer.maxParticleCount);
-      setControlStatus("ready");
-
-      onRendererLoaded();
-    };
-
-    void loadRenderer();
+      },
+      onAnimationChange: (canAnimate) => {
+        if (canAnimate) {
+          previousFrameTimeRef.current = null;
+          requestFrame();
+        } else {
+          cancelFrame();
+        }
+      },
+    });
+    lifecycleRef.current = lifecycle;
 
     return () => {
       cancelFrame();
-      rendererRef.current?.destroy();
-      rendererRef.current = null;
+      void lifecycle.dispose();
+      lifecycleRef.current = null;
     };
   });
 
@@ -277,7 +268,8 @@ export function ParticleHeaderBackground({
   };
 
   const updateDensity = (value: number) => {
-    const actualDensity = rendererRef.current?.setParticleCount(value) ?? value;
+    const actualDensity =
+      lifecycleRef.current?.setParticleCount(value) ?? value;
     densityRef.current = actualDensity;
     setDensity(actualDensity);
     renderReducedMotionFrame();
