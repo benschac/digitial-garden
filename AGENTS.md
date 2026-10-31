@@ -46,3 +46,11 @@ This repository uses the Effect TypeScript library. Before writing Effect code, 
 ## Blog writing style
 
 - Before drafting or editing blog posts in `apps/web/content/posts/`, read [the blog writing style guide](docs/writing-style-guide.md).
+
+## Verification fence
+
+- Use rat-stack as an architectural reference. Before non-trivial changes, search its [agent guide](https://ratstack.sh/llms.txt), rules, and matching skills. Installed versions and this repository's conventions govern adaptations; report conflicts explicitly.
+- Run `bun run verify` before delivery. It checks formatting, lint, tooling tests, types, application tests, and the production build in sequence. Content validation runs through the type and test scripts. Do not suppress failures or weaken checks to pass.
+- Shared package source must not import app-owned code. Apps consume shared packages through their public exports, not `src` paths.
+- TypeScript suppression directives (`@ts-ignore`, `@ts-nocheck`, and `@ts-expect-error`) are prohibited. Fix the owning type relationship.
+- Necessary assertions follow the policy above; explain their invariant in the change summary, not a safety comment.

@@ -30,6 +30,50 @@ export default defineConfig({
       specifier: "./tools/oxlint/anti-slop/effect/index.ts",
     },
   ],
+  overrides: [
+    {
+      files: ["**/packages/*/src/**/*"],
+      rules: {
+        "no-restricted-imports": [
+          "error",
+          {
+            patterns: [
+              {
+                group: [
+                  "@/**",
+                  "@personal-site/web",
+                  "@personal-site/web/**",
+                  "**/apps/**",
+                ],
+                message: "Shared packages must not depend on app-owned code.",
+              },
+            ],
+          },
+        ],
+      },
+    },
+    {
+      files: ["**/apps/**/*"],
+      rules: {
+        "no-restricted-imports": [
+          "error",
+          {
+            patterns: [
+              {
+                group: [
+                  "**/packages/*/src",
+                  "**/packages/*/src/**",
+                  "@personal-site/*/src",
+                  "@personal-site/*/src/**",
+                ],
+                message: "Import shared packages through their public exports.",
+              },
+            ],
+          },
+        ],
+      },
+    },
+  ],
   rules: {
     "anti-slop-effect/no-manual-effect-error-tag": "error",
     "anti-slop-effect/no-manual-tag-comparison": "error",
@@ -53,7 +97,7 @@ export default defineConfig({
     "anti-slop/no-unsafe-dictionary-type": "error",
     "anti-slop/no-widen-then-assert": "error",
     "anti-slop/require-readable-spacing": "error",
-    "anti-slop/require-safety-comment-for-type-assertion": "error",
+    "anti-slop/require-safety-comment-for-type-assertion": "off",
     eqeqeq: [
       "error",
       "always",
@@ -98,9 +142,9 @@ export default defineConfig({
       "error",
       {
         "ts-check": false,
-        "ts-expect-error": false,
+        "ts-expect-error": true,
         "ts-ignore": true,
-        "ts-nocheck": false,
+        "ts-nocheck": true,
       },
     ],
     "typescript/no-unused-vars": [

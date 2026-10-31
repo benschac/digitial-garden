@@ -87,6 +87,10 @@ Regenerate both committed assets from `apps/web` with `bun run social:render`. T
 
 ## Checks
 
+`bun run verify` is the full local and CI gate. It runs the following checks sequentially, stopping on failure: lint and formatting, tooling tests, workspace typechecks (including content validation), application tests, and the production build. Serial execution avoids competing content generators. GitHub Actions runs the same command after a frozen-lockfile install on pushes and pull requests. Repository branch protection must require the `verify` job separately; the workflow alone does not prevent merging.
+
+Import restrictions keep shared package source independent of the web app and require app consumers to use public package exports. These are syntax-based static import/re-export checks, not a whole-program dependency graph: computed imports, CommonJS calls, and new path aliases need review. TypeScript suppression directives are errors. Assertion invariants belong in the change summary under `AGENTS.md`, so the conflicting safety-comment rule is disabled; the other assertion rules remain enabled.
+
 ```bash
 bun run lint
 bun run format:check
