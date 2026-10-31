@@ -2,15 +2,15 @@ import * as Schema from "effect/Schema";
 
 export const typographyMetricsSchema = Schema.Struct({
   metrics: Schema.Struct({
+    ascent: Schema.Finite,
+    capHeight: Schema.Finite,
+    category: Schema.optional(Schema.String),
+    descent: Schema.Finite,
     familyName: Schema.String,
     fullName: Schema.String,
-    postscriptName: Schema.String,
-    category: Schema.optional(Schema.String),
-    ascent: Schema.Finite,
-    descent: Schema.Finite,
     lineGap: Schema.Finite,
+    postscriptName: Schema.String,
     unitsPerEm: Schema.Finite.check(Schema.isGreaterThan(0)),
-    capHeight: Schema.Finite,
     xHeight: Schema.Finite,
     xWidthAvg: Schema.Finite,
   }),
@@ -18,5 +18,5 @@ export const typographyMetricsSchema = Schema.Struct({
 });
 
 export const decodeTypographyMetrics = Schema.decodeUnknownSync(
-  typographyMetricsSchema,
+  typographyMetricsSchema
 );

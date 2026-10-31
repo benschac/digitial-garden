@@ -4,15 +4,15 @@ import { decodeTypographyMetrics } from "./typography-metrics-schema";
 
 const validMetrics = {
   metrics: {
+    ascent: 800,
+    capHeight: 700,
+    category: "sans-serif",
+    descent: -200,
     familyName: "Example Sans",
     fullName: "Example Sans Regular",
-    postscriptName: "ExampleSans-Regular",
-    category: "sans-serif",
-    ascent: 800,
-    descent: -200,
     lineGap: 0,
+    postscriptName: "ExampleSans-Regular",
     unitsPerEm: 1000,
-    capHeight: 700,
     xHeight: 500,
     xWidthAvg: 520,
   },
@@ -29,7 +29,7 @@ describe("typography metrics schema", () => {
       decodeTypographyMetrics({
         ...validMetrics,
         metrics: { ...validMetrics.metrics, unitsPerEm: 0 },
-      }),
+      })
     ).toThrow();
   });
 
@@ -45,7 +45,7 @@ describe("typography metrics schema", () => {
       decodeTypographyMetrics({
         ...validMetrics,
         metrics: { ...validMetrics.metrics, [field]: value },
-      }),
+      })
     ).toThrow();
   });
 });

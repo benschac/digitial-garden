@@ -5,7 +5,8 @@ import {
   useDocumentEvent,
 } from "@personal-site/react-hooks";
 import { ALargeSmall, RotateCcw, X } from "lucide-react";
-import { motion, MotionConfig, type Variants } from "motion/react";
+import { motion, MotionConfig } from "motion/react";
+import type { Variants } from "motion/react";
 import { usePathname } from "next/navigation";
 import { useId, useRef, useState } from "react";
 
@@ -13,30 +14,21 @@ import { Typography, typographyVariants } from "@/components/page-typography";
 
 import { useEditorialFontPreference } from "./editorial-font-preference";
 import styles from "./editorial-font-switcher-styles";
-import {
-  type EditorialFontId,
-  editorialFontOptions,
-  type EntryFontId,
-  entryFontOptions,
-} from "./editorial-fonts";
+import { editorialFontOptions, entryFontOptions } from "./editorial-fonts";
+import type { EditorialFontId, EntryFontId } from "./editorial-fonts";
 import { TypographyInspector } from "./typography-inspector";
 import { InspectorSelect } from "./typography-inspector-select";
 
 const panelVariants = {
-  open: { opacity: 1, scale: 1, visibility: "visible" },
   closed: {
     opacity: 0,
     scale: 0.97,
     transitionEnd: { visibility: "hidden" },
   },
+  open: { opacity: 1, scale: 1, visibility: "visible" },
 } satisfies Variants;
 
-export function EditorialFontSwitcher() {
-  const pathname = usePathname();
-  return <TypographyPreview key={pathname} pathname={pathname} />;
-}
-
-function TypographyPreview({ pathname }: { pathname: string }) {
+const TypographyPreview = ({ pathname }: { pathname: string }) => {
   const displaySelectId = useId();
   const readingSelectId = useId();
   const entrySelectId = useId();
@@ -53,16 +45,25 @@ function TypographyPreview({ pathname }: { pathname: string }) {
   const isArticle = pathname.startsWith("/blog/");
   const isVisible = isOpen && !isMinimized;
   const toggleLabel = isOpen ? "Show typography" : "Typography";
+
   const { requestFrame: requestPanelFocus } = useAnimationFrame(() => {
     (isVisible ? closeRef : launcherRef).current?.focus();
+
     return false;
   });
-  function closePanel(animate: boolean) {
+
+  const closePanel = (animate: boolean) => {
     setAnimateInteraction(animate);
-    if (isArticle) setIsMinimized(true);
-    else setIsOpen(false);
+
+    if (isArticle) {
+      setIsMinimized(true);
+    } else {
+      setIsOpen(false);
+    }
+
     requestPanelFocus();
-  }
+  };
+
   const {
     displayFont,
     readingFont,
@@ -81,8 +82,10 @@ function TypographyPreview({ pathname }: { pathname: string }) {
     ) {
       event.preventDefault();
       closePanel(false);
+
       return;
     }
+
     if (
       !isArticle ||
       event.defaultPrevented ||
@@ -92,18 +95,24 @@ function TypographyPreview({ pathname }: { pathname: string }) {
       !(event.metaKey || event.ctrlKey) ||
       !event.shiftKey ||
       event.key.toLowerCase() !== "u"
-    )
+    ) {
       return;
-    const target = event.target;
+    }
+
+    const { target } = event;
+
     if (
       target instanceof HTMLElement &&
       (target.isContentEditable || target.closest("input, textarea, select"))
-    )
+    ) {
       return;
+    }
+
     event.preventDefault();
     const enabled = !(contentOverlay && spacingOverlay);
     setContentOverlay(enabled);
     setSpacingOverlay(enabled);
+
     if (!isOpen) {
       setIsOpen(true);
       setIsMinimized(true);
@@ -120,8 +129,8 @@ function TypographyPreview({ pathname }: { pathname: string }) {
       <aside
         aria-label="Typography preview"
         className={typographyVariants({
-          variant: "ui",
           className: styles.switcher,
+          variant: "ui",
         })}
         style={{ viewTransitionName: "typography-preview" }}
       >
@@ -298,4 +307,10 @@ function TypographyPreview({ pathname }: { pathname: string }) {
       </aside>
     </MotionConfig>
   );
-}
+};
+
+export const EditorialFontSwitcher = () => {
+  const pathname = usePathname();
+
+  return <TypographyPreview key={pathname} pathname={pathname} />;
+};

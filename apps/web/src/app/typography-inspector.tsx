@@ -5,7 +5,13 @@ import {
   useResizeObserver,
   useWindowEvent,
 } from "@personal-site/react-hooks";
-import { useEffect, useId, useRef, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { createPortal } from "react-dom";
 
 import { ArticleContentOverlay } from "./article-content-overlay";
@@ -13,23 +19,29 @@ import { ArticleRhythmInspector } from "./article-rhythm-inspector";
 import { useEditorialFontPreference } from "./editorial-font-preference";
 import controls from "./editorial-font-switcher-styles";
 import {
-  type BoxMeasurement,
   clearTrim,
   exportTrimCss,
-  type FontSource,
+  fontGuideOffset,
   measureBox,
   resolveFont,
   scaledMetrics,
   setTrim,
-  type Target,
-  type TrimMode,
+  supportedTrimMode,
   trimValues,
+} from "./typography-inspector-measurements";
+import type {
+  BoxMeasurement,
+  FontSource,
+  Target,
+  TrimMode,
 } from "./typography-inspector-measurements";
 import { InspectorSelect } from "./typography-inspector-select";
 
 import styles from "./typography-inspector.module.css";
 
-type Inspection = {
+const { parseFloat: parseCssNumber } = Number;
+
+interface Inspection {
   rect: { top: number; left: number; width: number; height: number };
   boxes: Partial<Record<TrimMode, BoxMeasurement>>;
   metrics?: ReturnType<typeof scaledMetrics>;
@@ -39,16 +51,194 @@ type Inspection = {
   trimBottom: number;
   nextGap?: number;
   css: string;
-};
+}
+
 const px = (value: number | undefined) =>
   value === undefined ? "—" : `${value.toFixed(1)}px`;
+
 const modeLabels: Record<TrimMode, string> = {
-  original: "Trim off",
   capsize: "Capsize",
   native: "Native CSS",
+  original: "Trim off",
 };
 
-export function TypographyInspector({
+const subscribeToCssSupport = () => (): undefined => undefined;
+
+const supportsNativeTrim = () =>
+  CSS.supports("text-box-trim", "trim-both") &&
+  CSS.supports("text-box-edge", "cap alphabetic");
+
+interface LoadedFonts {
+  key: string;
+  targets: Target[];
+  files: FontSource[];
+}
+
+const emptyTargets: Target[] = [];
+const emptyFonts: FontSource[] = [];
+
+interface InspectionDetailsProps {
+  target: Target | undefined;
+  inspection: Inspection | undefined;
+  metrics: Inspection["metrics"];
+  currentBox: BoxMeasurement | undefined;
+  originalBox: BoxMeasurement | undefined;
+  copyStatus: string;
+  onCopyStatus: (value: string) => void;
+}
+
+const TrimComparison = ({
+  inspection,
+  originalBox,
+}: Pick<InspectionDetailsProps, "inspection" | "originalBox">) => (
+  <table className={styles.table} aria-label="Measured typography comparison">
+    <thead>
+      <tr>
+        <th className={styles.cell}>Mode</th>
+        <th className={styles.cell}>Block height</th>
+        <th className={styles.cell}>Δ trim off</th>
+      </tr>
+    </thead>
+    <tbody>
+      {(["original", "capsize", "native"] as const).map((item) => (
+        <tr key={item}>
+          <th className={styles.cell}>{modeLabels[item]}</th>
+          <td className={styles.cell}>{px(inspection?.boxes[item]?.height)}</td>
+          <td className={styles.cell}>
+            {inspection?.boxes[item] && originalBox
+              ? px(inspection.boxes[item].height - originalBox.height)
+              : "—"}
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+);
+
+const fontDescription = (target: Target) =>
+  target.font?.source ??
+  target.issue ??
+  "System font file cannot be verified. Choose a self-hosted font for exact metrics and trimming.";
+
+const SelectedInspection = ({
+  target,
+  inspection,
+  metrics,
+  currentBox,
+  originalBox,
+  copyStatus,
+  onCopyStatus,
+}: InspectionDetailsProps) => {
+  if (!target) {
+    return null;
+  }
+
+  return (
+    <>
+      <p className={styles.note}>
+        {target.font?.metrics.fullName ?? "Font unavailable"} ·{" "}
+        {inspection?.size} / {inspection?.leading}
+      </p>
+      <p className={`${styles.note} ${styles.asset}`}>
+        {fontDescription(target)}
+      </p>
+      {target.font?.verified ? null : (
+        <p className={styles.note}>
+          Exact metric guides and Capsize comparison need a verified web font.
+          Native heading defaults still follow the browser’s font metrics.
+        </p>
+      )}
+      {metrics ? (
+        <>
+          <div className={styles.legend}>
+            <span className={styles.cap}>Cap {px(metrics.cap)}</span>
+            <span className={styles.xheight}>
+              x-height {px(metrics.xheight)}
+            </span>
+            <span className={styles.ascent}>Ascent {px(metrics.ascent)}</span>
+            <span className={styles.descent}>
+              Descent {px(metrics.descent)}
+            </span>
+            <span className={styles.baseline}>Baseline (red)</span>
+          </div>
+          <p className={styles.note}>
+            Font-wide guides, not glyph ink bounds. Gold outline: DOM block.
+            Baselines: browser probes in a matching clone.
+          </p>
+          <p className={styles.note}>
+            Capsize edge trim: top {px(inspection?.trimTop)}, bottom{" "}
+            {px(inspection?.trimBottom)}. Only the first and last line edges
+            change; multiline baseline spacing stays intact.
+          </p>
+        </>
+      ) : null}
+      <TrimComparison inspection={inspection} originalBox={originalBox} />
+      <p className={styles.note}>
+        {currentBox?.lines.length ?? 0} lines · First baseline{" "}
+        {px(currentBox?.lines[0]?.baseline)} from block top · Gap to next block{" "}
+        {px(inspection?.nextGap)}.
+      </p>
+      <p className={styles.note}>
+        These are layout spaces. Descenders and accents can extend beyond the
+        cap-to-baseline trim; inspect them visually.
+      </p>
+      <details>
+        <summary>Export selected block as CSS</summary>
+        <p className={styles.note}>
+          CSS snapshot for this font and viewport. Apply its class deliberately;
+          keep responsive size rules when adapting it.
+        </p>
+        <textarea
+          aria-label="Exported trim CSS"
+          className={styles.css}
+          readOnly
+          value={inspection?.css ?? ""}
+        />
+        <button
+          type="button"
+          className={controls.toggle}
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(inspection?.css ?? "");
+              onCopyStatus("CSS copied");
+            } catch {
+              onCopyStatus("Select and copy the CSS above");
+            }
+          }}
+        >
+          Copy CSS
+        </button>
+        <output>{copyStatus}</output>
+      </details>
+    </>
+  );
+};
+
+const inspectionPresentation = (
+  targets: Target[],
+  selected: number,
+  inspection: Inspection | undefined,
+  mode: TrimMode
+) => {
+  const target = targets[selected];
+
+  const currentBox =
+    inspection?.boxes[target?.font?.verified ? mode : "original"];
+
+  const originalBox = inspection?.boxes.original;
+  const metrics = target?.font?.verified ? inspection?.metrics : undefined;
+
+  return { currentBox, metrics, originalBox, target };
+};
+
+const inspectionRevision = (
+  mode: TrimMode,
+  scope: string,
+  inspection: Inspection | undefined
+) =>
+  `${mode}/${scope}/${inspection?.leading ?? ""}/${inspection?.rect.height ?? ""}`;
+
+export const TypographyInspector = ({
   pathname,
   contentOverlay,
   onContentOverlayChange,
@@ -60,72 +250,87 @@ export function TypographyInspector({
   onContentOverlayChange: (enabled: boolean) => void;
   spacingOverlay: boolean;
   onSpacingOverlayChange: (enabled: boolean) => void;
-}) {
+}) => {
   const { displayFont, readingFont } = useEditorialFontPreference();
-  const [mode, setMode] = useState<TrimMode>("native");
+  const [selectedMode, setSelectedMode] = useState<TrimMode>("native");
   const [scope, setScope] = useState("headings");
   const [overlay, setOverlay] = useState(false);
-  const [nativeSupported, setNativeSupported] = useState(false);
-  const [targets, setTargets] = useState<Target[]>([]);
-  const [fontFiles, setFontFiles] = useState<FontSource[]>([]);
+
+  const nativeSupported = useSyncExternalStore(
+    subscribeToCssSupport,
+    supportsNativeTrim,
+    () => false
+  );
+
+  const mode = supportedTrimMode(selectedMode, nativeSupported);
+  const [loadedFonts, setLoadedFonts] = useState<LoadedFonts>();
+  const fontKey = JSON.stringify([pathname, displayFont, readingFont, scope]);
+  const currentFonts = loadedFonts?.key === fontKey ? loadedFonts : undefined;
+  const targets = currentFonts?.targets ?? emptyTargets;
+  const fontFiles = currentFonts?.files ?? emptyFonts;
   const [selected, setSelected] = useState(0);
-  const [inspection, setInspection] = useState<Inspection>();
-  const [loading, setLoading] = useState(true);
+  const [inspectionValue, setInspectionValue] = useState<Inspection>();
+  const inspection = currentFonts ? inspectionValue : undefined;
+  const loading = currentFonts === undefined;
   const [copyStatus, setCopyStatus] = useState("");
   const articleRef = useRef<HTMLElement | null>(null);
+
   const cache = useRef<{ key: string; boxes: Inspection["boxes"] } | null>(
     null
   );
+
   const targetId = useId();
   const modeId = useId();
   const scopeId = useId();
-
-  useEffect(() => {
-    const supported =
-      CSS.supports("text-box-trim", "trim-both") &&
-      CSS.supports("text-box-edge", "cap alphabetic");
-    setNativeSupported(supported);
-    setMode(supported ? "native" : "original");
-  }, []);
 
   // Font preferences change CSS root tokens, so they must restart asset resolution.
   // reactive CSS font tokens and route own the inspected DOM
   useEffect(() => {
     const controller = new AbortController();
+
     const article = document.querySelector<HTMLElement>(
       ".ui-article-typography > article"
     );
+
     articleRef.current = article;
-    setLoading(true);
-    setInspection(undefined);
-    setTargets([]);
-    setFontFiles([]);
     cache.current = null;
-    if (!article) {
-      setLoading(false);
-      return () => controller.abort();
-    }
-    const elements = [
-      ...article.querySelectorAll<HTMLElement>("h1, h2, h3, h4, p"),
-    ].filter(
-      (element) =>
-        !element.closest("[data-prose-exclude], pre, table, figure, aside") &&
-        (scope === "text" || /^H[1234]$/.test(element.tagName)) &&
-        !["::before", "::after"].some(
-          (pseudo) =>
-            !["none", "normal", '""'].includes(
-              getComputedStyle(element, pseudo).content
-            )
-        )
-    );
-    const next = elements.map((element) => ({
-      element,
-      id: crypto.randomUUID(),
-      label: `${element.tagName.toLowerCase()} · ${element.textContent?.trim().slice(0, 75)}`,
-    }));
-    async function load() {
+    let elements: HTMLElement[] = [];
+
+    const load = async () => {
       await document.fonts.ready;
-      if (controller.signal.aborted || !article) return;
+
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      if (!article) {
+        if (!controller.signal.aborted) {
+          setLoadedFonts({ files: [], key: fontKey, targets: [] });
+        }
+
+        return;
+      }
+
+      elements = [
+        ...article.querySelectorAll<HTMLElement>("h1, h2, h3, h4, p"),
+      ].filter(
+        (element) =>
+          !element.closest("[data-prose-exclude], pre, table, figure, aside") &&
+          (scope === "text" || /^H[1234]$/u.test(element.tagName)) &&
+          !["::before", "::after"].some(
+            (pseudo) =>
+              !["none", "normal", '""'].includes(
+                getComputedStyle(element, pseudo).content
+              )
+          )
+      );
+
+      const next = elements.map((element) => ({
+        element,
+        id: crypto.randomUUID(),
+        label: `${element.tagName.toLowerCase()} · ${element.textContent?.trim().slice(0, 75)}`,
+      }));
+
       // Include inline emphasis and table/list/code text in file provenance,
       // even when the trim preview is limited to headings.
       const fontElements = [
@@ -133,9 +338,13 @@ export function TypographyInspector({
           "h1,h2,h3,h4,p,em,strong,code,li,figcaption,th,td"
         ),
       ].filter((element) => !element.closest("[data-prose-exclude]"));
+
       const pending = fontElements.map((element) =>
-        resolveFont(element, controller.signal).catch(() => undefined)
+        resolveFont(element, controller.signal).catch(
+          (): undefined => undefined
+        )
       );
+
       const resolved = await Promise.all(
         next.map(async (target) => {
           try {
@@ -152,77 +361,120 @@ export function TypographyInspector({
           }
         })
       );
-      if (controller.signal.aborted) return;
+
+      if (controller.signal.aborted) {
+        return;
+      }
+
       const allFonts = await Promise.all(pending);
-      if (controller.signal.aborted) return;
+
+      if (controller.signal.aborted) {
+        return;
+      }
+
       const files = new Map<string, FontSource>();
-      for (const font of allFonts)
-        if (font?.verified) files.set(font.source, font);
-      setFontFiles([...files.values()]);
-      setTargets(resolved);
+
+      for (const font of allFonts) {
+        if (font?.verified) {
+          files.set(font.source, font);
+        }
+      }
+
+      setInspectionValue(undefined);
+      setLoadedFonts({
+        files: [...files.values()],
+        key: fontKey,
+        targets: resolved,
+      });
       setSelected(0);
-      setLoading(false);
-    }
+    };
+
     void load();
+
     return () => {
       controller.abort();
-      elements.forEach(clearTrim);
+
+      for (const element of elements) {
+        clearTrim(element);
+      }
+
       articleRef.current = null;
     };
-  }, [pathname, displayFont, readingFont, scope]);
+  }, [fontKey, scope]);
 
   const { requestFrame } = useAnimationFrame(() => {
     // Recompute edge trim after an explicit leading adjustment or responsive resize.
-    for (const target of targets) setTrim(target.element, mode, target.font);
+    for (const target of targets) {
+      setTrim(target.element, mode, target.font);
+    }
+
     const target = targets[selected];
-    if (!target?.element.isConnected) return false;
+
+    if (!target?.element.isConnected) {
+      return false;
+    }
+
     const rect = target.element.getBoundingClientRect();
     const css = getComputedStyle(target.element);
     const key = `${selected}/${scope}/${displayFont}/${readingFont}/${rect.width}/${rect.height}/${css.fontSize}/${css.lineHeight}/${css.letterSpacing}/${mode}/${target.element.textContent}`;
     let boxes = cache.current?.key === key ? cache.current.boxes : undefined;
+
     if (!boxes) {
       boxes = { original: measureBox(target.element, "original", target.font) };
+
       if (target.font?.verified) {
         boxes.capsize = measureBox(target.element, "capsize", target.font);
-        if (nativeSupported)
+
+        if (nativeSupported) {
           boxes.native = measureBox(target.element, "native", target.font);
+        }
       }
-      cache.current = { key, boxes };
+
+      cache.current = { boxes, key };
     }
+
     const values = target.font
       ? trimValues(target.element, target.font.metrics)
       : undefined;
-    const size = Number.parseFloat(css.fontSize);
+
+    const size = parseCssNumber(css.fontSize);
     const next = target.element.nextElementSibling;
-    setInspection({
-      rect: {
-        top: rect.top,
-        left: rect.left,
-        width: rect.width,
-        height: rect.height,
-      },
+    setInspectionValue({
       boxes,
-      size: css.fontSize,
+      css: exportTrimCss(target, mode),
       leading: css.lineHeight,
       metrics: target.font?.verified
         ? scaledMetrics(target.element, target.font.metrics)
         : undefined,
-      trimTop: values ? -Number.parseFloat(values.capHeightTrim) * size : 0,
-      trimBottom: values ? -Number.parseFloat(values.baselineTrim) * size : 0,
       nextGap: next
         ? next.getBoundingClientRect().top - rect.bottom
         : undefined,
-      css: exportTrimCss(target, mode),
+      rect: {
+        height: rect.height,
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+      },
+      size: css.fontSize,
+      trimBottom: values ? -parseCssNumber(values.baselineTrim) * size : 0,
+      trimTop: values ? -parseCssNumber(values.capHeightTrim) * size : 0,
     });
+
     return false;
   });
 
   useEffect(() => {
-    for (const target of targets) setTrim(target.element, mode, target.font);
+    for (const target of targets) {
+      setTrim(target.element, mode, target.font);
+    }
+
     cache.current = null;
     requestFrame();
+
     return () => {
-      for (const target of targets) clearTrim(target.element);
+      for (const target of targets) {
+        clearTrim(target.element);
+      }
     };
   }, [targets, mode, requestFrame]);
 
@@ -230,11 +482,12 @@ export function TypographyInspector({
   useWindowEvent("resize", requestFrame);
   useWindowEvent("scroll", requestFrame, true);
 
-  const target = targets[selected];
-  const currentBox =
-    inspection?.boxes[target?.font?.verified ? mode : "original"];
-  const originalBox = inspection?.boxes.original;
-  const metrics = target?.font?.verified ? inspection?.metrics : undefined;
+  const { target, currentBox, originalBox, metrics } = inspectionPresentation(
+    targets,
+    selected,
+    inspection,
+    mode
+  );
 
   return (
     <section className={styles.panel} aria-label="Article metric inspector">
@@ -260,7 +513,7 @@ export function TypographyInspector({
         <InspectorSelect
           id={modeId}
           value={mode}
-          onChange={(event) => setMode(event.target.value as TrimMode)}
+          onChange={(event) => setSelectedMode(event.target.value as TrimMode)}
         >
           <option value="original">Trim off · compare</option>
           <option value="capsize">Capsize · trim on</option>
@@ -278,7 +531,7 @@ export function TypographyInspector({
       <ArticleContentOverlay
         enabled={contentOverlay}
         onEnabledChange={onContentOverlayChange}
-        revision={`${mode}/${scope}/${inspection?.leading ?? ""}/${inspection?.rect.height ?? ""}`}
+        revision={inspectionRevision(mode, scope, inspection)}
       />
       <details>
         <summary>Article font files · {fontFiles.length}</summary>
@@ -313,9 +566,9 @@ export function TypographyInspector({
           }}
           disabled={!targets.length}
         >
-          {targets.map((target, index) => (
-            <option key={target.id} value={index}>
-              {target.label}
+          {targets.map((candidate, index) => (
+            <option key={candidate.id} value={index}>
+              {candidate.label}
             </option>
           ))}
         </InspectorSelect>
@@ -340,116 +593,15 @@ export function TypographyInspector({
         />{" "}
         Show guides for selected text
       </label>
-      {target ? (
-        <>
-          <p className={styles.note}>
-            {target.font?.metrics.fullName ?? "Font unavailable"} ·{" "}
-            {inspection?.size} / {inspection?.leading}
-          </p>
-          <p className={`${styles.note} ${styles.asset}`}>
-            {target.font?.source ??
-              target.issue ??
-              "System font file cannot be verified. Choose a self-hosted font for exact metrics and trimming."}
-          </p>
-          {!target.font?.verified ? (
-            <p className={styles.note}>
-              Exact metric guides and Capsize comparison need a verified web
-              font. Native heading defaults still follow the browser’s font
-              metrics.
-            </p>
-          ) : null}
-          {metrics ? (
-            <>
-              <div className={styles.legend}>
-                <span className={styles.cap}>Cap {px(metrics.cap)}</span>
-                <span className={styles.xheight}>
-                  x-height {px(metrics.xheight)}
-                </span>
-                <span className={styles.ascent}>
-                  Ascent {px(metrics.ascent)}
-                </span>
-                <span className={styles.descent}>
-                  Descent {px(metrics.descent)}
-                </span>
-                <span className={styles.baseline}>Baseline (red)</span>
-              </div>
-              <p className={styles.note}>
-                Font-wide guides, not glyph ink bounds. Gold outline: DOM block.
-                Baselines: browser probes in a matching clone.
-              </p>
-              <p className={styles.note}>
-                Capsize edge trim: top {px(inspection?.trimTop)}, bottom{" "}
-                {px(inspection?.trimBottom)}. Only the first and last line edges
-                change; multiline baseline spacing stays intact.
-              </p>
-            </>
-          ) : null}
-          <table
-            className={styles.table}
-            aria-label="Measured typography comparison"
-          >
-            <thead>
-              <tr>
-                <th className={styles.cell}>Mode</th>
-                <th className={styles.cell}>Block height</th>
-                <th className={styles.cell}>Δ trim off</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(["original", "capsize", "native"] as const).map((item) => (
-                <tr key={item}>
-                  <th className={styles.cell}>{modeLabels[item]}</th>
-                  <td className={styles.cell}>
-                    {px(inspection?.boxes[item]?.height)}
-                  </td>
-                  <td className={styles.cell}>
-                    {inspection?.boxes[item] && originalBox
-                      ? px(inspection.boxes[item].height - originalBox.height)
-                      : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className={styles.note}>
-            {currentBox?.lines.length ?? 0} lines · First baseline{" "}
-            {px(currentBox?.lines[0]?.baseline)} from block top · Gap to next
-            block {px(inspection?.nextGap)}.
-          </p>
-          <p className={styles.note}>
-            These are layout spaces. Descenders and accents can extend beyond
-            the cap-to-baseline trim; inspect them visually.
-          </p>
-          <details>
-            <summary>Export selected block as CSS</summary>
-            <p className={styles.note}>
-              CSS snapshot for this font and viewport. Apply its class
-              deliberately; keep responsive size rules when adapting it.
-            </p>
-            <textarea
-              aria-label="Exported trim CSS"
-              className={styles.css}
-              readOnly
-              value={inspection?.css ?? ""}
-            />
-            <button
-              type="button"
-              className={controls.toggle}
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(inspection?.css ?? "");
-                  setCopyStatus("CSS copied");
-                } catch {
-                  setCopyStatus("Select and copy the CSS above");
-                }
-              }}
-            >
-              Copy CSS
-            </button>
-            <output>{copyStatus}</output>
-          </details>
-        </>
-      ) : null}
+      <SelectedInspection
+        target={target}
+        inspection={inspection}
+        metrics={metrics}
+        currentBox={currentBox}
+        originalBox={originalBox}
+        copyStatus={copyStatus}
+        onCopyStatus={setCopyStatus}
+      />
       {!loading && !targets.length ? (
         <p className={styles.note}>No article text found on this page.</p>
       ) : null}
@@ -459,10 +611,10 @@ export function TypographyInspector({
               <div
                 className={styles.box}
                 style={{
-                  top: inspection.rect.top,
-                  left: inspection.rect.left,
-                  width: inspection.rect.width,
                   height: inspection.rect.height,
+                  left: inspection.rect.left,
+                  top: inspection.rect.top,
+                  width: inspection.rect.width,
                 }}
               />
               {currentBox.lines.flatMap((line) =>
@@ -473,15 +625,11 @@ export function TypographyInspector({
                     key={`${line.baseline}-${kind}`}
                     className={`${styles.guide} ${styles[kind]}`}
                     style={{
+                      left: inspection.rect.left + line.left,
                       top:
                         inspection.rect.top +
                         line.baseline +
-                        (kind === "baseline"
-                          ? 0
-                          : kind === "descent"
-                            ? metrics.descent
-                            : -metrics[kind]),
-                      left: inspection.rect.left + line.left,
+                        fontGuideOffset(kind, metrics),
                       width: line.width,
                     }}
                   />
@@ -493,4 +641,4 @@ export function TypographyInspector({
         : null}
     </section>
   );
-}
+};

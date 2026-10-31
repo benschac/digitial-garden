@@ -19,22 +19,22 @@ export const displayStorageKey = "editorial-display-font-v2";
 export const readingStorageKey = "editorial-reading-font-v3";
 
 export const entryFontOptions = [
-  { id: "system", label: "System sans", family: "var(--font-sans)" },
-  { id: "display", label: "Display font", family: "var(--font-display)" },
-  { id: "reading", label: "Reading font", family: "var(--font-reading)" },
+  { family: "var(--font-sans)", id: "system", label: "System sans" },
+  { family: "var(--font-display)", id: "display", label: "Display font" },
+  { family: "var(--font-reading)", id: "reading", label: "Reading font" },
 ] as const;
+
 export type EntryFontId = (typeof entryFontOptions)[number]["id"];
+
 export const entryStorageKey = "home-entry-font-v1";
 
-export function isEntryFontId(value: string | null): value is EntryFontId {
-  return entryFontOptions.some((option) => option.id === value);
-}
+export const isEntryFontId = (value: string | null): value is EntryFontId =>
+  entryFontOptions.some((option) => option.id === value);
 
-export function isEditorialFontId(
-  value: string | null,
-): value is EditorialFontId {
-  return editorialFontOptions.some((option) => option.id === value);
-}
+export const isEditorialFontId = (
+  value: string | null
+): value is EditorialFontId =>
+  editorialFontOptions.some((option) => option.id === value);
 
 const editorialFontIds = editorialFontOptions.map((option) => option.id);
 
