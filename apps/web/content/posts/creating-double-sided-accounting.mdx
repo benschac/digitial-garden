@@ -1,7 +1,7 @@
 ---
-title: "How I Built Treasure It's Credit Ledger with Postgres"
+title: "Building a Credit Ledger with Postgres for Treasure It"
 slug: "creating-double-sided-accounting"
-summary: "Reserving credits, handling payment retries, and connecting marketplace policy to the inbox in Treasure It."
+summary: "How Treasure It's Postgres credit ledger keeps balances and history in sync, reserves credits for pickups, and handles retries without charging twice."
 publishedAt: "2026-10-27"
 status: "draft"
 tags:
@@ -13,9 +13,13 @@ featured: false
 
 ## tl;dr
 
-Treasure It was initially built for free item exchange. About 4 or 5 months ago, I added the ability to buy and sell to the app. I ended up needing to build my own internal ledger and currency functionality from scratch to handle double-sided accounting and app logic that depends on the amount of credits a user has.
+Treasure It was initially built for free item exchange. Something closer to swap meet, Trash nothing or Buy Nothing. We decided to pivot the product towards allowing people to buy and sell. We needed a way to charge for a match without handling the payment for the item itself to stay competitive with Craigslist and Facebook Marketplace.
 
-This was our solution to pricing time.
+The solution was a credit ledger in Postgres.
+
+Credits became the in-app currency of Treasure It for both free and buying and selling.
+
+The goal of credits is to incentivize good behavior (Replying promptly, Limiting reschedules, Mitigate ghosting, etc), while being the primary revenue driver.
 
 ## Intro
 
@@ -23,129 +27,43 @@ Treasure It takes a unique approach to commerce because our users have the luxur
 
 This means paying in cash or Venmo, which is the preferred way to pay for most users while making us competitive with Facebook Marketplace and Craigslist.
 
-But there needs to be a way for the platform to monetize and an incentive structure for people to show up and be courteous to others. Additionally, there needs to be a real financial incentive for people to be considerate of each other's time. That was the product thinking behind creating a ledger and a credit system.
+But the platform still needs to make money, and people need a reason to show up. If Bob spends an afternoon waiting for Alice to collect a chair and she never arrives, the item price doesn't account for his wasted time. That was the product thinking behind our credit system.
 
-## How does it work at a high level?
+Buyers and sellers pay each other for items in person, and you use platform credits to pay for the match itself. Credits become the main policy and enforcement mechanism for taking action on the platform for both free items and items that are for sale.
 
-In Treasure It, buyers and sellers pay each other for items in person, and you use platform credits to pay for the match itself. Credits become the main policy and enforcement mechanism for taking action on the platform for both free items and items that are for sale.
+If you only exchange free items and you're never inconsiderate to the other person, you'll never have to pay for credits. Users can earn credits by inviting friends.
 
-## Policy
+The application has policies that decides whether Alice owes a fee or Bob should get a refund based off a number of different variables. We use the Decider pattern for those rules, which I cover in [Turning Marketplace Policies into a Decider (Comming Soon!)](/blog/marketplace-policies-with-a-decider). This Post covers the underlying ledger.
 
-This is outside the scope of this blog post, but all credit actions are determined by policies. We organize and derive them via the [Functional Event Sourcing Decider](https://thinkbeforecoding.com/post/2021/12/17/functional-event-sourcing-decider) pattern from a set of events. Maybe it'll be a part two.
+## Commerce Requirements Get Tricky Real Fast
 
-To make the rules below easier to follow, let's use **Alice** and **Bob**:
+A credit balance sounds like a single number on a user profile. Add to it when someone buys credits, subtract from it when they make a match.
 
-- **How a policy works:** When Alice or Bob takes an action, the policy looks at who's acting, what has already happened in the match, and whether a deadline has passed. It decides if the action is allowed and whose credits need to move.
-- **What the ledger records:** Once the policy makes a call, the ledger records the credit grant, hold, refund, charge, or penalty.
-- **Deadlines vs. background jobs:** A deadline passing and a background cron job processing it are two separate things. When Bob's 5-hour funding timer expires, the match is eligible to be cancelled right away, even if the worker that settles it runs every 5 minutes.
-- **Milliunits:** One credit is `1,000` integer milliunits, so we never have to deal with floating-point math.
-- **Base match fee (`F`):** `F` is one person's fee for a paid match (`Math.ceil(acceptedAmountCents / 2)` milliunits), saved on the offer thread as soon as the offer is accepted. If Alice buys a $20 item from Bob, `F` is 1 credit (`1,000` milliunits) for Alice and 1 credit for Bob. A `2F` penalty means twice that match's fee, which isn't always 2 credits.
-- **Reserve, release, and consume:**
-  - **Reserve** moves Alice's available credits into a hold so she can't spend them on another item at the same time.
-  - **Release** moves held credits back to available if the match is cancelled under a rule that refunds her.
-  - **Consume** spends the held credits for good once the pickup finishes (or when someone forfeits their hold).
-  - **Penalties** can also debit available credits directly, even if that pushes a user's balance below zero.
+There's a bit more to think about when two people are trying to coordinate a pickup:
 
-#### Credit grants and pricing
+- When you accept a match, your credits need to be held so you can't spend them on three other items at the same time.
+- If the other person backs out under a rule that refunds you, you should get those credits back.
+- Only when the pickup happens are those credits gone for good.
 
-| Situation        | Policy                                                                                                                                         | Credit effect                                                                                                       |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| New account      | When Alice signs up, a database trigger runs a one-time grant tied to her profile.                                                             | Adds 2 available credits so she can try the app right away.                                                         |
-| Credit purchase  | Verify Alice's paid checkout before granting credits. Keying the grant to the Stripe PaymentIntent stops webhook retries from double-granting. | Adds `credit_count * 1000` milliunits to Alice's available credits and increments `lifetime_purchased_credits`.     |
-| Referral         | When Alice refers Bob and he redeems the referral, both of them get a reward. Experiments can override the amount (up to 50 credits each).     | Grants the configured amount to Alice and Bob (defaults to 5 credits each when no experiment is running).           |
-| Paid match price | Calculate **F** when the offer between Alice and Bob is accepted and save it on the thread.                                                    | Charges Alice and Bob using that saved snapshot for the rest of the match, even if we change our fee formula later. |
+The list goes on...
 
-Sources: [signup grant](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100738_grant_two_match_credits_on_account_creation.sql), [purchase grant](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261023197115_migrate_match_credit_milliunits.sql), [referral reward policy](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/growth/referral-reward-policy.ts), and [match fee](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/match-fee-policy.ts).
+Making something that actually covers all the edge cases of commerce gets complex quickly.
 
-#### Paid offers and pickups
-
-Say **Alice** is buying an item from **Bob** (though either one can make or accept an offer):
-
-| Situation                                   | Policy and timing                                                                                                                                                                   | Credit effect                                                                                                                                        |
-| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Accept an offer                             | Bob sends an offer and Alice accepts it. Alice needs at least **F** available credits right then (and pickup availability set if the seller is accepting).                          | Rejects the acceptance if Alice can't afford **F**. If both Alice and Bob can cover **F**, reserve **F** from each and activate the match.           |
-| Offer maker is short on credits             | Bob sent the offer, Alice accepts, but Bob doesn't have **F** credits yet. We lock the items in `awaiting_credits` and give Bob 5 hours to top up (with a reminder at 150 minutes). | Reserves Alice's **F** right away, then reserves Bob's **F** once he buys credits and activates the match.                                           |
-| Funded acceptor leaves during funding       | Alice cancels before Bob's 5-hour funding window is up.                                                                                                                             | Consumes Alice's reserved **F**. Bob hasn't reserved anything yet.                                                                                   |
-| Unfunded maker leaves or time runs out      | Bob cancels during funding, or his 5-hour deadline passes.                                                                                                                          | Releases Alice's **F** back to her and debits **F** from Bob's available balance.                                                                    |
-| Scheduling response window                  | Whoever is up next to pick or propose a pickup time has 18 hours to respond.                                                                                                        | Missing the 18-hour deadline doesn't charge you automatically, but it gives the other person a penalty-free exit.                                    |
-| Rescheduling or declining times             | Alice and Bob each get up to 2 rescheduling turns. Hitting the cap puts that person at fault and gives the other person a penalty-free exit.                                        | No charge just for hitting the cap. Credits settle if the other person takes the protected exit.                                                     |
-| Protected exit (inactivity or rescheduling) | Bob missed his 18-hour response deadline or used up his 2 reschedules, so Alice takes a protected exit.                                                                             | Consumes Bob's reserved **F** and releases Alice's **F** back to her.                                                                                |
-| Backing out while scheduling is pending     | Alice cancels before a pickup time is locked in, without a protected reason.                                                                                                        | Consumes Alice's reserved **F** and releases Bob's **F**.                                                                                            |
-| Backing out after a pickup time is agreed   | Alice cancels after they already agreed on a pickup time, without a protected reason.                                                                                               | Alice pays **2F** (forfeits her reserved **F** plus another **F** from her available balance). Bob gets his **F** back.                              |
-| Buyer confirms pickup                       | At or after the scheduled pickup time, Alice confirms she picked up the item.                                                                                                       | Completes the pickup and consumes both Alice's and Bob's reserved **F**.                                                                             |
-| Seller marks pickup complete                | At or after pickup time, Bob says the handoff happened.                                                                                                                             | Opens a 10-hour review window for Alice without moving credits yet.                                                                                  |
-| Buyer review window                         | Alice has 10 hours from Bob's claim to dispute it. After 10 hours with no dispute, the pickup auto-completes.                                                                       | A dispute pauses credit settlement. If Alice doesn't dispute it, auto-completion consumes both reserved fees.                                        |
-| Paid no-show / ghost report                 | Alice shows up and Bob ghosts (or vice versa). One report is allowed from 15 minutes after the scheduled pickup time through 10 hours after pickup.                                 | Debits **10F** from Bob's available balance, grants **10F** to Alice, and marks the pickup disputed while keeping the original **F** holds in place. |
-
-**Note:** Those two 10-hour clocks start from different moments. Alice's 10-hour review window starts when Bob marks the pickup complete, while the no-show report window ends 10 hours after the scheduled pickup time.
-
-Sources: [funding decisions](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/offer-funding.decider.ts), [accepted-match decisions](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/accepted-match.decider.ts), [deadline adapter](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/accepted-match-scheduling-policy-adapter.ts), and [scheduling service](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/pickup-scheduling-policy.service.ts).
-
-## Credit use in free exchange
-
-The biggest pain point in free exchange was users not getting back to one another in a timely fashion, constantly rescheduling, or just ghosting. This was the primary problem we were trying to solve with Treasure It from the start. Having an embedded schedule along with inventory and recipient management was step one.
-
-Step two was using our credit and accounting system to put a financial cost on inconveniencing someone who's just trying to give something away.
-
-Free exchange doesn't use the paid match fee **F**. Instead, say **Bob** is giving away a free item and **Alice** wants to pick it up:
-
-| Situation                                | Policy and timing                                                                                                                                           | Credit effect                                                                                                                                          |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Expressing interest or Flash claim       | Alice needs a positive available balance (anything above 0 milliunits) to raise her hand for Bob's free item.                                               | Balance check only. We don't reserve or charge credits just for expressing interest.                                                                   |
-| Giver chooses a recipient                | Bob picks Alice and proposes future pickup times, opening one response timer per chosen item.                                                               | No immediate deduction.                                                                                                                                |
-| Recipient response clock                 | Alice gets 240 working minutes to respond, counted between 8:00 AM and 9:45 PM `America/New_York`. The clock pauses overnight so late-night picks are fair. | No charge while Alice responds within that 4-working-hour window.                                                                                      |
-| Halfway reminder                         | Sends Alice a reminder after 120 working minutes if she still hasn't picked a time.                                                                         | No credit movement.                                                                                                                                    |
-| Valid response                           | Alice confirms one of Bob's times or sends back valid future availability. A plain chat message doesn't count as scheduling.                                | Answering on time avoids the penalty.                                                                                                                  |
-| No response or late response             | Alice's 4-working-hour window expires without a valid scheduling response.                                                                                  | Debits 2 available credits **per item** from Alice, leaving her reserved credits alone. A late reply settles the timer but doesn't refund the penalty. |
-| Selection is no longer needed            | Bob switches to another recipient, removes the item, or the pickup is already scheduled or finished.                                                        | Cancels Alice's response timer without charging her a penalty.                                                                                         |
-| Existing selection with negative balance | Even if a timeout penalty pushes Alice into a negative balance, she can still finish scheduling an item Bob already picked her for.                         | Negative balance blocks Alice from claiming _new_ items, not finishing an active handoff.                                                              |
-| Cancel or reschedule a free pickup       | Either Alice or Bob can reschedule, Alice can cancel, and Bob can remove items before completion.                                                           | No standalone cancellation or rescheduling fee on free items.                                                                                          |
-| Complete a free pickup                   | A scheduled pickup can't be marked taken before its scheduled time.                                                                                         | No match fee is consumed on free pickups.                                                                                                              |
-| Report a free pickup no-show             | Opens 10 minutes after the scheduled pickup time.                                                                                                           | Updates the pickup state and logs a reliability event, without the paid `10F` penalty.                                                                 |
-
-Sources: [Free decision rules](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/free-pickup/free.decider.ts), [working-hours clock](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100373_create_free_recipient_response_due_at.sql), [per-item obligation creation](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100443_globalize_free_response_selection.sql), [settlement and chargeability checks](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100442_globalize_free_response_settlement.sql), and [Free no-show grace](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/pickups/pickup-no-show-policy.ts).
-
-#### What the ledger has to guarantee
-
-| Rule                                             | Why it matters                                                                                                                                                                  |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Holds require available credits; penalties don't | Alice can't start a new match without enough available credits, but penalties (ghosting, bailing on a set pickup, or ignoring a free item handoff) can push a balance negative. |
-| Balance and history always move together         | Every balance update and ledger row insert happens inside the same locked SQL transaction.                                                                                      |
-| Retries are safe                                 | Re-running a reservation, purchase webhook, or timeout settlement with the same idempotency key returns the original result instead of charging or granting twice.              |
-| Append-only history for normal operations        | App code never edits old ledger rows in place. Every change appends a new row explaining what moved and why.                                                                    |
-| Notifications happen after commit                | Push notifications and follow-up jobs run only after the database transaction commits.                                                                                          |
-
-## Why a single `credits` column wasn't enough
-
-At first, a credit balance sounds like a single number on a user profile. Add to it when someone buys credits, subtract from it when they make a match.
-
-That falls apart as soon as two people actually try to coordinate a pickup. When you accept a match, your credits need to be held so you can't spend them on three other items at the same time. If the other person backs out under a rule that refunds you, you should get those credits back. Only when the pickup happens are those credits gone for good.
-
-A single `credits` column can't tell you which credits are locked up in an active match, why a balance dropped, or whether a Stripe webhook just fired twice. I built the credit ledger in Postgres to handle that lifecycle and connect the database math to what each person sees in their inbox.
-
-<Callout title="Note on the title">
-
-My original working title for this post was "Creating Double-Sided Accounting," which is still in the URL slug. When you reserve or release credits, the math moves cleanly between two columns, `available` and `reserved`. Buying or spending credits only updates the user's account without a matching platform account on the other side, so this is a credit ledger rather than full double-entry bookkeeping.
-
-</Callout>
+A single `credits` column can't tell you which credits are locked up in an active match, why a balance dropped, or whether a Stripe webhook just fired twice.
 
 ## Walking through a match
 
-Say Alice buys three credits and accepts a match with Bob for a $20 item. The match costs one credit from each of them. Here is what happens to Alice's account from start to finish:
+The credit is valued at $1. For items that are bought and sold, 5% of profit is required on each side of the transaction. If a coffee table is bought for $100, $5 of credit needs to be reserved on both sides of the transaction for both the buyer and seller as a bond.
 
-| Operation                        | Available credits | Reserved credits |
-| -------------------------------- | ----------------: | ---------------: |
-| Alice buys three credits         |                 3 |                0 |
-| Reserve one for a match with Bob |                 2 |                1 |
-| Release it when Bob cancels      |                 3 |                0 |
-| Reserve one for a later match    |                 2 |                1 |
-| Complete that pickup             |                 2 |                0 |
+| Operation | Alice: available | Alice: reserved | Bob: available | Bob: reserved |
+| --- | --: | --: | --: | --: |
+| Alice and Bob each buy five credits | 5 | 0 | 5 | 0 |
+| Each reserves five credits for the $100 table | 0 | 5 | 0 | 5 |
+| The match is cancelled and both holds released | 5 | 0 | 5 | 0 |
+| Each reserves five credits for a new $100 match | 0 | 5 | 0 | 5 |
+| Complete that pickup and spend both holds | 0 | 0 | 0 | 0 |
 
 Reserving a credit is a hold. It stops Alice from double-spending that credit on another offer while keeping it around in case the match falls through and she's owed a refund. Completing the pickup spends the reserved credit.
-
-If we only stored a single number, we'd constantly be guessing. Did Alice's balance drop because a pickup finished, because of a cancellation penalty, or because of a bug? Which match is holding her credit right now? Did we accidentally charge her twice?
-
-The ledger answers those questions by recording every movement alongside the reason it happened.
 
 <MermaidDiagram
   title="A credit reservation follows the match"
@@ -158,7 +76,7 @@ The ledger answers those questions by recording every movement alongside the rea
 Everything runs through two tables:
 
 - `match_credit_accounts` holds each profile's current `available` and `reserved` balances.
-- `match_credit_ledger` is the paper trail. Every time an account changes, we insert a row with the deltas, the balances after the move, the reason, the related purchase or offer thread, and an idempotency key.
+- `match_credit_ledger` is the paper trail. An append only table. Every time an account changes, we insert a row with the deltas, the balances after the move, the reason, the related purchase or offer thread, and an idempotency key.
 
 Having a dedicated row in `match_credit_accounts` gives the app a fast way to read your current balance. More importantly, it gives Postgres a single row to lock when credits move.
 
@@ -229,34 +147,68 @@ Here is a diagram of how the account and ledger tables fit in with purchases, cr
   description="How a user's profile connects to their credit account, ledger history, purchases, credit packs, Stripe customer record, and offer threads. Use the zoom controls to inspect the columns."
 />
 
-**Note:** Both `match_credit_accounts` and `match_credit_ledger` point to `profiles` rather than having a direct foreign key between the account and ledger tables. Keeping the account balances in sync with the ledger history is handled inside our Postgres mutation functions. Also, the balances and deltas in the account and ledger tables are stored in milliunits (`1,000` per credit), while `credit_count` on packs and purchases is whole credits and `price_cents` / `amount_cents` are in cents. We save the purchased credit count and price on `match_credit_purchases` at checkout so updating a pack in the catalog later won't rewrite old purchase history.
+**Note:** Both `match_credit_accounts` and `match_credit_ledger` point to `profiles` rather than having a direct foreign key between the account and ledger tables. Keeping the account balances in sync with the ledger history is handled inside our Postgres functions. Balances and deltas in the account and ledger tables are stored in milliunits (`1,000` per credit), while `credit_count` on packs and purchases is whole credits and `price_cents` / `amount_cents` are in cents. We save the purchased credit count and price on `match_credit_purchases` at checkout so updating a pack in the catalog later won't rewrite old purchase history.
 
 ### Reading the ledger rows
 
 Here is Alice's match from earlier, this time as rows in `match_credit_ledger`. We store credits as integer **milliunits**, with 1,000 milliunits per credit, so we never have to deal with floating-point math:
 
-| Reason           | Available delta | Reserved delta | Available after | Reserved after |
-| ---------------- | --------------: | -------------: | --------------: | -------------: |
-| `purchase_grant` |           +3000 |              0 |            3000 |              0 |
-| `reserve`        |           -1000 |          +1000 |            2000 |           1000 |
-| `release`        |           +1000 |          -1000 |            3000 |              0 |
-| `reserve`        |           -1000 |          +1000 |            2000 |           1000 |
-| `consume`        |               0 |          -1000 |            2000 |              0 |
+| Reason | Available delta | Reserved delta | Available after | Reserved after |
+| --- | --: | --: | --: | --: |
+| `purchase_grant` | +3000 | 0 | 3000 | 0 |
+| `reserve` | -1000 | +1000 | 2000 | 1000 |
+| `release` | +1000 | -1000 | 3000 | 0 |
+| `reserve` | -1000 | +1000 | 2000 | 1000 |
+| `consume` | 0 | -1000 | 2000 | 0 |
 
 Notice how `reserve` and `release` move the exact same amount between `available` and `reserved`. `purchase_grant` adds to `available`, and `consume` drains `reserved` once the pickup is done.
 
 As long as every balance change goes through the ledger functions, the account row always equals the sum of its ledger rows:
 
-```text
-account.available = sum(ledger.delta_available)
-account.reserved  = sum(ledger.delta_reserved)
+```tsx
+account.available = sum(ledger.delta_available);
+account.reserved = sum(ledger.delta_reserved);
 ```
 
-We keep those in sync by updating the account row and inserting the ledger row inside the same Postgres function and transaction.
+We keep those in sync by updating the account row and inserting the ledger row inside the same transaction. App code never edits old ledger rows in place. A release or refund appends a new movement, so we can still see the original charge and what happened afterward.
+
+A penalty can debit available credits directly, even if that pushes the balance below zero. This was an intentional design and product decision. If the user has 2 credits but they get chosen for 10 items, they should be able to pick up all of those items. If the person who is giving these items away is limited to what they can give away based off of the user's credit balance, they're going to go somewhere else. Being able to go negative gives users flexibility To get as many freedoms as they want without needing to purchase more credits. They just need to reply promptly and show up.
+
+Reserving credits has a stricter rule, though. Alice needs enough available credits to cover a new hold.
 
 ## Locking the account row when reserving credits
 
 Let's look at `reserve_match_credit`, the Postgres function that puts a hold on your credits.
+
+The function takes a profile UUID, an offer-thread UUID, an idempotency key, metadata, and an integer amount in milliunits. It returns the profile ID, current available and reserved balances, and the ledger row ID.
+
+{/* TODO: Remove or Figure out another way to reference this in a way that public readers won't be thrown off. Not sure why the comment is rendering here. */}
+
+The snippets below come from the [reservation function with the balance guard restored](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100704_restore_match_credit_reservation_balance_guard.sql).
+
+### Where the transaction starts
+
+Our server calls these functions through Supabase RPC. [PostgREST runs each request inside a database transaction](https://docs.postgrest.org/en/stable/references/transactions.html). The function's writes commit together when that request succeeds. An unhandled database error rolls them back.
+
+The `BEGIN` and `END` inside a PL/pgSQL function delimit its body. The surrounding request owns the transaction. Calling a second SQL function from inside the first keeps its work in that same transaction. Making two separate RPC requests would create two separate transaction boundaries.
+
+That matters when accepting a match reserves credits for both Alice and Bob. The enclosing match function calls the ledger helpers inside one database transaction. If Bob's reservation fails, Alice's reservation from that attempt rolls back too.
+
+{/* Maybe turn this into more of a "what's happening? at a lower level These are privileged functions, declared `SECURITY DEFINER` with an explicit `search_path`. Execution of the ledger helpers is revoked from `PUBLIC`, `anon`, and `authenticated`, and granted to `service_role`. They also check `auth.role()` in the function body. The authenticated server resolves the participant and policy before calling them; the browser doesn't get to submit arbitrary balance changes. */}
+
+### Why a Postgres function instead of an ORM transaction?
+
+An ORM transaction could keep the balance update and ledger insert atomic too. If all the statements run on the same database transaction, Postgres provides the same commit and rollback guarantees. We'd still need the row locks, balance checks, and idempotency rules shown here. Moving the code into SQL doesn't remove those requirements.
+
+{/* Not sure how convincing of an argument this is. */} For this implementation, the useful part is having one database operation behind an RPC. The request handlers, Stripe webhook, and background workers use Supabase clients. An application-level `try` block around several client requests wouldn't turn them into one database transaction. A Postgres function lets each caller invoke the complete operation in one request, and lets larger match functions compose the ledger helpers inside their own transaction.
+
+An ORM-based version could instead use a direct Postgres connection and a shared transaction-aware service. That would be a reasonable choice if those callers already shared that data-access layer. Here, the function gives them a common mutation boundary, with database permissions controlling who can invoke it.
+
+There is a cost. Changes to these functions go through SQL migrations, and TypeScript checks alone can't verify their behavior. Database integration tests need to cover concurrent requests, rollback, and retries. I keep the product rules in the deciders where I can test them as ordinary values, and use Postgres for the locks, persisted-state checks, and writes that have to succeed together.
+
+{/* Not sure a reader or an interviewer would say what this is, but particularly that decision. Let's try to round this out a bit more. The Postgres function was the right call. Let's get into why. If not, we can also just say that, or you just omitted it. */}
+
+### Lock, check, and write
 
 When you call it, it makes sure your account row exists, locks that row, checks whether we've already processed this exact request, checks that you can afford the hold, updates your balances, and writes the ledger entry.
 
@@ -272,7 +224,7 @@ FOR UPDATE;
 
 Why lock the row? Say Alice has one credit left and tries to accept two different matches at the exact same time. Without `FOR UPDATE`, both requests could read `available_credits = 1000` in the app and let both holds through. With the row lock, the second transaction has to wait until the first one finishes and commits. By the time the second transaction reads the row, `available_credits` is `0`.
 
-Next up, right after grabbing the lock, the function checks if there are enough credits and updates the account:
+After checking for a retry, which we'll get to next, the function checks if there are enough credits and updates the account:
 
 ```sql
 IF v_account.available_credits < v_credit_milliunits THEN
@@ -289,9 +241,40 @@ WHERE account.profile_id = p_profile_id
 RETURNING account.* INTO v_account;
 ```
 
-The ledger `INSERT` happens right after this inside the same function. If writing the ledger row fails for any reason, Postgres rolls back the balance update too. We never update a balance in one query and hope a second history query succeeds.
+Next comes the history row, still inside `reserve_match_credit`:
 
-When a transaction touches both Alice and Bob at once, like activating a match, the SQL function locks both `match_credit_accounts` rows sorted by `profile_id` so two concurrent requests can't deadlock each other. It also re-checks the offer state, accepted fee, and items inside the transaction. If anything changed between when the app read the match and when the SQL mutation ran, the database rejects the write.
+```sql
+INSERT INTO public.match_credit_ledger (
+  profile_id,
+  offer_thread_id,
+  reason,
+  delta_available_credits,
+  delta_reserved_credits,
+  balance_available_after,
+  balance_reserved_after,
+  idempotency_key,
+  metadata
+)
+VALUES (
+  p_profile_id,
+  p_offer_thread_id,
+  'reserve',
+  -v_credit_milliunits,
+  v_credit_milliunits,
+  v_account.available_credits,
+  v_account.reserved_credits,
+  p_idempotency_key,
+  coalesce(p_metadata, '{}'::jsonb) || jsonb_build_object(
+    'creditUnit', 'milli',
+    'creditMilliunits', v_credit_milliunits
+  )
+)
+RETURNING * INTO v_ledger;
+```
+
+The `RETURNING` from the account update supplies the after-balances for this row. If this insert fails, Postgres rolls back the balance update too. Alice can't end up with a successful hold and no record of which match owns it.
+
+When activating a match, the SQL function locks both `match_credit_accounts` rows sorted by `profile_id`. Consistent ordering avoids Alice-first and Bob-first requests waiting on each other's account locks. Other rows still need consistent lock ordering too. The function also re-checks the offer state, accepted fee, and items inside the transaction.
 
 <MermaidDiagram
   title="Balance and history commit together"
@@ -305,6 +288,34 @@ Networks drop and background jobs retry. An idempotency key lets the app safely 
 
 Just checking "does this idempotency key already exist?" isn't enough, though. When `reserve_match_credit` finds an existing key, it also checks that the profile, offer thread, reason, and credit deltas match the original row. If caller code accidentally reuses an idempotency key for a different match or a different amount, Postgres throws a conflict error instead of silently pretending the new call worked.
 
+This branch runs after locking the account and before moving any credits:
+
+```sql
+SELECT *
+  INTO v_ledger
+FROM public.match_credit_ledger
+WHERE idempotency_key = p_idempotency_key;
+
+IF FOUND THEN
+  IF v_ledger.profile_id <> p_profile_id
+    OR v_ledger.offer_thread_id IS DISTINCT FROM p_offer_thread_id
+    OR v_ledger.reason <> 'reserve'
+    OR v_ledger.delta_available_credits <> -v_credit_milliunits
+    OR v_ledger.delta_reserved_credits <> v_credit_milliunits THEN
+    RAISE unique_violation USING MESSAGE = 'MATCH_CREDIT_IDEMPOTENCY_CONFLICT';
+  END IF;
+
+  RETURN QUERY SELECT
+    p_profile_id,
+    v_account.available_credits,
+    v_account.reserved_credits,
+    v_ledger.id;
+  RETURN;
+END IF;
+```
+
+There's a second check for an existing hold on the same profile and offer thread. The function sums that pair's reserved deltas. If a hold already exists for the requested amount, it returns the earlier reservation; if the amount differs, it raises `MATCH_CREDIT_STALE_RESERVATION`. A fresh request key alone isn't permission to reserve the same match twice.
+
 When a retry is legitimate, the function returns the original ledger row ID alongside the account's **current** balances. Meanwhile, the ledger row itself keeps the `available_after` and `reserved_after` snapshot from when that move originally happened.
 
 Webhook retries have a similar trap. It's tempting to use the Stripe webhook event ID as your idempotency key when someone buys credits, but Stripe can send more than one event type for the same payment. Instead, we log the webhook event ID separately and tie the credit grant key directly to the PaymentIntent:
@@ -315,6 +326,66 @@ stripe:payment_intent:<id>
 
 If the database commits the credit grant and the server crashes a millisecond later before returning `200` to Stripe, Stripe is going to send that webhook again. Keying the grant off the PaymentIntent means the retry sees the existing grant and exits cleanly instead of handing out double credits.
 
+## Connecting Stripe payments to credit grants
+
+Stripe handles payment for the credit packs. Alice still pays Bob directly for the chair. That distinction gives us a smaller payment flow to reason about. A successful credit-pack purchase needs to add the purchased credits exactly once, even if Stripe sends several events or our server loses a response.
+
+### Save the purchase before opening Checkout
+
+The [platform billing service](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/billing/platform-billing.service.ts#L144-L203) loads the active pack and Alice's Stripe customer, then creates a pending `match_credit_purchases` row. It saves the pack's credit count, price, currency, and owner at that moment. Later changes to the pack catalog won't change what this purchase buys.
+
+The purchase ID travels into Stripe Checkout as `client_reference_id`, with purchase metadata attached to both the session and PaymentIntent. The service uses `match-credit-checkout:<profile-id>:<client-idempotency-key>` to deduplicate local purchase creation and the Stripe request. If the purchase already has a checkout session, it can retrieve that session instead of creating another one.
+
+The browser returning from Checkout isn't proof of payment. Credits are granted through the webhook path.
+
+### Verify the event and what was purchased
+
+The [platform billing webhook route](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/apps/next/app/api/stripe/platform-billing/webhook/route.ts#L36-L74) reads the raw request body and verifies `stripe-signature` with `STRIPE_PLATFORM_WEBHOOK_SECRET` before processing the event.
+
+The handler accepts paid Checkout completions, asynchronous Checkout payment successes, and successful PaymentIntents. A Checkout event must describe a paid session in payment mode; a PaymentIntent must be `succeeded`. The [webhook service](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/billing/platform-billing-webhook.service.ts#L302-L420) compares the payment amount and currency, profile, pack, and credit metadata with the stored purchase. It also checks any Stripe session or PaymentIntent identifiers already attached to that purchase.
+
+Only after those checks does it request the grant:
+
+```ts
+const grantResult = await this.matchCreditService.grantPurchase({
+  purchaseId: purchase.id,
+  idempotencyKey: `stripe:payment_intent:${params.paymentIntentId}`,
+  metadata: this.createGrantMetadata(params),
+});
+```
+
+The webhook event ID and this key solve different problems. `stripe_webhook_events` tracks processing of a particular delivery. The PaymentIntent key identifies the payment across different event types. A Checkout completion and a PaymentIntent success can both describe the same purchase without earning Alice two grants.
+
+### Grant credits in one database transaction
+
+The [grant_match_credit_purchase function](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261023197115_migrate_match_credit_milliunits.sql#L542-L695) locks the purchase row, checks the request key, and also looks for a prior `purchase_grant` for that purchase. A different key can't grant the same purchase again. A fresh grant rejects a failed, cancelled, or refunded purchase.
+
+It calculates the amount from the saved `credit_count * 1000`, creates the account if needed, and locks it. Then it updates the account and purchase:
+
+```sql
+UPDATE public.match_credit_accounts AS account
+SET
+  available_credits = account.available_credits + v_credit_milliunits,
+  lifetime_purchased_credits = account.lifetime_purchased_credits + v_credit_milliunits,
+  updated_at = now()
+WHERE account.profile_id = v_purchase.profile_id
+RETURNING account.* INTO v_account;
+
+UPDATE public.match_credit_purchases
+SET
+  status = 'succeeded',
+  purchased_at = coalesce(purchased_at, now()),
+  granted_at = coalesce(granted_at, now()),
+  updated_at = now()
+WHERE id = v_purchase.id;
+```
+
+The function also inserts the `purchase_grant` ledger row with the purchase ID, positive available delta, after-balances, and idempotency key. All three changes commit together. SQL trusts the privileged webhook's payment verification; it doesn't call Stripe itself.
+
+If the grant commits and later webhook bookkeeping fails, a retry can reach the same grant safely. Receipt email and optional purchase analytics happen afterward, with their own error handling. Granting credits successfully doesn't prove that an email was delivered.
+
+Buying credits also doesn't automatically complete a waiting match in this webhook path. The funding action separately checks the available balance and deadline before reserving the required credits. Alice can own the credits she bought even if a particular match's funding window has expired.
+
 ## Keeping cents and credit milliunits straight
 
 Item prices and credits use different units. Item prices are stored in integer cents, while the ledger stores credits in integer milliunits, even on a couple of older columns whose names still end in `_credits`.
@@ -323,7 +394,7 @@ Here is the function that calculates the base credit fee from an accepted offer 
 
 ```ts
 export const resolveBaseMatchFeeCreditMilliunits = (
-  acceptedAmountCents: number,
+  acceptedAmountCents: number
 ): number => Math.ceil(acceptedAmountCents / 2);
 ```
 
@@ -331,57 +402,105 @@ For a $20 item, `2000` cents comes out to `1000` milliunits, or 1 credit per per
 
 When an offer is accepted, we snapshot that result into `base_match_fee_credit_milliunits` on the offer thread. When the pickup finishes days later, settlement reads that snapshot rather than recalculating the fee. That way, if we ever change our fee formula, we won't pull the rug out from under matches that are already in progress.
 
-## Pulling marketplace rules into pure functions
+## Starting the four-hour response window
 
-Getting the SQL math right was only half the problem. Early on, marketplace rules were scattered across the codebase, and testing them was a pain. What a buyer, seller, or giver is allowed to do next depends on both the action they're taking and the current state of the match.
+Free pickups have a different problem from paid matches. Bob picks Alice to receive a free chair and proposes pickup times. If she never responds, Bob is left waiting instead of offering it to someone else. We give Alice four hours to respond, but we pause that clock overnight.
 
-I didn't want to spin up database fixtures and mock push notifications just to test whether cancelling a pickup should refund a credit. Earlier I mentioned the decider pattern we use for policies. Without getting into every rule here, I pulled those decisions into pure TypeScript functions built around a `decide -> evolve -> react` loop:
+The timer starts in the selection transaction. For each eligible free item, the database inserts a row into `free_recipient_response_obligations` with the recipient, item, proposed times, `opened_at`, `due_at`, and penalty amount. The [selection function](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100443_globalize_free_response_selection.sql#L307-L351) calculates the deadline with:
 
-1. `decide` takes the current state, a command, and context, and returns either a rejection or a list of typed events.
-2. `evolveAll` folds those events into the next state.
-3. `reactions` turns those events into side effects like notifications.
-
-Here is how those pieces fit together once `decide` accepts a command:
-
-```ts
-return {
-  kind: "accepted",
-  state,
-  nextState: evolveAll(state, decision.events),
-  events: decision.events,
-  effects: decision.events.flatMap((event) =>
-    reactions(event, decisionContext),
-  ),
-  decisionContext,
-};
+```sql
+private.calculate_free_recipient_response_due_at(v_now, 'America/New_York', 240)
 ```
 
-Because `decide`, `evolveAll`, and `reactions` are pure functions, unit tests can throw weird state combinations at them in milliseconds. Credit events describe who gets charged or refunded, why, and how many milliunits to move, without touching balance fields directly.
+Those 240 minutes count only between 8:00 a.m. and 9:45 p.m. each day in New York. If Bob selects Alice at 8:45 p.m., she gets one hour that evening and the remaining three the next morning. Her deadline is 11:00 a.m. The [SQL clock function](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100373_create_free_recipient_response_due_at.sql) converts each day's opening and closing times using the named timezone and carries unused minutes into the next day.
 
-Once the policy layer decides what should happen, the service layer calls the Postgres function with the expected state and an idempotency key. Only after the database transaction commits do we fire off the notification effects.
+The row stores `required_working_minutes = 240` and `penalty_milliunits = 2000`. That's a two-credit penalty per item, so a handoff containing several items can have several obligations. Persisting the deadline means a server restart doesn't reset Alice's clock.
 
-<MermaidDiagram
-  title="From a command to a guarded mutation"
-  source="flowchart TD; A[State, command, and context] --> B[decide]; B -->|Accepted events| C[evolveAll]; B -->|Accepted events| D[reactions]; C --> E[Next state]; D --> F[Notification effects]; B -->|Accepted events| G[Service calls Postgres]; G --> H[SQL locks and re-checks state]; H --> I[Commit transaction]; I --> J[Send notifications after commit]; F -.-> J;"
-  description="The decider takes the current state and command, returns the next state and events, and only sends notifications after the Postgres transaction commits."
-/>
+### Cron finds deadlines that have passed
 
-## Connecting the ledger to the inbox
+We run these jobs through Trigger.dev. The free-response settlement task is registered like this:
 
-A match has two people in it, and at any given moment one person usually needs to act while the other waits. Showing a generic "Accepted" badge to both Alice and Bob isn't helpful.
+```ts
+export const FREE_RESPONSE_SETTLEMENT_CRON = "*/5 * * * *";
 
-Take credit funding right after an offer is accepted. To accept an offer, Alice has to have enough credits in her account right then. But what if Bob, who originally sent the offer, doesn't have enough credits yet?
+export const freeResponseSettlementTask = schedules.task({
+  id: "free-response-settlement",
+  cron: FREE_RESPONSE_SETTLEMENT_CRON,
+  run: async () => runFreeResponseSettlement({}),
+});
+```
 
-When that happens, we reserve Alice's credits, lock the items to the match, and put the thread into `awaiting_credits`. That gives Bob five hours to buy credits and finish funding his side of the match before pickup scheduling can move forward.
+The [task](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/triggers/scheduled/free-response-settlement.ts) creates a server context with a service-role Supabase client. Its worker loads due obligations, asks the Free decider for the outcome, and sends the expected facts and credit event to `settle_free_response_obligation`.
 
-On the server, `toActionView` figures out whether the match is waiting on Alice or Bob, which buttons each of them should see, what happens if either one backs out now, and when the current deadline expires. The inbox turns that into `ActivityInboxRowViewModel`, a discriminated union keyed by `kind`, with cases like `offer_pickup_confirmation`, `offer_scheduled_pickup`, and the funding states.
+The deadline and the cron tick do different jobs. Alice's window ends at the stored `due_at`; a later worker run applies the settlement. We don't start an in-memory four-hour timer or depend on a job waking up at the exact expiry instant.
 
-Because each `kind` carries only the fields for that specific state, the UI can switch on `row.kind` and render the right call to action without piecing together a bunch of boolean flags.
+Before charging, the [settlement RPC](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100442_globalize_free_response_settlement.sql) locks the relevant gift, item, pickup-item rows, and obligation, then rechecks whether the item is still free, chosen for Alice, and has no active pickup. An obligation that's no longer chargeable can be cancelled without a debit. For a penalty, it also locks Alice's credit account and checks the expected balance.
 
-One bug we had to guard against here was leftover scheduling data on finished pickups. The inbox mapper always checks whether the pickup is already completed before looking at scheduling fields, so an old timestamp can't make a finished match look like it still needs action.
+The balance update, `free_response_penalty` ledger insert, and obligation's transition to `penalized` happen in the same transaction. The movement uses `free-response:obligation:<id>:penalty` as its key. If the candidate facts changed, the RPC can return a stale result instead of applying the old decision.
+
+A separate [reminder job](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/triggers/scheduled/free-response-reminder.ts) runs every five minutes too. Its [claim function](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100434_claim_due_free_response_reminders_by_recipient.sql) makes reminders eligible halfway through the working-time window, groups them by handoff and recipient, and uses delivery claims with leases to coordinate workers.
+
+### Paid funding has its own clock
+
+The four-hour response window belongs to free items. If Alice accepts Bob's paid offer while Bob lacks credits, the paid funding decider gives him **five elapsed hours from acceptance**, with a reminder at 150 minutes:
+
+```ts
+export const OFFER_FUNDING_WINDOW_HOURS = 5;
+export const OFFER_FUNDING_REMINDER_MINUTES = 150;
+```
+
+The [paid funding worker](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/offer-funding-worker.service.ts#L261-L320) runs on another five-minute Trigger.dev schedule. It finds `awaiting_credits` threads whose `accepted_at` is at least five hours old and submits `ExpireAwaitingCredits` through the funding service. The [decider](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/offer-funding.decider.ts#L225-L276) rejects funding completion at or after the deadline even if the expiry worker hasn't run yet. Expiry releases Alice's hold and charges Bob the match fee from available credits.
+
+These schedules are separate from the completion-repair job below. Each looks for a specific persisted condition and applies the corresponding policy.
 
 ## Cleaning up unfinished settlements
 
-Sometimes a pickup finishes, the state transitions, and the credit settlement step needs a retry. To catch those, I set up a Trigger.dev job that runs every 15 minutes, queries Postgres for completed pickups with unfinished credit work, and steps through them one by one so a failure on one match doesn't block the rest of the batch.
+The credit watcher looks for a specific mismatch. The pickup is marked `taken` or `completed`, but its offer thread still has reserved credits in the ledger. The [Trigger.dev task](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/triggers/scheduled/match-credit-completion-retry.ts) is configured for every 15 minutes unless `COMMERCE_CRON_MANUAL_ONLY` disables the schedule. It defaults to 100 candidates per run.
 
-At the end of the day, keeping the accounts, the ledger, and the state checks inside Postgres has been the right call for Treasure It. When someone asks why their balance changed or what a match is waiting on, I don't have to dig through application logs to piece the story together. It's all sitting right there in `match_credit_ledger`. Hopefully this helps anyone building a similar credit or reservation system in their own app.
+### Find work from persisted facts
+
+The worker calls `find_incomplete_off_platform_match_credit_pickups`. At the center of that function is this query:
+
+```sql
+SELECT ledger.offer_thread_id
+FROM public.match_credit_ledger AS ledger
+WHERE ledger.offer_thread_id IS NOT NULL
+GROUP BY ledger.offer_thread_id
+HAVING coalesce(sum(ledger.delta_reserved_credits), 0) > 0
+```
+
+A reserve adds to that sum; a release or consume subtracts from it. A positive result means the thread still holds credits. The [full finder function](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261023197078_create_find_incomplete_off_platform_match_credit_pickups_rpc.sql) joins those threads through their items to completed pickups. It requires an accepted event and an `accepted` or `completed` thread, orders candidates by pickup update time, and clamps the batch size between 1 and 500.
+
+The finder is a read. Its results can become stale before processing, so the write function must recheck them. The batch is also not one large transaction. The service processes each candidate with a separate RPC and catches failures per pickup, recording them and continuing with the rest.
+
+### Retry the completion transaction
+
+The [retry service](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/commerce-activation.service.ts#L828-L948) calls `complete_accepted_match_pickup`, the same RPC used for completion. That function locks and validates the pickup and related match rows, applies completion changes, and settles the reservations within its transaction.
+
+For Alice's side, the settlement branch reads:
+
+```sql
+SELECT coalesce(sum(delta_reserved_credits), 0)::integer
+  INTO v_buyer_reserved_delta
+FROM public.match_credit_ledger
+WHERE profile_id = v_thread.buyer_profile_id
+  AND offer_thread_id = v_thread.id;
+
+IF v_buyer_reserved_delta > 0 THEN
+  SELECT ledger_id
+    INTO buyer_consume_ledger_id
+  FROM public.consume_match_credit_reservation(
+    v_thread.buyer_profile_id,
+    v_thread.id,
+    'off-platform-match:' || v_thread.id::text || ':buyer:pickup-complete-consume',
+    v_metadata || jsonb_build_object('role', 'buyer', 'phase', 'pickup_complete_consume')
+  );
+```
+
+This is an excerpt from the [completion function](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100500_preserve_accepted_match_pickup_confirmation_timestamps.sql#L376-L434). Its other branch looks for an existing consume row when no hold remains and raises a stale-reservation error if it can't find one. It repeats the same process for Bob.
+
+Inside [`consume_match_credit_reservation`](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261023197115_migrate_match_credit_milliunits.sql#L406-L540), Postgres locks the account, checks the request key, and calculates the outstanding reservation for this profile and thread. With no explicit amount supplied, it consumes that outstanding hold. It verifies both the thread's hold and the account's reserved balance before decrementing reserved credits and inserting a `consume` row. A different match's hold cannot stand in for a missing reservation here.
+
+That gives the watcher a useful retry boundary. If settlement fails inside the completion RPC, its database changes roll back together. If the commit succeeds but the response is lost, the next scan normally finds no outstanding hold. A candidate already loaded by another run still has to pass the completion function's checks. The watcher repairs unfinished credit settlement; notification delivery has a separate lifecycle.
+
+Keeping the balance update and its ledger entry in the same transaction has been the most important part of this design. A hold can't succeed without a record of which match it belongs to, and a payment retry can't quietly grant another set of credits. When someone asks why their balance changed, I can follow the rows in `match_credit_ledger` instead of trying to reconstruct it from application logs.
