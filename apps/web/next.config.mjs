@@ -7,15 +7,9 @@ import { prepareTypographyMetrics } from "./scripts/prepare-typography-metrics.m
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
-  reactCompiler: true,
   allowedDevOrigins: ["127.0.0.1"],
   compiler: {
     runAfterProductionCompile: prepareTypographyMetrics,
-  },
-  turbopack: {
-    rules: {
-      "*.wgsl": wgslTurbopackRule(),
-    },
   },
   experimental: {
     // Restored production caches have served obsolete PostCSS output.
@@ -31,17 +25,23 @@ const nextConfig = {
     ],
   },
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
+  reactCompiler: true,
+  turbopack: {
+    rules: {
+      "*.wgsl": wgslTurbopackRule(),
+    },
+  },
 };
 
 const withMDX = createMDX({
-  extension: /\.(md|mdx)$/,
+  extension: /\.(?:md|mdx)$/u,
   options: {
-    remarkPlugins: ["remark-frontmatter", "remark-gfm", "remark-math"],
     rehypePlugins: [
       "rehype-slug",
       "rehype-katex",
       ["@shikijs/rehype", { theme: "github-dark-dimmed" }],
     ],
+    remarkPlugins: ["remark-frontmatter", "remark-gfm", "remark-math"],
   },
 });
 

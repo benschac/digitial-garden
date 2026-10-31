@@ -2,45 +2,76 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import { Effect, Exit } from "effect";
 
-import {
-  watchWasm,
-  type WatchWasmDependencies,
-  type WatchWasmSignal,
+import { watchWasm } from "./watch-wasm-lifecycle";
+import type {
+  WatchWasmDependencies,
+  WatchWasmError,
+  WatchWasmSignal,
 } from "./watch-wasm-lifecycle";
 
-function createProcess() {
+const createProcess = () => {
   const completion = Promise.withResolvers<number>();
+
   return {
     exited: completion.promise,
-    finish: completion.resolve,
     fail: completion.reject,
-    kills: 0,
+    finish: completion.resolve,
     kill() {
       this.kills += 1;
       completion.resolve(143);
     },
+    kills: 0,
   };
-}
+};
 
-const cleanups: Array<() => Promise<unknown>> = [];
+const cleanups: (() => Promise<Exit.Exit<void, WatchWasmError>>)[] = [];
 
-function createHarness(
+const createHarness = (
   options: {
     failWatch?: number;
     failSpawn?: number;
     failSignal?: WatchWasmSignal;
     failClose?: number;
-  } = {},
-) {
-  const watchers: Array<{ change(): void; closes: number; close(): void }> = [];
-  const processes: Array<ReturnType<typeof createProcess>> = [];
+  } = {}
+) => {
+  const watchers: { change: () => void; closes: number; close: () => void }[] =
+    [];
+
+  const processes: ReturnType<typeof createProcess>[] = [];
   const signals = new Map<WatchWasmSignal, () => void>();
   const removed: WatchWasmSignal[] = [];
   const logs: string[] = [];
   const errors: string[] = [];
   const controller = new AbortController();
   let spawns = 0;
+
   const dependencies: WatchWasmDependencies = {
+    error: (message) => errors.push(message),
+    log: (message) => logs.push(message),
+    offSignal: (signal, listener) => {
+      expect(signals.get(signal)).toBe(listener);
+      signals.delete(signal);
+      removed.push(signal);
+    },
+    onSignal: (signal, listener) => {
+      if (signal === options.failSignal) {
+        throw new Error("cannot register signal");
+      }
+
+      signals.set(signal, listener);
+    },
+    spawn: () => {
+      spawns += 1;
+
+      if (spawns === options.failSpawn) {
+        throw new Error("cannot spawn");
+      }
+
+      const process = createProcess();
+      processes.push(process);
+
+      return process;
+    },
     targets: [
       { path: "src", recursive: true },
       { path: "Cargo.toml", recursive: false },
@@ -48,84 +79,93 @@ function createHarness(
     ],
     watch: (_target, change) => {
       const index = watchers.length;
-      if (index === options.failWatch) throw new Error("cannot watch");
+
+      if (index === options.failWatch) {
+        throw new Error("cannot watch");
+      }
+
       const watcher = {
         change,
-        closes: 0,
         close() {
           this.closes += 1;
-          if (index === options.failClose) throw new Error("cannot close");
+
+          if (index === options.failClose) {
+            throw new Error("cannot close");
+          }
         },
+        closes: 0,
       };
+
       watchers.push(watcher);
+
       return watcher;
     },
-    spawn: () => {
-      spawns += 1;
-      if (spawns === options.failSpawn) throw new Error("cannot spawn");
-      const process = createProcess();
-      processes.push(process);
-      return process;
-    },
-    onSignal: (signal, listener) => {
-      if (signal === options.failSignal)
-        throw new Error("cannot register signal");
-      signals.set(signal, listener);
-    },
-    offSignal: (signal, listener) => {
-      expect(signals.get(signal)).toBe(listener);
-      signals.delete(signal);
-      removed.push(signal);
-    },
-    log: (message) => logs.push(message),
-    error: (message) => errors.push(message),
     watchingMessage: "Watching Rust…",
   };
+
   const result = Effect.runPromiseExit(watchWasm(dependencies), {
     signal: controller.signal,
   });
+
   const harness = {
-    watchers,
-    processes,
-    signals,
-    removed,
-    logs,
-    errors,
-    result,
+    change() {
+      for (const watcher of watchers) {
+        watcher.change();
+      }
+    },
     controller,
+    errors,
+    logs,
+    processes,
+    removed,
+    result,
+    signals,
     get spawns() {
       return spawns;
     },
-    change() {
-      for (const watcher of watchers) watcher.change();
-    },
-    async stop() {
+    stop() {
       signals.get("SIGTERM")?.();
       controller.abort();
+
       return result;
     },
+    watchers,
   };
+
   cleanups.push(() => harness.stop());
+
   return harness;
-}
+};
 
-async function eventually(predicate: () => boolean) {
-  const deadline = Date.now() + 2000;
-  while (!predicate()) {
-    if (Date.now() > deadline) throw new Error("Condition was not reached");
-    await Bun.sleep(5);
+const eventually = (
+  predicate: () => boolean,
+  deadline = Date.now() + 2000
+): Promise<void> => {
+  if (predicate()) {
+    return Promise.resolve();
   }
-}
 
-function processAt(harness: ReturnType<typeof createHarness>, index: number) {
+  if (Date.now() > deadline) {
+    return Promise.reject(new Error("Condition was not reached"));
+  }
+
+  return Bun.sleep(5).then(() => eventually(predicate, deadline));
+};
+
+const processAt = (
+  harness: ReturnType<typeof createHarness>,
+  index: number
+) => {
   const process = harness.processes[index];
-  if (!process) throw new Error(`Missing process ${index}`);
-  return process;
-}
 
-afterEach(async () => {
-  for (const cleanup of cleanups.splice(0)) await cleanup();
-});
+  if (!process) {
+    throw new Error(`Missing process ${index}`);
+  }
+
+  return process;
+};
+
+afterEach(() => Promise.all(cleanups.splice(0).map((cleanup) => cleanup())));
 
 describe("watch-wasm lifecycle", () => {
   test("builds initially and debounces bursts for 120ms after the last edit", async () => {
@@ -150,10 +190,16 @@ describe("watch-wasm lifecycle", () => {
   test("serializes builds and coalesces multiple debounced edits into one pending rebuild", async () => {
     const harness = createHarness();
     await eventually(() => harness.spawns === 1);
-    for (let index = 0; index < 3; index += 1) {
+
+    const changeAndWait = async () => {
       harness.change();
       await Bun.sleep(150);
-    }
+    };
+
+    await changeAndWait();
+    await changeAndWait();
+    await changeAndWait();
+
     expect(harness.spawns).toBe(1);
     processAt(harness, 0).finish(0);
     await eventually(() => harness.spawns === 2);
@@ -166,7 +212,7 @@ describe("watch-wasm lifecycle", () => {
     const harness = createHarness({ failSpawn: 1 });
     await eventually(() => harness.errors.length === 1);
     expect(harness.errors[0]).toContain(
-      "build spawn failed: Error: cannot spawn",
+      "build spawn failed: Error: cannot spawn"
     );
     harness.change();
     await eventually(() => harness.processes.length === 1);
@@ -189,7 +235,7 @@ describe("watch-wasm lifecycle", () => {
       const harness = createHarness({ failWatch });
       expect(Exit.isFailure(await harness.result)).toBe(true);
       expect(harness.watchers.map((watcher) => watcher.closes)).toEqual(
-        Array.from({ length: failWatch }, () => 1),
+        Array.from({ length: failWatch }, () => 1)
       );
       expect(harness.spawns).toBe(0);
       expect(harness.signals.size).toBe(0);
@@ -207,7 +253,11 @@ describe("watch-wasm lifecycle", () => {
     harness.change();
     await Bun.sleep(30);
     const stop = harness.signals.get("SIGINT");
-    if (!stop) throw new Error("Missing SIGINT handler");
+
+    if (!stop) {
+      throw new Error("Missing SIGINT handler");
+    }
+
     stop();
     stop();
     harness.change();
@@ -229,7 +279,11 @@ describe("watch-wasm lifecycle", () => {
     harness.change();
     await Bun.sleep(150);
     const stop = harness.signals.get("SIGTERM");
-    if (!stop) throw new Error("Missing SIGTERM handler");
+
+    if (!stop) {
+      throw new Error("Missing SIGTERM handler");
+    }
+
     stop();
     stop();
     expect(Exit.isSuccess(await harness.result)).toBe(true);
@@ -250,10 +304,14 @@ describe("watch-wasm lifecycle", () => {
     process.kill = () => {
       process.kills += 1;
     };
+
     let finished = false;
     void harness.result.then(() => {
       finished = true;
+
+      return true;
     });
+
     try {
       harness.signals.get("SIGTERM")?.();
       await eventually(() => process.kills === 1);
@@ -264,6 +322,7 @@ describe("watch-wasm lifecycle", () => {
     } finally {
       process.finish(143);
     }
+
     expect(Exit.isSuccess(await harness.result)).toBe(true);
     expect(harness.signals.size).toBe(0);
   });
@@ -286,7 +345,7 @@ describe("watch-wasm lifecycle", () => {
     await eventually(() => harness.spawns === 1);
     processAt(harness, 0).fail(new Error("lost process"));
     await eventually(() =>
-      harness.errors.some((error) => error.includes("build wait failed")),
+      harness.errors.some((error) => error.includes("build wait failed"))
     );
     expect(processAt(harness, 0).kills).toBe(1);
     harness.change();
