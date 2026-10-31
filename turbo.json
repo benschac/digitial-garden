@@ -30,9 +30,11 @@
       "dependsOn": ["transit"],
       "inputs": [
         "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/bunfig.toml",
-        "$TURBO_ROOT$/scripts/bun-tool.mjs",
-        "$TURBO_ROOT$/scripts/bun-tools-version.mjs"
+        "$TURBO_ROOT$/oxlint.config.mts",
+        "$TURBO_ROOT$/scripts/oxc-tool.mjs",
+        "$TURBO_ROOT$/tools/oxlint/anti-slop/**",
+        "$TURBO_ROOT$/package.json",
+        "$TURBO_ROOT$/bun.lock"
       ]
     },
     "check-types": {

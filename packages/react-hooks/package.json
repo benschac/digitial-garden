@@ -6,15 +6,15 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "lint": "node ../../scripts/bun-tool.mjs lint .",
+    "lint": "node ../../scripts/oxc-tool.mjs lint .",
     "check-types": "tsc --noEmit"
-  },
-  "peerDependencies": {
-    "react": "^19.2.0"
   },
   "devDependencies": {
     "@types/react": "19.3.0",
     "react": "19.3.1",
     "typescript": "7.0.2"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0"
   }
 }

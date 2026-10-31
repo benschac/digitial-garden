@@ -35,5 +35,5 @@ storybook-static
 # Generated content collections
 .content-collections/
 
-# Project-local Bun lint/format binary
+# Local tooling
 .tools/

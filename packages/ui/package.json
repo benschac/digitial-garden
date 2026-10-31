@@ -13,14 +13,18 @@
   },
   "scripts": {
     "dev": "bun run storybook",
-    "lint": "node ../../scripts/bun-tool.mjs lint .",
+    "lint": "node ../../scripts/oxc-tool.mjs lint .",
     "check-types": "tsc --noEmit",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
-  "peerDependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+  "dependencies": {
+    "@base-ui/react": "1.9.0",
+    "clsx": "2.1.1",
+    "cmdk": "1.1.1",
+    "lucide-react": "1.59.0",
+    "tailwind-merge": "3.7.0",
+    "tailwind-variants": "3.3.1"
   },
   "devDependencies": {
     "@storybook/addon-a11y": "^10.6.2",
@@ -38,12 +42,8 @@
     "typescript": "7.0.2",
     "vite": "latest"
   },
-  "dependencies": {
-    "@base-ui/react": "1.9.0",
-    "clsx": "2.1.1",
-    "cmdk": "1.1.1",
-    "lucide-react": "1.59.0",
-    "tailwind-merge": "3.7.0",
-    "tailwind-variants": "3.3.1"
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   }
 }

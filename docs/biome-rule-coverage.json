@@ -1,7 +1,6 @@
 {
   "biomeVersion": "2.5.15",
   "biomeSource": "https://github.com/biomejs/biome/tree/@biomejs/biome@2.5.15",
-  "bunRevision": "1.4.4-canary.1+c0e1716f1",
   "baselineConfig": {
     "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
     "vcs": {
@@ -43,7 +42,7 @@
     }
   },
   "scope": "Non-nursery recommended JavaScript/TypeScript, CSS and JSON rules, explicit React/Next domains, and auto-detected Tailwind/Turborepo domains. No Test dependency was declared. Other languages are not used by this repository.",
-  "caveat": "Mappings identify coverage, not identical diagnostics or fix semantics. Source-same/source-inspired reflect Biome metadata. Related mappings were reviewed against Bun descriptions. Partial and unavailable rows remain parity gaps. Bun defaults and stricter project assertions also remain enabled.",
+  "caveat": "Mappings preserve available checks, not identical diagnostics, options or fixes. Oxlint does not lint CSS or JSON. See docs/oxc-rule-parity.md.",
   "rules": [
     {
       "biome": "a11y/noAccessKey",
@@ -528,9 +527,10 @@
       "biome": "complexity/noUselessUndefinedInitialization",
       "language": "js",
       "severity": "error",
-      "nativeRules": ["no-undef-init"],
-      "match": "source-same",
-      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_undefined_initialization.rs"
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_js_analyze/src/lint/complexity/no_useless_undefined_initialization.rs",
+      "note": "Oxlint 1.90.0 does not expose no-undef-init. Strict-mode parser checks overlap for duplicate parameters and legacy octal escapes, but are not counted as full rule parity."
     },
     {
       "biome": "complexity/useArrowFunction",
@@ -815,7 +815,7 @@
       "biome": "correctness/noUnusedPrivateClassMembers",
       "language": "js",
       "severity": "warn",
-      "nativeRules": ["typescript/no-unused-private-class-members"],
+      "nativeRules": ["no-unused-private-class-members"],
       "match": "source-inspired",
       "source": "crates/biome_js_analyze/src/lint/correctness/no_unused_private_class_members.rs"
     },
@@ -1265,9 +1265,10 @@
       "biome": "suspicious/noDuplicateParameters",
       "language": "js",
       "severity": "error",
-      "nativeRules": ["no-dupe-args"],
-      "match": "source-same",
-      "source": "crates/biome_js_analyze/src/lint/suspicious/no_duplicate_parameters.rs"
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_duplicate_parameters.rs",
+      "note": "Oxlint 1.90.0 does not expose no-dupe-args. Strict-mode parser checks overlap for duplicate parameters and legacy octal escapes, but are not counted as full rule parity."
     },
     {
       "biome": "suspicious/noEmptyInterface",
@@ -1413,9 +1414,10 @@
       "biome": "suspicious/noOctalEscape",
       "language": "js",
       "severity": "warn",
-      "nativeRules": ["no-octal-escape"],
-      "match": "source-same",
-      "source": "crates/biome_js_analyze/src/lint/suspicious/no_octal_escape.rs"
+      "nativeRules": [],
+      "match": "unavailable",
+      "source": "crates/biome_js_analyze/src/lint/suspicious/no_octal_escape.rs",
+      "note": "Oxlint 1.90.0 does not expose no-octal-escape. Strict-mode parser checks overlap for duplicate parameters and legacy octal escapes, but are not counted as full rule parity."
     },
     {
       "biome": "suspicious/noProto",
@@ -1874,5 +1876,6 @@
       "source": "crates/biome_json_analyze/src/lint/suspicious/use_biome_ignore_folder.rs",
       "note": "Biome configuration-specific rule; biome.json has been removed."
     }
-  ]
+  ],
+  "oxlintVersion": "1.90.0"
 }

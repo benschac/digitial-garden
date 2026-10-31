@@ -1,16 +1,9 @@
 {
   "name": "personal-site",
   "private": true,
-  "packageManager": "bun@1.4.3",
-  "engines": {
-    "node": ">=24"
-  },
   "workspaces": [
     "apps/*",
     "packages/*"
-  ],
-  "trustedDependencies": [
-    "unrs-resolver"
   ],
   "scripts": {
     "build": "turbo run build",
@@ -18,10 +11,10 @@
     "storybook": "turbo run storybook",
     "build-storybook": "turbo run build-storybook",
     "lint": "turbo run lint",
-    "format": "node scripts/bun-tool.mjs fmt .",
-    "format:check": "node scripts/bun-tool.mjs fmt --check .",
-    "check": "node scripts/bun-tool.mjs check .",
-    "check:write": "node scripts/bun-tool.mjs check:write .",
+    "format": "node scripts/oxc-tool.mjs fmt",
+    "format:check": "node scripts/oxc-tool.mjs fmt --check",
+    "check": "node scripts/oxc-tool.mjs check",
+    "check:write": "node scripts/oxc-tool.mjs check:write",
     "check-types": "turbo run check-types",
     "content:validate": "turbo run content:validate",
     "test": "turbo run test",
@@ -29,11 +22,21 @@
     "wasm:dev": "turbo run wasm:dev --filter=@personal-site/web",
     "wasm:setup": "turbo run wasm:setup --filter=@personal-site/web",
     "wasm:watch": "turbo run wasm:watch --filter=@personal-site/web",
-    "setup:tools": "node scripts/setup-bun-tools.mjs",
-    "lint:fix": "node scripts/bun-tool.mjs lint --fix .",
+    "lint:fix": "node scripts/oxc-tool.mjs lint --fix",
     "test:tools": "node --test scripts/*.test.mjs"
   },
   "devDependencies": {
-    "turbo": "2.11.9"
-  }
+    "@oxlint/plugins": "1.90.0",
+    "oxfmt": "0.75.0",
+    "oxlint": "1.90.0",
+    "turbo": "2.11.9",
+    "ultracite": "8.1.0"
+  },
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "packageManager": "bun@1.4.3",
+  "trustedDependencies": [
+    "unrs-resolver"
+  ]
 }

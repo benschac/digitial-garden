@@ -2,9 +2,6 @@
   "name": "@personal-site/web",
   "version": "0.0.0",
   "private": true,
-  "engines": {
-    "node": ">=24"
-  },
   "scripts": {
     "build": "next build",
     "content:validate": "content-collections build",
@@ -13,7 +10,7 @@
     "eve:build": "eve build",
     "eve:dev": "eve dev",
     "eve:info": "eve info",
-    "lint": "node ../../scripts/bun-tool.mjs lint .",
+    "lint": "node ../../scripts/oxc-tool.mjs lint .",
     "test": "bun run content:validate && bun test",
     "check-types": "bun run content:validate && tsc --noEmit",
     "wasm:build": "CARGO_TARGET_DIR=/tmp/personal-site-wasm-target cargo build --manifest-path ../../packages/wasm-canvas-engine/Cargo.toml --target wasm32-unknown-unknown --release && mkdir -p public/wasm && cp /tmp/personal-site-wasm-target/wasm32-unknown-unknown/release/wasm_canvas_engine.wasm public/wasm/particle-engine.wasm",
@@ -95,5 +92,8 @@
     "babel-plugin-react-compiler": "1.0.0",
     "typescript": "7.0.2",
     "unplugin-typegpu": "0.12.6"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

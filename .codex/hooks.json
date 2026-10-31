@@ -7,7 +7,7 @@
             "type": "command",
             "command": "node \"$(git rev-parse --show-toplevel)/scripts/check-changed.mjs\"",
             "timeout": 60,
-            "statusMessage": "Checking native Bun formatting and lint on changed files"
+            "statusMessage": "Checking Oxfmt formatting and Oxlint on changed files"
           }
         ]
       }

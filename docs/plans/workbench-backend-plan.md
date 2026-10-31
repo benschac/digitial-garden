@@ -265,12 +265,12 @@ Exit evidence:
 
 Define these initial operations with explicit input, output, routing, and declared errors:
 
-| Use case | Access | Suggested route |
-| --- | --- | --- |
-| Create project draft | owner | `POST /v1/projects` |
-| Publish project | owner | `POST /v1/projects/{id}/publish` |
-| List public projects | public | `GET /v1/projects` |
-| Get public project by slug | public | `GET /v1/projects/{slug}` |
+| Use case                   | Access | Suggested route                  |
+| -------------------------- | ------ | -------------------------------- |
+| Create project draft       | owner  | `POST /v1/projects`              |
+| Publish project            | owner  | `POST /v1/projects/{id}/publish` |
+| List public projects       | public | `GET /v1/projects`               |
+| Get public project by slug | public | `GET /v1/projects/{slug}`        |
 
 Implementation rules:
 
@@ -333,7 +333,7 @@ Task logic lives in each package. Root scripts only delegate with `turbo run`.
 | --- | --- | --- |
 | `build` | Next builds `.next`; compiled packages/API build `dist` | `dependsOn: ["^build"]`; outputs configured per package |
 | `dev` | Web and API run persistent dev servers | `cache: false`, `persistent: true`; use package config if behavior differs |
-| `lint` | Native Bun lint in each package | depend on transit node for dependency-aware cache invalidation |
+| `lint` | Oxlint in each package | depend on transit node for dependency-aware cache invalidation |
 | `check-types` | `tsc --noEmit` per package | transit node; declare actual tsbuildinfo outputs where incremental |
 | `test` | unit tests in domain/API/contracts | transit node; cache only declared file outputs |
 | `test:integration` | PostgreSQL repositories and HTTP app | `cache: false` initially; declare test DB env explicitly |
