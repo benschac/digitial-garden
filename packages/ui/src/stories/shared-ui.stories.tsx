@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useId } from "react";
+
 import { Button } from "../components/button";
 import {
   Dialog,
@@ -19,8 +20,9 @@ import {
   SelectValue,
 } from "../components/select";
 
-function SharedUI() {
+const SharedUI = () => {
   const id = useId();
+
   return (
     <div className="grid max-w-lg gap-8">
       <section aria-label="Buttons" className="flex flex-wrap gap-3">
@@ -82,15 +84,16 @@ function SharedUI() {
       </Dialog>
     </div>
   );
-}
+};
 
 const meta = {
-  title: "Shared UI/Theme",
   component: SharedUI,
   parameters: { layout: "fullscreen" },
+  title: "Shared UI/Theme",
 } satisfies Meta<typeof SharedUI>;
 
 export default meta;
+
 type Story = StoryObj<typeof meta>;
 
 export const Playground: Story = {};

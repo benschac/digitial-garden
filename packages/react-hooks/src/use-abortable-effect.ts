@@ -1,5 +1,6 @@
 import type { EffectCallback } from "react";
 import { useEffect, useEffectEvent } from "react";
+
 import { useAbortController } from "./use-abort-controller";
 
 /**
@@ -10,7 +11,7 @@ import { useAbortController } from "./use-abort-controller";
  * @returns An optional cleanup function, following React effect semantics.
  */
 export type AbortableEffect = (
-  signal: AbortSignal,
+  signal: AbortSignal
 ) => ReturnType<EffectCallback>;
 
 /**
@@ -25,14 +26,18 @@ export type AbortableEffect = (
  * function. Use the supplied signal with APIs such as `fetch`.
  * @param enabled - Whether the effect should be active. Defaults to true.
  */
-export function useAbortableEffect(effect: AbortableEffect, enabled = true) {
+export const useAbortableEffect = (effect: AbortableEffect, enabled = true) => {
   const createController = useAbortController();
   const onEffect = useEffectEvent(effect);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
+
     const abortController = createController();
     let cleanup: ReturnType<EffectCallback>;
+
     try {
       cleanup = onEffect(abortController.signal);
     } catch (error) {
@@ -45,4 +50,4 @@ export function useAbortableEffect(effect: AbortableEffect, enabled = true) {
       cleanup?.();
     };
   }, [createController, enabled]);
-}
+};

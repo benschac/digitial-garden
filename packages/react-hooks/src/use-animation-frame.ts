@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
 /**
  * Processes one animation frame and decides whether the loop should continue.
@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef } from "react";
  * @returns `true` to schedule another frame or `false` to stop the loop.
  */
 export type AnimationFrameCallback = (
-  timestamp: DOMHighResTimeStamp,
+  timestamp: DOMHighResTimeStamp
 ) => boolean;
 
 /** Controls for an animation frame loop. */
@@ -29,26 +29,33 @@ export interface AnimationFrameControls {
  * @param callback - Processes a frame and indicates whether the loop continues.
  * @returns Stable controls for starting, resuming, or canceling the loop.
  */
-export function useAnimationFrame(
-  callback: AnimationFrameCallback,
-): AnimationFrameControls {
+export const useAnimationFrame = (
+  onFrame: AnimationFrameCallback
+): AnimationFrameControls => {
   const animationFrameRef = useRef<number | null>(null);
-  const callbackRef = useRef(callback);
+  const callbackRef = useRef(onFrame);
 
-  callbackRef.current = callback;
+  useLayoutEffect(() => {
+    callbackRef.current = onFrame;
+  }, [onFrame]);
 
   const requestFrame = useCallback(() => {
     if (animationFrameRef.current !== null) {
       return;
     }
 
-    animationFrameRef.current = requestAnimationFrame((timestamp) => {
+    const tick = (timestamp: DOMHighResTimeStamp) => {
       animationFrameRef.current = null;
 
-      if (callbackRef.current(timestamp)) {
-        requestFrame();
+      if (
+        callbackRef.current(timestamp) &&
+        animationFrameRef.current === null
+      ) {
+        animationFrameRef.current = requestAnimationFrame(tick);
       }
-    });
+    };
+
+    animationFrameRef.current = requestAnimationFrame(tick);
   }, []);
 
   const cancelFrame = useCallback(() => {
@@ -61,4 +68,4 @@ export function useAnimationFrame(
   useEffect(() => cancelFrame, [cancelFrame]);
 
   return { cancelFrame, requestFrame };
-}
+};
