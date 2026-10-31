@@ -1,5 +1,9 @@
 # Repository conventions
 
+## Learning more about Effect
+
+This repository uses the Effect TypeScript library. Before writing Effect code, read `apps/web/node_modules/effect/AGENTS.md` completely and follow its required links. For APIs and concepts the guide does not cover, search `apps/web/node_modules/effect/src`.
+
 ## Code comments
 
 - Do not add new code comments, including JSDoc, unless the user explicitly requests them.
