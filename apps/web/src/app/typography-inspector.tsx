@@ -74,7 +74,7 @@ export function TypographyInspector({
   const [copyStatus, setCopyStatus] = useState("");
   const articleRef = useRef<HTMLElement | null>(null);
   const cache = useRef<{ key: string; boxes: Inspection["boxes"] } | null>(
-    null,
+    null
   );
   const targetId = useId();
   const modeId = useId();
@@ -93,7 +93,7 @@ export function TypographyInspector({
   useEffect(() => {
     const controller = new AbortController();
     const article = document.querySelector<HTMLElement>(
-      ".ui-article-typography > article",
+      ".ui-article-typography > article"
     );
     articleRef.current = article;
     setLoading(true);
@@ -114,9 +114,9 @@ export function TypographyInspector({
         !["::before", "::after"].some(
           (pseudo) =>
             !["none", "normal", '""'].includes(
-              getComputedStyle(element, pseudo).content,
-            ),
-        ),
+              getComputedStyle(element, pseudo).content
+            )
+        )
     );
     const next = elements.map((element) => ({
       element,
@@ -126,35 +126,23 @@ export function TypographyInspector({
     async function load() {
       await document.fonts.ready;
       if (controller.signal.aborted || !article) return;
-      // Resolve once per font/style/weight, including synthesized weights.
-      const pending = new Map<string, ReturnType<typeof resolveFont>>();
       // Include inline emphasis and table/list/code text in file provenance,
       // even when the trim preview is limited to headings.
       const fontElements = [
         ...article.querySelectorAll<HTMLElement>(
-          "h1,h2,h3,h4,p,em,strong,code,li,figcaption,th,td",
+          "h1,h2,h3,h4,p,em,strong,code,li,figcaption,th,td"
         ),
       ].filter((element) => !element.closest("[data-prose-exclude]"));
-      for (const element of fontElements) {
-        const css = getComputedStyle(element);
-        const key = `${css.fontFamily}/${css.fontWeight}/${css.fontStyle}`;
-        if (!pending.has(key))
-          pending.set(
-            key,
-            resolveFont(element, controller.signal).catch(() => undefined),
-          );
-      }
+      const pending = fontElements.map((element) =>
+        resolveFont(element, controller.signal).catch(() => undefined)
+      );
       const resolved = await Promise.all(
         next.map(async (target) => {
-          const css = getComputedStyle(target.element);
-          const key = `${css.fontFamily}/${css.fontWeight}/${css.fontStyle}`;
-          let result = pending.get(key);
-          if (!result) {
-            result = resolveFont(target.element, controller.signal);
-            pending.set(key, result);
-          }
           try {
-            return { ...target, font: await result };
+            return {
+              ...target,
+              font: await resolveFont(target.element, controller.signal),
+            };
           } catch {
             return {
               ...target,
@@ -162,10 +150,10 @@ export function TypographyInspector({
                 "Could not extract this font. Editorial defaults retained.",
             };
           }
-        }),
+        })
       );
       if (controller.signal.aborted) return;
-      const allFonts = await Promise.all(pending.values());
+      const allFonts = await Promise.all(pending);
       if (controller.signal.aborted) return;
       const files = new Map<string, FontSource>();
       for (const font of allFonts)
@@ -497,10 +485,10 @@ export function TypographyInspector({
                       width: line.width,
                     }}
                   />
-                )),
+                ))
               )}
             </div>,
-            document.body,
+            document.body
           )
         : null}
     </section>

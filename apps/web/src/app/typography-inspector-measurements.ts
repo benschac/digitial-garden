@@ -6,7 +6,7 @@ import {
 } from "@capsizecss/core";
 import georgia from "@capsizecss/metrics/georgia";
 
-import { decodeTypographyMetrics } from "./typography-metrics-schema";
+import { requestTypographyMetrics } from "./typography-metric-requests";
 
 import styles from "./typography-inspector.module.css";
 
@@ -26,7 +26,6 @@ export type Target = {
 export type LineMeasurement = { baseline: number; left: number; width: number };
 export type BoxMeasurement = { height: number; lines: LineMeasurement[] };
 
-const metricCache = new Map<string, FontSource>();
 const unquote = (value: string) => value.replace(/^["']|["']$/g, "");
 
 // CSS Fonts weight matching, including the special 400–500 search order.
@@ -61,22 +60,22 @@ function fontFaces() {
 
 export async function resolveFont(
   element: HTMLElement,
-  signal: AbortSignal,
+  signal: AbortSignal
 ): Promise<FontSource | undefined> {
   const css = getComputedStyle(element);
   const family = unquote(css.fontFamily.split(",")[0].trim());
   const weight = Number.parseFloat(css.fontWeight) || 400;
   const familyFaces = fontFaces().filter(
-    (face) => unquote(face.style.fontFamily) === family,
+    (face) => unquote(face.style.fontFamily) === family
   );
   const matchingStyle = familyFaces.filter(
-    (face) => (face.style.fontStyle || "normal") === css.fontStyle,
+    (face) => (face.style.fontStyle || "normal") === css.fontStyle
   );
   // CSS synthesizes italics when a family supplies only upright faces.
   const candidates = matchingStyle.length
     ? matchingStyle
     : familyFaces.filter(
-        (face) => (face.style.fontStyle || "normal") === "normal",
+        (face) => (face.style.fontStyle || "normal") === "normal"
       );
   const faceWeight = (face: CSSFontFaceRule) => {
     const [min, max = min] = (face.style.fontWeight || "400")
@@ -87,15 +86,15 @@ export async function resolveFont(
   candidates.sort(
     (a, b) =>
       weightDistance(weight, faceWeight(a)) -
-      weightDistance(weight, faceWeight(b)),
+      weightDistance(weight, faceWeight(b))
   );
   // For a split Google font, inspect the Latin asset rather than another subset.
   const nearest = candidates.filter(
-    (face) => faceWeight(face) === faceWeight(candidates[0]),
+    (face) => faceWeight(face) === faceWeight(candidates[0])
   );
   const face =
     nearest.find((face) =>
-      /U\+0-FF/i.test(face.style.getPropertyValue("unicode-range")),
+      /U\+0-FF/i.test(face.style.getPropertyValue("unicode-range"))
     ) ?? nearest[0];
   const asset = face?.style
     .getPropertyValue("src")
@@ -113,7 +112,7 @@ export async function resolveFont(
   }
   const loaded = await document.fonts.load(
     `${css.fontStyle} ${css.fontWeight} ${css.fontSize} "${family}"`,
-    element.textContent ?? "Hg",
+    element.textContent ?? "Hg"
   );
   if (
     signal.aborted ||
@@ -121,19 +120,12 @@ export async function resolveFont(
     loaded.some((font) => font.status !== "loaded")
   )
     return undefined;
-  const cached = metricCache.get(asset);
-  if (cached) return cached;
-  const response = await fetch(
+  return requestTypographyMetrics(
     process.env.NODE_ENV === "production"
       ? `/_next/static/typography-metrics/${encodeURIComponent(asset)}.json`
       : `/api/typography-metrics?asset=${encodeURIComponent(asset)}`,
-    { signal },
+    signal
   );
-  if (!response.ok) throw new Error("Metrics unavailable for this font asset");
-  const result = decodeTypographyMetrics(await response.json());
-  const source: FontSource = { ...result, verified: true };
-  if (!signal.aborted) metricCache.set(asset, source);
-  return source;
 }
 
 export function trimValues(element: HTMLElement, metrics: FontMetrics) {
@@ -150,7 +142,7 @@ export function trimValues(element: HTMLElement, metrics: FontMetrics) {
 export function setTrim(
   element: HTMLElement,
   mode: TrimMode,
-  font?: FontSource,
+  font?: FontSource
 ) {
   if (mode === "original") {
     clearTrim(element);
@@ -183,7 +175,7 @@ export function clearTrim(element: HTMLElement) {
 export function measureBox(
   element: HTMLElement,
   mode: TrimMode,
-  font?: FontSource,
+  font?: FontSource
 ): BoxMeasurement {
   const css = getComputedStyle(element);
   const clone = element.cloneNode(true) as HTMLElement;
@@ -237,7 +229,7 @@ export function measureBox(
             (line) =>
               Math.min(line.bottom, rect.bottom) -
                 Math.max(line.top, rect.top) >
-              Math.min(line.bottom - line.top, rect.height) / 2,
+              Math.min(line.bottom - line.top, rect.height) / 2
           );
           if (line) {
             line.left = Math.min(line.left, rect.left);

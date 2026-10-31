@@ -88,14 +88,14 @@ function clippedRect(element: Element): Rect | undefined {
       left = Math.max(left, bounds.left + parent.clientLeft);
       right = Math.min(
         right,
-        bounds.left + parent.clientLeft + parent.clientWidth,
+        bounds.left + parent.clientLeft + parent.clientWidth
       );
     }
     if (["auto", "scroll", "hidden", "clip"].includes(css.overflowY)) {
       top = Math.max(top, bounds.top + parent.clientTop);
       bottom = Math.min(
         bottom,
-        bounds.top + parent.clientTop + parent.clientHeight,
+        bounds.top + parent.clientTop + parent.clientHeight
       );
     }
   }
@@ -123,7 +123,7 @@ export function ArticleContentOverlay({
   const [guides, setGuides] = useState<Guide[]>([]);
   const [edges, setEdges] = useState<number[]>([]);
   const [fonts, setFonts] = useState(
-    new Map<HTMLElement, FontSource | undefined>(),
+    new Map<HTMLElement, FontSource | undefined>()
   );
   const [contentVersion, setContentVersion] = useState(0);
   const articleRef = useRef<HTMLElement | null>(null);
@@ -131,7 +131,7 @@ export function ArticleContentOverlay({
     new WeakMap<
       HTMLElement,
       { key: string; box: ReturnType<typeof measureBox> }
-    >(),
+    >()
   );
   const { requestFrame } = useAnimationFrame(() => {
     const article = articleRef.current;
@@ -195,7 +195,7 @@ export function ArticleContentOverlay({
             const left = Math.max(clip.left, rect.left + line.left);
             const right = Math.min(
               clip.left + clip.width,
-              rect.left + line.left + line.width,
+              rect.left + line.left + line.width
             );
             if (
               top >= clip.top &&
@@ -215,7 +215,7 @@ export function ArticleContentOverlay({
       }
     const prose = article
       .querySelector(
-        ".ui-article-prose > p, .ui-article-prose > h2, .ui-article-prose > figure",
+        ".ui-article-prose > p, .ui-article-prose > h2, .ui-article-prose > figure"
       )
       ?.getBoundingClientRect();
     setEdges(prose ? [prose.left, prose.right] : []);
@@ -228,7 +228,7 @@ export function ArticleContentOverlay({
   useEffect(() => {
     if (!enabled) return;
     const article = document.querySelector<HTMLElement>(
-      ".ui-article-typography > article",
+      ".ui-article-typography > article"
     );
     articleRef.current = article;
     if (!article) return;
@@ -247,7 +247,7 @@ export function ArticleContentOverlay({
             !(
               node instanceof Element &&
               node.hasAttribute("data-typography-probe")
-            ),
+            )
         );
       });
       if (changes.length) requestFrame();
@@ -285,18 +285,13 @@ export function ArticleContentOverlay({
     async function load() {
       await document.fonts.ready;
       if (controller.signal.aborted || !article) return;
-      const pending = new Map<string, ReturnType<typeof resolveFont>>();
       const resolved = await Promise.all(
         textBlocks(article).map(async (element) => {
-          const css = getComputedStyle(element),
-            key = `${css.fontFamily}/${css.fontWeight}/${css.fontStyle}`;
-          if (!pending.has(key))
-            pending.set(
-              key,
-              resolveFont(element, controller.signal).catch(() => undefined),
-            );
-          return [element, await pending.get(key)] as const;
-        }),
+          const font = await resolveFont(element, controller.signal).catch(
+            () => undefined
+          );
+          return [element, font] as const;
+        })
       );
       if (controller.signal.aborted) return;
       measurements.current = new WeakMap();
@@ -382,7 +377,7 @@ export function ArticleContentOverlay({
                 />
               ))}
             </div>,
-            document.body,
+            document.body
           )}
         </>
       ) : null}
