@@ -1,28 +1,173 @@
 <!doctype html>
-<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Avatar web comparison</title>
-<style>body{margin:32px;background:#f2f0e9;color:#262721;font:16px system-ui}main{max-width:1120px;margin:auto}h1{font-size:26px}button{padding:10px 16px;margin:4px;border:1px solid #777;border-radius:6px;background:white;cursor:pointer}button:focus-visible{outline:3px solid #127d8d}section{display:flex;flex-wrap:wrap;gap:24px;margin-top:24px}article{flex:1;min-width:270px}canvas{display:block;width:100%;height:auto;max-width:480px}p{line-height:1.5}small{display:block;margin-top:12px}#status{font-weight:600}</style>
-<main><h1>Avatar: repaired vs web</h1><p>Identical lighting and camera. Compare the silhouette, cheeks, beard, and highlights.</p>
-<div><button data-view="front">Front</button><button data-view="angle">Angled</button><button data-view="side">Side</button><button id="size">Show at 240 px</button></div>
-<p id="status" role="status">Loading both models…</p><section><article><h2>Repaired original</h2><div id="before"></div><small id="before-stats"></small></article><article><h2>Web · Meshopt</h2><div id="after"></div><small id="after-stats"></small></article></section></main>
-<script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
-<script type="module">
-import * as THREE from 'three';
-import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
-const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);const panels=[];
-const configurations=[['before','avatar-surface-repaired.glb'],['after','avatar-web.glb']];
-try{
-for(const [id,file] of configurations){
- const gltf=await loader.loadAsync(file);const scene=new THREE.Scene();scene.background=new THREE.Color('#f2f0e9');scene.add(gltf.scene);
- scene.add(new THREE.HemisphereLight(0xffffff,0x777777,2));const key=new THREE.DirectionalLight(0xffffff,3);key.position.set(-2,3,4);scene.add(key);
- const camera=new THREE.OrthographicCamera(-.56,.56,.56,-.56,.01,10);camera.position.set(0,0,2);camera.lookAt(0,0,0);
- const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(480,480,false);renderer.domElement.setAttribute('aria-label',id==='before'?'Repaired avatar':'Optimized avatar');document.getElementById(id).append(renderer.domElement);renderer.render(scene,camera);
- let meshes=0;gltf.scene.traverse(o=>{if(o.isMesh)meshes++});const bytes=(await fetch(file)).headers.get('content-length');
- document.getElementById(id+'-stats').textContent=`${renderer.info.render.triangles.toLocaleString()} triangles · ${meshes} parts · ${(Number(bytes)/1000).toFixed(1)} KB`;
- panels.push({scene,camera,renderer});
-}
-document.getElementById('status').textContent='Both models loaded successfully, including Meshopt decoding.';
-}catch(error){document.getElementById('status').textContent='Load failed: '+error.message;console.error(error);}
-for(const button of document.querySelectorAll('[data-view]'))button.onclick=()=>{const p={front:[0,0,2],angle:[.7,.25,2],side:[2,0,.2]}[button.dataset.view];for(const {scene,camera,renderer} of panels){camera.position.set(...p);camera.lookAt(0,0,0);renderer.render(scene,camera);}document.getElementById('status').textContent=`Both models loaded · ${button.textContent} view`;};
-let small=false;document.getElementById('size').onclick=()=>{small=!small;for(const {renderer} of panels)renderer.domElement.style.maxWidth=small?'240px':'480px';document.getElementById('size').textContent=small?'Show at 480 px':'Show at 240 px';};
-</script></html>
+<html lang="en">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>Avatar web comparison</title>
+  <style>
+    body {
+      margin: 32px;
+      background: #f2f0e9;
+      color: #262721;
+      font: 16px system-ui;
+    }
+    main {
+      max-width: 1120px;
+      margin: auto;
+    }
+    h1 {
+      font-size: 26px;
+    }
+    button {
+      padding: 10px 16px;
+      margin: 4px;
+      border: 1px solid #777;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+    }
+    button:focus-visible {
+      outline: 3px solid #127d8d;
+    }
+    section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      margin-top: 24px;
+    }
+    article {
+      flex: 1;
+      min-width: 270px;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-width: 480px;
+    }
+    p {
+      line-height: 1.5;
+    }
+    small {
+      display: block;
+      margin-top: 12px;
+    }
+    #status {
+      font-weight: 600;
+    }
+  </style>
+  <main>
+    <h1>Avatar: repaired vs web</h1>
+    <p>
+      Identical lighting and camera. Compare the silhouette, cheeks, beard, and
+      highlights.
+    </p>
+    <div>
+      <button data-view="front">Front</button
+      ><button data-view="angle">Angled</button
+      ><button data-view="side">Side</button
+      ><button id="size">Show at 240 px</button>
+    </div>
+    <p id="status" role="status">Loading both models…</p>
+    <section>
+      <article>
+        <h2>Repaired original</h2>
+        <div id="before"></div>
+        <small id="before-stats"></small>
+      </article>
+      <article>
+        <h2>Web · Meshopt</h2>
+        <div id="after"></div>
+        <small id="after-stats"></small>
+      </article>
+    </section>
+  </main>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three/build/three.module.js",
+        "three/addons/": "./vendor/three/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from "three";
+    import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+    import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+    const panels = [];
+    const configurations = [
+      ["before", "avatar-surface-repaired.glb"],
+      ["after", "avatar-web.glb"],
+    ];
+    try {
+      for (const [id, file] of configurations) {
+        const gltf = await loader.loadAsync(file);
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color("#f2f0e9");
+        scene.add(gltf.scene);
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x777777, 2));
+        const key = new THREE.DirectionalLight(0xffffff, 3);
+        key.position.set(-2, 3, 4);
+        scene.add(key);
+        const camera = new THREE.OrthographicCamera(
+          -0.56,
+          0.56,
+          0.56,
+          -0.56,
+          0.01,
+          10
+        );
+        camera.position.set(0, 0, 2);
+        camera.lookAt(0, 0, 0);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.setSize(480, 480, false);
+        renderer.domElement.setAttribute(
+          "aria-label",
+          id === "before" ? "Repaired avatar" : "Optimized avatar"
+        );
+        document.getElementById(id).append(renderer.domElement);
+        renderer.render(scene, camera);
+        let meshes = 0;
+        gltf.scene.traverse((o) => {
+          if (o.isMesh) meshes++;
+        });
+        const bytes = (await fetch(file)).headers.get("content-length");
+        document.getElementById(id + "-stats").textContent =
+          `${renderer.info.render.triangles.toLocaleString()} triangles · ${meshes} parts · ${(Number(bytes) / 1000).toFixed(1)} KB`;
+        panels.push({ scene, camera, renderer });
+      }
+      document.getElementById("status").textContent =
+        "Both models loaded successfully, including Meshopt decoding.";
+    } catch (error) {
+      document.getElementById("status").textContent =
+        "Load failed: " + error.message;
+      console.error(error);
+    }
+    for (const button of document.querySelectorAll("[data-view]"))
+      button.onclick = () => {
+        const p = {
+          front: [0, 0, 2],
+          angle: [0.7, 0.25, 2],
+          side: [2, 0, 0.2],
+        }[button.dataset.view];
+        for (const { scene, camera, renderer } of panels) {
+          camera.position.set(...p);
+          camera.lookAt(0, 0, 0);
+          renderer.render(scene, camera);
+        }
+        document.getElementById("status").textContent =
+          `Both models loaded · ${button.textContent} view`;
+      };
+    let small = false;
+    document.getElementById("size").onclick = () => {
+      small = !small;
+      for (const { renderer } of panels)
+        renderer.domElement.style.maxWidth = small ? "240px" : "480px";
+      document.getElementById("size").textContent = small
+        ? "Show at 480 px"
+        : "Show at 240 px";
+    };
+  </script>
+</html>

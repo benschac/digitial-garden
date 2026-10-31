@@ -100,7 +100,7 @@ The composition in the queue is small:
 
 ```ts
 const program = itemSemaphore.semaphore.withPermit(
-  this.globalSemaphore.withPermit(executeTask),
+  this.globalSemaphore.withPermit(executeTask)
 );
 ```
 
@@ -114,12 +114,12 @@ Use two shared slots for the A1, A2, B1 example so we can see the ordering. The 
   description="With two shared slots, A1 acquires item A’s permit and a shared permit. A2 waits for A’s permit, leaving shared capacity for B1. When B1 finishes, a shared slot is free but A2 still waits. Only after A1 settles can A2 acquire the item permit, then a shared permit, and start. The trace marks item.withPermit while A2 waits, then the tryPromise factory when A2 starts; A2’s task-call count stays zero until both permits are acquired. The app defaults to four shared permits. This is a narrated source walkthrough, not a live Effect execution or measured timing."
 />
 
-| Event | Running | Waiting | Free shared slots |
-| --- | --- | --- | --- |
-| Submit A1, A2, B1 | A1, B1 | A2 | 0 |
-| B1 finishes | A1 | A2 | 1 |
-| A1 finishes; A2 starts | A2 | None | 1 |
-| A2 finishes | None | None | 2 |
+| Event                  | Running | Waiting | Free shared slots |
+| ---------------------- | ------- | ------- | ----------------- |
+| Submit A1, A2, B1      | A1, B1  | A2      | 0                 |
+| B1 finishes            | A1      | A2      | 1                 |
+| A1 finishes; A2 starts | A2      | None    | 1                 |
+| A2 finishes            | None    | None    | 2                 |
 
 A2 waits at item A's semaphore, leaving the second shared slot available to B1. When B1 finishes, that slot becomes free, but A2 still needs A's permit. Spare global capacity does not allow two tasks for the same item to overlap.
 
@@ -149,15 +149,16 @@ The progressive identification hook submits work in this shape, shortened from t
 ```ts
 await remoteQueue.run(
   itemIntentId,
-  async () => identifyItemImages({
-    sessionId,
-    itemIntentId,
-    imageId: requestImageId,
-    images: requestFiles,
-    signals: requestSignals,
-    signal: abortController.signal,
-  }),
-  { signal: abortController.signal },
+  async () =>
+    identifyItemImages({
+      sessionId,
+      itemIntentId,
+      imageId: requestImageId,
+      images: requestFiles,
+      signals: requestSignals,
+      signal: abortController.signal,
+    }),
+  { signal: abortController.signal }
 );
 ```
 

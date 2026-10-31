@@ -83,7 +83,7 @@ What changed was the contract around that work.
 
 The raw renderer described particle state with a handwritten WGSL struct and repeated its size as a TypeScript constant. The TypeGPU renderer defines the layout once as data:
 
-~~~ts
+```ts
 export const Particle = d.struct({
   position: d.vec2f,
   velocity: d.vec2f,
@@ -98,13 +98,13 @@ export const FrameUniforms = d.struct({
 
 const PARTICLE_STRIDE = d.sizeOf(Particle);
 const UNIFORM_SIZE = d.sizeOf(FrameUniforms);
-~~~
+```
 
 [`d.sizeOf` applies WGSL memory-layout rules](https://docs.swmansion.com/TypeGPU/integration/webgpu-interoperability/), so the renderer no longer relies on parallel magic numbers for the 16-byte particle and 64-byte frame command. It still asks Rust for the exported command size before pipeline creation, preserving an early failure if the cross-language protocol grows unexpectedly.
 
 Bindings also became named and typed:
 
-~~~ts
+```ts
 export const computeLayout = tgpu.bindGroupLayout({
   particles: {
     access: "mutable",
@@ -114,13 +114,13 @@ export const computeLayout = tgpu.bindGroupLayout({
   chunk: { uniform: ParticleChunk, visibility: ["compute"] },
   frame: { uniform: FrameUniforms, visibility: ["compute"] },
 });
-~~~
+```
 
 That replaces fragile numeric entries with `particles`, `chunk`, and `frame`, while recording whether each resource is a mutable storage buffer or a uniform and which shader stage can see it. [TypeGPU bind groups](https://docs.swmansion.com/TypeGPU/apis/bind-groups/) are then unwrapped into normal `GPUBindGroup` objects for the existing WebGPU passes.
 
 The shader implementation moved too. Functions such as `computeMain`, `wrapCoordinate`, `spriteVertexMain`, and `fadeFragment` are ordinary TypeScript modules with a `"use gpu"` directive. [`tgpu.resolve(...)` turns the reachable function graph into WGSL](https://docs.swmansion.com/TypeGPU/apis/functions/) at renderer initialization:
 
-~~~ts
+```ts
 export const shaderSource = {
   compute: () => tgpu.resolve([computeMain]),
   fullscreen: () =>
@@ -133,7 +133,7 @@ export const shaderSource = {
       pointFragmentMain,
     ]),
 };
-~~~
+```
 
 This gives the shader code TypeScript-level composition and makes resource dependencies visible in the same module as their schemas. The generated result remains inspectable WGSL, and the renderer still checks its shader compilation messages and WebGPU validation scope.
 
@@ -155,7 +155,7 @@ The command is 16 words, and every word is four bytes. Some words represent `u32
 
 The important part is that `to_bits` does not numerically convert a float into an integer. It preserves the float's exact 32-bit representation:
 
-~~~rust
+```rust
 const COMMAND_WORDS: usize = 16;
 const SIMULATION_DELTA_SECONDS: usize = 8;
 const ACTIVE_PARTICLE_COUNT: usize = 10;
@@ -166,25 +166,17 @@ fn write_f32(command: &mut [u32; COMMAND_WORDS], index: usize, value: f32) {
 
 write_f32(&mut command, SIMULATION_DELTA_SECONDS, delta_seconds);
 command[ACTIVE_PARTICLE_COUNT] = active_particles;
-~~~
+```
 
 The same 64 bytes are therefore valid as raw upload bytes and as 16 integer words. JavaScript keeps both views over the same WASM memory:
 
-~~~ts
-const commandBytes = new Uint8Array(
-  engine.memory.buffer,
-  commandAddress,
-  64,
-);
+```ts
+const commandBytes = new Uint8Array(engine.memory.buffer, commandAddress, 64);
 
-const commandWords = new Uint32Array(
-  engine.memory.buffer,
-  commandAddress,
-  16,
-);
+const commandWords = new Uint32Array(engine.memory.buffer, commandAddress, 16);
 
 device.queue.writeBuffer(uniformBuffer, 0, commandBytes);
-~~~
+```
 
 `commandBytes` is used for the GPU upload. `commandWords` lets JavaScript read the update count needed to dispatch the compute pass. Neither view copies the command; each is a window onto the same WASM linear memory.
 
@@ -192,16 +184,16 @@ The WGSL uniform struct declares the fields in the same order. The renderer chec
 
 The simplified GPU state is only two vectors:
 
-~~~wgsl
+```wgsl
 struct Particle {
   position: vec2<f32>,
   velocity: vec2<f32>,
 }
-~~~
+```
 
 The compute shader maps each invocation to a particle, updates it, and writes it back into the same GPU buffer:
 
-~~~wgsl
+```wgsl
 @compute @workgroup_size(256)
 fn compute_main(
   @builtin(global_invocation_id) global_id: vec3<u32>,
@@ -219,7 +211,7 @@ fn compute_main(
   // Apply flow, pointer interaction, damping, and wrapping.
   particles[index] = particle;
 }
-~~~
+```
 
 There are three indexes worth keeping separate:
 
@@ -231,11 +223,11 @@ For a four-way cohort, frame offsets rotate through `0`, `1`, `2`, and `3`. Offs
 
 The CPU dispatch is sized from the update count rather than the total particle count:
 
-~~~ts
+```ts
 const updateCount = commandWords[11];
 const workgroupCount = Math.ceil(updateCount / 256);
 computePass.dispatchWorkgroups(workgroupCount);
-~~~
+```
 
 Each workgroup contains 256 shader invocations. The bounds check at the top of `compute_main` handles the final partially filled workgroup, so the dispatch can round up without touching a particle outside the selected cohort.
 
@@ -268,11 +260,11 @@ Trail animation uses a separate wall-clock calculation. The reference fade remov
 
 The policy is small enough to show in full:
 
-~~~rust
+```rust
 fn trail_alpha(delta_seconds: f32) -> f32 {
     1.0 - (1.0 - 0.2).powf(delta_seconds * 60.0)
 }
-~~~
+```
 
 At 60 FPS, `delta_seconds * 60` is `1`, so the result is the original `0.2` fade. At 120 FPS the exponent is `0.5`, producing a smaller per-frame fade. Applying that smaller fade twice leaves the same retained trail energy as one 60 FPS frame. Simulation speed is deliberately absent from this function: playback speed changes motion, not the wall-clock lifetime of the trail.
 
@@ -309,7 +301,7 @@ Phase is derived deterministically from the particle index. Size and opacity are
 
 Initialization uses the same idea. A small integer hash turns the particle index plus a stream number into repeatable pseudo-random values:
 
-~~~wgsl
+```wgsl
 fn random(index: u32, stream: u32) -> f32 {
   let mixed = index ^ (stream * 0x9e3779b9u) ^ 0x5eed1234u;
   return f32(hash_u32(mixed)) / 4294967295.0;
@@ -323,7 +315,7 @@ particle.velocity = vec2<f32>(
   (random(index, 2u) - 0.5) * 18.0,
   (random(index, 3u) - 0.5) * 18.0,
 );
-~~~
+```
 
 The `stream` argument gives position and velocity independent deterministic sequences without storing a random seed per particle. Initialization still touches the whole negotiated capacity once, but JavaScript does not allocate a multi-million-particle staging array or upload one across the CPU-to-GPU boundary.
 
@@ -360,7 +352,7 @@ Because a different, evenly distributed cohort moves each frame, the field as a 
 
 The policy itself is ordinary Rust and intentionally uses strict threshold comparisons:
 
-~~~rust
+```rust
 fn simulation_update_stride(particle_count: u32) -> u32 {
     if particle_count > 16_000_000 {
         32
@@ -376,16 +368,16 @@ fn simulation_update_stride(particle_count: u32) -> u32 {
         1
     }
 }
-~~~
+```
 
 That makes the boundary behavior explicit: exactly `2,400,000` particles still use four cohorts, while `2,400,001` switches to eight. The same strict comparison means exactly 8 million uses stride eight, exactly 16 million uses stride 16, and only counts above 16 million use stride 32. On ordinary frames, the current 2.35-million-particle article header updates `587,500` particles with stride four. At 4.2 million, stride eight brings the update count down to `525,000`; at 16 million, stride 16 makes it exactly one million.
 
 The shader compensates for the less frequent update by multiplying the simulation delta by the stride:
 
-~~~wgsl
+```wgsl
 let delta =
   frame.simulation_delta_seconds * f32(frame.update_particle_stride);
-~~~
+```
 
 Without that multiplication, an eight-way cohort would move each particle using only one frame's worth of time every eight frames. The simulation would slow to one eighth speed as density increased.
 
@@ -399,22 +391,15 @@ This works because the trail texture is persistent. While one cohort is drawn, t
 
 The render cohort is contiguous rather than interleaved. WebGPU's first-instance argument selects the starting particle, and `@builtin(instance_index)` becomes the storage-buffer index in the point vertex shader:
 
-~~~ts
-const cohortCount = Math.ceil(
-  activeParticleCount / 1_050_000,
-);
-const cohortSize = Math.ceil(
-  activeParticleCount / cohortCount,
-);
+```ts
+const cohortCount = Math.ceil(activeParticleCount / 1_050_000);
+const cohortSize = Math.ceil(activeParticleCount / cohortCount);
 const firstParticle = renderPhase * cohortSize;
-const renderedCount = Math.min(
-  cohortSize,
-  activeParticleCount - firstParticle,
-);
+const renderedCount = Math.min(cohortSize, activeParticleCount - firstParticle);
 
 particlePass.draw(1, renderedCount, 0, firstParticle);
 renderPhase = (renderPhase + 1) % cohortCount;
-~~~
+```
 
 The first argument is one vertex per point. The second is the number of particle instances. The fourth is the first instance, which lets the shader read a different contiguous range without rebuilding a bind group or copying particle data.
 
@@ -437,7 +422,7 @@ The trail textures alternate roles each frame. If texture A is the previous fram
 
 The fade shader is only a texture sample and a time-corrected mix:
 
-~~~wgsl
+```wgsl
 @fragment
 fn fade_fragment(input: VertexOutput) -> @location(0) vec4<f32> {
   let previous = textureSample(
@@ -448,7 +433,7 @@ fn fade_fragment(input: VertexOutput) -> @location(0) vec4<f32> {
   let background = vec3<f32>(5.0 / 255.0, 7.0 / 255.0, 13.0 / 255.0);
   return vec4<f32>(mix(previous, background, frame.trail_alpha), 1.0);
 }
-~~~
+```
 
 Because old cohorts remain in the trail texture for multiple frames, render cohorts can rotate without making most of the field disappear between draws.
 
@@ -458,36 +443,34 @@ One WebGPU storage binding cannot be assumed to hold an arbitrarily large array.
 
 The TypeGPU renderer checks the adapter before asking the device for that larger binding limit:
 
-~~~ts
+```ts
 const PARTICLES_PER_CHUNK = 16_000_000;
-const TARGET_PARTICLE_BUFFER_SIZE =
-  PARTICLES_PER_CHUNK * d.sizeOf(Particle);
+const TARGET_PARTICLE_BUFFER_SIZE = PARTICLES_PER_CHUNK * d.sizeOf(Particle);
 
 const supportsExtendedParticleBuffer =
   adapter.limits.maxBufferSize >= TARGET_PARTICLE_BUFFER_SIZE &&
   adapter.limits.maxStorageBufferBindingSize >= TARGET_PARTICLE_BUFFER_SIZE &&
-  adapter.limits.maxComputeWorkgroupsPerDimension * 256 >=
-    PARTICLES_PER_CHUNK;
+  adapter.limits.maxComputeWorkgroupsPerDimension * 256 >= PARTICLES_PER_CHUNK;
 
 const device = await adapter.requestDevice({
   requiredLimits: supportsExtendedParticleBuffer
     ? { maxStorageBufferBindingSize: TARGET_PARTICLE_BUFFER_SIZE }
     : undefined,
 });
-~~~
+```
 
 This matters because `adapter.limits` describes what the adapter can support, while `device.limits` describes what was actually granted to this device. The renderer requests the 256 MB storage binding only after proving the adapter advertises it. Otherwise, it takes a portable path capped at 8 million particles.
 
 Even on the extended path, one storage buffer is not treated as the whole world. The renderer creates chunks of at most 16 million particles and gives each one a small uniform containing its global base index and local count:
 
-~~~ts
+```ts
 export const ParticleChunk = d.struct({
   baseParticleIndex: d.u32,
   particleCount: d.u32,
   padding0: d.u32,
   padding1: d.u32,
 });
-~~~
+```
 
 The shader converts a chunk-local invocation into a stable global particle index. That global index feeds deterministic initialization, phase generation, active-count bounds, and simulation-cohort selection. Particle zero in the second buffer therefore behaves like particle 16,000,000, not like another particle zero.
 
@@ -505,13 +488,13 @@ Once the field crossed into the high-density path, regular horizontal and vertic
 
 The actual source was older and simpler: boundary wrapping discarded each particle's overshoot.
 
-~~~wgsl
+```wgsl
 if (particle.position.x < -4.0) {
   particle.position.x = frame.dimensions.x + 4.0;
 } else if (particle.position.x > frame.dimensions.x + 4.0) {
   particle.position.x = -4.0;
 }
-~~~
+```
 
 Every particle crossing an edge in the same direction landed on exactly the same coordinate. At 100,000 particles, the alignment was difficult to see. At hundreds of thousands or millions, the trail texture repeatedly accumulated those aligned particles into bright lines, and the flow field carried parallel copies inward.
 
@@ -519,7 +502,7 @@ The density threshold exposed the discontinuity; it did not create it.
 
 The fix treats the padded canvas as a continuous interval and preserves the distance traveled beyond the boundary:
 
-~~~wgsl
+```wgsl
 fn wrap_coordinate(coordinate: f32, dimension: f32) -> f32 {
   let lower_bound = -4.0;
   let upper_bound = dimension + 4.0;
@@ -531,7 +514,7 @@ fn wrap_coordinate(coordinate: f32, dimension: f32) -> f32 {
   let offset = coordinate - lower_bound;
   return lower_bound + offset - floor(offset / span) * span;
 }
-~~~
+```
 
 The Rust Canvas fallback uses the same rule with `rem_euclid`, backed by tests for both boundaries. After rebuilding the WASM artifact, I ran the original high-density renderer at 2.1 million particles for 15 seconds: it held the browser's 60 FPS cadence, reported no WebGPU warnings or errors, and no longer produced edge-aligned bands.
 
@@ -553,7 +536,7 @@ The browser's FPS counter was the final behavioral measurement, not the only che
 These are development measurements from one browser and machine, using the experiment's on-screen requestAnimationFrame counter. They are useful comparisons, not universal GPU benchmarks.
 
 | Stage | Observed cadence |
-| --- | ---: |
+| --- | --: |
 | Default 100,000-particle field | 60 FPS |
 | Full-detail path at 500,000 | 44 FPS |
 | Adaptive path at 500,000 | 60 FPS |

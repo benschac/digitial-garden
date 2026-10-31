@@ -238,9 +238,9 @@ Here’s a diagram of our component lifecycle, getters, setters and render metho
 ### The Entire Component
 
 ```js
-var React = require('react'),
-  _ = require('lodash'),
-  tutorialMeta = require('./tutorialMeta.json').tutorial
+var React = require("react"),
+  _ = require("lodash"),
+  tutorialMeta = require("./tutorialMeta.json").tutorial;
 
 /**
  * Tutorial Component
@@ -253,24 +253,26 @@ var React = require('react'),
 
 module.exports = React.createClass({
   getInitialState: function () {
-    return { display: true }
+    return { display: true };
   },
   componentDidMount: function () {
-    window.addEventListener('resize', this.setStyles)
-    this.setStyles()
+    window.addEventListener("resize", this.setStyles);
+    this.setStyles();
   },
   componentWillUnmount: function () {
-    window.removeEventListener('resize', this.setStyles)
+    window.removeEventListener("resize", this.setStyles);
   },
   shouldComponentUpdate: function (nextProps, nextState) {
-    return !_.isEqual(nextProps, this.props) || !_.isEqual(nextState, this.state)
+    return (
+      !_.isEqual(nextProps, this.props) || !_.isEqual(nextState, this.state)
+    );
   },
   componentWillReceiveProps: function (nextProps) {
     if (nextProps.step !== this.props.step) {
       // Step has changed, hide the tutorial box
       this.replaceState({
         display: false,
-      })
+      });
     }
   },
   /**
@@ -281,20 +283,20 @@ module.exports = React.createClass({
   getStyles: function () {
     var self = this,
       styles = {
-        top: self.state.top || 'auto',
-        bottom: self.state.bottom || 'auto',
+        top: self.state.top || "auto",
+        bottom: self.state.bottom || "auto",
         left: self.state.left || -9999,
-        right: self.state.right || 'auto',
-      }
+        right: self.state.right || "auto",
+      };
     // Hide tutorial tip during transitions to prevent flickering.
     if (!this.state.display) {
-      styles.display = 'none'
+      styles.display = "none";
     }
 
-    return styles
+    return styles;
   },
   componentDidUpdate: function () {
-    this.setStyles()
+    this.setStyles();
   },
   /**
    * Queries the DOM and dynamically generates values to update state. These values are passed to getStyles
@@ -305,65 +307,65 @@ module.exports = React.createClass({
   setStyles: function () {
     var { step } = this.props,
       meta = tutorialMeta[step],
-      el = document.querySelector('.step' + step),
+      el = document.querySelector(".step" + step),
       // Get queried DOM element's values (top, right, left, width, etc.)
-      bounds = el && el.getBoundingClientRect()
+      bounds = el && el.getBoundingClientRect();
     if (bounds) {
       switch (meta.position) {
-        case 'right':
+        case "right":
           this.setState({
             top: Math.floor(bounds.top - meta.offsetTop),
             left: Math.floor(bounds.right + meta.offsetLeft),
             display: true,
-          })
-          break
-        case 'left':
+          });
+          break;
+        case "left":
           this.setState({
             top: Math.floor(bounds.top - meta.offsetTop),
             left: Math.floor(bounds.left + meta.offsetLeft),
             display: true,
-          })
-          break
-        case 'bottom':
+          });
+          break;
+        case "bottom":
           this.setState({
             top: Math.floor(bounds.top - meta.offsetTop),
             left: Math.floor(bounds.right - bounds.width + meta.offsetLeft),
             display: true,
-          })
-          break
-        case 'bottom-left':
+          });
+          break;
+        case "bottom-left":
           this.setState({
             top: Math.floor(bounds.top - meta.offsetTop),
             left: Math.floor(bounds.right - bounds.width + meta.offsetLeft),
             display: true,
-          })
-          break
+          });
+          break;
         default:
-          break
+          break;
       }
     }
   },
   render: function () {
-    let { step } = this.props
+    let { step } = this.props;
     var props = this.props,
       meta = tutorialMeta[step],
       parentClass = _.getClassNameFromObject({
-        'tutorial-wrap': true,
+        "tutorial-wrap": true,
       }),
       childClass = _.getClassNameFromObject({
-        'tutorial-tip': true,
-        top: _.isEqual(_.get(meta, 'position'), 'top'),
-        right: _.isEqual(_.get(meta, 'position'), 'right'),
-        bottom: _.isEqual(_.get(meta, 'position'), 'bottom'),
-        left: _.isEqual(_.get(meta, 'position'), 'left'),
-        'bottom-left': _.isEqual(_.get(meta, 'position'), 'bottom-left'),
+        "tutorial-tip": true,
+        top: _.isEqual(_.get(meta, "position"), "top"),
+        right: _.isEqual(_.get(meta, "position"), "right"),
+        bottom: _.isEqual(_.get(meta, "position"), "bottom"),
+        left: _.isEqual(_.get(meta, "position"), "left"),
+        "bottom-left": _.isEqual(_.get(meta, "position"), "bottom-left"),
       }),
       text = props.error ? meta.error : meta.text,
       btnCls = _.getClassNameFromObject({
-        'btn btn-special btn--short next': meta.nextButton,
+        "btn btn-special btn--short next": meta.nextButton,
         hidden: !meta.nextButton,
-      })
-    if (!props.visible) return null
+      });
+    if (!props.visible) return null;
 
     return (
       <div className={parentClass}>
@@ -374,7 +376,7 @@ module.exports = React.createClass({
                 <span className="step">
                   <i className="fa fa-question-circle" aria-hidden="true"></i>
                   &nbsp; Step {props.step + 1}
-                </span>{' '}
+                </span>{" "}
                 of {tutorialMeta.length}
               </span>
             </div>
@@ -392,9 +394,9 @@ module.exports = React.createClass({
           </div>
         </div>
       </div>
-    )
+    );
   },
-})
+});
 ```
 
 ### But wait there’s more!

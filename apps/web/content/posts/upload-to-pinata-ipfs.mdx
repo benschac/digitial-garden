@@ -19,25 +19,25 @@ Looking at [pinata docs](https://docs.pinata.cloud/quickstart-ipfs), there aren'
 If this has been helpful to you, please let me know on [twitter](https://twitter.com/benschac) or don't feel shy about [buying me a coffee](buymeacoffee.com/x1Oeu8D) or starring this repo on [github](https://github.com/benschac/benschac-new)
 
 ```ts
-const publicIpfsUrl = 'https://api.pinata.cloud/pinning/pinFileToIPFS'
-const privateIpfsUrl = 'https://uploads.pinata.cloud/v3/files'
+const publicIpfsUrl = "https://api.pinata.cloud/pinning/pinFileToIPFS";
+const privateIpfsUrl = "https://uploads.pinata.cloud/v3/files";
 async function upload() {
   try {
-    const fileUri = `${FileSystem.documentDirectory}<filename>.txt`
-    await FileSystem.writeAsStringAsync(fileUri, 'Hello World a bigger test!')
+    const fileUri = `${FileSystem.documentDirectory}<filename>.txt`;
+    await FileSystem.writeAsStringAsync(fileUri, "Hello World a bigger test!");
     // or publicIpfsUrl
     const res = await FileSystem.uploadAsync(privateIpfsUrl, fileUri, {
-      httpMethod: 'POST',
+      httpMethod: "POST",
       uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-      fieldName: 'file',
-      mimeType: 'text/plain',
+      fieldName: "file",
+      mimeType: "text/plain",
       headers: {
         Authorization: `Bearer ${EXPO_PUBLIC_PINATA_JWT}`,
       },
-    })
+    });
   } catch (error) {
     if (error instanceof Error) {
-      console.error('Upload error:', error.message)
+      console.error("Upload error:", error.message);
     }
   }
 }
