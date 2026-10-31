@@ -8,6 +8,7 @@ export default defineConfig({
   ignorePatterns: [
     ...core.ignorePatterns,
     ".agent/**",
+    ".agent_sources/**",
     ".agents/**",
     ".claude/**",
     ".codex/**",

@@ -24,7 +24,10 @@
     "wasm:watch": "turbo run wasm:watch --filter=@personal-site/web",
     "lint:fix": "node scripts/oxc-tool.mjs lint --fix",
     "test:tools": "node --test scripts/*.test.mjs",
-    "verify": "bun run check && bun run test:tools && bun run check-types && bun run test && bun run build"
+    "verify": "bun run check && bun run test:tools && bun run check-types && bun run test && bun run build",
+    "sources:fetch": "node scripts/agent-sources.mjs fetch",
+    "sources:check": "node scripts/agent-sources.mjs check",
+    "sources:updates": "node scripts/agent-sources.mjs updates"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.90.0",

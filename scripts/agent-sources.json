@@ -1,0 +1,33 @@
+[
+  {
+    "name": "effect",
+    "repository": "https://github.com/Effect-TS/effect.git",
+    "ref": "effect@4.0.5",
+    "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+    "packages": [
+      {
+        "name": "effect",
+        "version": "4.0.5",
+        "path": "packages/effect/package.json"
+      }
+    ]
+  },
+  {
+    "name": "xstate-effect",
+    "repository": "https://github.com/statelyai/xstate.git",
+    "ref": "@xstate/effect@1.0.0-alpha.10",
+    "commit": "8cf3f00b41984a32ce935db117f52b628cfcd5ac",
+    "packages": [
+      {
+        "name": "@xstate/effect",
+        "version": "1.0.0-alpha.10",
+        "path": "packages/xstate-effect/package.json"
+      },
+      {
+        "name": "xstate",
+        "version": "6.0.0-alpha.71",
+        "path": "packages/core/package.json"
+      }
+    ]
+  }
+]

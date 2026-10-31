@@ -6,6 +6,7 @@ export default defineConfig({
   ignorePatterns: [
     ...ultracite.ignorePatterns,
     ".agent/**",
+    ".agent_sources/**",
     ".agents/**",
     ".claude/**",
     ".codex/**",
