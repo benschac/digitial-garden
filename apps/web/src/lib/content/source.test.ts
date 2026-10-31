@@ -296,6 +296,7 @@ describe("file-based post registry", () => {
     });
 
     expect(posts.map((post) => post.slug)).toEqual([
+      "marketplace-policies-with-a-decider",
       "creating-double-sided-accounting",
       "coordinating-identification-with-effect",
       "build-snap-to-post",

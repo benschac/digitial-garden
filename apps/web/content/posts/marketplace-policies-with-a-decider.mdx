@@ -1,0 +1,318 @@
+---
+title: "Turning Marketplace Policies into a Decider"
+slug: "marketplace-policies-with-a-decider"
+summary: "Following a Treasure It policy from a requirements matrix through typed decisions, credit events, Postgres, and the inbox."
+publishedAt: "2026-10-29"
+status: "draft"
+tags:
+  - "TypeScript"
+  - "Architecture"
+  - "Postgres"
+featured: false
+---
+
+Treasure It helps neighbors give away, buy, and sell things in person. On a paid pickup, the buyer pays the seller directly, using cash or something like Venmo. Our platform credits pay for the match and give both people a reason to be considerate of each other's time.
+
+Say Alice agrees to buy a chair from Bob and they settle on a pickup time. Both people have credits reserved for the match. If Alice backs out, Bob has spent time coordinating a pickup that won't happen. But if Bob is responsible for a scheduling impasse, Alice needs a way to leave without paying the ordinary cancellation penalty.
+
+In [the credit ledger post](/blog/creating-double-sided-accounting), I covered how Treasure It records those credit movements in Postgres. Here I want to walk through the policy that decides which movements should happen.
+
+Consider cancelling a pickup. Who is cancelling? Have both people agreed on a time? Is the other person responsible for a scheduling impasse? Those facts change whose credits are consumed and whose reservation is released.
+
+Treasure It uses an adaptation of the [Functional Event Sourcing Decider](https://thinkbeforecoding.com/post/2021/12/17/functional-event-sourcing-decider) to make those decisions explicit in TypeScript. This post follows one rule from the requirements matrix into the decider, then through persistence and the server's action view.
+
+<Callout title="Scope of this walkthrough">
+
+The code walkthrough follows a paid match after acceptance and funding. This path builds its starting state from current database facts. Funding and free pickups have separate deciders, so I've kept their rules in a policy reference at the end rather than treating them as branches of this one.
+
+</Callout>
+
+## Why put the rules in a decider?
+
+As the commerce rules grew, they became scattered across service methods. A cancellation needs to answer several related questions. Can Alice leave? What happens to her credits? What happens to Bob's? What should the inbox tell each of them before they act?
+
+If those answers live in separate branches across the app, changing a policy means finding every place that interprets it. The [architecture notes](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/docs/system-map.md#L283-L294) record that scattered service logic as the reason for adapting the Decider pattern.
+
+The useful boundary is a function you can call with ordinary values. Give it the match state, Alice's requested action, and the context needed to judge that action. It returns either a rejection or the events describing what should happen. You can inspect that answer before anything touches the database.
+
+That also makes a policy example small enough to test directly. Set up a scheduled match, ask Alice to cancel, and check the returned events. Change who is responsible for the impasse and check that the credit outcome changes. The database transaction still needs its own tests, but testing the rule itself doesn't require creating accounts or sending notifications.
+
+## Start with the policy matrix
+
+The matrix gives us combinations to reason about: state, actor, command, and outcome. For this walkthrough, **F** is one participant's base match fee, snapshotted when the offer is accepted. One credit is 1,000 integer milliunits.
+
+A reservation holds credits so Alice can't use them on another match. Releasing it makes those credits available again. Consuming it spends them. An extra penalty can also debit her available balance. Keeping these movements separate lets us explain exactly what cancelling will cost.
+
+These are selected rules from the current accepted-match implementation:
+
+| Situation | Command | Result |
+| --- | --- | --- |
+| Alice and Bob agreed on a pickup time; neither has a protected reason to leave | Alice cancels | Cancel the match, consume Alice's reserved F, charge her an additional F, and release Bob's reserved F. |
+| Alice and Bob agreed on a pickup time; Bob is responsible for a scheduling impasse | Alice takes a protected exit | Cancel the match, consume Bob's reserved F, and release Alice's F. |
+| Match already completed | Either person tries to cancel | Reject the command. |
+
+The impasse exception matters. A rule based only on "scheduled plus cancel" would miss who is responsible for the failed scheduling.
+
+The [matrix follow-up plan](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/plans/neighborhood-commerce/active/commerce-decider-matrix-follow-up-plan.md) records the scheduled-cancellation policy and its revisions. Some older passages still assume a fixed one-credit base fee. The current code calculates F from the accepted price, so "two credits" is only accurate when F is one credit.
+
+## Give requests and outcomes different types
+
+A command expresses intent: `BuyerCancels`. An event describes an accepted outcome: `MatchCancelled` or `CreditReleased`. A request can be rejected without producing those events.
+
+The core functions separate two questions: `decide` determines the events allowed by the current state and command; `evolve` applies one event to state. An explicit initial state provides a starting point when folding an event history. That separation comes from [Jérémie Chassaing's Decider article](https://thinkbeforecoding.com/post/2021/12/17/functional-event-sourcing-decider).
+
+Treasure It's accepted-match decider also receives context: the authenticated actor's role, current time, fee amount, and rescheduling limits. Its signature is:
+
+```ts
+export const decide = (
+  state: AcceptedMatchState,
+  command: AcceptedMatchCommand,
+  ctx: AcceptedMatchDecisionContext
+): AcceptedMatchDecisionResult => {
+```
+
+This is the opening of the function, rather than a complete implementation. The state carries the match's phase, pickup time, required actor, and rescheduling counters. The context supplies values the policy needs without making the decider read a clock or query a balance.
+
+## Turn one cancellation into explicit events
+
+Inside `accepted-match.decider.ts`, `decide` matches the phase, command, and actor. A scheduled buyer cancellation delegates to `scheduledBackOut`. After checking the impasse exception, that helper returns this branch:
+
+```ts
+return {
+  kind: "accepted",
+  events: [
+    {
+      type: "MatchCancelled",
+      by: actor,
+      reason: actor === "buyer" ? "buyer_voluntary" : "seller_voluntary",
+    },
+    creditConsumed(actor, "scheduled_backout_reserved_forfeit", ctx),
+    creditConsumed(actor, "scheduled_backout_penalty_extra", ctx),
+    creditReleased(counterparty, "scheduled_backout_forfeit", ctx),
+  ],
+};
+```
+
+Each credit helper puts `ctx.baseMatchFeeMilliunits` into the event's `amountMilliunits`. The reasons distinguish consuming a reservation from charging the extra penalty, even though both events are named `CreditConsumed`.
+
+For an example with F = 1,000 milliunits, Alice forfeits her reserved credit and loses another credit from available balance. Bob's reserved credit becomes available again. Alice's total cost is two credits; Bob pays nothing for the cancelled match. Those are separate movements with separate reasons.
+
+The [decider and its helpers](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/accepted-match.decider.ts#L843-L871) describe these outcomes without changing account balances.
+
+## Fold state and describe reactions
+
+The adapter computes the next state by reducing the accepted events:
+
+```ts
+export const evolveAll = (
+  state: AcceptedMatchState,
+  events: AcceptedMatchEvent[]
+): AcceptedMatchState => events.reduce(evolve, state);
+```
+
+`MatchCancelled` changes the phase to `cancelled` and clears the proposed time and required actor. Credit events leave this match state unchanged: balances belong to the ledger.
+
+`reactions` is another pure function. For `MatchCancelled`, it returns a descriptor for `commerce_pickup_scheduling_backed_out`. Returning that value does not send a notification. The service interprets it after persistence succeeds.
+
+Here's how the adapter collects those results once `decide` accepts a command:
+
+```ts
+return {
+  kind: "accepted",
+  state,
+  nextState: evolveAll(state, decision.events),
+  events: decision.events,
+  effects: decision.events.flatMap((event) =>
+    reactions(event, decisionContext)
+  ),
+  decisionContext,
+};
+```
+
+All of that is still ordinary TypeScript operating on values. We can check the next state, credit events, and notification descriptors without creating database fixtures or mocking a push service.
+
+<MermaidDiagram
+  title="From a matrix rule to a committed cancellation"
+  source="flowchart TD; A[Current facts and command] --> B[decide]; B --> C[Typed events]; C --> D[evolveAll]; C --> E[reactions]; C --> F[Service translates decision]; F --> G[Postgres locks and checks]; G --> H[Commit cancellation and ledger]; H --> I[Interpret effect descriptors]; E -.-> I; D --> J[Next match state];"
+  description="State evolution and reaction descriptions are pure computations. The database applies the cancellation and credit settlement atomically; effect handling follows the commit."
+/>
+
+The [adapter](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/accepted-match-scheduling-policy-adapter.ts#L209-L280) hydrates state from persisted pickup and thread fields before running this loop. Using the Decider's function boundaries does not require this path to replay every historical event.
+
+## Let Postgres check the facts again
+
+A valid decision can become stale before it is written. Another request may change the pickup while the service is working.
+
+The service sends the credit-event descriptors, expected pickup status, rescheduling counters, required actor, and an idempotency key to `back_out_accepted_match_scheduling`. Here's the RPC call after the service has built `rpcArgs`:
+
+```ts
+const { data, error } = await this.getAdminSupabase().rpc(
+  "back_out_accepted_match_scheduling",
+  rpcArgs
+);
+```
+
+The actor ID comes from the authenticated server context. `p_metadata.creditEvents` carries the normalized credit events from the decision, and `p_idempotency_key` is `pickup-scheduling:<thread-id>:<viewer-role>:backout`. The SQL function requires `service_role` and checks that the actor belongs to the thread.
+
+### Lock before checking the decision's assumptions
+
+The function locks the offer thread first, then the pickup group. These excerpts show the lock statements; the full function also rejects missing rows and checks that the pickup belongs to the thread:
+
+```sql
+SELECT *
+  INTO v_thread
+FROM public.item_offer_threads
+WHERE item_offer_threads.id = p_thread_id
+FOR UPDATE;
+
+SELECT *
+  INTO v_pickup
+FROM public.pickup_groups
+WHERE pickup_groups.id = p_pickup_group_id
+FOR UPDATE;
+```
+
+Then it compares the locked facts with the state used for the decision:
+
+```sql
+IF v_pickup.status::text <> p_expected_pickup_status THEN
+  RAISE EXCEPTION 'MATCH_SCHEDULING_STALE_STATE' USING ERRCODE = 'P0001';
+END IF;
+
+IF v_thread.pickup_buyer_reschedule_turn_count <> p_expected_buyer_reschedule_turn_count
+  OR v_thread.pickup_seller_reschedule_turn_count <> p_expected_seller_reschedule_turn_count THEN
+  RAISE EXCEPTION 'MATCH_SCHEDULING_STALE_STATE' USING ERRCODE = 'P0001';
+END IF;
+
+IF v_thread.pickup_action_required_role IS DISTINCT FROM NULLIF(p_expected_action_required_role, '') THEN
+  RAISE EXCEPTION 'MATCH_SCHEDULING_STALE_STATE' USING ERRCODE = 'P0001';
+END IF;
+```
+
+If Bob changes the scheduling state after Alice's request reads it, Alice's old decision must pass these comparisons before it can move credits. The row locks keep another writer from changing those locked rows between the checks and the writes.
+
+### Translate events into ledger movements
+
+The function reads the credit-event array, checks its shape, supported event types, roles, reasons, and positive amounts, and resolves each role to a profile on the locked thread. For our ordinary scheduled cancellation, it performs three movements:
+
+| Event reason | SQL operation | Available delta | Reserved delta |
+| --- | --- | --: | --: |
+| `scheduled_backout_reserved_forfeit` | `consume_match_credit_reservation` for Alice | 0 | −F |
+| `scheduled_backout_penalty_extra` | Debit Alice's account and insert a `consume` ledger row | −F | 0 |
+| `scheduled_backout_forfeit` | `release_match_credit_reservation` for Bob | +F | −F |
+
+The reservation helpers lock the account and check the outstanding hold for that profile and thread. The extra penalty has its own branch because it spends available credits, which can become negative. The [ledger post](/blog/creating-double-sided-accounting#locking-the-account-row-when-reserving-credits) walks through the account update, ledger insert, and helper transaction boundary.
+
+Each movement gets a key derived from the enclosing request:
+
+```sql
+v_credit_event_idempotency_key :=
+  p_idempotency_key
+  || ':'
+  || v_credit_event_role
+  || ':'
+  || v_credit_event_type
+  || ':'
+  || v_credit_event_reason;
+```
+
+The reason distinguishes Alice's reserved-credit forfeit from her extra penalty even though both are `CreditConsumed`. When the penalty branch finds an existing key, it checks the profile, thread, reason, and deltas before accepting it as the same movement.
+
+### Commit the match and credits together
+
+After the credit movements, the function cancels the pickup and its pickup items, makes the listed items available again, records the policy and pickup events, and marks the offer thread cancelled while clearing its scheduling action and deadline.
+
+These writes and the nested ledger-helper calls share the RPC request's database transaction. If releasing Bob's reservation or recording the pickup event raises an error, Alice's charges roll back too. The transaction boundary is the whole cancellation operation, not each individual helper.
+
+A repeated cancellation request is different from replaying a ledger movement. Once the first cancellation commits, the thread is no longer an active accepted match. The outer function can reject a second call before reaching the credit-event keys. Those keys protect the movements; they don't promise that replaying the entire RPC returns its original success response.
+
+The [service call](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/pickup-scheduling-policy.service.ts#L624-L725) and [database function](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100723_lock_paid_backout_thread_before_pickup.sql) own that boundary. A pure decision function cannot make concurrent writes atomic.
+
+Effect handling follows the commit. In this cancellation path, a domain-event emission failure is caught and logged. That ordering alone does not guarantee notification delivery after a crash.
+
+## Use the policy to describe available actions
+
+The same module exports `toActionView`, which describes the actions available to a particular viewer and the credit outcome of backing out. That lets the server give the inbox a policy result instead of asking React to reconstruct the cancellation rules from raw status fields.
+
+A match has two people in it, and usually one needs to act while the other waits. Showing a generic "Accepted" badge to both Alice and Bob isn't helpful.
+
+Funding is another example. Alice has enough credits to accept Bob's offer, but Bob doesn't have enough to fund his side yet. We reserve Alice's credits, lock the items to the match, and put the thread into `awaiting_credits`. Bob gets five hours to buy credits before scheduling can move forward. Alice needs to see that she's waiting on Bob. Bob needs a way to top up.
+
+The server's action view describes who's up next, which actions are available, what backing out would cost, and when the deadline expires. The inbox turns that into `ActivityInboxRowViewModel`, a discriminated union keyed by `kind`, with cases like `offer_pickup_confirmation`, `offer_scheduled_pickup`, and the funding states.
+
+Each `kind` carries only the fields for that state, so the UI can switch on `row.kind` instead of interpreting a pile of boolean flags. One bug we had to guard against was leftover scheduling data on finished pickups. The mapper checks for completion before looking at scheduling fields, so an old timestamp can't make a finished match look like it still needs action.
+
+## Test the rule separately from the write
+
+The scheduled-backout [test cases](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/accepted-match.decider.test.ts#L493-L553) cover both buyer and seller. They check the advertised action, the exact events returned by `decide`, the cancelled state from `evolveAll`, and the reaction descriptor.
+
+This gives us a way to review one matrix row at a time: establish the facts, inspect the decision, check the projected state, and verify the action shown to each participant. Database tests have a separate job: checking stale-state rejection, idempotency, and atomic settlement.
+
+For Alice and Bob's pickup, we can follow the whole rule. The decider describes whose credits move, the action view describes the consequence before someone cancels, and Postgres checks that the facts still hold when it writes the result. If we change the cancellation policy, that gives us a concrete decision and a set of examples to review together.
+
+## Policy reference
+
+The cancellation above is one rule in a larger set. Here are the other situations where we grant, hold, or charge credits. The [ledger post](/blog/creating-double-sided-accounting) covers how we record those movements safely. Signup and purchase grants don't need a match decider, and funding and free pickups use their own deciders.
+
+Throughout the paid-match rules, **F** means one person's fee, calculated as `Math.ceil(acceptedAmountCents / 2)` milliunits and saved when the offer is accepted. For a $20 item, F is 1,000 milliunits, or one credit per person. A 2F penalty is twice that match's fee, not necessarily two credits.
+
+A deadline passing and a worker processing it are separate things. Bob's match becomes eligible for cancellation when his five-hour funding deadline passes, even if the worker that settles it runs every five minutes.
+
+The [ledger walkthrough](/blog/creating-double-sided-accounting#starting-the-four-hour-response-window) shows how the separate four-hour free-response window starts in SQL and how Trigger.dev processes its reminders and penalties. It also traces [Stripe Checkout through the atomic credit grant](/blog/creating-double-sided-accounting#connecting-stripe-payments-to-credit-grants). Purchasing credits and completing a match's funding are separate operations.
+
+### Credit grants and pricing
+
+| Situation | Rule | Credit effect |
+| --- | --- | --- |
+| New account | A database trigger runs a one-time grant tied to Alice's profile. | Adds 2 available credits. |
+| Credit purchase | Verify Alice's paid checkout and key the grant to the Stripe PaymentIntent. | Adds `credit_count * 1000` milliunits to available and increments `lifetime_purchased_credits`, without granting twice on retries. |
+| Referral | Alice refers Bob and he redeems it. Experiments can override the reward, up to 50 credits each. | Grants the configured amount to each person, defaulting to 5 credits each. |
+| Paid match price | Calculate F when the offer is accepted and save it on the thread. | Use that fee for the rest of the match, even if the formula changes later. |
+
+Sources: [signup grant](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100738_grant_two_match_credits_on_account_creation.sql), [purchase grant](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261023197115_migrate_match_credit_milliunits.sql), [referral rewards](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/growth/referral-reward-policy.ts), and [match fee](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/match-fee-policy.ts).
+
+### Paid offers and pickups
+
+Alice is buying from Bob, though either person can make or accept an offer. A reserve holds credits, a release returns them to available, and a consume spends them. An extra penalty can debit available credits even if that makes the balance negative.
+
+| Situation | Rule and timing | Credit effect |
+| --- | --- | --- |
+| Accept an offer | Bob sends an offer and Alice accepts. Alice needs F available immediately. If the seller accepts, they also need pickup availability set. | Reject acceptance if Alice can't afford F. If both can cover F, reserve F from each and activate the match. |
+| Offer maker is short on credits | Alice accepts, but Bob can't cover F yet. Lock the items in `awaiting_credits` and give Bob 5 hours to top up, with a reminder at 150 minutes. | Reserve Alice's F now. Reserve Bob's F and activate the match once he funds it. |
+| Funded acceptor leaves during funding | Alice cancels before Bob's funding deadline. | Consume Alice's reserved F. Bob hasn't reserved anything. |
+| Unfunded maker leaves or times out | Bob cancels during funding, or his deadline passes. | Release Alice's F and debit F from Bob's available balance. |
+| Scheduling response window | Whoever needs to pick or propose a time has 18 hours to respond. | Missing the deadline gives the other person a penalty-free exit. It doesn't charge automatically. |
+| Rescheduling or declining times | Each person gets up to 2 rescheduling turns. Reaching the cap makes that person responsible for the impasse. | No immediate charge. The other person can take a penalty-free exit. |
+| Protected exit | Bob missed his response deadline or used up his reschedules, so Alice leaves. | Consume Bob's reserved F and release Alice's F. |
+| Back out before agreeing on a time | Alice cancels without a protected reason while scheduling is pending. | Consume Alice's reserved F and release Bob's F. |
+| Back out after agreeing on a time | Alice cancels without a protected reason after they agree on pickup. | Consume Alice's reserved F, debit another F from available, and release Bob's F. |
+| Buyer confirms pickup | At or after the scheduled time, Alice confirms she collected the item. | Complete the pickup and consume both reserved fees. |
+| Seller marks pickup complete | At or after pickup time, Bob says the handoff happened. | Open a 10-hour review window for Alice without moving credits yet. |
+| Buyer review window | Alice has 10 hours from Bob's claim to dispute it. | A dispute pauses settlement. With no dispute, auto-complete and consume both reserved fees. |
+| Paid no-show report | Alice reports that Bob ghosted, or vice versa. Allow one report from 15 minutes after scheduled pickup through 10 hours after pickup. | Debit 10F from Bob's available balance, grant 10F to Alice, and mark the pickup disputed. Keep both original F holds. |
+
+Those two 10-hour clocks start at different moments. The review window starts when Bob marks the pickup complete. The no-show window ends 10 hours after the scheduled pickup time.
+
+Sources: [funding decisions](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/offer-funding.decider.ts), [accepted-match decisions](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/accepted-match.decider.ts), [deadline adapter](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/accepted-match-scheduling-policy-adapter.ts), and [scheduling service](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/commerce/pickup-scheduling-policy.service.ts).
+
+### Free exchange
+
+People ignoring messages, constantly rescheduling, or ghosting were problems long before we added paid items. The free-pickup rules put a cost on wasting someone's time without charging a match fee.
+
+Here Bob is giving an item away and Alice wants it. These rules don't use F.
+
+| Situation | Rule and timing | Credit effect |
+| --- | --- | --- |
+| Express interest or make a Flash claim | Alice needs a positive available balance, anything above 0 milliunits. | Check the balance without reserving or charging credits. |
+| Giver chooses a recipient | Bob picks Alice and proposes future pickup times. Open one response timer per chosen item. | No immediate deduction. |
+| Recipient response clock | Give Alice 240 working minutes, counted between 8:00 AM and 9:45 PM `America/New_York`. Pause overnight. | No charge if Alice responds within the window. |
+| Halfway reminder | Remind Alice after 120 working minutes if she hasn't picked a time. | No credit movement. |
+| Valid response | Alice confirms a proposed time or sends valid future availability. A chat message alone doesn't count. | An on-time scheduling response avoids the penalty. |
+| No response or late response | Alice's window expires without a valid scheduling response. | Debit 2 available credits per item, leaving reservations alone. A late reply settles the timer but doesn't refund the penalty. |
+| Selection is no longer needed | Bob changes recipients or removes the item, or pickup is already scheduled or finished. | Cancel the timer without a penalty. |
+| Existing selection with negative balance | A timeout penalty pushes Alice below zero while another selection is active. | Block new claims, but let Alice finish scheduling items she's already been picked for. |
+| Cancel or reschedule | Either person can reschedule. Alice can cancel, and Bob can remove items before completion. | No standalone cancellation or rescheduling fee. |
+| Complete pickup | Don't allow completion before the scheduled time. | No match fee to consume. |
+| Report a no-show | Allow reporting from 10 minutes after the scheduled time. | Update pickup state and log a reliability event, without the paid 10F penalty. |
+
+Sources: [free-pickup decisions](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/free-pickup/free.decider.ts), [working-hours clock](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100373_create_free_recipient_response_due_at.sql), [per-item timers](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100443_globalize_free_response_selection.sql), [settlement checks](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100442_globalize_free_response_settlement.sql), and [no-show grace period](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/packages/api/src/services/pickups/pickup-no-show-policy.ts).
