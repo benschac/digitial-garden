@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
+
 import { getSiteUrl } from "./site";
 
 const variableNames = [
@@ -6,18 +7,31 @@ const variableNames = [
   "VERCEL_PROJECT_PRODUCTION_URL",
   "VERCEL_URL",
 ] as const;
-const originalValues = variableNames.map((name) => process.env[name]);
 
-beforeEach(() => {
-  for (const name of variableNames) delete process.env[name];
-});
+const originalValues = {
+  SITE_URL: process.env.SITE_URL,
+  VERCEL_PROJECT_PRODUCTION_URL: process.env.VERCEL_PROJECT_PRODUCTION_URL,
+  VERCEL_URL: process.env.VERCEL_URL,
+};
+
+const clearVariables = () => {
+  delete process.env.SITE_URL;
+  delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  delete process.env.VERCEL_URL;
+};
+
+beforeEach(clearVariables);
 
 afterEach(() => {
-  variableNames.forEach((name, index) => {
-    const original = originalValues[index];
-    if (original === undefined) delete process.env[name];
-    else process.env[name] = original;
-  });
+  clearVariables();
+
+  for (const name of variableNames) {
+    const original = originalValues[name];
+
+    if (original !== undefined) {
+      process.env[name] = original;
+    }
+  }
 });
 
 test("local development defaults to localhost", () => {

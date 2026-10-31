@@ -3,21 +3,22 @@ import { getSiteUrl } from "@/lib/site";
 
 export const dynamic = "force-static";
 
-function escapeXml(value: string): string {
-  return value
+const escapeXml = (value: string): string =>
+  value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&apos;");
-}
 
-export async function GET() {
+export const GET = async () => {
   const siteUrl = getSiteUrl();
   const posts = await getPublishedPosts();
+
   const items = posts
     .map((post) => {
       const postUrl = new URL(`/blog/${post.slug}`, siteUrl).toString();
+
       return `<item>
   <title>${escapeXml(post.title)}</title>
   <link>${escapeXml(postUrl)}</link>
@@ -43,4 +44,4 @@ export async function GET() {
       "Content-Type": "application/rss+xml; charset=utf-8",
     },
   });
-}
+};

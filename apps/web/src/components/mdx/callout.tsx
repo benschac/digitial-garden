@@ -1,5 +1,6 @@
 import { Typography } from "@personal-site/ui/components/typography";
 import type { ReactNode } from "react";
+
 import styles from "./callout-styles";
 
 interface CalloutProps {
@@ -8,12 +9,13 @@ interface CalloutProps {
   variant?: "default" | "editorial";
 }
 
-export function Callout({
+export const Callout = ({
   children,
   title = "Note",
   variant = "default",
-}: CalloutProps) {
+}: CalloutProps) => {
   const editorial = variant === "editorial";
+
   return (
     <aside
       aria-label={title}
@@ -30,4 +32,4 @@ export function Callout({
       <div className={styles.content}>{children}</div>
     </aside>
   );
-}
+};

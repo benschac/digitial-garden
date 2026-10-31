@@ -186,8 +186,7 @@
     max-width: none;
     width: calc(100% + var(--blog-page-inline-padding) * 2);
     padding-block-start: calc(
-      var(--blog-page-block-padding) +
-      var(--blog-navigation-height)
+      var(--blog-page-block-padding) + var(--blog-navigation-height)
     );
     padding-inline: max(
       var(--blog-page-inline-padding),
@@ -211,8 +210,7 @@
     max-width: none;
     overflow: hidden;
     padding-block-start: calc(
-      var(--blog-page-block-padding) +
-      var(--blog-navigation-height)
+      var(--blog-page-block-padding) + var(--blog-navigation-height)
     );
     padding-inline: max(
       var(--blog-page-inline-padding),
@@ -220,9 +218,7 @@
     );
     position: relative;
     width: calc(
-      100% +
-      var(--blog-page-inline-padding) +
-      var(--blog-page-inline-padding)
+      100% + var(--blog-page-inline-padding) + var(--blog-page-inline-padding)
     );
   }
 

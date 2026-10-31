@@ -26,13 +26,15 @@ interface BlogPostPageProps {
 
 export const dynamicParams = false;
 
-export async function generateStaticParams() {
-  return (await getAllPostSlugs()).map((slug) => ({ slug }));
-}
+export const generateStaticParams = async () => {
+  const slugs = await getAllPostSlugs();
 
-export async function generateMetadata({
+  return slugs.map((slug) => ({ slug }));
+};
+
+export const generateMetadata = async ({
   params,
-}: BlogPostPageProps): Promise<Metadata> {
+}: BlogPostPageProps): Promise<Metadata> => {
   const { slug } = await params;
   const post = await getPostBySlug(slug);
 
@@ -41,36 +43,38 @@ export async function generateMetadata({
   }
 
   const canonical = post.canonicalUrl ?? `/blog/${post.slug}`;
+
   const images = post.image
     ? [{ alt: post.imageAlt ?? post.title, url: post.image }]
     : undefined;
 
   return {
-    title: post.title,
-    description: post.summary,
-    robots:
-      post.status === "draft" ? { index: false, follow: false } : undefined,
     alternates: { canonical },
+    description: post.summary,
     openGraph: {
-      type: "article",
-      title: post.title,
       description: post.summary,
-      publishedTime: post.publishedAt,
-      modifiedTime: post.updatedAt,
-      tags: post.tags,
       images,
+      modifiedTime: post.updatedAt,
+      publishedTime: post.publishedAt,
+      tags: post.tags,
+      title: post.title,
+      type: "article",
     },
+    robots:
+      post.status === "draft" ? { follow: false, index: false } : undefined,
+    title: post.title,
     twitter: {
       card: images ? "summary_large_image" : "summary",
-      title: post.title,
       description: post.summary,
       images: images?.map((image) => image.url),
+      title: post.title,
     },
   };
-}
+};
 
-export default async function BlogPostPage({ params }: BlogPostPageProps) {
+const BlogPostPage = async ({ params }: BlogPostPageProps) => {
   const { slug } = await params;
+
   const [post, adjacentPosts] = await Promise.all([
     getPostBySlug(slug),
     getAdjacentPosts(slug),
@@ -84,7 +88,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const hasParticleHeader = post.slug === "rust-wasm-webgpu-particles";
   const hasSvgHeader = post.slug === "animated-blog-post-background";
   const hasLandscapeHeader = post.slug === "build-snap-to-post";
-  const titleSeparator = hasLandscapeHeader ? post.title.indexOf(": ") : -1;
 
   return (
     <BlogTransition key={slug} name="blog-post-page" view="article">
@@ -95,15 +98,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             aria-label="Blog navigation"
             className={cn(
               styles.backNavigation,
-              hasParticleHeader && styles.particleBackNavigation,
+              hasParticleHeader && styles.particleBackNavigation
             )}
           >
             <Link
               data-cuelume-navigate=""
               data-cuelume-emphasis="subtle"
               className={typographyVariants({
-                variant: "articleBackLink",
                 className: `${styles.link} ${styles.backLink}`,
+                variant: "articleBackLink",
               })}
               href="/blog"
               transitionTypes={["blog-close"]}
@@ -156,7 +159,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 styles.postHeader,
                 hasParticleHeader && styles.particlePostHeader,
                 hasLandscapeHeader && styles.landscapePostHeader,
-                hasSvgHeader && styles.svgPostHeader,
+                hasSvgHeader && styles.svgPostHeader
               )}
             >
               <ViewTransition
@@ -169,25 +172,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   variant="articleTitle"
                   className={cn(
                     styles.title,
-                    hasLandscapeHeader && styles.landscapeTitle,
+                    hasLandscapeHeader && styles.landscapeTitle
                   )}
                 >
-                  {titleSeparator > -1 ? (
-                    <>
-                      <span className={styles.landscapeSeries}>
-                        {post.title.slice(0, titleSeparator + 1)}
-                      </span>{" "}
-                      <span className={styles.landscapeHeadline}>
-                        {post.title.slice(titleSeparator + 2)}
-                      </span>
-                    </>
-                  ) : hasLandscapeHeader ? (
-                    <span className={styles.landscapeHeadline}>
-                      {post.title}
-                    </span>
-                  ) : (
-                    post.title
-                  )}
+                  {post.title}
                 </Typography>
               </ViewTransition>
               <Typography
@@ -196,7 +184,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 className={cn(
                   styles.summary,
                   hasLandscapeHeader && styles.landscapeSummary,
-                  hasParticleHeader && "text-[#c3ccd9]",
+                  hasParticleHeader && "text-[#c3ccd9]"
                 )}
               >
                 {post.summary}
@@ -206,7 +194,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 variant="articleMetadata"
                 className={cn(
                   styles.metadata,
-                  hasLandscapeHeader && styles.landscapeMetadata,
+                  hasLandscapeHeader && styles.landscapeMetadata
                 )}
               >
                 {post.status === "draft" ? "Draft · Dev only · " : "Published "}
@@ -240,8 +228,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 data-cuelume-navigate=""
                 data-cuelume-emphasis="subtle"
                 className={typographyVariants({
-                  variant: "articleNavigationTitle",
                   className: `${styles.link} ${styles.navigationLink}`,
+                  variant: "articleNavigationTitle",
                 })}
                 href={`/blog/${adjacentPosts.previous.slug}`}
                 transitionTypes={["nav-back"]}
@@ -262,8 +250,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 data-cuelume-navigate=""
                 data-cuelume-emphasis="subtle"
                 className={typographyVariants({
-                  variant: "articleNavigationTitle",
                   className: `${styles.link} ${styles.navigationLink}`,
+                  variant: "articleNavigationTitle",
                 })}
                 href={`/blog/${adjacentPosts.next.slug}`}
                 transitionTypes={["nav-forward"]}
@@ -282,4 +270,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       </Typography>
     </BlogTransition>
   );
-}
+};
+
+export default BlogPostPage;

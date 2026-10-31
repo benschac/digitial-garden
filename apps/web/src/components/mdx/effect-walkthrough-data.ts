@@ -1,10 +1,10 @@
-type StateCell = {
+interface StateCell {
   label: string;
   value: string;
   tone?: "active" | "waiting" | "done";
-};
+}
 
-export type Walkthrough = {
+export interface Walkthrough {
   title: string;
   subtitle: string;
   code: string[];
@@ -15,141 +15,11 @@ export type Walkthrough = {
     detail: string;
     cells: StateCell[];
   }[];
-};
+}
 
 /** Prepared source walkthroughs, not an executing Effect runtime. */
 export const effectWalkthroughs = {
-  factory: {
-    title: "Describe first. Run when admitted.",
-    subtitle: "Effect.tryPromise → withPermit → task(context)",
-    code: [
-      "const executeTask = Effect.tryPromise({",
-      "  try: async () => task(context),",
-      "  catch: (error) => error,",
-      "});",
-      "const program = item.withPermit(",
-      "  global.withPermit(executeTask),",
-      ");",
-      "Effect.runPromise(program);",
-    ],
-    steps: [
-      {
-        label: "Describe",
-        line: 0,
-        expression: "Effect.tryPromise",
-        detail:
-          "Constructing executeTask stores a recipe. The async factory has not been called, so no request has started.",
-        cells: [
-          { label: "Effect", value: "Described", tone: "active" },
-          { label: "Permits", value: "Not acquired" },
-          { label: "Task calls", value: "0" },
-        ],
-      },
-      {
-        label: "Run",
-        line: 7,
-        expression: "Effect.runPromise(program)",
-        detail:
-          "runPromise starts interpreting the composed program and returns a Promise. Execution still has to pass both permit checks.",
-        cells: [
-          { label: "Effect", value: "Running", tone: "active" },
-          { label: "Permits", value: "Checking", tone: "waiting" },
-          { label: "Task calls", value: "0" },
-        ],
-      },
-      {
-        label: "Wait",
-        line: 4,
-        expression: "item.withPermit",
-        detail:
-          "Suppose A1 already holds this item's permit. A2 waits here, before taking shared capacity. Its task-call count is still zero.",
-        cells: [
-          { label: "Effect", value: "Waiting", tone: "waiting" },
-          { label: "Permits", value: "Item busy", tone: "waiting" },
-          { label: "Task calls", value: "0" },
-        ],
-      },
-      {
-        label: "Invoke",
-        line: 1,
-        expression: "task(context)",
-        detail:
-          "After A1 settles, A2 acquires its item permit and an available shared permit. Only now does the factory invoke task(context).",
-        cells: [
-          { label: "Effect", value: "Executing", tone: "active" },
-          { label: "Permits", value: "Both held", tone: "active" },
-          { label: "Task calls", value: "1", tone: "done" },
-        ],
-      },
-    ],
-  },
-  coalescing: {
-    title: "One pending snapshot. The latest evidence.",
-    subtitle: "Caller policy · use-progressive-identification.ts",
-    code: [
-      "requestState.desiredCaptureKey = nextCaptureKey;",
-      "requestState.pendingItem = requestedItem;",
-      "if (requestState.inFlight) return;",
-      "// Inside the current cycle:",
-      "await Promise.allSettled([",
-      "  classifierPromise, remotePromise, localVlmPromise,",
-      "]);",
-      "// The next iteration consumes pendingItem.",
-    ],
-    steps: [
-      {
-        label: "A2 arrives",
-        line: 1,
-        expression: "requestedItem",
-        detail:
-          "A1's identification cycle is running. New A2 evidence becomes the pending snapshot; it does not start another cycle yet.",
-        cells: [
-          { label: "Current cycle", value: "A1", tone: "active" },
-          { label: "Pending evidence", value: "A2", tone: "waiting" },
-          { label: "Next cycle", value: "Waiting" },
-        ],
-      },
-      {
-        label: "A3 replaces",
-        line: 1,
-        expression: "requestState.pendingItem",
-        detail:
-          "A3 arrives before A1 finishes. Assigning pendingItem again replaces A2. The caller retains one pending snapshot for this item.",
-        cells: [
-          { label: "Current cycle", value: "A1", tone: "active" },
-          { label: "Pending evidence", value: "A3", tone: "waiting" },
-          { label: "Next cycle", value: "Waiting" },
-        ],
-      },
-      {
-        label: "Join work",
-        line: 4,
-        expression: "Promise.allSettled",
-        detail:
-          "Even if the remote request has finished, this cycle waits for the classifier and local VLM to settle too. Free remote capacity alone does not advance it.",
-        cells: [
-          { label: "Current cycle", value: "Joining", tone: "waiting" },
-          { label: "Pending evidence", value: "A3", tone: "waiting" },
-          { label: "Next cycle", value: "Waiting" },
-        ],
-      },
-      {
-        label: "Use A3",
-        line: 7,
-        expression: "pendingItem",
-        detail:
-          "After all three branches settle, the loop consumes A3. A2 never gets a separate cycle. Any remote task from A3 still goes through queue admission.",
-        cells: [
-          { label: "Current cycle", value: "A3", tone: "active" },
-          { label: "Pending evidence", value: "Empty", tone: "done" },
-          { label: "Next cycle", value: "Started", tone: "done" },
-        ],
-      },
-    ],
-  },
   cancellation: {
-    title: "An abort request is not a free slot.",
-    subtitle: "One shared permit · A1 running, B1 waiting",
     code: [
       "const abortWhileQueued = () => {",
       "  if (!hasStarted) queueAbortController.abort(signal?.reason);",
@@ -162,58 +32,58 @@ export const effectWalkthroughs = {
     ],
     steps: [
       {
-        label: "Start A1",
-        line: 5,
-        expression: 'removeEventListener("abort", abortWhileQueued)',
+        cells: [
+          { label: "A1", tone: "active", value: "Running" },
+          { label: "Shared slot", tone: "active", value: "Held by A1" },
+          { label: "B1", tone: "waiting", value: "Waiting" },
+        ],
         detail:
           "A1 has acquired both permits. Removing the forwarding listener prevents a later caller abort from interrupting the queue's running Effect.",
-        cells: [
-          { label: "A1", value: "Running", tone: "active" },
-          { label: "Shared slot", value: "Held by A1", tone: "active" },
-          { label: "B1", value: "Waiting", tone: "waiting" },
-        ],
+        expression: 'removeEventListener("abort", abortWhileQueued)',
+        label: "Start A1",
+        line: 5,
       },
       {
-        label: "Request abort",
-        line: 7,
-        expression: "await task(context)",
+        cells: [
+          { label: "A1", tone: "waiting", value: "Abort requested" },
+          { label: "Shared slot", tone: "active", value: "Still held" },
+          { label: "B1", tone: "waiting", value: "Still waiting" },
+        ],
         detail:
           "The caller aborts. The request receives that signal, but A1's Promise is still pending in this example. Both permits stay held; B1 cannot start.",
-        cells: [
-          { label: "A1", value: "Abort requested", tone: "waiting" },
-          { label: "Shared slot", value: "Still held", tone: "active" },
-          { label: "B1", value: "Still waiting", tone: "waiting" },
-        ],
+        expression: "await task(context)",
+        label: "Request abort",
+        line: 7,
       },
       {
-        label: "Settle A1",
-        line: 7,
-        expression: "return await",
+        cells: [
+          { label: "A1", tone: "done", value: "Settled" },
+          { label: "Shared slot", tone: "done", value: "Released" },
+          { label: "B1", tone: "waiting", value: "Eligible" },
+        ],
         detail:
           "A1's Promise eventually resolves or rejects. The task wrapper cleans up and exits; withPermit can now release the permits.",
-        cells: [
-          { label: "A1", value: "Settled", tone: "done" },
-          { label: "Shared slot", value: "Released", tone: "done" },
-          { label: "B1", value: "Eligible", tone: "waiting" },
-        ],
+        expression: "return await",
+        label: "Settle A1",
+        line: 7,
       },
       {
-        label: "Admit B1",
-        line: 4,
-        expression: "hasStarted = true",
+        cells: [
+          { label: "A1", tone: "done", value: "Settled" },
+          { label: "Shared slot", tone: "active", value: "Held by B1" },
+          { label: "B1", tone: "active", value: "Running" },
+        ],
         detail:
           "B1 acquires the released shared permit and enters its own factory. At no point did two unsettled tasks occupy this one-slot queue.",
-        cells: [
-          { label: "A1", value: "Settled", tone: "done" },
-          { label: "Shared slot", value: "Held by B1", tone: "active" },
-          { label: "B1", value: "Running", tone: "active" },
-        ],
+        expression: "hasStarted = true",
+        label: "Admit B1",
+        line: 4,
       },
     ],
+    subtitle: "One shared permit · A1 running, B1 waiting",
+    title: "An abort request is not a free slot.",
   },
   cleanup: {
-    title: "The await keeps the count honest.",
-    subtitle: "Task settlement → application cleanup → permit release",
     code: [
       "try {",
       "  options.onStarted?.(context);",
@@ -225,42 +95,172 @@ export const effectWalkthroughs = {
     ],
     steps: [
       {
-        label: "Pending",
-        line: 2,
-        expression: "await task(context)",
+        cells: [
+          { label: "Task Promise", tone: "active", value: "Pending" },
+          { label: "Active count", tone: "active", value: "1" },
+          { label: "Permits", tone: "active", value: "Held" },
+        ],
         detail:
           "The task's Promise is pending. await suspends this wrapper inside try, so finally has not run and activeCount still includes this task.",
-        cells: [
-          { label: "Task Promise", value: "Pending", tone: "active" },
-          { label: "Active count", value: "1", tone: "active" },
-          { label: "Permits", value: "Held", tone: "active" },
-        ],
+        expression: "await task(context)",
+        label: "Pending",
+        line: 2,
       },
       {
-        label: "Clean up",
-        line: 4,
-        expression: "this.activeCount -= 1",
+        cells: [
+          { label: "Task Promise", tone: "done", value: "Settled" },
+          { label: "Active count", tone: "done", value: "0" },
+          { label: "Permits", tone: "waiting", value: "Exiting wrapper" },
+        ],
         detail:
           "When the task resolves or rejects, finally decrements the active count and removes the active item. Both success and failure take this path.",
-        cells: [
-          { label: "Task Promise", value: "Settled", tone: "done" },
-          { label: "Active count", value: "0", tone: "done" },
-          { label: "Permits", value: "Exiting wrapper", tone: "waiting" },
-        ],
+        expression: "this.activeCount -= 1",
+        label: "Clean up",
+        line: 4,
       },
       {
-        label: "Release",
-        line: 6,
-        expression: "}",
+        cells: [
+          { label: "Task Promise", tone: "done", value: "Settled" },
+          { label: "Active count", tone: "done", value: "0" },
+          { label: "Permits", tone: "done", value: "Released" },
+        ],
         detail:
           "The wrapper exits and Effect releases the nested permits. The returned Promise's separate finally removes the pending entry, listener, and semaphore reference.",
-        cells: [
-          { label: "Task Promise", value: "Settled", tone: "done" },
-          { label: "Active count", value: "0", tone: "done" },
-          { label: "Permits", value: "Released", tone: "done" },
-        ],
+        expression: "}",
+        label: "Release",
+        line: 6,
       },
     ],
+    subtitle: "Task settlement → application cleanup → permit release",
+    title: "The await keeps the count honest.",
+  },
+  coalescing: {
+    code: [
+      "requestState.desiredCaptureKey = nextCaptureKey;",
+      "requestState.pendingItem = requestedItem;",
+      "if (requestState.inFlight) return;",
+      "// Inside the current cycle:",
+      "await Promise.allSettled([",
+      "  classifierPromise, remotePromise, localVlmPromise,",
+      "]);",
+      "// The next iteration consumes pendingItem.",
+    ],
+    steps: [
+      {
+        cells: [
+          { label: "Current cycle", tone: "active", value: "A1" },
+          { label: "Pending evidence", tone: "waiting", value: "A2" },
+          { label: "Next cycle", value: "Waiting" },
+        ],
+        detail:
+          "A1's identification cycle is running. New A2 evidence becomes the pending snapshot; it does not start another cycle yet.",
+        expression: "requestedItem",
+        label: "A2 arrives",
+        line: 1,
+      },
+      {
+        cells: [
+          { label: "Current cycle", tone: "active", value: "A1" },
+          { label: "Pending evidence", tone: "waiting", value: "A3" },
+          { label: "Next cycle", value: "Waiting" },
+        ],
+        detail:
+          "A3 arrives before A1 finishes. Assigning pendingItem again replaces A2. The caller retains one pending snapshot for this item.",
+        expression: "requestState.pendingItem",
+        label: "A3 replaces",
+        line: 1,
+      },
+      {
+        cells: [
+          { label: "Current cycle", tone: "waiting", value: "Joining" },
+          { label: "Pending evidence", tone: "waiting", value: "A3" },
+          { label: "Next cycle", value: "Waiting" },
+        ],
+        detail:
+          "Even if the remote request has finished, this cycle waits for the classifier and local VLM to settle too. Free remote capacity alone does not advance it.",
+        expression: "Promise.allSettled",
+        label: "Join work",
+        line: 4,
+      },
+      {
+        cells: [
+          { label: "Current cycle", tone: "active", value: "A3" },
+          { label: "Pending evidence", tone: "done", value: "Empty" },
+          { label: "Next cycle", tone: "done", value: "Started" },
+        ],
+        detail:
+          "After all three branches settle, the loop consumes A3. A2 never gets a separate cycle. Any remote task from A3 still goes through queue admission.",
+        expression: "pendingItem",
+        label: "Use A3",
+        line: 7,
+      },
+    ],
+    subtitle: "Caller policy · use-progressive-identification.ts",
+    title: "One pending snapshot. The latest evidence.",
+  },
+  factory: {
+    code: [
+      "const executeTask = Effect.tryPromise({",
+      "  try: async () => task(context),",
+      "  catch: (error) => error,",
+      "});",
+      "const program = item.withPermit(",
+      "  global.withPermit(executeTask),",
+      ");",
+      "Effect.runPromise(program);",
+    ],
+    steps: [
+      {
+        cells: [
+          { label: "Effect", tone: "active", value: "Described" },
+          { label: "Permits", value: "Not acquired" },
+          { label: "Task calls", value: "0" },
+        ],
+        detail:
+          "Constructing executeTask stores a recipe. The async factory has not been called, so no request has started.",
+        expression: "Effect.tryPromise",
+        label: "Describe",
+        line: 0,
+      },
+      {
+        cells: [
+          { label: "Effect", tone: "active", value: "Running" },
+          { label: "Permits", tone: "waiting", value: "Checking" },
+          { label: "Task calls", value: "0" },
+        ],
+        detail:
+          "runPromise starts interpreting the composed program and returns a Promise. Execution still has to pass both permit checks.",
+        expression: "Effect.runPromise(program)",
+        label: "Run",
+        line: 7,
+      },
+      {
+        cells: [
+          { label: "Effect", tone: "waiting", value: "Waiting" },
+          { label: "Permits", tone: "waiting", value: "Item busy" },
+          { label: "Task calls", value: "0" },
+        ],
+        detail:
+          "Suppose A1 already holds this item's permit. A2 waits here, before taking shared capacity. Its task-call count is still zero.",
+        expression: "item.withPermit",
+        label: "Wait",
+        line: 4,
+      },
+      {
+        cells: [
+          { label: "Effect", tone: "active", value: "Executing" },
+          { label: "Permits", tone: "active", value: "Both held" },
+          { label: "Task calls", tone: "done", value: "1" },
+        ],
+        detail:
+          "After A1 settles, A2 acquires its item permit and an available shared permit. Only now does the factory invoke task(context).",
+        expression: "task(context)",
+        label: "Invoke",
+        line: 1,
+      },
+    ],
+    subtitle: "Effect.tryPromise → withPermit → task(context)",
+    title: "Describe first. Run when admitted.",
   },
 } satisfies Record<string, Walkthrough>;
 

@@ -1,59 +1,65 @@
 import { Effect, Schema, SchemaGetter } from "effect";
 
-const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
-const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/u;
+const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
-function isRealIsoDate(value: string): boolean {
+const isRealIsoDate = (value: string): boolean => {
   if (!isoDatePattern.test(value)) {
     return false;
   }
 
   const date = new Date(`${value}T00:00:00.000Z`);
+
   return !Number.isNaN(date.valueOf()) && date.toISOString().startsWith(value);
-}
+};
 
 const isoDateSchema = Schema.String.check(
   Schema.makeFilter(isRealIsoDate, {
     message: "Expected a valid ISO date in YYYY-MM-DD format",
-  }),
+  })
 );
+
 const textSchema = Schema.Trim.check(Schema.isMinLength(1));
+
 const urlSchema = Schema.Trim.pipe(
   Schema.decodeTo(Schema.String, {
-    decode: SchemaGetter.transform((value) => value.replace(/[\t\n\r]/g, "")),
+    decode: SchemaGetter.transform((value) =>
+      value.replaceAll(/[\t\n\r]/gu, "")
+    ),
     encode: SchemaGetter.passthrough(),
-  }),
+  })
 ).check(
   Schema.makeFilter((value) => URL.canParse(value), {
     message: "Expected an absolute URL",
-  }),
+  })
 );
 
 const metadataSchema = Schema.Struct({
-  title: textSchema,
-  slug: Schema.Trim.check(
-    Schema.isPattern(slugPattern, { message: "Expected a URL-safe slug" }),
-  ),
-  summary: textSchema,
-  publishedAt: isoDateSchema,
-  status: Schema.Literals(["draft", "published", "archived"]),
-  tags: Schema.mutable(Schema.Array(textSchema)).pipe(
-    Schema.withDecodingDefault(Effect.sync(() => [])),
-  ),
-  updatedAt: Schema.optional(isoDateSchema),
+  canonicalUrl: Schema.optional(urlSchema),
   featured: Schema.Boolean.pipe(
-    Schema.withDecodingDefault(Effect.succeed(false)),
+    Schema.withDecodingDefault(Effect.succeed(false))
   ),
   image: Schema.optional(textSchema),
   imageAlt: Schema.optional(textSchema),
-  canonicalUrl: Schema.optional(urlSchema),
-  series: Schema.optional(textSchema),
   order: Schema.optional(Schema.Finite),
+  publishedAt: isoDateSchema,
+  series: Schema.optional(textSchema),
+  slug: Schema.Trim.check(
+    Schema.isPattern(slugPattern, { message: "Expected a URL-safe slug" })
+  ),
+  status: Schema.Literals(["draft", "published", "archived"]),
+  summary: textSchema,
+  tags: Schema.mutable(Schema.Array(textSchema)).pipe(
+    Schema.withDecodingDefault(Effect.sync(() => []))
+  ),
+  title: textSchema,
+  updatedAt: Schema.optional(isoDateSchema),
 });
 
 const metadataChecks = Schema.makeFilter<typeof metadataSchema.Type>(
   (metadata) => {
     const issues: Schema.FilterIssue[] = [];
+
     if (metadata.image && !metadata.imageAlt) {
       issues.push({
         issue: "imageAlt is required when image is present",
@@ -67,13 +73,14 @@ const metadataChecks = Schema.makeFilter<typeof metadataSchema.Type>(
         path: ["series"],
       });
     }
+
     return issues;
-  },
+  }
 );
 
 export const postMetadataParseOptions = {
-  onExcessProperty: "error",
   errors: "all",
+  onExcessProperty: "error",
 } as const;
 
 export const postMetadataSchema = metadataSchema.check(metadataChecks);
@@ -92,32 +99,34 @@ export interface PostRecord extends PostMetadata {
 
 export type PostSummary = PostMetadata;
 
-export function normalizeTagSlug(tag: string): string {
-  return tag
+export const normalizeTagSlug = (tag: string): string =>
+  tag
     .normalize("NFKD")
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
+    .replaceAll(/[^a-z0-9]+/gu, "-")
+    .replaceAll(/^-|-$/gu, "");
 
-export function isPublicationEligible(
+export const isPublicationEligible = (
   post: Pick<PostMetadata, "publishedAt" | "status">,
-  now = new Date(),
-): boolean {
+  now = new Date()
+): boolean => {
   if (post.status !== "published") {
     return false;
   }
 
   const publicationTime = Date.parse(`${post.publishedAt}T00:00:00.000Z`);
-  return publicationTime <= now.valueOf();
-}
 
-export function sortPostsNewestFirst<
+  return publicationTime <= now.valueOf();
+};
+
+export const sortPostsNewestFirst = <
   T extends Pick<PostMetadata, "publishedAt" | "slug">,
->(posts: readonly T[]): T[] {
-  return [...posts].sort((left, right) => {
+>(
+  posts: readonly T[]
+): T[] =>
+  posts.toSorted((left, right) => {
     const dateComparison = right.publishedAt.localeCompare(left.publishedAt);
+
     return dateComparison || left.slug.localeCompare(right.slug);
   });
-}
