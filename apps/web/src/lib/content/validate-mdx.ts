@@ -1,93 +1,112 @@
 import { compile } from "@mdx-js/mdx";
+import { Match, Schema } from "effect";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 
-const allowedComponents = new Set([
-  "Callout",
-  "AnimatedDiagram",
-  "ComingSoon",
-  "EffectWalkthrough",
-  "MermaidDiagram",
-]);
+const isAllowedComponent = Schema.is(
+  Schema.Literals([
+    "Callout",
+    "AnimatedDiagram",
+    "ComingSoon",
+    "EffectWalkthrough",
+    "MermaidDiagram",
+  ])
+);
 
-interface MdxNode {
-  attributes?: Array<{
-    type: string;
-    value?: null | object | string;
-  }>;
-  children?: MdxNode[];
-  data?: {
-    estree?: {
-      body?: readonly unknown[];
-      type: string;
-    };
-  };
-  depth?: number;
-  name?: string | null;
-  type: string;
-}
+const isLiteralAttribute = Schema.is(
+  Schema.Struct({
+    type: Schema.Literal("mdxJsxAttribute"),
+    value: Schema.NullOr(Schema.String),
+  })
+);
 
-function visit(node: MdxNode): void {
-  if (node.type === "heading" && node.depth === 1) {
-    throw new Error(
-      "Post bodies cannot contain an h1. Use the frontmatter title instead.",
-    );
-  }
+const mdxNodeSchema = Schema.Struct({
+  attributes: Schema.optional(Schema.Array(Schema.Unknown)),
+  children: Schema.optional(Schema.Array(Schema.Unknown)),
+  data: Schema.optional(
+    Schema.Struct({
+      estree: Schema.optional(
+        Schema.Struct({
+          body: Schema.optional(Schema.Array(Schema.Unknown)),
+          type: Schema.String,
+        })
+      ),
+    })
+  ),
+  depth: Schema.optional(Schema.Number),
+  name: Schema.optional(Schema.NullOr(Schema.String)),
+  type: Schema.String,
+}).check(
+  Schema.makeFilter((node) =>
+    Match.value(node).pipe(
+      Match.when(
+        { depth: 1, type: "heading" },
+        () =>
+          "Post bodies cannot contain an h1. Use the frontmatter title instead."
+      ),
+      Match.whenOr(
+        { type: "mdxjsEsm" },
+        { type: "mdxFlowExpression" },
+        { type: "mdxTextExpression" },
+        (expression) => {
+          const isEmptyProgram =
+            expression.data?.estree?.type === "Program" &&
+            expression.data.estree.body?.length === 0;
 
-  const isExpression =
-    node.type === "mdxFlowExpression" || node.type === "mdxTextExpression";
-  const isEmptyProgram =
-    node.data?.estree?.type === "Program" &&
-    node.data.estree.body?.length === 0;
-  if (node.type === "mdxjsEsm" || (isExpression && !isEmptyProgram)) {
-    throw new Error(
-      "MDX imports, exports, and arbitrary JavaScript expressions are disabled.",
-    );
-  }
+          if (expression.type === "mdxjsEsm" || !isEmptyProgram) {
+            return "MDX imports, exports, and arbitrary JavaScript expressions are disabled.";
+          }
+        }
+      ),
+      Match.whenOr(
+        { type: "mdxJsxFlowElement" },
+        { type: "mdxJsxTextElement" },
+        (element) => {
+          if (!isAllowedComponent(element.name)) {
+            return `MDX component "${element.name ?? "unknown"}" is not allowlisted.`;
+          }
 
-  if (node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement") {
-    if (!node.name || !allowedComponents.has(node.name)) {
-      throw new Error(
-        `MDX component "${node.name ?? "unknown"}" is not allowlisted.`,
-      );
-    }
+          for (const attribute of element.attributes ?? []) {
+            if (!isLiteralAttribute(attribute)) {
+              return `MDX component "${element.name}" may only use literal string properties.`;
+            }
+          }
+        }
+      ),
+      Match.orElse(() => true)
+    )
+  )
+);
 
-    for (const attribute of node.attributes ?? []) {
-      if (
-        attribute.type !== "mdxJsxAttribute" ||
-        (attribute.value !== null && typeof attribute.value !== "string")
-      ) {
-        throw new Error(
-          `MDX component "${node.name}" may only use literal string properties.`,
-        );
-      }
-    }
-  }
+const parseMdxNode = Schema.decodeUnknownSync(mdxNodeSchema);
 
+type MdxNode = typeof mdxNodeSchema.Type;
+
+const visit = (node: MdxNode): void => {
   for (const child of node.children ?? []) {
-    visit(child);
+    visit(parseMdxNode(child));
   }
-}
+};
 
-function remarkRestrictMdx() {
-  return visit;
-}
+const remarkRestrictMdx = () => (tree: MdxNode) => {
+  visit(parseMdxNode(tree));
+};
 
-export async function validateTrustedMdx(
+export const validateTrustedMdx = async (
   content: string,
-  fileName: string,
-): Promise<void> {
+  fileName: string
+): Promise<void> => {
   try {
     await compile(content, {
       outputFormat: "function-body",
       remarkPlugins: [remarkRestrictMdx, remarkGfm, remarkMath],
     });
   } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Invalid post content in ${fileName}: ${error.message}`, {
-        cause: error,
-      });
-    }
-    throw new Error(`Invalid post content in ${fileName}`);
+    const message =
+      error instanceof Error
+        ? `Invalid post content in ${fileName}: ${error.message}`
+        : `Invalid post content in ${fileName}`;
+
+    throw new Error(message, { cause: error });
   }
-}
+};
