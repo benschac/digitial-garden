@@ -20,9 +20,8 @@ const isLiteralAttribute = Schema.is(
   })
 );
 
-const mdxNodeSchema = Schema.Struct({
+const mdxNodeFields = {
   attributes: Schema.optional(Schema.Array(Schema.Unknown)),
-  children: Schema.optional(Schema.Array(Schema.Unknown)),
   data: Schema.optional(
     Schema.Struct({
       estree: Schema.optional(
@@ -36,6 +35,17 @@ const mdxNodeSchema = Schema.Struct({
   depth: Schema.optional(Schema.Number),
   name: Schema.optional(Schema.NullOr(Schema.String)),
   type: Schema.String,
+};
+
+type MdxNode = Schema.Struct.Type<typeof mdxNodeFields> & {
+  readonly children?: readonly MdxNode[] | undefined;
+};
+
+const mdxNodeSchema = Schema.Struct({
+  ...mdxNodeFields,
+  children: Schema.optional(
+    Schema.Array(Schema.suspend((): Schema.Codec<MdxNode> => mdxNodeSchema))
+  ),
 }).check(
   Schema.makeFilter((node) =>
     Match.value(node).pipe(
@@ -80,16 +90,8 @@ const mdxNodeSchema = Schema.Struct({
 
 const parseMdxNode = Schema.decodeUnknownSync(mdxNodeSchema);
 
-type MdxNode = typeof mdxNodeSchema.Type;
-
-const visit = (node: MdxNode): void => {
-  for (const child of node.children ?? []) {
-    visit(parseMdxNode(child));
-  }
-};
-
 const remarkRestrictMdx = () => (tree: MdxNode) => {
-  visit(parseMdxNode(tree));
+  parseMdxNode(tree);
 };
 
 export const validateTrustedMdx = async (

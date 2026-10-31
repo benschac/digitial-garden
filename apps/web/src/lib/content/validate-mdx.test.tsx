@@ -85,6 +85,20 @@ test("accepts nested content, boolean properties and editorial comments", async 
 });
 
 for (const source of [
+  "<Callout>\n\n> Text {1 + 1}\n\n</Callout>",
+  "<Callout>\n\n> <Unknown />\n\n</Callout>",
+  '<Callout>\n\n> <ComingSoon title={"computed"} />\n\n</Callout>',
+  '<Callout>\n\n> <ComingSoon {...{title: "spread"}} />\n\n</Callout>',
+  "<Callout>\n\n> # Nested heading\n\n</Callout>",
+]) {
+  test(`reports the tree path for nested restricted content: ${source}`, async () => {
+    await expect(
+      validateTrustedMdx(source, "nested-unsafe.mdx")
+    ).rejects.toThrow(/children[\s\S]*children/u);
+  });
+}
+
+for (const source of [
   "<Unknown />",
   "<div>HTML</div>",
   "<>Fragment</>",
