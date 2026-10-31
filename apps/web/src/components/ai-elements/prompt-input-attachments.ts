@@ -3,12 +3,12 @@ import { Effect, Schema } from "effect";
 
 export class PromptInputAttachmentError extends Schema.TaggedError<PromptInputAttachmentError>()(
   "PromptInputAttachmentError",
-  { message: Schema.String, cause: Schema.Defect() },
+  { message: Schema.String, cause: Schema.Defect() }
 ) {}
 
 export class PromptInputSendError extends Schema.TaggedError<PromptInputSendError>()(
   "PromptInputSendError",
-  { message: Schema.String, cause: Schema.Defect() },
+  { message: Schema.String, cause: Schema.Defect() }
 ) {}
 
 export interface PromptInputAttachmentReader {
@@ -17,11 +17,11 @@ export interface PromptInputAttachmentReader {
   readonly readyState: number;
   addEventListener(
     type: "load" | "error" | "abort",
-    listener: () => void,
+    listener: () => void
   ): void;
   removeEventListener(
     type: "load" | "error" | "abort",
-    listener: () => void,
+    listener: () => void
   ): void;
   readAsDataURL(blob: Blob): void;
   abort(): void;
@@ -39,7 +39,7 @@ const browser: PromptInputAttachmentBrowser = {
 
 export const readPromptInputAttachment = (
   blob: Blob,
-  boundaries: PromptInputAttachmentBrowser = browser,
+  boundaries: PromptInputAttachmentBrowser = browser
 ) =>
   Effect.andThen(
     Effect.yieldNow,
@@ -53,8 +53,8 @@ export const readPromptInputAttachment = (
             new PromptInputAttachmentError({
               message: "Unable to open the attachment reader.",
               cause,
-            }),
-          ),
+            })
+          )
         );
         return;
       }
@@ -74,8 +74,8 @@ export const readPromptInputAttachment = (
             new PromptInputAttachmentError({
               message: "Unable to read the attachment.",
               cause,
-            }),
-          ),
+            })
+          )
         );
       };
       function onLoad() {
@@ -109,12 +109,12 @@ export const readPromptInputAttachment = (
           reader.abort();
         }
       });
-    }),
+    })
   );
 
 const convertPromptInputAttachment = Effect.fnUntraced(function* (
   file: FileUIPart,
-  boundaries: PromptInputAttachmentBrowser,
+  boundaries: PromptInputAttachmentBrowser
 ) {
   if (!file.url.startsWith("blob:")) {
     return file;
@@ -142,7 +142,7 @@ const convertPromptInputAttachment = Effect.fnUntraced(function* (
 
 export const convertPromptInputAttachments = (
   files: readonly FileUIPart[],
-  boundaries: PromptInputAttachmentBrowser = browser,
+  boundaries: PromptInputAttachmentBrowser = browser
 ) =>
   Effect.andThen(
     Effect.yieldNow,
@@ -151,17 +151,39 @@ export const convertPromptInputAttachments = (
       (file) => convertPromptInputAttachment(file, boundaries),
       {
         concurrency: 3,
-      },
-    ),
+      }
+    )
   );
+
+export type PromptInputSubmissionOutcome =
+  | { readonly status: "accepted" }
+  | { readonly status: "cancelled" }
+  | { readonly status: "unconfirmed"; readonly message: string };
+
+export interface PromptInputSubmissionContext {
+  readonly signal: AbortSignal;
+}
+
+export type PromptInputSubmissionHandler<
+  Arguments extends readonly unknown[],
+> =
+  | ((...args: Arguments) => void)
+  | ((...args: Arguments) => Promise<void>)
+  | ((...args: Arguments) => PromptInputSubmissionOutcome)
+  | ((...args: Arguments) => Promise<PromptInputSubmissionOutcome>);
 
 interface PromptInputAttachmentSubmission {
   message: { text: string; files: FileUIPart[] };
   createController: () => AbortController;
-  send: (message: {
-    text: string;
-    files: FileUIPart[];
-  }) => void | Promise<void>;
+  send: PromptInputSubmissionHandler<
+    [
+      message: {
+        text: string;
+        files: FileUIPart[];
+      },
+      context: PromptInputSubmissionContext,
+    ]
+  >;
   isCurrent: () => boolean;
   onSuccess: () => void;
   onError: (error: {
@@ -171,7 +193,7 @@ interface PromptInputAttachmentSubmission {
 }
 
 export const createPromptInputAttachmentSubmission = (
-  boundaries: PromptInputAttachmentBrowser = browser,
+  boundaries: PromptInputAttachmentBrowser = browser
 ) => {
   let active: { signal: AbortSignal; isCurrent: () => boolean } | undefined;
 
@@ -187,12 +209,16 @@ export const createPromptInputAttachmentSubmission = (
     const workflow = Effect.gen(function* () {
       const files = yield* convertPromptInputAttachments(
         submission.message.files,
-        boundaries,
+        boundaries
       );
-      yield* Effect.tryPromise({
+
+      const outcome = yield* Effect.tryPromise({
         try: async () => {
           signal.throwIfAborted();
-          await submission.send({ text: submission.message.text, files });
+          return await submission.send(
+            { text: submission.message.text, files },
+            { signal }
+          );
         },
         catch: (cause) =>
           new PromptInputSendError({
@@ -200,27 +226,39 @@ export const createPromptInputAttachmentSubmission = (
             cause,
           }),
       });
+
+      if (outcome?.status === "unconfirmed") {
+        return yield* new PromptInputSendError({
+          cause: outcome,
+          message: outcome.message,
+        });
+      }
+
+      return outcome?.status !== "cancelled";
     }).pipe(
       Effect.match({
         onFailure: (error) => ({
-          code:
-            error._tag === "PromptInputAttachmentError"
-              ? ("attachment_conversion" as const)
-              : ("submit" as const),
-          message: error.message,
+          accepted: false,
+          error: {
+            code:
+              error._tag === "PromptInputAttachmentError"
+                ? ("attachment_conversion" as const)
+                : ("submit" as const),
+            message: error.message,
+          },
         }),
-        onSuccess: () => undefined,
-      }),
+        onSuccess: (accepted) => ({ accepted, error: undefined }),
+      })
     );
 
     try {
-      const error = await Effect.runPromise(workflow, { signal });
+      const result = await Effect.runPromise(workflow, { signal });
       if (!isActive()) {
         return;
       }
-      if (error) {
-        submission.onError(error);
-      } else if (submission.isCurrent()) {
+      if (result.error) {
+        submission.onError(result.error);
+      } else if (result.accepted && submission.isCurrent()) {
         submission.onSuccess();
       }
     } catch (cause) {
