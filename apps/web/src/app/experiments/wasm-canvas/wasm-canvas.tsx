@@ -22,7 +22,7 @@ const GPU_PARTICLE_LIMIT = 4_200_000;
 const GPU_PARTICLE_MINIMUM = 10_000;
 const GPU_PARTICLE_STEP = 10_000;
 
-export function WasmCanvas() {
+export const WasmCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lifecycleRef = useRef<ParticleLifecycle | null>(null);
   const fpsRef = useRef<HTMLOutputElement>(null);
@@ -41,8 +41,10 @@ export function WasmCanvas() {
   const [speed, setSpeed] = useState(DEFAULT_SIMULATION_SPEED);
   const [paused, setPaused] = useState(false);
   const [status, setStatus] = useState("Checking for WebGPU…");
+
   const { cancelFrame, requestFrame } = useAnimationFrame((milliseconds) => {
     const renderer = lifecycleRef.current;
+
     if (!renderer?.canAnimate()) {
       return false;
     }
@@ -51,10 +53,11 @@ export function WasmCanvas() {
       previousFrameTimeRef.current,
       milliseconds
     );
+
     previousFrameTimeRef.current = milliseconds;
     renderer.render({
       deltaSeconds,
-      elapsedSeconds: milliseconds / 1_000,
+      elapsedSeconds: milliseconds / 1000,
       interaction: intensityRef.current,
       pointerX: pointerRef.current.active ? pointerRef.current.x : -10_000,
       pointerY: pointerRef.current.active ? pointerRef.current.y : -10_000,
@@ -67,12 +70,14 @@ export function WasmCanvas() {
       milliseconds - lastFpsUpdateRef.current >= 500
     ) {
       const framesPerSecond = Math.round(
-        (frameCountRef.current * 1_000) /
+        (frameCountRef.current * 1000) /
           (milliseconds - lastFpsUpdateRef.current)
       );
+
       if (fpsRef.current) {
         fpsRef.current.value = `${framesPerSecond} fps`;
       }
+
       frameCountRef.current = 0;
       lastFpsUpdateRef.current = milliseconds;
     }
@@ -87,6 +92,7 @@ export function WasmCanvas() {
 
   useAbortableEffect((signal) => {
     const canvas = canvasRef.current;
+
     if (!canvas) {
       return;
     }
@@ -119,9 +125,11 @@ export function WasmCanvas() {
       pointerRef.current.y = event.clientY - bounds.top;
       pointerRef.current.active = true;
     };
+
     const clearPointer = () => {
       pointerRef.current.active = false;
     };
+
     const handleVisibility = () => {
       lifecycleRef.current?.setEligibility({ hidden: document.hidden });
     };
@@ -136,32 +144,8 @@ export function WasmCanvas() {
     }
 
     let readyStatus = "";
+
     const lifecycle = createParticleLifecycle({
-      signal,
-      eligibility: {
-        hidden: document.hidden,
-        paused: pausedRef.current,
-        reducedMotion: reducedMotionRef.current,
-      },
-      createGpu: (rendererSignal, lost) =>
-        createWebGpuParticleRenderer(
-          canvas,
-          rendererSignal,
-          densityRef.current,
-          canvasSize.width,
-          canvasSize.height,
-          canvasSize.pixelRatio,
-          lost
-        ),
-      createFallback: (rendererSignal) =>
-        createWasmParticleRenderer(
-          canvas,
-          rendererSignal,
-          densityRef.current,
-          canvasSize.width,
-          canvasSize.height,
-          canvasSize.pixelRatio
-        ),
       configure: (renderer, rendererSignal) => {
         renderer.resize(
           canvasSize.width,
@@ -178,24 +162,29 @@ export function WasmCanvas() {
             ? "Rust/WASM control + WebGPU compute online"
             : "Rust/WASM fallback online";
       },
-      onGpuFailure: (error) =>
-        console.warn(
-          "WebGPU initialization failed; using WASM fallback.",
-          error
+      createFallback: (rendererSignal) =>
+        createWasmParticleRenderer(
+          canvas,
+          rendererSignal,
+          densityRef.current,
+          canvasSize.width,
+          canvasSize.height,
+          canvasSize.pixelRatio
         ),
-      onState: (state, detail) => {
-        if (state === "ready") {
-          setStatus(readyStatus);
-        }
-        if (state === "lost") {
-          pausedRef.current = true;
-          setPaused(true);
-          setStatus(`WebGPU device lost · ${String(detail)}`);
-        }
-        if (state === "failed") {
-          console.error(detail);
-          setStatus("The particle renderer could not be loaded.");
-        }
+      createGpu: (rendererSignal, lost) =>
+        createWebGpuParticleRenderer(
+          canvas,
+          rendererSignal,
+          densityRef.current,
+          canvasSize.width,
+          canvasSize.height,
+          canvasSize.pixelRatio,
+          lost
+        ),
+      eligibility: {
+        hidden: document.hidden,
+        paused: pausedRef.current,
+        reducedMotion: reducedMotionRef.current,
       },
       onAnimationChange: (canAnimate) => {
         if (canAnimate) {
@@ -205,7 +194,30 @@ export function WasmCanvas() {
           cancelFrame();
         }
       },
+      onGpuFailure: (error) =>
+        console.warn(
+          "WebGPU initialization failed; using WASM fallback.",
+          error
+        ),
+      onState: (state, detail) => {
+        if (state === "ready") {
+          setStatus(readyStatus);
+        }
+
+        if (state === "lost") {
+          pausedRef.current = true;
+          setPaused(true);
+          setStatus(`WebGPU device lost · ${String(detail)}`);
+        }
+
+        if (state === "failed") {
+          console.error(detail);
+          setStatus("The particle renderer could not be loaded.");
+        }
+      },
+      signal,
     });
+
     lifecycleRef.current = lifecycle;
 
     return () => {
@@ -222,6 +234,7 @@ export function WasmCanvas() {
   const updateDensity = (value: number) => {
     const actualDensity =
       lifecycleRef.current?.setParticleCount(value) ?? value;
+
     setDensity(actualDensity);
     densityRef.current = actualDensity;
   };
@@ -254,8 +267,8 @@ export function WasmCanvas() {
         />
         <div
           className={typographyVariants({
-            variant: "experimentParticleTelemetry",
             className: styles.telemetry,
+            variant: "experimentParticleTelemetry",
           })}
         >
           <span aria-live="polite">{status}</span>
@@ -271,11 +284,11 @@ export function WasmCanvas() {
           <input
             className={styles.controlInput}
             max={particleLimit}
-            min={particleLimit > 2_400 ? GPU_PARTICLE_MINIMUM : 200}
+            min={particleLimit > 2400 ? GPU_PARTICLE_MINIMUM : 200}
             onChange={(event) =>
               updateDensity(Number(event.currentTarget.value))
             }
-            step={particleLimit > 2_400 ? GPU_PARTICLE_STEP : 50}
+            step={particleLimit > 2400 ? GPU_PARTICLE_STEP : 50}
             type="range"
             value={density}
           />
@@ -320,4 +333,4 @@ export function WasmCanvas() {
       </div>
     </section>
   );
-}
+};

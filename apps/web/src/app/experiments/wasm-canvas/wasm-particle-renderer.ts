@@ -2,18 +2,19 @@ import { trailAlpha } from "./animation-timing";
 import type { ParticleFrame, ParticleRenderer } from "./particle-renderer";
 import { loadParticleEngine } from "./wasm-engine";
 
-const MAX_PARTICLE_COUNT = 2_400;
+const MAX_PARTICLE_COUNT = 2400;
 const BACKGROUND = "#05070d";
 
-export async function createWasmParticleRenderer(
+export const createWasmParticleRenderer = async (
   canvas: HTMLCanvasElement,
   signal: AbortSignal,
   initialParticleCount: number,
   initialWidth: number,
   initialHeight: number,
-  initialPixelRatio: number,
-): Promise<ParticleRenderer> {
+  initialPixelRatio: number
+): Promise<ParticleRenderer> => {
   const context = canvas.getContext("2d", { alpha: false });
+
   if (!context) {
     throw new Error("Canvas 2D is unavailable in this browser.");
   }
@@ -27,7 +28,7 @@ export async function createWasmParticleRenderer(
   const resize = (
     nextWidth: number,
     nextHeight: number,
-    pixelRatio: number,
+    pixelRatio: number
   ) => {
     width = Math.max(1, nextWidth);
     height = Math.max(1, nextHeight);
@@ -41,25 +42,26 @@ export async function createWasmParticleRenderer(
   };
 
   engine.initialize(
-    0x5eed1234,
+    0x5e_ed_12_34,
     Math.min(initialParticleCount, MAX_PARTICLE_COUNT),
     width,
-    height,
+    height
   );
   resize(width, height, initialPixelRatio);
 
   return {
-    destroy() {},
+    destroy: () => {},
     kind: "WebAssembly + Canvas 2D",
     maxParticleCount: MAX_PARTICLE_COUNT,
     render(frame: ParticleFrame) {
       const count = engine.particle_count();
+
       const pointerAddress = engine.step(
         frame.elapsedSeconds,
         frame.pointerX,
         frame.pointerY,
         frame.interaction,
-        frame.simulationSpeed,
+        frame.simulationSpeed
       );
 
       if (
@@ -85,7 +87,7 @@ export async function createWasmParticleRenderer(
           particles[offset] - size / 2,
           particles[offset + 1] - size / 2,
           size,
-          size,
+          size
         );
       }
 
@@ -95,7 +97,8 @@ export async function createWasmParticleRenderer(
     resize,
     setParticleCount(count: number) {
       engine.set_particle_count(Math.min(count, MAX_PARTICLE_COUNT));
+
       return engine.particle_count();
     },
   };
-}
+};

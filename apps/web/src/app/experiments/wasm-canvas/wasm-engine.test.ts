@@ -13,7 +13,7 @@ import {
 
 const wasmBytes = () =>
   Bun.file(
-    new URL("../../../../public/wasm/particle-engine.wasm", import.meta.url),
+    new URL("../../../../public/wasm/particle-engine.wasm", import.meta.url)
   ).arrayBuffer();
 
 afterEach(() => {
@@ -24,6 +24,7 @@ const respondWith = (bytes: ArrayBuffer) => {
   const request = spyOn(globalThis, "fetch");
   request.mockResolvedValueOnce(new Response(bytes));
   request.mockResolvedValueOnce(new Response(bytes));
+
   return request;
 };
 
@@ -39,13 +40,14 @@ describe("particle engine loading", () => {
     expect(first.particle_count()).toBe(10);
     expect(second.particle_count()).toBe(originalSecondCount);
     expect(first.perlin_noise_2d(0.25, 0.75)).toBe(
-      second.perlin_noise_2d(0.25, 0.75),
+      second.perlin_noise_2d(0.25, 0.75)
     );
   });
 
   test("rejects every missing or malformed required export", async () => {
-    const module = await WebAssembly.instantiate(await wasmBytes(), {});
-    const exports: Record<string, unknown> = { ...module.instance.exports };
+    const wasmModule = await WebAssembly.instantiate(await wasmBytes(), {});
+    const exports = { ...wasmModule.instance.exports };
+
     const required = [
       "gpu_frame_command_byte_length",
       "initialize",
@@ -61,48 +63,53 @@ describe("particle engine loading", () => {
       "set_particle_count",
       "step",
     ];
-    for (const name of required) {
-      const missing = { ...exports };
-      delete missing[name];
-      await expect(
-        Effect.runPromise(decodeParticleEngineExports(missing)),
-      ).rejects.toBeInstanceOf(ParticleEngineAbiError);
-      await expect(
-        Effect.runPromise(
-          decodeParticleEngineExports({ ...exports, [name]: 123 }),
-        ),
-      ).rejects.toBeInstanceOf(ParticleEngineAbiError);
-    }
+
+    await Promise.all(
+      required.map(async (name) => {
+        const missing = Object.fromEntries(
+          Object.entries(exports).filter(([key]) => key !== name)
+        );
+
+        await expect(
+          Effect.runPromise(decodeParticleEngineExports(missing))
+        ).rejects.toBeInstanceOf(ParticleEngineAbiError);
+        await expect(
+          Effect.runPromise(
+            decodeParticleEngineExports({ ...exports, [name]: 123 })
+          )
+        ).rejects.toBeInstanceOf(ParticleEngineAbiError);
+      })
+    );
   });
 
   test("reports request, body, compilation, and ABI failures separately", async () => {
-    const signal = new AbortController().signal;
+    const { signal } = new AbortController();
     const request = spyOn(globalThis, "fetch");
     request.mockRejectedValueOnce(new Error("offline"));
     await expect(loadParticleEngine(signal)).rejects.toBeInstanceOf(
-      ParticleEngineFetchError,
+      ParticleEngineFetchError
     );
     request.mockResolvedValueOnce(new Response(null, { status: 503 }));
     await expect(loadParticleEngine(signal)).rejects.toBeInstanceOf(
-      ParticleEngineFetchError,
+      ParticleEngineFetchError
     );
     const response = new Response();
     spyOn(response, "arrayBuffer").mockRejectedValueOnce(
-      new Error("body failed"),
+      new Error("body failed")
     );
     request.mockResolvedValueOnce(response);
     await expect(loadParticleEngine(signal)).rejects.toBeInstanceOf(
-      ParticleEngineBodyError,
+      ParticleEngineBodyError
     );
     request.mockResolvedValueOnce(new Response("invalid wasm"));
     await expect(loadParticleEngine(signal)).rejects.toBeInstanceOf(
-      ParticleEngineInstantiateError,
+      ParticleEngineInstantiateError
     );
     request.mockResolvedValueOnce(
-      new Response(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])),
+      new Response(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]))
     );
     await expect(loadParticleEngine(signal)).rejects.toBeInstanceOf(
-      ParticleEngineAbiError,
+      ParticleEngineAbiError
     );
   });
 
@@ -120,9 +127,10 @@ describe("particle engine loading", () => {
     const reason = new DOMException("cancelled", "AbortError");
     const bytes = await wasmBytes();
     const response = new Response();
-    spyOn(response, "arrayBuffer").mockImplementation(async () => {
+    spyOn(response, "arrayBuffer").mockImplementation(() => {
       controller.abort(reason);
-      return bytes;
+
+      return Promise.resolve(bytes);
     });
     spyOn(globalThis, "fetch").mockResolvedValueOnce(response);
     const instantiate = spyOn(WebAssembly, "instantiate");

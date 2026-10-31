@@ -2,105 +2,9 @@ import type { ParticleFrame, ParticleRenderer } from "./particle-renderer";
 import { withRendererScope } from "./renderer-lifecycle";
 import { loadParticleEngine } from "./wasm-engine";
 
-type GpuAdapter = {
-  requestDevice: () => Promise<GpuDevice>;
-};
-
-type GpuApi = {
-  getPreferredCanvasFormat: () => string;
-  requestAdapter: (options?: object) => Promise<GpuAdapter | null>;
-};
-
-type GpuBindGroup = object;
-type GpuBuffer = { destroy: () => void };
-type GpuCommandBuffer = object;
-type GpuComputePipeline = {
-  getBindGroupLayout: (index: number) => object;
-};
-type GpuRenderPipeline = {
-  getBindGroupLayout: (index: number) => object;
-};
-type GpuSampler = object;
-type GpuTextureView = object;
-
-type GpuShaderModule = {
-  getCompilationInfo?: () => Promise<{
-    messages: Array<{
-      lineNum: number;
-      linePos: number;
-      message: string;
-      type: string;
-    }>;
-  }>;
-};
-
-type GpuTexture = {
-  createView: () => GpuTextureView;
-  destroy: () => void;
-};
-
-type GpuComputePass = {
-  dispatchWorkgroups: (count: number) => void;
-  end: () => void;
-  setBindGroup: (index: number, bindGroup: GpuBindGroup) => void;
-  setPipeline: (pipeline: GpuComputePipeline) => void;
-};
-
-type GpuRenderPass = {
-  draw: (
-    vertexCount: number,
-    instanceCount?: number,
-    firstVertex?: number,
-    firstInstance?: number,
-  ) => void;
-  end: () => void;
-  setBindGroup: (index: number, bindGroup: GpuBindGroup) => void;
-  setPipeline: (pipeline: GpuRenderPipeline) => void;
-};
-
-type GpuCommandEncoder = {
-  beginComputePass: (descriptor?: object) => GpuComputePass;
-  beginRenderPass: (descriptor: object) => GpuRenderPass;
-  finish: () => GpuCommandBuffer;
-};
-
-type GpuDevice = {
-  createBindGroup: (descriptor: object) => GpuBindGroup;
-  createBuffer: (descriptor: object) => GpuBuffer;
-  createCommandEncoder: (descriptor?: object) => GpuCommandEncoder;
-  createComputePipeline: (descriptor: object) => GpuComputePipeline;
-  createRenderPipeline: (descriptor: object) => GpuRenderPipeline;
-  createSampler: (descriptor?: object) => GpuSampler;
-  createShaderModule: (descriptor: object) => GpuShaderModule;
-  createTexture: (descriptor: object) => GpuTexture;
-  destroy: () => void;
-  limits: {
-    maxComputeWorkgroupsPerDimension: number;
-    maxStorageBufferBindingSize: number;
-    maxTextureDimension2D: number;
-  };
-  lost: Promise<{ message: string }>;
-  popErrorScope: () => Promise<{ message: string } | null>;
-  pushErrorScope: (filter: string) => void;
-  queue: {
-    submit: (commandBuffers: GpuCommandBuffer[]) => void;
-    writeBuffer: (
-      buffer: GpuBuffer,
-      bufferOffset: number,
-      data: ArrayBufferView,
-    ) => void;
-  };
-};
-
-type GpuCanvasContext = {
-  configure: (descriptor: object) => void;
-  getCurrentTexture: () => GpuTexture;
-  unconfigure?: () => void;
-};
-
-const BUFFER_USAGE_COPY_DST = 0x0008;
-const BUFFER_USAGE_UNIFORM = 0x0040;
-const BUFFER_USAGE_STORAGE = 0x0080;
+const BUFFER_USAGE_COPY_DST = 0x00_08;
+const BUFFER_USAGE_UNIFORM = 0x00_40;
+const BUFFER_USAGE_STORAGE = 0x00_80;
 const TEXTURE_USAGE_TEXTURE_BINDING = 0x04;
 const TEXTURE_USAGE_RENDER_ATTACHMENT = 0x10;
 
@@ -110,6 +14,7 @@ const BACKGROUND = {
   g: 7 / 255,
   r: 5 / 255,
 };
+
 const COMMAND_FLAG_INITIALIZE = 1;
 const COMMAND_FLAG_RESIZE = 1 << 1;
 const HIGH_DENSITY_PARTICLE_COUNT = 450_000;
@@ -121,7 +26,7 @@ const UNIFORM_SIZE = UNIFORM_FLOATS * Float32Array.BYTES_PER_ELEMENT;
 const UPDATE_PARTICLE_COUNT_WORD = 11;
 const WORKGROUP_SIZE = 256;
 
-const COMPUTE_SHADER = /* wgsl */ `
+const COMPUTE_SHADER = `
 struct Particle {
   position: vec2<f32>,
   velocity: vec2<f32>,
@@ -229,7 +134,7 @@ fn compute_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 }
 `;
 
-const PARTICLE_SHADER = /* wgsl */ `
+const PARTICLE_SHADER = `
 struct Particle {
   position: vec2<f32>,
   velocity: vec2<f32>,
@@ -341,7 +246,7 @@ fn point_fragment_main(input: PointVertexOutput) -> @location(0) vec4<f32> {
 }
 `;
 
-const FULLSCREEN_SHADER = /* wgsl */ `
+const FULLSCREEN_SHADER = `
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,
   @location(0) uv: vec2<f32>,
@@ -395,22 +300,22 @@ fn composite_fragment(input: VertexOutput) -> @location(0) vec4<f32> {
 }
 `;
 
-function getGpuApi(): GpuApi | null {
-  return (navigator as Navigator & { gpu?: GpuApi }).gpu ?? null;
-}
+const getGpuApi = (): GPU | null => navigator.gpu ?? null;
 
-async function assertShaderCompiled(
-  shaderModule: GpuShaderModule,
-  label: string,
-) {
+const assertShaderCompiled = async (
+  shaderModule: GPUShaderModule,
+  label: string
+) => {
   if (!shaderModule.getCompilationInfo) {
     return;
   }
 
   const compilationInfo = await shaderModule.getCompilationInfo();
+
   const errors = compilationInfo.messages.filter(
-    (message) => message.type === "error",
+    (message) => message.type === "error"
   );
+
   if (errors.length === 0) {
     return;
   }
@@ -418,20 +323,22 @@ async function assertShaderCompiled(
   const details = errors
     .map((error) => `${error.lineNum}:${error.linePos} ${error.message}`)
     .join("\n");
-  throw new Error(`${label} failed to compile:\n${details}`);
-}
 
-export async function createWebGpuParticleRenderer(
+  throw new Error(`${label} failed to compile:\n${details}`);
+};
+
+export const createWebGpuParticleRenderer = (
   canvas: HTMLCanvasElement,
   signal: AbortSignal,
   initialParticleCount: number,
   initialWidth: number,
   initialHeight: number,
   initialPixelRatio: number,
-  onDeviceLost: (message: string) => void,
-): Promise<ParticleRenderer | null> {
-  return withRendererScope(signal, async (scope) => {
+  onDeviceLost: (message: string) => void
+): Promise<ParticleRenderer | null> =>
+  withRendererScope(signal, async (scope) => {
     const gpu = getGpuApi();
+
     if (!gpu) {
       return null;
     }
@@ -439,14 +346,16 @@ export async function createWebGpuParticleRenderer(
     const adapter = await gpu.requestAdapter({
       powerPreference: "high-performance",
     });
+
     if (!adapter || signal.aborted) {
       return null;
     }
 
     const device = await scope.acquirePromise(
       () => adapter.requestDevice(),
-      (device) => device.destroy(),
+      (acquiredDevice) => acquiredDevice.destroy()
     );
+
     signal.throwIfAborted();
 
     const engine = await loadParticleEngine(signal);
@@ -456,18 +365,21 @@ export async function createWebGpuParticleRenderer(
       Math.min(
         MAX_GPU_PARTICLE_COUNT,
         Math.floor(device.limits.maxStorageBufferBindingSize / PARTICLE_STRIDE),
-        device.limits.maxComputeWorkgroupsPerDimension * WORKGROUP_SIZE,
-      ),
+        device.limits.maxComputeWorkgroupsPerDimension * WORKGROUP_SIZE
+      )
     );
+
     if (engine.gpu_frame_command_byte_length() !== UNIFORM_SIZE) {
       throw new Error("The Rust/WASM and WebGPU frame command layouts differ.");
     }
+
     let activeParticleCount = engine.initialize_gpu_controller(
       maxParticleCount,
       initialParticleCount,
       Math.max(initialWidth, 1),
-      Math.max(initialHeight, 1),
+      Math.max(initialHeight, 1)
     );
+
     const particleBuffer = scope.acquire(
       () =>
         device.createBuffer({
@@ -475,8 +387,9 @@ export async function createWebGpuParticleRenderer(
           size: maxParticleCount * PARTICLE_STRIDE,
           usage: BUFFER_USAGE_STORAGE,
         }),
-      (buffer) => buffer.destroy(),
+      (buffer) => buffer.destroy()
     );
+
     const uniformBuffer = scope.acquire(
       () =>
         device.createBuffer({
@@ -484,21 +397,24 @@ export async function createWebGpuParticleRenderer(
           size: UNIFORM_SIZE,
           usage: BUFFER_USAGE_UNIFORM | BUFFER_USAGE_COPY_DST,
         }),
-      (buffer) => buffer.destroy(),
+      (buffer) => buffer.destroy()
     );
 
     const computeModule = device.createShaderModule({
       code: COMPUTE_SHADER,
       label: "particle-compute-shader",
     });
+
     const particleModule = device.createShaderModule({
       code: PARTICLE_SHADER,
       label: "particle-render-shader",
     });
+
     const fullscreenModule = device.createShaderModule({
       code: FULLSCREEN_SHADER,
       label: "particle-trail-shader",
     });
+
     await Promise.all([
       assertShaderCompiled(computeModule, "Particle compute shader"),
       assertShaderCompiled(particleModule, "Particle render shader"),
@@ -507,11 +423,13 @@ export async function createWebGpuParticleRenderer(
 
     const canvasFormat = gpu.getPreferredCanvasFormat();
     device.pushErrorScope("validation");
+
     const computePipeline = device.createComputePipeline({
       compute: { entryPoint: "compute_main", module: computeModule },
       label: "particle-compute-pipeline",
       layout: "auto",
     });
+
     const particlePipeline = device.createRenderPipeline({
       fragment: {
         entryPoint: "sprite_fragment_main",
@@ -531,6 +449,7 @@ export async function createWebGpuParticleRenderer(
       primitive: { topology: "triangle-list" },
       vertex: { entryPoint: "sprite_vertex_main", module: particleModule },
     });
+
     const pointParticlePipeline = device.createRenderPipeline({
       fragment: {
         entryPoint: "point_fragment_main",
@@ -550,6 +469,7 @@ export async function createWebGpuParticleRenderer(
       primitive: { topology: "point-list" },
       vertex: { entryPoint: "point_vertex_main", module: particleModule },
     });
+
     const fadePipeline = device.createRenderPipeline({
       fragment: {
         entryPoint: "fade_fragment",
@@ -561,6 +481,7 @@ export async function createWebGpuParticleRenderer(
       primitive: { topology: "triangle-list" },
       vertex: { entryPoint: "vertex_main", module: fullscreenModule },
     });
+
     const compositePipeline = device.createRenderPipeline({
       fragment: {
         entryPoint: "composite_fragment",
@@ -572,10 +493,12 @@ export async function createWebGpuParticleRenderer(
       primitive: { topology: "triangle-list" },
       vertex: { entryPoint: "vertex_main", module: fullscreenModule },
     });
+
     const pipelineError = await device.popErrorScope();
+
     if (pipelineError) {
       throw new Error(
-        `WebGPU pipeline validation failed: ${pipelineError.message}`,
+        `WebGPU pipeline validation failed: ${pipelineError.message}`
       );
     }
 
@@ -587,6 +510,7 @@ export async function createWebGpuParticleRenderer(
       label: "particle-compute-bind-group",
       layout: computePipeline.getBindGroupLayout(0),
     });
+
     const particleBindGroup = device.createBindGroup({
       entries: [
         { binding: 0, resource: { buffer: particleBuffer } },
@@ -595,6 +519,7 @@ export async function createWebGpuParticleRenderer(
       label: "particle-render-bind-group",
       layout: particlePipeline.getBindGroupLayout(0),
     });
+
     const pointParticleBindGroup = device.createBindGroup({
       entries: [
         { binding: 0, resource: { buffer: particleBuffer } },
@@ -603,23 +528,25 @@ export async function createWebGpuParticleRenderer(
       label: "dense-particle-render-bind-group",
       layout: pointParticlePipeline.getBindGroupLayout(0),
     });
+
     const sampler = device.createSampler({
       magFilter: "linear",
       minFilter: "linear",
     });
 
     signal.throwIfAborted();
-    const context = canvas.getContext(
-      "webgpu",
-    ) as unknown as GpuCanvasContext | null;
+
+    const context = canvas.getContext("webgpu");
+
     if (!context) {
       return null;
     }
+
     scope.defer(() => context.unconfigure?.());
     context.configure({ alphaMode: "opaque", device, format: canvasFormat });
 
     let commandAddress = -1;
-    let commandBuffer: ArrayBufferLike | null = null;
+    let commandBuffer: ArrayBuffer | null = null;
     let commandBytes = new Uint8Array();
     let commandWords = new Uint32Array();
     let currentTrailIndex = 0;
@@ -628,16 +555,21 @@ export async function createWebGpuParticleRenderer(
     let cssHeight = Math.max(initialHeight, 1);
     let requestedPixelRatio = Math.max(initialPixelRatio, 1);
     let destroyed = false;
-    let trailTextures: GpuTexture[] = [];
+    let trailTextures: GPUTexture[] = [];
+
     const destroyTrailTextures = () => {
       const previous = trailTextures;
       trailTextures = [];
-      for (const texture of previous) texture.destroy();
+
+      for (const texture of previous) {
+        texture.destroy();
+      }
     };
+
     scope.defer(destroyTrailTextures);
-    let trailViews: [GpuTextureView, GpuTextureView] | null = null;
-    let fadeBindGroups: [GpuBindGroup, GpuBindGroup] | null = null;
-    let compositeBindGroups: [GpuBindGroup, GpuBindGroup] | null = null;
+    let trailViews: [GPUTextureView, GPUTextureView] | null = null;
+    let fadeBindGroups: [GPUBindGroup, GPUBindGroup] | null = null;
+    let compositeBindGroups: [GPUBindGroup, GPUBindGroup] | null = null;
 
     const clearTrailTextures = () => {
       if (!trailViews) {
@@ -647,6 +579,7 @@ export async function createWebGpuParticleRenderer(
       const encoder = device.createCommandEncoder({
         label: "clear-particle-trails",
       });
+
       for (const view of trailViews) {
         const pass = encoder.beginRenderPass({
           colorAttachments: [
@@ -658,10 +591,33 @@ export async function createWebGpuParticleRenderer(
             },
           ],
         });
+
         pass.end();
       }
+
       device.queue.submit([encoder.finish()]);
     };
+
+    const createFadeBindGroup = (view: GPUTextureView, index: number) =>
+      device.createBindGroup({
+        entries: [
+          { binding: 0, resource: sampler },
+          { binding: 1, resource: view },
+          { binding: 2, resource: { buffer: uniformBuffer } },
+        ],
+        label: `particle-fade-bind-group-${index}`,
+        layout: fadePipeline.getBindGroupLayout(0),
+      });
+
+    const createCompositeBindGroup = (view: GPUTextureView, index: number) =>
+      device.createBindGroup({
+        entries: [
+          { binding: 0, resource: sampler },
+          { binding: 1, resource: view },
+        ],
+        label: `particle-composite-bind-group-${index}`,
+        layout: compositePipeline.getBindGroupLayout(0),
+      });
 
     const recreateTrailTargets = (width: number, height: number) => {
       destroyTrailTextures();
@@ -674,33 +630,25 @@ export async function createWebGpuParticleRenderer(
           usage:
             TEXTURE_USAGE_TEXTURE_BINDING | TEXTURE_USAGE_RENDER_ATTACHMENT,
         });
-      trailTextures.push(createTrailTexture("particle-trail-a"));
-      trailTextures.push(createTrailTexture("particle-trail-b"));
+
+      trailTextures.push(
+        createTrailTexture("particle-trail-a"),
+        createTrailTexture("particle-trail-b")
+      );
       trailViews = [
         trailTextures[0].createView(),
         trailTextures[1].createView(),
       ];
-      fadeBindGroups = [0, 1].map((index) =>
-        device.createBindGroup({
-          entries: [
-            { binding: 0, resource: sampler },
-            { binding: 1, resource: trailViews?.[index] },
-            { binding: 2, resource: { buffer: uniformBuffer } },
-          ],
-          label: `particle-fade-bind-group-${index}`,
-          layout: fadePipeline.getBindGroupLayout(0),
-        }),
-      ) as [GpuBindGroup, GpuBindGroup];
-      compositeBindGroups = [0, 1].map((index) =>
-        device.createBindGroup({
-          entries: [
-            { binding: 0, resource: sampler },
-            { binding: 1, resource: trailViews?.[index] },
-          ],
-          label: `particle-composite-bind-group-${index}`,
-          layout: compositePipeline.getBindGroupLayout(0),
-        }),
-      ) as [GpuBindGroup, GpuBindGroup];
+
+      fadeBindGroups = [
+        createFadeBindGroup(trailViews[0], 0),
+        createFadeBindGroup(trailViews[1], 1),
+      ];
+
+      compositeBindGroups = [
+        createCompositeBindGroup(trailViews[0], 0),
+        createCompositeBindGroup(trailViews[1], 1),
+      ];
       currentTrailIndex = 0;
       clearTrailTextures();
     };
@@ -710,32 +658,40 @@ export async function createWebGpuParticleRenderer(
       const nextHeight = Math.max(height, 1);
       const dimensionLimit = device.limits.maxTextureDimension2D;
       requestedPixelRatio = Math.max(pixelRatio, 1);
+
       const densityPixelRatioLimit =
         activeParticleCount > HIGH_DENSITY_PARTICLE_COUNT ? 1 : 2;
+
       const limitedPixelRatio = Math.min(
         requestedPixelRatio,
         densityPixelRatioLimit,
         dimensionLimit / nextWidth,
-        dimensionLimit / nextHeight,
+        dimensionLimit / nextHeight
       );
+
       const physicalWidth = Math.max(
         1,
-        Math.round(nextWidth * limitedPixelRatio),
+        Math.round(nextWidth * limitedPixelRatio)
       );
+
       const physicalHeight = Math.max(
         1,
-        Math.round(nextHeight * limitedPixelRatio),
+        Math.round(nextHeight * limitedPixelRatio)
       );
+
       const dimensionsChanged =
         nextWidth !== cssWidth || nextHeight !== cssHeight;
+
       const textureSizeChanged =
         physicalWidth !== canvas.width || physicalHeight !== canvas.height;
 
       cssWidth = nextWidth;
       cssHeight = nextHeight;
+
       if (dimensionsChanged) {
         engine.resize_gpu_controller(nextWidth, nextHeight);
       }
+
       if (textureSizeChanged || trailTextures.length === 0) {
         canvas.width = physicalWidth;
         canvas.height = physicalHeight;
@@ -748,6 +704,8 @@ export async function createWebGpuParticleRenderer(
       if (!destroyed) {
         onDeviceLost(info.message || "The WebGPU device was lost.");
       }
+
+      return null;
     });
 
     return {
@@ -772,8 +730,9 @@ export async function createWebGpuParticleRenderer(
           frame.pointerX,
           frame.pointerY,
           frame.interaction,
-          frame.simulationSpeed,
+          frame.simulationSpeed
         );
+
         if (
           commandBuffer !== engine.memory.buffer ||
           commandAddress !== nextCommandAddress
@@ -783,23 +742,27 @@ export async function createWebGpuParticleRenderer(
           commandBytes = new Uint8Array(
             commandBuffer,
             commandAddress,
-            UNIFORM_SIZE,
+            UNIFORM_SIZE
           );
           commandWords = new Uint32Array(
             commandBuffer,
             commandAddress,
-            UNIFORM_FLOATS,
+            UNIFORM_FLOATS
           );
         }
+
         device.queue.writeBuffer(uniformBuffer, 0, commandBytes);
 
         const nextTrailIndex = 1 - currentTrailIndex;
+
         const encoder = device.createCommandEncoder({
           label: "particle-frame",
         });
+
         const computePass = encoder.beginComputePass({
           label: "particle-simulation-pass",
         });
+
         computePass.setPipeline(computePipeline);
         computePass.setBindGroup(0, computeBindGroup);
         const updateCount = commandWords[UPDATE_PARTICLE_COUNT_WORD];
@@ -817,6 +780,7 @@ export async function createWebGpuParticleRenderer(
           ],
           label: "particle-trail-fade-pass",
         });
+
         fadePass.setPipeline(fadePipeline);
         fadePass.setBindGroup(0, fadeBindGroups[currentTrailIndex]);
         fadePass.draw(3);
@@ -832,20 +796,26 @@ export async function createWebGpuParticleRenderer(
           ],
           label: "particle-draw-pass",
         });
+
         if (activeParticleCount > HIGH_DENSITY_PARTICLE_COUNT) {
           particlePass.setPipeline(pointParticlePipeline);
           particlePass.setBindGroup(0, pointParticleBindGroup);
+
           const renderCohortCount = Math.ceil(
-            activeParticleCount / MAX_POINT_PARTICLES_PER_FRAME,
+            activeParticleCount / MAX_POINT_PARTICLES_PER_FRAME
           );
+
           const renderCohortSize = Math.ceil(
-            activeParticleCount / renderCohortCount,
+            activeParticleCount / renderCohortCount
           );
+
           const firstParticle = pointRenderPhase * renderCohortSize;
+
           const renderedParticleCount = Math.min(
             renderCohortSize,
-            activeParticleCount - firstParticle,
+            activeParticleCount - firstParticle
           );
+
           particlePass.draw(1, renderedParticleCount, 0, firstParticle);
           pointRenderPhase = (pointRenderPhase + 1) % renderCohortCount;
         } else {
@@ -853,6 +823,7 @@ export async function createWebGpuParticleRenderer(
           particlePass.setBindGroup(0, particleBindGroup);
           particlePass.draw(3, activeParticleCount);
         }
+
         particlePass.end();
 
         const compositePass = encoder.beginRenderPass({
@@ -866,6 +837,7 @@ export async function createWebGpuParticleRenderer(
           ],
           label: "particle-composite-pass",
         });
+
         compositePass.setPipeline(compositePipeline);
         compositePass.setBindGroup(0, compositeBindGroups[nextTrailIndex]);
         compositePass.draw(3);
@@ -879,8 +851,8 @@ export async function createWebGpuParticleRenderer(
         activeParticleCount = engine.set_gpu_particle_count(Math.round(count));
         pointRenderPhase = 0;
         resize(cssWidth, cssHeight, requestedPixelRatio);
+
         return activeParticleCount;
       },
     };
   });
-}

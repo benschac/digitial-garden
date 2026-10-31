@@ -21,9 +21,7 @@
 
   .fullWidthExperiment {
     width: calc(
-      100% +
-      var(--experiment-page-gutter) +
-      var(--experiment-page-gutter)
+      100% + var(--experiment-page-gutter) + var(--experiment-page-gutter)
     );
     max-width: none;
     margin-inline: calc(0px - var(--experiment-page-gutter));

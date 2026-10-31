@@ -18,9 +18,9 @@ import {
   WORKGROUP_SIZE,
 } from "./typegpu-particle-shaders";
 
-const BUFFER_USAGE_COPY_DST = 0x0008;
-const BUFFER_USAGE_UNIFORM = 0x0040;
-const BUFFER_USAGE_STORAGE = 0x0080;
+const BUFFER_USAGE_COPY_DST = 0x00_08;
+const BUFFER_USAGE_UNIFORM = 0x00_40;
+const BUFFER_USAGE_STORAGE = 0x00_80;
 const TEXTURE_USAGE_TEXTURE_BINDING = 0x04;
 const TEXTURE_USAGE_RENDER_ATTACHMENT = 0x10;
 
@@ -30,6 +30,7 @@ const BACKGROUND = {
   g: 7 / 255,
   r: 5 / 255,
 };
+
 const HIGH_DENSITY_PARTICLE_COUNT = 450_000;
 const MAX_GPU_PARTICLE_COUNT = 32_000_000;
 const MAX_PARTICLE_CHUNK_COUNT = 2;
@@ -46,22 +47,22 @@ const UNIFORM_SIZE = d.sizeOf(FrameUniforms);
 const UPDATE_PARTICLE_OFFSET_WORD = 15;
 const UPDATE_PARTICLE_STRIDE_WORD = 14;
 
-function getGpuApi(): GPU | null {
-  return navigator.gpu ?? null;
-}
+const getGpuApi = (): GPU | null => navigator.gpu ?? null;
 
-async function assertShaderCompiled(
+const assertShaderCompiled = async (
   shaderModule: GPUShaderModule,
-  label: string,
-) {
+  label: string
+) => {
   if (!shaderModule.getCompilationInfo) {
     return;
   }
 
   const compilationInfo = await shaderModule.getCompilationInfo();
+
   const errors = compilationInfo.messages.filter(
-    (message) => message.type === "error",
+    (message) => message.type === "error"
   );
+
   if (errors.length === 0) {
     return;
   }
@@ -69,20 +70,22 @@ async function assertShaderCompiled(
   const details = errors
     .map((error) => `${error.lineNum}:${error.linePos} ${error.message}`)
     .join("\n");
-  throw new Error(`${label} failed to compile:\n${details}`);
-}
 
-export async function createTypeGpuParticleRenderer(
+  throw new Error(`${label} failed to compile:\n${details}`);
+};
+
+export const createTypeGpuParticleRenderer = (
   canvas: HTMLCanvasElement,
   signal: AbortSignal,
   initialParticleCount: number,
   initialWidth: number,
   initialHeight: number,
   initialPixelRatio: number,
-  onDeviceLost: (message: string) => void,
-): Promise<ParticleRenderer | null> {
-  return withRendererScope(signal, async (scope) => {
+  onDeviceLost: (message: string) => void
+): Promise<ParticleRenderer | null> =>
+  withRendererScope(signal, async (scope) => {
     const gpu = getGpuApi();
+
     if (!gpu) {
       return null;
     }
@@ -90,6 +93,7 @@ export async function createTypeGpuParticleRenderer(
     const adapter = await gpu.requestAdapter({
       powerPreference: "high-performance",
     });
+
     if (!adapter || signal.aborted) {
       return null;
     }
@@ -100,9 +104,11 @@ export async function createTypeGpuParticleRenderer(
         TARGET_PARTICLE_BUFFER_SIZE &&
       adapter.limits.maxComputeWorkgroupsPerDimension * WORKGROUP_SIZE >=
         PARTICLES_PER_CHUNK;
+
     const requestedParticleCount = supportsExtendedParticleBuffer
       ? MAX_GPU_PARTICLE_COUNT
       : PORTABLE_GPU_PARTICLE_COUNT;
+
     const device = await scope.acquirePromise(
       () =>
         adapter.requestDevice({
@@ -112,12 +118,14 @@ export async function createTypeGpuParticleRenderer(
               }
             : undefined,
         }),
-      (device) => device.destroy(),
+      (acquiredDevice) => acquiredDevice.destroy()
     );
+
     signal.throwIfAborted();
+
     const root = scope.acquire(
       () => tgpu.initFromDevice({ device }),
-      (root) => root.destroy(),
+      (acquiredRoot) => acquiredRoot.destroy()
     );
 
     const engine = await loadParticleEngine(signal);
@@ -127,33 +135,39 @@ export async function createTypeGpuParticleRenderer(
       Math.min(
         PARTICLES_PER_CHUNK,
         Math.floor(device.limits.maxStorageBufferBindingSize / PARTICLE_STRIDE),
-        device.limits.maxComputeWorkgroupsPerDimension * WORKGROUP_SIZE,
-      ),
+        device.limits.maxComputeWorkgroupsPerDimension * WORKGROUP_SIZE
+      )
     );
+
     const maxParticleCount = Math.max(
       1,
       Math.min(
         requestedParticleCount,
-        particlesPerChunk * MAX_PARTICLE_CHUNK_COUNT,
-      ),
+        particlesPerChunk * MAX_PARTICLE_CHUNK_COUNT
+      )
     );
+
     if (engine.gpu_frame_command_byte_length() !== UNIFORM_SIZE) {
       throw new Error("The Rust/WASM and TypeGPU frame layouts differ.");
     }
+
     let activeParticleCount = engine.initialize_gpu_controller(
       maxParticleCount,
       initialParticleCount,
       Math.max(initialWidth, 1),
-      Math.max(initialHeight, 1),
+      Math.max(initialHeight, 1)
     );
+
     const particleChunks = Array.from(
       { length: Math.ceil(maxParticleCount / particlesPerChunk) },
       (_, index) => {
         const baseParticleIndex = index * particlesPerChunk;
+
         const particleCount = Math.min(
           particlesPerChunk,
-          maxParticleCount - baseParticleIndex,
+          maxParticleCount - baseParticleIndex
         );
+
         const particleBuffer = scope.acquire(
           () =>
             device.createBuffer({
@@ -161,8 +175,9 @@ export async function createTypeGpuParticleRenderer(
               size: particleCount * PARTICLE_STRIDE,
               usage: BUFFER_USAGE_STORAGE,
             }),
-          (buffer) => buffer.destroy(),
+          (buffer) => buffer.destroy()
         );
+
         const chunkUniformBuffer = scope.acquire(
           () =>
             device.createBuffer({
@@ -170,21 +185,24 @@ export async function createTypeGpuParticleRenderer(
               size: CHUNK_UNIFORM_SIZE,
               usage: BUFFER_USAGE_UNIFORM | BUFFER_USAGE_COPY_DST,
             }),
-          (buffer) => buffer.destroy(),
+          (buffer) => buffer.destroy()
         );
+
         device.queue.writeBuffer(
           chunkUniformBuffer,
           0,
-          new Uint32Array([baseParticleIndex, particleCount, 0, 0]),
+          new Uint32Array([baseParticleIndex, particleCount, 0, 0])
         );
+
         return {
           baseParticleIndex,
           chunkUniformBuffer,
           particleBuffer,
           particleCount,
         };
-      },
+      }
     );
+
     const uniformBuffer = scope.acquire(
       () =>
         device.createBuffer({
@@ -192,21 +210,24 @@ export async function createTypeGpuParticleRenderer(
           size: UNIFORM_SIZE,
           usage: BUFFER_USAGE_UNIFORM | BUFFER_USAGE_COPY_DST,
         }),
-      (buffer) => buffer.destroy(),
+      (buffer) => buffer.destroy()
     );
 
     const computeModule = device.createShaderModule({
       code: shaderSource.compute(),
       label: "particle-compute-shader",
     });
+
     const particleModule = device.createShaderModule({
       code: shaderSource.particles(),
       label: "particle-render-shader",
     });
+
     const fullscreenModule = device.createShaderModule({
       code: shaderSource.fullscreen(),
       label: "particle-trail-shader",
     });
+
     await Promise.all([
       assertShaderCompiled(computeModule, "Particle compute shader"),
       assertShaderCompiled(particleModule, "Particle render shader"),
@@ -214,28 +235,35 @@ export async function createTypeGpuParticleRenderer(
     ]);
 
     const canvasFormat = gpu.getPreferredCanvasFormat();
+
     const computePipelineLayout = device.createPipelineLayout({
       bindGroupLayouts: [root.unwrap(computeLayout)],
       label: "typegpu-particle-compute-layout",
     });
+
     const particlePipelineLayout = device.createPipelineLayout({
       bindGroupLayouts: [root.unwrap(particleRenderLayout)],
       label: "typegpu-particle-render-layout",
     });
+
     const trailPipelineLayout = device.createPipelineLayout({
       bindGroupLayouts: [root.unwrap(trailLayout)],
       label: "typegpu-particle-trail-layout",
     });
+
     const compositePipelineLayout = device.createPipelineLayout({
       bindGroupLayouts: [root.unwrap(compositeLayout)],
       label: "typegpu-particle-composite-layout",
     });
+
     device.pushErrorScope("validation");
+
     const computePipeline = device.createComputePipeline({
       compute: { entryPoint: "compute_main", module: computeModule },
       label: "typegpu-particle-compute-pipeline",
       layout: computePipelineLayout,
     });
+
     const particlePipeline = device.createRenderPipeline({
       fragment: {
         entryPoint: "sprite_fragment_main",
@@ -255,6 +283,7 @@ export async function createTypeGpuParticleRenderer(
       primitive: { topology: "triangle-list" },
       vertex: { entryPoint: "sprite_vertex_main", module: particleModule },
     });
+
     const pointParticlePipeline = device.createRenderPipeline({
       fragment: {
         entryPoint: "point_fragment_main",
@@ -274,6 +303,7 @@ export async function createTypeGpuParticleRenderer(
       primitive: { topology: "point-list" },
       vertex: { entryPoint: "point_vertex_main", module: particleModule },
     });
+
     const fadePipeline = device.createRenderPipeline({
       fragment: {
         entryPoint: "fade_fragment",
@@ -285,6 +315,7 @@ export async function createTypeGpuParticleRenderer(
       primitive: { topology: "triangle-list" },
       vertex: { entryPoint: "vertex_main", module: fullscreenModule },
     });
+
     const compositePipeline = device.createRenderPipeline({
       fragment: {
         entryPoint: "composite_fragment",
@@ -296,10 +327,12 @@ export async function createTypeGpuParticleRenderer(
       primitive: { topology: "triangle-list" },
       vertex: { entryPoint: "vertex_main", module: fullscreenModule },
     });
+
     const pipelineError = await device.popErrorScope();
+
     if (pipelineError) {
       throw new Error(
-        `TypeGPU pipeline validation failed: ${pipelineError.message}`,
+        `TypeGPU pipeline validation failed: ${pipelineError.message}`
       );
     }
 
@@ -309,32 +342,36 @@ export async function createTypeGpuParticleRenderer(
           chunk: chunk.chunkUniformBuffer,
           frame: uniformBuffer,
           particles: chunk.particleBuffer,
-        }),
-      ),
+        })
+      )
     );
+
     const particleBindGroups = particleChunks.map((chunk) =>
       root.unwrap(
         root.createBindGroup(particleRenderLayout, {
           frame: uniformBuffer,
           particles: chunk.particleBuffer,
-        }),
-      ),
+        })
+      )
     );
+
     const sampler = device.createSampler({
       magFilter: "linear",
       minFilter: "linear",
     });
 
     signal.throwIfAborted();
-    const context = canvas.getContext("webgpu") as GPUCanvasContext | null;
+    const context = canvas.getContext("webgpu");
+
     if (!context) {
       return null;
     }
+
     scope.defer(() => context.unconfigure?.());
     context.configure({ alphaMode: "opaque", device, format: canvasFormat });
 
     let commandAddress = -1;
-    let commandBuffer: ArrayBufferLike | null = null;
+    let commandBuffer: ArrayBuffer | null = null;
     let commandBytes = new Uint8Array();
     let commandWords = new Uint32Array();
     let currentTrailIndex = 0;
@@ -344,11 +381,16 @@ export async function createTypeGpuParticleRenderer(
     let requestedPixelRatio = Math.max(initialPixelRatio, 1);
     let destroyed = false;
     let trailTextures: GPUTexture[] = [];
+
     const destroyTrailTextures = () => {
       const previous = trailTextures;
       trailTextures = [];
-      for (const texture of previous) texture.destroy();
+
+      for (const texture of previous) {
+        texture.destroy();
+      }
     };
+
     scope.defer(destroyTrailTextures);
     let trailViews: [GPUTextureView, GPUTextureView] | null = null;
     let fadeBindGroups: [GPUBindGroup, GPUBindGroup] | null = null;
@@ -362,6 +404,7 @@ export async function createTypeGpuParticleRenderer(
       const encoder = device.createCommandEncoder({
         label: "clear-particle-trails",
       });
+
       for (const view of trailViews) {
         const pass = encoder.beginRenderPass({
           colorAttachments: [
@@ -373,10 +416,29 @@ export async function createTypeGpuParticleRenderer(
             },
           ],
         });
+
         pass.end();
       }
+
       device.queue.submit([encoder.finish()]);
     };
+
+    const createFadeBindGroup = (view: GPUTextureView) =>
+      root.unwrap(
+        root.createBindGroup(trailLayout, {
+          frame: uniformBuffer,
+          sampler,
+          texture: view,
+        })
+      );
+
+    const createCompositeBindGroup = (view: GPUTextureView) =>
+      root.unwrap(
+        root.createBindGroup(compositeLayout, {
+          sampler,
+          texture: view,
+        })
+      );
 
     const recreateTrailTargets = (width: number, height: number) => {
       destroyTrailTextures();
@@ -389,29 +451,25 @@ export async function createTypeGpuParticleRenderer(
           usage:
             TEXTURE_USAGE_TEXTURE_BINDING | TEXTURE_USAGE_RENDER_ATTACHMENT,
         });
-      trailTextures.push(createTrailTexture("particle-trail-a"));
-      trailTextures.push(createTrailTexture("particle-trail-b"));
+
+      trailTextures.push(
+        createTrailTexture("particle-trail-a"),
+        createTrailTexture("particle-trail-b")
+      );
       trailViews = [
         trailTextures[0].createView(),
         trailTextures[1].createView(),
       ];
-      fadeBindGroups = trailViews.map((view) =>
-        root.unwrap(
-          root.createBindGroup(trailLayout, {
-            frame: uniformBuffer,
-            sampler,
-            texture: view,
-          }),
-        ),
-      ) as [GPUBindGroup, GPUBindGroup];
-      compositeBindGroups = trailViews.map((view) =>
-        root.unwrap(
-          root.createBindGroup(compositeLayout, {
-            sampler,
-            texture: view,
-          }),
-        ),
-      ) as [GPUBindGroup, GPUBindGroup];
+
+      fadeBindGroups = [
+        createFadeBindGroup(trailViews[0]),
+        createFadeBindGroup(trailViews[1]),
+      ];
+
+      compositeBindGroups = [
+        createCompositeBindGroup(trailViews[0]),
+        createCompositeBindGroup(trailViews[1]),
+      ];
       currentTrailIndex = 0;
       clearTrailTextures();
     };
@@ -421,32 +479,40 @@ export async function createTypeGpuParticleRenderer(
       const nextHeight = Math.max(height, 1);
       const dimensionLimit = device.limits.maxTextureDimension2D;
       requestedPixelRatio = Math.max(pixelRatio, 1);
+
       const densityPixelRatioLimit =
         activeParticleCount > HIGH_DENSITY_PARTICLE_COUNT ? 1 : 2;
+
       const limitedPixelRatio = Math.min(
         requestedPixelRatio,
         densityPixelRatioLimit,
         dimensionLimit / nextWidth,
-        dimensionLimit / nextHeight,
+        dimensionLimit / nextHeight
       );
+
       const physicalWidth = Math.max(
         1,
-        Math.round(nextWidth * limitedPixelRatio),
+        Math.round(nextWidth * limitedPixelRatio)
       );
+
       const physicalHeight = Math.max(
         1,
-        Math.round(nextHeight * limitedPixelRatio),
+        Math.round(nextHeight * limitedPixelRatio)
       );
+
       const dimensionsChanged =
         nextWidth !== cssWidth || nextHeight !== cssHeight;
+
       const textureSizeChanged =
         physicalWidth !== canvas.width || physicalHeight !== canvas.height;
 
       cssWidth = nextWidth;
       cssHeight = nextHeight;
+
       if (dimensionsChanged) {
         engine.resize_gpu_controller(nextWidth, nextHeight);
       }
+
       if (textureSizeChanged || trailTextures.length === 0) {
         canvas.width = physicalWidth;
         canvas.height = physicalHeight;
@@ -459,6 +525,8 @@ export async function createTypeGpuParticleRenderer(
       if (!destroyed) {
         onDeviceLost(info.message || "The WebGPU device was lost.");
       }
+
+      return null;
     });
 
     return {
@@ -483,8 +551,9 @@ export async function createTypeGpuParticleRenderer(
           frame.pointerX,
           frame.pointerY,
           frame.interaction,
-          frame.simulationSpeed,
+          frame.simulationSpeed
         );
+
         if (
           commandBuffer !== engine.memory.buffer ||
           commandAddress !== nextCommandAddress
@@ -494,54 +563,68 @@ export async function createTypeGpuParticleRenderer(
           commandBytes = new Uint8Array(
             commandBuffer,
             commandAddress,
-            UNIFORM_SIZE,
+            UNIFORM_SIZE
           );
           commandWords = new Uint32Array(
             commandBuffer,
             commandAddress,
-            UNIFORM_FLOATS,
+            UNIFORM_FLOATS
           );
         }
+
         device.queue.writeBuffer(uniformBuffer, 0, commandBytes);
 
         const nextTrailIndex = 1 - currentTrailIndex;
+
         const encoder = device.createCommandEncoder({
           label: "particle-frame",
         });
+
         const computePass = encoder.beginComputePass({
           label: "particle-simulation-pass",
         });
+
         computePass.setPipeline(computePipeline);
         const commandFlags = commandWords[COMMAND_FLAGS_WORD];
         const activeUpdateLimit = commandWords[ACTIVE_PARTICLE_COUNT_WORD];
+
         const updateStride = Math.max(
           commandWords[UPDATE_PARTICLE_STRIDE_WORD],
-          1,
+          1
         );
+
         const updateOffset = commandWords[UPDATE_PARTICLE_OFFSET_WORD];
+
         for (const [index, chunk] of particleChunks.entries()) {
           const chunkEnd = chunk.baseParticleIndex + chunk.particleCount;
+
           const globalLimit =
             commandFlags === 0
               ? Math.min(chunkEnd, activeUpdateLimit)
               : chunkEnd;
+
           const firstParticleOffset =
             (updateOffset +
               updateStride -
               (chunk.baseParticleIndex % updateStride)) %
             updateStride;
+
           const firstParticle = chunk.baseParticleIndex + firstParticleOffset;
+
           if (firstParticle >= globalLimit) {
             continue;
           }
+
           const updateCount = Math.ceil(
-            (globalLimit - firstParticle) / updateStride,
+            (globalLimit - firstParticle) / updateStride
           );
+
           computePass.setBindGroup(0, computeBindGroups[index]);
           computePass.dispatchWorkgroups(
-            Math.ceil(updateCount / WORKGROUP_SIZE),
+            Math.ceil(updateCount / WORKGROUP_SIZE)
           );
         }
+
         computePass.end();
 
         const fadePass = encoder.beginRenderPass({
@@ -555,6 +638,7 @@ export async function createTypeGpuParticleRenderer(
           ],
           label: "particle-trail-fade-pass",
         });
+
         fadePass.setPipeline(fadePipeline);
         fadePass.setBindGroup(0, fadeBindGroups[currentTrailIndex]);
         fadePass.draw(3);
@@ -570,56 +654,72 @@ export async function createTypeGpuParticleRenderer(
           ],
           label: "particle-draw-pass",
         });
+
         if (activeParticleCount > HIGH_DENSITY_PARTICLE_COUNT) {
           particlePass.setPipeline(pointParticlePipeline);
+
           const renderCohortCount = Math.ceil(
-            activeParticleCount / MAX_POINT_PARTICLES_PER_FRAME,
+            activeParticleCount / MAX_POINT_PARTICLES_PER_FRAME
           );
+
           const renderCohortSize = Math.ceil(
-            activeParticleCount / renderCohortCount,
+            activeParticleCount / renderCohortCount
           );
+
           const firstParticle = pointRenderPhase * renderCohortSize;
+
           const renderedParticleCount = Math.min(
             renderCohortSize,
-            activeParticleCount - firstParticle,
+            activeParticleCount - firstParticle
           );
+
           const lastParticle = firstParticle + renderedParticleCount;
+
           for (const [index, chunk] of particleChunks.entries()) {
             const chunkEnd = Math.min(
               chunk.baseParticleIndex + chunk.particleCount,
-              activeParticleCount,
+              activeParticleCount
             );
+
             const overlapStart = Math.max(
               firstParticle,
-              chunk.baseParticleIndex,
+              chunk.baseParticleIndex
             );
+
             const overlapEnd = Math.min(lastParticle, chunkEnd);
+
             if (overlapStart >= overlapEnd) {
               continue;
             }
+
             particlePass.setBindGroup(0, particleBindGroups[index]);
             particlePass.draw(
               1,
               overlapEnd - overlapStart,
               0,
-              overlapStart - chunk.baseParticleIndex,
+              overlapStart - chunk.baseParticleIndex
             );
           }
+
           pointRenderPhase = (pointRenderPhase + 1) % renderCohortCount;
         } else {
           particlePass.setPipeline(particlePipeline);
+
           for (const [index, chunk] of particleChunks.entries()) {
             const particleCount = Math.min(
               chunk.particleCount,
-              Math.max(activeParticleCount - chunk.baseParticleIndex, 0),
+              Math.max(activeParticleCount - chunk.baseParticleIndex, 0)
             );
+
             if (particleCount === 0) {
               continue;
             }
+
             particlePass.setBindGroup(0, particleBindGroups[index]);
             particlePass.draw(3, particleCount);
           }
         }
+
         particlePass.end();
 
         const compositePass = encoder.beginRenderPass({
@@ -633,6 +733,7 @@ export async function createTypeGpuParticleRenderer(
           ],
           label: "particle-composite-pass",
         });
+
         compositePass.setPipeline(compositePipeline);
         compositePass.setBindGroup(0, compositeBindGroups[nextTrailIndex]);
         compositePass.draw(3);
@@ -646,8 +747,8 @@ export async function createTypeGpuParticleRenderer(
         activeParticleCount = engine.set_gpu_particle_count(Math.round(count));
         pointRenderPhase = 0;
         resize(cssWidth, cssHeight, requestedPixelRatio);
+
         return activeParticleCount;
       },
     };
   });
-}

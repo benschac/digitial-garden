@@ -1,10 +1,11 @@
 "use client";
 
 import { cn } from "@personal-site/ui/lib/utils";
-
 import { CanvasSpace, Group, Pt } from "pts";
 import { useEffect, useRef, useState } from "react";
+
 import { Typography } from "@/components/page-typography";
+
 import {
   addVectors,
   angleBetweenVectors,
@@ -20,11 +21,11 @@ import {
   rotateVector,
   setVectorMagnitude,
   subtractVectors,
-  type Vector,
   vectorDistance,
   vectorHeading,
   vectorMagnitude,
 } from "./vector-math";
+import type { Vector } from "./vector-math";
 import styles from "./vector-math-styles";
 
 type OperationId =
@@ -51,169 +52,448 @@ type OperationResult =
   | { expression: string; kind: "vector"; value: Vector }
   | { expression: string; kind: "warning"; value: string };
 
-type Parameter = {
+interface Parameter {
   label: string;
   max: number;
   min: number;
   step: number;
   suffix?: string;
-};
+}
 
 const DEFAULT_FIRST: Vector = { x: 5, y: 2, z: 0 };
 const DEFAULT_SECOND: Vector = { x: 3, y: 4, z: 0 };
 const GRID_RANGE = 7;
 
-const OPERATIONS: Array<{
+const OPERATIONS: {
   description: string;
   id: OperationId;
   label: string;
   parameter?: Parameter;
   usesSecond?: boolean;
-}> = [
-  { id: "add", label: "add()", description: "Add v to u", usesSecond: true },
+}[] = [
+  { description: "Add v to u", id: "add", label: "add()", usesSecond: true },
   {
+    description: "Subtract v from u",
     id: "subtract",
     label: "sub()",
-    description: "Subtract v from u",
     usesSecond: true,
   },
   {
+    description: "Scale u by multiplication",
     id: "multiply",
     label: "mult()",
-    description: "Scale u by multiplication",
-    parameter: { label: "Scalar", min: -3, max: 3, step: 0.1 },
+    parameter: { label: "Scalar", max: 3, min: -3, step: 0.1 },
   },
   {
+    description: "Scale u by division",
     id: "divide",
     label: "div()",
-    description: "Scale u by division",
-    parameter: { label: "Divisor", min: -3, max: 3, step: 0.1 },
+    parameter: { label: "Divisor", max: 3, min: -3, step: 0.1 },
   },
-  { id: "magnitude", label: "mag()", description: "Measure the length of u" },
+  { description: "Measure the length of u", id: "magnitude", label: "mag()" },
   {
+    description: "Give u an exact length",
     id: "setMagnitude",
     label: "setMag()",
-    description: "Give u an exact length",
-    parameter: { label: "New magnitude", min: 0, max: 8, step: 0.1 },
+    parameter: { label: "New magnitude", max: 8, min: 0, step: 0.1 },
   },
   {
+    description: "Make u one unit long",
     id: "normalize",
     label: "normalize()",
-    description: "Make u one unit long",
   },
   {
+    description: "Cap the length of u",
     id: "limit",
     label: "limit()",
-    description: "Cap the length of u",
-    parameter: { label: "Maximum magnitude", min: 0, max: 8, step: 0.1 },
+    parameter: { label: "Maximum magnitude", max: 8, min: 0, step: 0.1 },
   },
   {
+    description: "Measure u's 2D direction",
     id: "heading",
     label: "heading()",
-    description: "Measure u's 2D direction",
   },
   {
+    description: "Turn u around the origin",
     id: "rotate",
     label: "rotate()",
-    description: "Turn u around the origin",
-    parameter: { label: "Rotation", min: -180, max: 180, step: 1, suffix: "°" },
+    parameter: { label: "Rotation", max: 180, min: -180, step: 1, suffix: "°" },
   },
   {
+    description: "Interpolate from u to v",
     id: "lerp",
     label: "lerp()",
-    description: "Interpolate from u to v",
+    parameter: { label: "Amount", max: 1, min: 0, step: 0.01 },
     usesSecond: true,
-    parameter: { label: "Amount", min: 0, max: 1, step: 0.01 },
   },
   {
+    description: "Euclidean distance from u to v",
     id: "distance",
     label: "dist()",
-    description: "Euclidean distance from u to v",
     usesSecond: true,
   },
   {
+    description: "Angle separating u and v",
     id: "angleBetween",
     label: "angleBetween()",
-    description: "Angle separating u and v",
     usesSecond: true,
   },
   {
+    description: "Dot product of u and v",
     id: "dot",
     label: "dot()",
-    description: "Dot product of u and v",
     usesSecond: true,
   },
   {
+    description: "3D vector perpendicular to u and v",
     id: "cross",
     label: "cross()",
-    description: "3D vector perpendicular to u and v",
     usesSecond: true,
   },
   {
+    description: "Generate a random 2D unit vector",
     id: "random2D",
     label: "random2D()",
-    description: "Generate a random 2D unit vector",
   },
   {
+    description: "Generate a random 3D unit vector",
     id: "random3D",
     label: "random3D()",
-    description: "Generate a random 3D unit vector",
   },
 ];
 
-export function VectorPlayground() {
+const vectorResult = (expression: string, value: Vector): OperationResult => ({
+  expression,
+  kind: "vector",
+  value,
+});
+
+const format = (value: number) =>
+  Number.isInteger(value)
+    ? value.toFixed(0)
+    : value.toFixed(2).replace(/0$/u, "");
+
+const scalarResult = (
+  expression: string,
+  value: number,
+  unit?: string
+): OperationResult => ({ expression, kind: "scalar", unit, value });
+
+const evaluateOperation = (
+  operation: OperationId,
+  u: Vector,
+  v: Vector,
+  parameter: number
+): OperationResult => {
+  switch (operation) {
+    case "add": {
+      return vectorResult("u + v", addVectors(u, v));
+    }
+
+    case "subtract": {
+      return vectorResult("u − v", subtractVectors(u, v));
+    }
+
+    case "multiply": {
+      return vectorResult(
+        `u × ${format(parameter)}`,
+        multiplyVector(u, parameter)
+      );
+    }
+
+    case "divide": {
+      return parameter === 0
+        ? {
+            expression: "u ÷ 0",
+            kind: "warning",
+            value: "Division by zero is undefined.",
+          }
+        : vectorResult(`u ÷ ${format(parameter)}`, divideVector(u, parameter));
+    }
+
+    case "magnitude": {
+      return scalarResult("√(x² + y² + z²)", vectorMagnitude(u));
+    }
+
+    case "setMagnitude": {
+      return vectorResult(
+        `|u| = ${format(parameter)}`,
+        setVectorMagnitude(u, parameter)
+      );
+    }
+
+    case "normalize": {
+      return vectorResult("u ÷ |u|", normalizeVector(u));
+    }
+
+    case "limit": {
+      return vectorResult(
+        `min(|u|, ${format(parameter)})`,
+        limitVector(u, parameter)
+      );
+    }
+
+    case "heading": {
+      return scalarResult("atan2(y, x)", vectorHeading(u), "°");
+    }
+
+    case "rotate": {
+      return vectorResult(
+        `rotate u by ${format(parameter)}°`,
+        rotateVector(u, parameter)
+      );
+    }
+
+    case "lerp": {
+      return vectorResult(
+        `u + (v − u) × ${format(parameter)}`,
+        lerpVectors(u, v, parameter)
+      );
+    }
+
+    case "distance": {
+      return scalarResult("|u − v|", vectorDistance(u, v));
+    }
+
+    case "angleBetween": {
+      return scalarResult(
+        "acos((u · v) ÷ (|u||v|))",
+        angleBetweenVectors(u, v),
+        "°"
+      );
+    }
+
+    case "dot": {
+      return scalarResult("uₓvₓ + uᵧvᵧ + u_zv_z", dotVectors(u, v));
+    }
+
+    case "cross": {
+      return vectorResult("u × v", crossVectors(u, v));
+    }
+
+    case "random2D": {
+      return vectorResult("random unit direction in XY", u);
+    }
+
+    case "random3D": {
+      return vectorResult("random unit direction on a sphere", u);
+    }
+
+    default: {
+      throw new Error(`Unsupported vector operation: ${operation}`);
+    }
+  }
+};
+
+const drawArrow = (
+  form: ReturnType<CanvasSpace["getForm"]>,
+  start: Pt,
+  end: Pt,
+  color: string,
+  width: number
+) => {
+  form.strokeOnly(color, width).line(new Group(start, end));
+  const angle = Math.atan2(end.y - start.y, end.x - start.x);
+  const size = 13;
+
+  const left = new Pt(
+    end.x - Math.cos(angle - Math.PI / 6) * size,
+    end.y - Math.sin(angle - Math.PI / 6) * size
+  );
+
+  const right = new Pt(
+    end.x - Math.cos(angle + Math.PI / 6) * size,
+    end.y - Math.sin(angle + Math.PI / 6) * size
+  );
+
+  form.fillOnly(color).polygon(new Group(end, left, right));
+};
+
+const operationUsesSecond = (operation: OperationId) =>
+  OPERATIONS.find((item) => item.id === operation)?.usesSecond ?? false;
+
+const clamp = (value: number) =>
+  Math.round(Math.max(-7, Math.min(7, value)) * 10) / 10;
+
+const DEFAULT_PARAMETERS: Partial<Record<OperationId, number>> = {
+  divide: 2,
+  lerp: 0.5,
+  limit: 3,
+  multiply: 2,
+  rotate: 45,
+  setMagnitude: 3,
+};
+
+const defaultParameter = (operation: OperationId) =>
+  DEFAULT_PARAMETERS[operation] ?? 2;
+
+const formatVector = (vector: Vector) =>
+  `(${format(vector.x)}, ${format(vector.y)}, ${format(vector.z)})`;
+
+const VectorCard = ({
+  color,
+  label,
+  vector,
+}: {
+  color: "blue" | "yellow";
+  label: string;
+  vector: Vector;
+}) => (
+  <article className={styles.vectorCard} data-color={color}>
+    <span className={styles.cardLabel}>{label}</span>
+    <strong
+      className={
+        color === "yellow" ? styles.vectorValueYellow : styles.vectorValueBlue
+      }
+    >
+      {formatVector(vector)}
+    </strong>
+    <small className={styles.cardDetail}>
+      |{label}| {vectorMagnitude(vector).toFixed(2)} · XY heading{" "}
+      {vectorHeading(vector).toFixed(0)}°
+    </small>
+  </article>
+);
+
+const ResultCard = ({
+  method,
+  result,
+}: {
+  method: string;
+  result: OperationResult;
+}) => (
+  <article className={styles.resultCard}>
+    <span className={styles.cardLabel}>{method} result</span>
+    {result.kind === "vector" ? (
+      <strong className={styles.resultValue}>
+        {formatVector(result.value)}
+      </strong>
+    ) : null}
+    {result.kind === "scalar" ? (
+      <strong className={styles.resultValue}>
+        {result.value.toFixed(2)}
+        {result.unit}
+      </strong>
+    ) : null}
+    {result.kind === "warning" ? (
+      <Typography
+        as="strong"
+        variant="experimentVectorWarning"
+        className={styles.warning}
+      >
+        {result.value}
+      </Typography>
+    ) : null}
+    <small className={styles.cardDetail}>{result.expression}</small>
+    {result.kind === "vector" ? (
+      <small className={styles.cardDetail}>
+        magnitude {vectorMagnitude(result.value).toFixed(2)}
+      </small>
+    ) : null}
+  </article>
+);
+
+const VectorControls = ({
+  label,
+  setVector,
+  vector,
+}: {
+  label: string;
+  setVector: React.Dispatch<React.SetStateAction<Vector>>;
+  vector: Vector;
+}) => (
+  <fieldset className={styles.keyboardGroup}>
+    <legend className={styles.keyboardLegend}>{label}</legend>
+    {(["x", "y", "z"] as const).map((axis) => (
+      <label className={styles.keyboardControl} key={axis}>
+        <span>{axis}</span>
+        <input
+          className={styles.keyboardInput}
+          max="7"
+          min="-7"
+          onChange={(event) => {
+            const value = Number(event.currentTarget.value);
+            setVector((current) => ({ ...current, [axis]: value }));
+          }}
+          step="0.1"
+          type="range"
+          value={vector[axis]}
+        />
+        <output className={styles.keyboardOutput}>
+          {format(vector[axis])}
+        </output>
+      </label>
+    ))}
+  </fieldset>
+);
+
+export const VectorPlayground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const draggingRef = useRef<"first" | "second" | null>(null);
   const [first, setFirst] = useState(DEFAULT_FIRST);
   const [second, setSecond] = useState(DEFAULT_SECOND);
   const [operation, setOperation] = useState<OperationId>("subtract");
   const [parameter, setParameter] = useState(2);
+
   const operationMeta =
     OPERATIONS.find((item) => item.id === operation) ?? OPERATIONS[0];
+
   const result = evaluateOperation(operation, first, second, parameter);
   const visualRef = useRef({ first, operation, result, second });
-  visualRef.current = { first, operation, result, second };
+  useEffect(() => {
+    visualRef.current = { first, operation, result, second };
+  }, [first, operation, result, second]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+
+    if (!canvas) {
+      return;
+    }
+
     const space = new CanvasSpace(canvas).setup({
       bgcolor: "#171915",
       resize: true,
       retina: true,
     });
+
     const form = space.getForm();
 
     space.add(() => {
       const snapshot = visualRef.current;
       const origin = space.center;
       const scale = Math.min(space.size.x / 16, space.size.y / 12);
+
       const toCanvas = (vector: Vector) =>
         new Pt(origin.x + vector.x * scale, origin.y - vector.y * scale);
+
       const firstPoint = toCanvas(snapshot.first);
       const secondPoint = toCanvas(snapshot.second);
 
       form.strokeOnly("#34372f", 1);
+
       for (let step = -GRID_RANGE; step <= GRID_RANGE; step += 1) {
         form.line(
           new Group(
             new Pt(origin.x + step * scale, 0),
-            new Pt(origin.x + step * scale, space.size.y),
-          ),
+            new Pt(origin.x + step * scale, space.size.y)
+          )
         );
         form.line(
           new Group(
             new Pt(0, origin.y + step * scale),
-            new Pt(space.size.x, origin.y + step * scale),
-          ),
+            new Pt(space.size.x, origin.y + step * scale)
+          )
         );
       }
+
       form.strokeOnly("#73786b", 1.5);
       form.line(new Group(new Pt(0, origin.y), new Pt(space.size.x, origin.y)));
       form.line(new Group(new Pt(origin.x, 0), new Pt(origin.x, space.size.y)));
 
       drawArrow(form, origin, firstPoint, "#f1b84b", 4);
       form.fillOnly("#f1b84b").point(firstPoint, 9, "circle");
+
       if (operationUsesSecond(snapshot.operation)) {
         drawArrow(form, origin, secondPoint, "#62b6cb", 4);
         form.fillOnly("#62b6cb").point(secondPoint, 9, "circle");
@@ -226,6 +506,7 @@ export function VectorPlayground() {
         const resultPoint = toCanvas(snapshot.result.value);
         drawArrow(form, origin, resultPoint, "#f4eee0", 5);
         form.fillOnly("#f4eee0").point(resultPoint, 6, "circle");
+
         if (snapshot.operation === "add" || snapshot.operation === "subtract") {
           drawArrow(form, firstPoint, resultPoint, "#8d9185", 2);
         }
@@ -237,6 +518,7 @@ export function VectorPlayground() {
     });
 
     space.play();
+
     return () => {
       space.dispose();
     };
@@ -244,7 +526,11 @@ export function VectorPlayground() {
 
   const updateFromPointer = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const target = draggingRef.current;
-    if (!target) return;
+
+    if (!target) {
+      return;
+    }
+
     const bounds = event.currentTarget.getBoundingClientRect();
     const scale = Math.min(bounds.width / 16, bounds.height / 12);
     const update = target === "first" ? setFirst : setSecond;
@@ -258,9 +544,18 @@ export function VectorPlayground() {
   const chooseOperation = (next: OperationId) => {
     setOperation(next);
     const meta = OPERATIONS.find((item) => item.id === next);
-    if (meta?.parameter) setParameter(defaultParameter(next));
-    if (next === "random2D") setFirst(randomVector2D());
-    if (next === "random3D") setFirst(randomVector3D());
+
+    if (meta?.parameter) {
+      setParameter(defaultParameter(next));
+    }
+
+    if (next === "random2D") {
+      setFirst(randomVector2D());
+    }
+
+    if (next === "random3D") {
+      setFirst(randomVector3D());
+    }
   };
 
   return (
@@ -305,7 +600,7 @@ export function VectorPlayground() {
             <span
               className={cn(
                 styles.methodDescription,
-                operation === item.id && styles.methodDescriptionSelected,
+                operation === item.id && styles.methodDescriptionSelected
               )}
             >
               {item.description}
@@ -367,18 +662,22 @@ export function VectorPlayground() {
             onPointerDown={(event) => {
               const bounds = event.currentTarget.getBoundingClientRect();
               const scale = Math.min(bounds.width / 16, bounds.height / 12);
+
               const pointer = {
                 x: (event.clientX - bounds.left - bounds.width / 2) / scale,
                 y: -(event.clientY - bounds.top - bounds.height / 2) / scale,
               };
+
               const firstDistance = Math.hypot(
                 pointer.x - first.x,
-                pointer.y - first.y,
+                pointer.y - first.y
               );
+
               const secondDistance = Math.hypot(
                 pointer.x - second.x,
-                pointer.y - second.y,
+                pointer.y - second.y
               );
+
               draggingRef.current =
                 operationMeta.usesSecond && secondDistance < firstDistance
                   ? "second"
@@ -389,8 +688,10 @@ export function VectorPlayground() {
             onPointerMove={updateFromPointer}
             onPointerUp={(event) => {
               draggingRef.current = null;
-              if (event.currentTarget.hasPointerCapture(event.pointerId))
+
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
                 event.currentTarget.releasePointerCapture(event.pointerId);
+              }
             }}
             ref={canvasRef}
           />
@@ -433,229 +734,4 @@ export function VectorPlayground() {
       </div>
     </section>
   );
-}
-
-function evaluateOperation(
-  operation: OperationId,
-  u: Vector,
-  v: Vector,
-  parameter: number,
-): OperationResult {
-  switch (operation) {
-    case "add":
-      return vectorResult("u + v", addVectors(u, v));
-    case "subtract":
-      return vectorResult("u − v", subtractVectors(u, v));
-    case "multiply":
-      return vectorResult(
-        `u × ${format(parameter)}`,
-        multiplyVector(u, parameter),
-      );
-    case "divide":
-      return parameter === 0
-        ? {
-            kind: "warning",
-            value: "Division by zero is undefined.",
-            expression: "u ÷ 0",
-          }
-        : vectorResult(`u ÷ ${format(parameter)}`, divideVector(u, parameter));
-    case "magnitude":
-      return scalarResult("√(x² + y² + z²)", vectorMagnitude(u));
-    case "setMagnitude":
-      return vectorResult(
-        `|u| = ${format(parameter)}`,
-        setVectorMagnitude(u, parameter),
-      );
-    case "normalize":
-      return vectorResult("u ÷ |u|", normalizeVector(u));
-    case "limit":
-      return vectorResult(
-        `min(|u|, ${format(parameter)})`,
-        limitVector(u, parameter),
-      );
-    case "heading":
-      return scalarResult("atan2(y, x)", vectorHeading(u), "°");
-    case "rotate":
-      return vectorResult(
-        `rotate u by ${format(parameter)}°`,
-        rotateVector(u, parameter),
-      );
-    case "lerp":
-      return vectorResult(
-        `u + (v − u) × ${format(parameter)}`,
-        lerpVectors(u, v, parameter),
-      );
-    case "distance":
-      return scalarResult("|u − v|", vectorDistance(u, v));
-    case "angleBetween":
-      return scalarResult(
-        "acos((u · v) ÷ (|u||v|))",
-        angleBetweenVectors(u, v),
-        "°",
-      );
-    case "dot":
-      return scalarResult("uₓvₓ + uᵧvᵧ + u_zv_z", dotVectors(u, v));
-    case "cross":
-      return vectorResult("u × v", crossVectors(u, v));
-    case "random2D":
-      return vectorResult("random unit direction in XY", u);
-    case "random3D":
-      return vectorResult("random unit direction on a sphere", u);
-  }
-}
-
-const vectorResult = (expression: string, value: Vector): OperationResult => ({
-  expression,
-  kind: "vector",
-  value,
-});
-const scalarResult = (
-  expression: string,
-  value: number,
-  unit?: string,
-): OperationResult => ({ expression, kind: "scalar", unit, value });
-const operationUsesSecond = (operation: OperationId) =>
-  OPERATIONS.find((item) => item.id === operation)?.usesSecond ?? false;
-
-function ResultCard({
-  method,
-  result,
-}: {
-  method: string;
-  result: OperationResult;
-}) {
-  return (
-    <article className={styles.resultCard}>
-      <span className={styles.cardLabel}>{method} result</span>
-      {result.kind === "vector" ? (
-        <strong className={styles.resultValue}>
-          {formatVector(result.value)}
-        </strong>
-      ) : null}
-      {result.kind === "scalar" ? (
-        <strong className={styles.resultValue}>
-          {result.value.toFixed(2)}
-          {result.unit}
-        </strong>
-      ) : null}
-      {result.kind === "warning" ? (
-        <Typography
-          as="strong"
-          variant="experimentVectorWarning"
-          className={styles.warning}
-        >
-          {result.value}
-        </Typography>
-      ) : null}
-      <small className={styles.cardDetail}>{result.expression}</small>
-      {result.kind === "vector" ? (
-        <small className={styles.cardDetail}>
-          magnitude {vectorMagnitude(result.value).toFixed(2)}
-        </small>
-      ) : null}
-    </article>
-  );
-}
-
-function VectorControls({
-  label,
-  setVector,
-  vector,
-}: {
-  label: string;
-  setVector: React.Dispatch<React.SetStateAction<Vector>>;
-  vector: Vector;
-}) {
-  return (
-    <fieldset className={styles.keyboardGroup}>
-      <legend className={styles.keyboardLegend}>{label}</legend>
-      {(["x", "y", "z"] as const).map((axis) => (
-        <label className={styles.keyboardControl} key={axis}>
-          <span>{axis}</span>
-          <input
-            className={styles.keyboardInput}
-            max="7"
-            min="-7"
-            onChange={(event) => {
-              const value = Number(event.currentTarget.value);
-              setVector((current) => ({ ...current, [axis]: value }));
-            }}
-            step="0.1"
-            type="range"
-            value={vector[axis]}
-          />
-          <output className={styles.keyboardOutput}>
-            {format(vector[axis])}
-          </output>
-        </label>
-      ))}
-    </fieldset>
-  );
-}
-
-function VectorCard({
-  color,
-  label,
-  vector,
-}: {
-  color: "blue" | "yellow";
-  label: string;
-  vector: Vector;
-}) {
-  return (
-    <article className={styles.vectorCard} data-color={color}>
-      <span className={styles.cardLabel}>{label}</span>
-      <strong
-        className={
-          color === "yellow" ? styles.vectorValueYellow : styles.vectorValueBlue
-        }
-      >
-        {formatVector(vector)}
-      </strong>
-      <small className={styles.cardDetail}>
-        |{label}| {vectorMagnitude(vector).toFixed(2)} · XY heading{" "}
-        {vectorHeading(vector).toFixed(0)}°
-      </small>
-    </article>
-  );
-}
-
-function drawArrow(
-  form: ReturnType<CanvasSpace["getForm"]>,
-  start: Pt,
-  end: Pt,
-  color: string,
-  width: number,
-) {
-  form.strokeOnly(color, width).line(new Group(start, end));
-  const angle = Math.atan2(end.y - start.y, end.x - start.x);
-  const size = 13;
-  const left = new Pt(
-    end.x - Math.cos(angle - Math.PI / 6) * size,
-    end.y - Math.sin(angle - Math.PI / 6) * size,
-  );
-  const right = new Pt(
-    end.x - Math.cos(angle + Math.PI / 6) * size,
-    end.y - Math.sin(angle + Math.PI / 6) * size,
-  );
-  form.fillOnly(color).polygon(new Group(end, left, right));
-}
-
-const DEFAULT_PARAMETERS: Partial<Record<OperationId, number>> = {
-  divide: 2,
-  lerp: 0.5,
-  limit: 3,
-  multiply: 2,
-  rotate: 45,
-  setMagnitude: 3,
 };
-const defaultParameter = (operation: OperationId) =>
-  DEFAULT_PARAMETERS[operation] ?? 2;
-const clamp = (value: number) =>
-  Math.round(Math.max(-7, Math.min(7, value)) * 10) / 10;
-const format = (value: number) =>
-  Number.isInteger(value)
-    ? value.toFixed(0)
-    : value.toFixed(2).replace(/0$/, "");
-const formatVector = (vector: Vector) =>
-  `(${format(vector.x)}, ${format(vector.y)}, ${format(vector.z)})`;

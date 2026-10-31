@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+
 import {
   canvasTypography,
   Typography,
   typographyVariants,
 } from "@/components/page-typography";
+
 import {
   acceleration,
   advancePosition,
@@ -30,7 +32,245 @@ const COLORS = {
   yellow: "#facc15",
 };
 
-export function ForcesExperiment() {
+const drawGrid = (
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number
+) => {
+  context.strokeStyle = "#1e2632";
+  context.lineWidth = 1;
+
+  for (let x = 0; x < width; x += 40) {
+    context.beginPath();
+    context.moveTo(x, 0);
+    context.lineTo(x, height);
+    context.stroke();
+  }
+
+  for (let y = 0; y < height; y += 40) {
+    context.beginPath();
+    context.moveTo(0, y);
+    context.lineTo(width, y);
+    context.stroke();
+  }
+};
+
+const drawBody = (
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  color: string,
+  label: string
+) => {
+  context.save();
+  context.shadowBlur = 28;
+  context.shadowColor = color;
+  context.fillStyle = color;
+  context.beginPath();
+  context.arc(x, y, radius, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+  context.fillStyle = "#10141b";
+  context.font = canvasTypography.forceLabel;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(label, x, y);
+};
+
+const drawArrow = (
+  context: CanvasRenderingContext2D,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  color: string,
+  label: string
+) => {
+  const angle = Math.atan2(toY - fromY, toX - fromX);
+  context.strokeStyle = color;
+  context.fillStyle = color;
+  context.lineWidth = 3;
+  context.beginPath();
+  context.moveTo(fromX, fromY);
+  context.lineTo(toX, toY);
+  context.stroke();
+  context.beginPath();
+  context.moveTo(toX, toY);
+  context.lineTo(
+    toX - 11 * Math.cos(angle - Math.PI / 6),
+    toY - 11 * Math.sin(angle - Math.PI / 6)
+  );
+  context.lineTo(
+    toX - 11 * Math.cos(angle + Math.PI / 6),
+    toY - 11 * Math.sin(angle + Math.PI / 6)
+  );
+  context.closePath();
+  context.fill();
+  context.font = canvasTypography.forceReadout;
+  context.textAlign = "center";
+  context.fillText(label, (fromX + toX) / 2, fromY - 14);
+};
+
+const drawVectorBalance = (
+  context: CanvasRenderingContext2D,
+  width: number,
+  label: string,
+  color: string
+) => {
+  context.fillStyle = color;
+  context.font = canvasTypography.forceEquation;
+  context.textAlign = "left";
+  context.fillText(label, Math.max(24, width * 0.06), 42);
+};
+
+const drawScene = (
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  law: Law,
+  state: SceneState
+) => {
+  context.clearRect(0, 0, width, height);
+  context.fillStyle = "#11151d";
+  context.fillRect(0, 0, width, height);
+  drawGrid(context, width, height);
+
+  const trackY = height * 0.64;
+  context.strokeStyle = "#3b4452";
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(0, trackY + 34);
+  context.lineTo(width, trackY + 34);
+  context.stroke();
+
+  if (law === "first") {
+    const x = state.firstPosition * width;
+    drawBody(context, x, trackY, 28, COLORS.blue, "m");
+    drawArrow(
+      context,
+      x - 42,
+      trackY - 58,
+      x + 50,
+      trackY - 58,
+      COLORS.green,
+      "v constant"
+    );
+    drawVectorBalance(context, width, "ΣF = 0 N", COLORS.muted);
+  } else if (law === "second") {
+    const x = state.secondPosition * width;
+    const radius = 25 + state.mass * 1.4;
+    drawBody(context, x, trackY, radius, COLORS.yellow, `${state.mass} kg`);
+    drawArrow(
+      context,
+      x - radius - 56,
+      trackY,
+      x - radius - 4,
+      trackY,
+      COLORS.coral,
+      `${state.force} N`
+    );
+    drawVectorBalance(
+      context,
+      width,
+      `a = ${(state.force / state.mass).toFixed(2)} m/s²`,
+      COLORS.coral
+    );
+  } else {
+    const aX = state.bodyAPosition * width;
+    const bX = state.bodyBPosition * width;
+    drawBody(context, aX, trackY, 22 + state.firstMass, COLORS.blue, "A");
+    drawBody(context, bX, trackY, 22 + state.secondMass, COLORS.yellow, "B");
+
+    if (state.pushed) {
+      drawArrow(
+        context,
+        aX,
+        trackY - 68,
+        aX - 76,
+        trackY - 68,
+        COLORS.blue,
+        "−F"
+      );
+      drawArrow(
+        context,
+        bX,
+        trackY - 68,
+        bX + 76,
+        trackY - 68,
+        COLORS.yellow,
+        "+F"
+      );
+    }
+
+    drawVectorBalance(
+      context,
+      width,
+      state.pushed ? "FA→B = −FB→A" : "Press “Push apart”",
+      state.pushed ? COLORS.green : COLORS.muted
+    );
+  }
+};
+
+const lawTitle = (law: Law) => {
+  if (law === "first") {
+    return "Let it coast.";
+  }
+
+  if (law === "second") {
+    return "Tune force and mass.";
+  }
+
+  return "Separate the pair.";
+};
+
+const lawDescription = (law: Law) => {
+  if (law === "first") {
+    return "With no net force, the puck crosses the field without speeding up or slowing down.";
+  }
+
+  if (law === "second") {
+    return "The same force produces less acceleration when it has more mass to move.";
+  }
+
+  return "The impulse is equal and opposite. The lighter body leaves with the greater speed.";
+};
+
+const RangeControl = ({
+  label,
+  max,
+  min,
+  onChange,
+  step,
+  unit,
+  value,
+}: {
+  label: string;
+  max: number;
+  min: number;
+  onChange: (value: number) => void;
+  step: number;
+  unit: string;
+  value: number;
+}) => (
+  <label className={styles.rangeControl}>
+    <span>{label}</span>
+    <output className={styles.controlOutput}>
+      {value} {unit}
+    </output>
+    <input
+      className={styles.controlInput}
+      max={max}
+      min={min}
+      onChange={(event) => onChange(Number(event.currentTarget.value))}
+      step={step}
+      type="range"
+      value={value}
+    />
+  </label>
+);
+
+export const ForcesExperiment = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pausedRef = useRef(false);
   const [law, setLaw] = useState<Law>("first");
@@ -42,18 +282,28 @@ export function ForcesExperiment() {
   const [firstMass, setFirstMass] = useState(3);
   const [secondMass, setSecondMass] = useState(6);
   const [pushed, setPushed] = useState(false);
+
   const [telemetry, setTelemetry] = useState({
     primary: "2.00 m/s",
     secondary: "0 N net force",
   });
-  pausedRef.current = paused;
+
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+
+    if (!canvas) {
+      return;
+    }
 
     const context = canvas.getContext("2d");
-    if (!context) return;
+
+    if (!context) {
+      return;
+    }
 
     let animationFrame = 0;
     let previousTime = performance.now();
@@ -66,11 +316,13 @@ export function ForcesExperiment() {
     let secondVelocity = 0;
     let bodyAPosition = 0.45;
     let bodyBPosition = 0.55;
+
     const interactionVelocity = pushed
       ? velocitiesAfterImpulse(9, firstMass, secondMass)
       : { first: 0, second: 0 };
+
     const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
+      "(prefers-reduced-motion: reduce)"
     ).matches;
 
     // Reading the reset token intentionally restarts this effect's local model.
@@ -87,7 +339,7 @@ export function ForcesExperiment() {
     };
 
     const draw = (time: number) => {
-      const deltaSeconds = Math.min((time - previousTime) / 1_000, 0.04);
+      const deltaSeconds = Math.min((time - previousTime) / 1000, 0.04);
       previousTime = time;
 
       if (!pausedRef.current && !prefersReducedMotion) {
@@ -95,16 +347,20 @@ export function ForcesExperiment() {
           firstPosition = advancePosition(
             firstPosition,
             firstVelocity * 0.065,
-            deltaSeconds,
+            deltaSeconds
           );
-          if (firstPosition > 1.08) firstPosition = -0.08;
+
+          if (firstPosition > 1.08) {
+            firstPosition = -0.08;
+          }
         } else if (law === "second") {
           secondVelocity += acceleration(force, mass) * deltaSeconds;
           secondPosition = advancePosition(
             secondPosition,
             secondVelocity * 0.012,
-            deltaSeconds,
+            deltaSeconds
           );
+
           if (secondPosition > 1.08) {
             secondPosition = 0.1;
             secondVelocity = 0;
@@ -113,12 +369,12 @@ export function ForcesExperiment() {
           bodyAPosition = advancePosition(
             bodyAPosition,
             interactionVelocity.first * 0.035,
-            deltaSeconds,
+            deltaSeconds
           );
           bodyBPosition = advancePosition(
             bodyBPosition,
             interactionVelocity.second * 0.035,
-            deltaSeconds,
+            deltaSeconds
           );
         }
       }
@@ -140,6 +396,7 @@ export function ForcesExperiment() {
 
       if (time - lastTelemetryUpdate > 120) {
         lastTelemetryUpdate = time;
+
         if (law === "first") {
           setTelemetry({
             primary: `${firstVelocity.toFixed(2)} m/s`,
@@ -240,8 +497,8 @@ export function ForcesExperiment() {
           <div
             aria-live="polite"
             className={typographyVariants({
-              variant: "experimentForcesTelemetry",
               className: styles.telemetry,
+              variant: "experimentForcesTelemetry",
             })}
           >
             <span>{telemetry.primary}</span>
@@ -319,8 +576,8 @@ export function ForcesExperiment() {
               />
               <button
                 className={typographyVariants({
-                  variant: "experimentForcesPrimaryButton",
                   className: styles.primaryButton,
+                  variant: "experimentForcesPrimaryButton",
                 })}
                 disabled={pushed}
                 onClick={() => setPushed(true)}
@@ -351,59 +608,7 @@ export function ForcesExperiment() {
       </div>
     </section>
   );
-}
-
-function RangeControl({
-  label,
-  max,
-  min,
-  onChange,
-  step,
-  unit,
-  value,
-}: {
-  label: string;
-  max: number;
-  min: number;
-  onChange: (value: number) => void;
-  step: number;
-  unit: string;
-  value: number;
-}) {
-  return (
-    <label className={styles.rangeControl}>
-      <span>{label}</span>
-      <output className={styles.controlOutput}>
-        {value} {unit}
-      </output>
-      <input
-        className={styles.controlInput}
-        max={max}
-        min={min}
-        onChange={(event) => onChange(Number(event.currentTarget.value))}
-        step={step}
-        type="range"
-        value={value}
-      />
-    </label>
-  );
-}
-
-function lawTitle(law: Law) {
-  if (law === "first") return "Let it coast.";
-  if (law === "second") return "Tune force and mass.";
-  return "Separate the pair.";
-}
-
-function lawDescription(law: Law) {
-  if (law === "first") {
-    return "With no net force, the puck crosses the field without speeding up or slowing down.";
-  }
-  if (law === "second") {
-    return "The same force produces less acceleration when it has more mass to move.";
-  }
-  return "The impulse is equal and opposite. The lighter body leaves with the greater speed.";
-}
+};
 
 interface SceneState {
   bodyAPosition: number;
@@ -418,180 +623,4 @@ interface SceneState {
   secondMass: number;
   secondPosition: number;
   secondVelocity: number;
-}
-
-function drawScene(
-  context: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  law: Law,
-  state: SceneState,
-) {
-  context.clearRect(0, 0, width, height);
-  context.fillStyle = "#11151d";
-  context.fillRect(0, 0, width, height);
-  drawGrid(context, width, height);
-
-  const trackY = height * 0.64;
-  context.strokeStyle = "#3b4452";
-  context.lineWidth = 1;
-  context.beginPath();
-  context.moveTo(0, trackY + 34);
-  context.lineTo(width, trackY + 34);
-  context.stroke();
-
-  if (law === "first") {
-    const x = state.firstPosition * width;
-    drawBody(context, x, trackY, 28, COLORS.blue, "m");
-    drawArrow(
-      context,
-      x - 42,
-      trackY - 58,
-      x + 50,
-      trackY - 58,
-      COLORS.green,
-      "v constant",
-    );
-    drawVectorBalance(context, width, "ΣF = 0 N", COLORS.muted);
-  } else if (law === "second") {
-    const x = state.secondPosition * width;
-    const radius = 25 + state.mass * 1.4;
-    drawBody(context, x, trackY, radius, COLORS.yellow, `${state.mass} kg`);
-    drawArrow(
-      context,
-      x - radius - 56,
-      trackY,
-      x - radius - 4,
-      trackY,
-      COLORS.coral,
-      `${state.force} N`,
-    );
-    drawVectorBalance(
-      context,
-      width,
-      `a = ${(state.force / state.mass).toFixed(2)} m/s²`,
-      COLORS.coral,
-    );
-  } else {
-    const aX = state.bodyAPosition * width;
-    const bX = state.bodyBPosition * width;
-    drawBody(context, aX, trackY, 22 + state.firstMass, COLORS.blue, "A");
-    drawBody(context, bX, trackY, 22 + state.secondMass, COLORS.yellow, "B");
-    if (state.pushed) {
-      drawArrow(
-        context,
-        aX,
-        trackY - 68,
-        aX - 76,
-        trackY - 68,
-        COLORS.blue,
-        "−F",
-      );
-      drawArrow(
-        context,
-        bX,
-        trackY - 68,
-        bX + 76,
-        trackY - 68,
-        COLORS.yellow,
-        "+F",
-      );
-    }
-    drawVectorBalance(
-      context,
-      width,
-      state.pushed ? "FA→B = −FB→A" : "Press “Push apart”",
-      state.pushed ? COLORS.green : COLORS.muted,
-    );
-  }
-}
-
-function drawGrid(
-  context: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-) {
-  context.strokeStyle = "#1e2632";
-  context.lineWidth = 1;
-  for (let x = 0; x < width; x += 40) {
-    context.beginPath();
-    context.moveTo(x, 0);
-    context.lineTo(x, height);
-    context.stroke();
-  }
-  for (let y = 0; y < height; y += 40) {
-    context.beginPath();
-    context.moveTo(0, y);
-    context.lineTo(width, y);
-    context.stroke();
-  }
-}
-
-function drawBody(
-  context: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  radius: number,
-  color: string,
-  label: string,
-) {
-  context.save();
-  context.shadowBlur = 28;
-  context.shadowColor = color;
-  context.fillStyle = color;
-  context.beginPath();
-  context.arc(x, y, radius, 0, Math.PI * 2);
-  context.fill();
-  context.restore();
-  context.fillStyle = "#10141b";
-  context.font = canvasTypography.forceLabel;
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillText(label, x, y);
-}
-
-function drawArrow(
-  context: CanvasRenderingContext2D,
-  fromX: number,
-  fromY: number,
-  toX: number,
-  toY: number,
-  color: string,
-  label: string,
-) {
-  const angle = Math.atan2(toY - fromY, toX - fromX);
-  context.strokeStyle = color;
-  context.fillStyle = color;
-  context.lineWidth = 3;
-  context.beginPath();
-  context.moveTo(fromX, fromY);
-  context.lineTo(toX, toY);
-  context.stroke();
-  context.beginPath();
-  context.moveTo(toX, toY);
-  context.lineTo(
-    toX - 11 * Math.cos(angle - Math.PI / 6),
-    toY - 11 * Math.sin(angle - Math.PI / 6),
-  );
-  context.lineTo(
-    toX - 11 * Math.cos(angle + Math.PI / 6),
-    toY - 11 * Math.sin(angle + Math.PI / 6),
-  );
-  context.closePath();
-  context.fill();
-  context.font = canvasTypography.forceReadout;
-  context.textAlign = "center";
-  context.fillText(label, (fromX + toX) / 2, fromY - 14);
-}
-
-function drawVectorBalance(
-  context: CanvasRenderingContext2D,
-  width: number,
-  label: string,
-  color: string,
-) {
-  context.fillStyle = color;
-  context.font = canvasTypography.forceEquation;
-  context.textAlign = "left";
-  context.fillText(label, Math.max(24, width * 0.06), 42);
 }

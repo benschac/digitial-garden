@@ -3,29 +3,19 @@ import { describe, expect, test } from "bun:test";
 import { initializeParticleRenderer } from "./particle-initialization";
 import type { ParticleRenderer } from "./particle-renderer";
 
-function makeRenderer(
+const makeRenderer = (
   kind: ParticleRenderer["kind"],
-  destroy: () => void = () => undefined
-): ParticleRenderer {
-  return {
-    destroy,
-    kind,
-    maxParticleCount: 10,
-    render: () => undefined,
-    resize: () => undefined,
-    setParticleCount: (count) => count,
-  };
-}
+  destroy: () => void = () => {}
+): ParticleRenderer => ({
+  destroy,
+  kind,
+  maxParticleCount: 10,
+  render: () => {},
+  resize: () => {},
+  setParticleCount: (count) => count,
+});
 
-function deferred<T>() {
-  let resolveValue: (value: T) => void = () => {
-    throw new Error("Deferred value was not initialized.");
-  };
-  const promise = new Promise<T>((resolve) => {
-    resolveValue = resolve;
-  });
-  return { promise, resolve: resolveValue };
-}
+const deferred = <T>() => Promise.withResolvers<T>();
 
 describe("particle renderer initialization", () => {
   test("does not start a factory when already aborted", async () => {
@@ -36,16 +26,18 @@ describe("particle renderer initialization", () => {
 
     await expect(
       initializeParticleRenderer({
+        createFallback: () => {
+          factoryCalls += 1;
+
+          return Promise.resolve(makeRenderer("WebAssembly + Canvas 2D"));
+        },
+        createGpu: () => {
+          factoryCalls += 1;
+
+          return Promise.resolve(null);
+        },
+        onGpuFailure: () => {},
         signal: controller.signal,
-        createGpu: async () => {
-          factoryCalls += 1;
-          return null;
-        },
-        createFallback: async () => {
-          factoryCalls += 1;
-          return makeRenderer("WebAssembly + Canvas 2D");
-        },
-        onGpuFailure: () => undefined,
       })
     ).rejects.toBe(reason);
     expect(factoryCalls).toBe(0);
@@ -58,13 +50,14 @@ describe("particle renderer initialization", () => {
 
     await expect(
       initializeParticleRenderer({
-        signal: new AbortController().signal,
-        createGpu: async () => gpu,
-        createFallback: async () => {
+        createFallback: () => {
           fallbackCalls += 1;
-          return makeRenderer("WebAssembly + Canvas 2D");
+
+          return Promise.resolve(makeRenderer("WebAssembly + Canvas 2D"));
         },
-        onGpuFailure: () => failureCalls++,
+        createGpu: () => Promise.resolve(gpu),
+        onGpuFailure: () => (failureCalls += 1),
+        signal: new AbortController().signal,
       })
     ).resolves.toBe(gpu);
     expect(fallbackCalls).toBe(0);
@@ -78,12 +71,10 @@ describe("particle renderer initialization", () => {
 
     await expect(
       initializeParticleRenderer({
-        signal: new AbortController().signal,
-        createGpu: async () => {
-          throw gpuError;
-        },
-        createFallback: async () => fallback,
+        createFallback: () => Promise.resolve(fallback),
+        createGpu: () => Promise.reject(gpuError),
         onGpuFailure: (error) => reported.push(error),
+        signal: new AbortController().signal,
       })
     ).resolves.toBe(fallback);
     expect(reported).toEqual([gpuError]);
@@ -95,10 +86,10 @@ describe("particle renderer initialization", () => {
 
     await expect(
       initializeParticleRenderer({
+        createFallback: () => Promise.resolve(fallback),
+        createGpu: () => Promise.resolve(null),
+        onGpuFailure: () => (failureCalls += 1),
         signal: new AbortController().signal,
-        createGpu: async () => null,
-        createFallback: async () => fallback,
-        onGpuFailure: () => failureCalls++,
       })
     ).resolves.toBe(fallback);
     expect(failureCalls).toBe(0);
@@ -110,21 +101,25 @@ describe("particle renderer initialization", () => {
     const started = deferred<undefined>();
     let fallbackCalls = 0;
     let failureCalls = 0;
+
     const initialization = initializeParticleRenderer({
-      signal: controller.signal,
+      createFallback: () => {
+        fallbackCalls += 1;
+
+        return Promise.resolve(makeRenderer("WebAssembly + Canvas 2D"));
+      },
       createGpu: (signal) => {
         started.resolve(undefined);
-        return new Promise<null>((_resolve, reject) => {
-          signal.addEventListener("abort", () => reject(signal.reason), {
-            once: true,
-          });
+
+        const pending = Promise.withResolvers<null>();
+        signal.addEventListener("abort", () => pending.reject(signal.reason), {
+          once: true,
         });
+
+        return pending.promise;
       },
-      createFallback: async () => {
-        fallbackCalls += 1;
-        return makeRenderer("WebAssembly + Canvas 2D");
-      },
-      onGpuFailure: () => failureCalls++,
+      onGpuFailure: () => (failureCalls += 1),
+      signal: controller.signal,
     });
 
     await started.promise;
@@ -142,22 +137,25 @@ describe("particle renderer initialization", () => {
     const started = deferred<undefined>();
     let destroyCount = 0;
     let fallbackCalls = 0;
+
     const initialization = initializeParticleRenderer({
-      signal: controller.signal,
+      createFallback: () => {
+        fallbackCalls += 1;
+
+        return Promise.resolve(makeRenderer("WebAssembly + Canvas 2D"));
+      },
       createGpu: () => {
         started.resolve(undefined);
+
         return gpu.promise;
       },
-      createFallback: async () => {
-        fallbackCalls += 1;
-        return makeRenderer("WebAssembly + Canvas 2D");
-      },
-      onGpuFailure: () => undefined,
+      onGpuFailure: () => {},
+      signal: controller.signal,
     });
 
     await started.promise;
     controller.abort(reason);
-    gpu.resolve(makeRenderer("Rust/WASM + WebGPU", () => destroyCount++));
+    gpu.resolve(makeRenderer("Rust/WASM + WebGPU", () => (destroyCount += 1)));
 
     await expect(initialization).rejects.toBe(reason);
     expect(destroyCount).toBe(1);
@@ -170,20 +168,22 @@ describe("particle renderer initialization", () => {
     const fallback = deferred<ParticleRenderer>();
     const started = deferred<undefined>();
     let destroyCount = 0;
+
     const initialization = initializeParticleRenderer({
-      signal: controller.signal,
-      createGpu: async () => null,
       createFallback: () => {
         started.resolve(undefined);
+
         return fallback.promise;
       },
-      onGpuFailure: () => undefined,
+      createGpu: () => Promise.resolve(null),
+      onGpuFailure: () => {},
+      signal: controller.signal,
     });
 
     await started.promise;
     controller.abort(reason);
     fallback.resolve(
-      makeRenderer("WebAssembly + Canvas 2D", () => destroyCount++)
+      makeRenderer("WebAssembly + Canvas 2D", () => (destroyCount += 1))
     );
 
     await expect(initialization).rejects.toBe(reason);
@@ -197,14 +197,10 @@ describe("particle renderer initialization", () => {
 
     await expect(
       initializeParticleRenderer({
-        signal: new AbortController().signal,
-        createGpu: async () => {
-          throw gpuError;
-        },
-        createFallback: async () => {
-          throw fallbackError;
-        },
+        createFallback: () => Promise.reject(fallbackError),
+        createGpu: () => Promise.reject(gpuError),
         onGpuFailure: (error) => reported.push(error),
+        signal: new AbortController().signal,
       })
     ).rejects.toBe(fallbackError);
     expect(reported).toEqual([gpuError]);

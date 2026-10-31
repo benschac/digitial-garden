@@ -1,13 +1,14 @@
 import { describe, expect, test } from "bun:test";
+
 import { frameDeltaSeconds, trailAlpha } from "./animation-timing";
 
 describe("frameDeltaSeconds", () => {
   test("uses a 60 fps delta for the first frame", () => {
-    expect(frameDeltaSeconds(null, 1_000)).toBeCloseTo(1 / 60);
+    expect(frameDeltaSeconds(null, 1000)).toBeCloseTo(1 / 60);
   });
 
   test("clamps long gaps to the simulation maximum", () => {
-    expect(frameDeltaSeconds(1_000, 2_000)).toBeCloseTo(1 / 24);
+    expect(frameDeltaSeconds(1000, 2000)).toBeCloseTo(1 / 24);
   });
 });
 
