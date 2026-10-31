@@ -10,6 +10,7 @@ import { EditorialFontPreference } from "./editorial-font-preference";
 import { EditorialFontSwitcher } from "./editorial-font-switcher";
 import { editorialFontPreferenceInitScript } from "./editorial-fonts";
 import { InteractionSounds } from "./interaction-sounds";
+
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
@@ -96,41 +97,36 @@ const tenderness = localFont({
 });
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  description: "The personal site of Benjamin Schachter.",
   metadataBase: getSiteUrl(),
   title: {
     default: "Benjamin Schachter",
     template: "%s | Benjamin Schachter",
   },
-  description: "The personal site of Benjamin Schachter.",
-  alternates: { canonical: "/" },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: ReactNode }>) {
-  return (
-    <html
-      className={`${newsreader.variable} ${sortsMillGoudy.variable} ${superiorSerif.variable} ${bonbance.variable} ${goudyBookletter.variable} ${libreCaslonCondensed.variable} ${tenderness.variable}`}
-      lang="en"
-      suppressHydrationWarning
-    >
-      <head>
-        <Script
-          id="editorial-font-preference-init"
-          strategy="beforeInteractive"
-        >
-          {editorialFontPreferenceInitScript}
-        </Script>
-      </head>
-      <body style={{ position: "relative" }} suppressHydrationWarning>
-        <div style={{ isolation: "isolate" }}>
-          <EditorialFontPreference>
-            {children}
-            <InteractionSounds />
-            <EditorialFontSwitcher />
-          </EditorialFontPreference>
-        </div>
-      </body>
-    </html>
-  );
-}
+const RootLayout = ({ children }: Readonly<{ children: ReactNode }>) => (
+  <html
+    className={`${newsreader.variable} ${sortsMillGoudy.variable} ${superiorSerif.variable} ${bonbance.variable} ${goudyBookletter.variable} ${libreCaslonCondensed.variable} ${tenderness.variable}`}
+    lang="en"
+    suppressHydrationWarning
+  >
+    <head>
+      <Script id="editorial-font-preference-init" strategy="beforeInteractive">
+        {editorialFontPreferenceInitScript}
+      </Script>
+    </head>
+    <body style={{ position: "relative" }} suppressHydrationWarning>
+      <div style={{ isolation: "isolate" }}>
+        <EditorialFontPreference>
+          {children}
+          <InteractionSounds />
+          <EditorialFontSwitcher />
+        </EditorialFontPreference>
+      </div>
+    </body>
+  </html>
+);
+
+export default RootLayout;

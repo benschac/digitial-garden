@@ -1,27 +1,28 @@
 import { cn } from "@personal-site/ui/lib/utils";
-import { type ReactNode, ViewTransition } from "react";
+import { ViewTransition } from "react";
+import type { ReactNode } from "react";
 
 const sharedNavigation = {
-  "nav-forward": "page-forward",
-  "nav-back": "page-back",
-  "nav-lateral": "page-crossfade",
   default: "none",
+  "nav-back": "page-back",
+  "nav-forward": "page-forward",
+  "nav-lateral": "page-crossfade",
 };
 
 const entering = {
   ...sharedNavigation,
-  "nav-forward": "page-forward-enter",
   "nav-back": "page-back-enter",
+  "nav-forward": "page-forward-enter",
 };
 
 const exiting = {
   ...sharedNavigation,
-  "nav-forward": "page-forward-exit",
   "nav-back": "page-back-exit",
+  "nav-forward": "page-forward-exit",
 };
 
 /** Page-owned boundary: updates and untyped background work stay silent. */
-export function PageTransition({
+export const PageTransition = ({
   children,
   className,
   name,
@@ -29,16 +30,14 @@ export function PageTransition({
   children: ReactNode;
   className?: string;
   name?: string;
-}) {
-  return (
-    <ViewTransition
-      name={name}
-      default="none"
-      enter={entering}
-      exit={exiting}
-      share={sharedNavigation}
-    >
-      <div className={cn("page-transition-surface", className)}>{children}</div>
-    </ViewTransition>
-  );
-}
+}) => (
+  <ViewTransition
+    name={name}
+    default="none"
+    enter={entering}
+    exit={exiting}
+    share={sharedNavigation}
+  >
+    <div className={cn("page-transition-surface", className)}>{children}</div>
+  </ViewTransition>
+);

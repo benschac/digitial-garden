@@ -6,6 +6,8 @@ import {
 } from "./wet-ink-resources";
 import wetInkShader from "./wet-ink.wgsl";
 
+const { parseFloat: parseCssNumber } = Number;
+
 interface TextMask {
   texture: GPUTexture;
   width: number;
@@ -73,7 +75,7 @@ export const createWetInkRenderer = (
       const ratio = Math.min(devicePixelRatio || 1, 2);
       const width = Math.max(bounds.width, 1);
       const height = Math.max(bounds.height, 1);
-      const fontSize = Number.parseFloat(style.fontSize);
+      const fontSize = parseCssNumber(style.fontSize);
       const raster = document.createElement("canvas");
       raster.width = Math.ceil(width * ratio);
       raster.height = Math.ceil(height * ratio);
@@ -144,8 +146,8 @@ export const createWetInkRenderer = (
             format: "rgba8unorm",
             size: [raster.width, raster.height],
             usage:
-              GPUTextureUsage.COPY_DST |
-              GPUTextureUsage.TEXTURE_BINDING |
+              GPUTextureUsage.COPY_DST +
+              GPUTextureUsage.TEXTURE_BINDING +
               GPUTextureUsage.RENDER_ATTACHMENT,
           }),
           width,

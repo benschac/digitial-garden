@@ -6,23 +6,27 @@ import { cn } from "@personal-site/ui/lib/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+
 import { PageTransition } from "@/app/_components/page-transition";
 
 const focusRing =
   "focus-visible:outline-[3px] focus-visible:outline-current focus-visible:outline-offset-4";
+
 const readingLink = cn(
   "inline-flex min-h-11 items-center text-inherit underline underline-offset-[0.16em]",
-  focusRing,
+  focusRing
 );
 
 export const metadata: Metadata = {
-  title: "Reading",
-  description: "What I'm currently reading.",
   alternates: { canonical: "/reading" },
+  description: "What I'm currently reading.",
+  title: "Reading",
 };
 
-export default function ReadingPage() {
-  if (process.env.NODE_ENV !== "development") notFound();
+const ReadingPage = () => {
+  if (process.env.NODE_ENV !== "development") {
+    notFound();
+  }
 
   return (
     <PageTransition>
@@ -30,7 +34,7 @@ export default function ReadingPage() {
         className={cn(
           "mx-auto max-w-3xl p-[clamp(1.5rem,4vw,3rem)]",
           "text-ink",
-          typographyVariants({ variant: "ui" }),
+          typographyVariants({ variant: "ui" })
         )}
       >
         <header>
@@ -45,7 +49,7 @@ export default function ReadingPage() {
               "absolute top-[clamp(1.5rem,4vw,3rem)] left-[clamp(1.5rem,4vw,3rem)]",
               "inline-flex min-h-11 min-w-11 items-center justify-center",
               "text-2xl text-inherit no-underline",
-              focusRing,
+              focusRing
             )}
           >
             <span aria-hidden="true">←</span>
@@ -97,4 +101,6 @@ export default function ReadingPage() {
       </main>
     </PageTransition>
   );
-}
+};
+
+export default ReadingPage;

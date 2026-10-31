@@ -1,13 +1,16 @@
 "use client";
 
 import { useId } from "react";
+
 import { AvatarArtwork } from "./avatar-artwork";
-import styles from "./footer-avatar.module.css";
 import { useAvatarAnimation } from "./use-avatar-animation";
 
-export function FooterAvatar() {
+import styles from "./footer-avatar.module.css";
+
+export const FooterAvatar = () => {
   const cropId = useId();
   const artworkRef = useAvatarAnimation();
+
   return (
     <div
       className={styles.stage}
@@ -33,4 +36,4 @@ export function FooterAvatar() {
       </div>
     </div>
   );
-}
+};

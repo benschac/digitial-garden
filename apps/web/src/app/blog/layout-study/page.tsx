@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+
 import { Typography, typographyVariants } from "@/components/page-typography";
 import { getPublishedPosts } from "@/lib/content";
 import type { PostSummary } from "@/lib/content/schema";
+
 import styles from "./study-styles";
 
 export const metadata: Metadata = {
+  robots: { follow: false, index: false },
   title: "Blog layout study",
-  robots: { index: false, follow: false },
 };
 
 const directions = [
@@ -30,14 +32,26 @@ const directions = [
 ] as const;
 
 type Direction = (typeof directions)[number]["id"];
+
 const dateFormat = new Intl.DateTimeFormat("en-US", {
-  month: "short",
   day: "numeric",
-  year: "numeric",
+  month: "short",
   timeZone: "UTC",
+  year: "numeric",
 });
 
-function Post({
+const featuredTitleVariant = (featured: boolean) =>
+  featured ? "studyFeaturedTitle" : "studyCardTitle";
+
+const postLayoutVariant = (direction: Direction, index: number) => {
+  if (direction !== "feature") {
+    return "plain";
+  }
+
+  return index === 0 ? "featured" : "card";
+};
+
+const Post = ({
   post,
   direction,
   featured,
@@ -45,50 +59,47 @@ function Post({
   post: PostSummary;
   direction: Direction;
   featured: boolean;
-}) {
-  return (
-    <article className={styles.post({ direction })}>
-      <Typography
-        as="time"
-        variant="studyDate"
-        className={styles.date}
-        dateTime={post.publishedAt}
+}) => (
+  <article className={styles.post({ direction })}>
+    <Typography
+      as="time"
+      variant="studyDate"
+      className={styles.date}
+      dateTime={post.publishedAt}
+    >
+      {dateFormat.format(new Date(`${post.publishedAt}T00:00:00Z`))}
+    </Typography>
+    <Typography
+      as="h3"
+      className={`${styles.postTitle}${featured && direction === "feature" ? ` ${styles.featuredTitle}` : ""}`}
+      variant={
+        direction === "feature"
+          ? featuredTitleVariant(featured)
+          : "studyPostTitle"
+      }
+    >
+      <Link
+        className={`${styles.link} ${styles.postLink}`}
+        href={`/blog/${post.slug}`}
       >
-        {dateFormat.format(new Date(`${post.publishedAt}T00:00:00Z`))}
-      </Typography>
-      <Typography
-        as="h3"
-        className={`${styles.postTitle}${featured && direction === "feature" ? ` ${styles.featuredTitle}` : ""}`}
-        variant={
-          direction === "feature"
-            ? featured
-              ? "studyFeaturedTitle"
-              : "studyCardTitle"
-            : "studyPostTitle"
-        }
-      >
-        <Link
-          className={`${styles.link} ${styles.postLink}`}
-          href={`/blog/${post.slug}`}
-        >
-          {post.title}
-        </Link>
-      </Typography>
-      <Typography as="p" variant="studySummary" className={styles.summary}>
-        {post.summary}
-      </Typography>
-    </article>
-  );
-}
+        {post.title}
+      </Link>
+    </Typography>
+    <Typography as="p" variant="studySummary" className={styles.summary}>
+      {post.summary}
+    </Typography>
+  </article>
+);
 
-function Prototype({
+const Prototype = ({
   direction,
   posts,
 }: {
   direction: Direction;
   posts: PostSummary[];
-}) {
+}) => {
   const years = [...new Set(posts.map((post) => post.publishedAt.slice(0, 4)))];
+
   return (
     <div className={styles.prototype}>
       <div className={styles.sheet({ direction })}>
@@ -99,8 +110,8 @@ function Prototype({
         >
           <Link
             className={typographyVariants({
-              variant: "studySiteLink",
               className: `${styles.link} ${styles.siteLink}`,
+              variant: "studySiteLink",
             })}
             href="/"
           >
@@ -146,8 +157,8 @@ function Prototype({
                       <li key={post.slug} className={styles.yearItem}>
                         <Link
                           className={typographyVariants({
-                            variant: "studyArchiveTitle",
                             className: `${styles.link} ${styles.archiveLink}`,
+                            variant: "studyArchiveTitle",
                           })}
                           href={`/blog/${post.slug}`}
                         >
@@ -184,12 +195,7 @@ function Prototype({
               <li
                 key={post.slug}
                 className={styles.postItem({
-                  variant:
-                    direction === "feature"
-                      ? index === 0
-                        ? "featured"
-                        : "card"
-                      : "plain",
+                  variant: postLayoutVariant(direction, index),
                 })}
               >
                 <Post
@@ -204,16 +210,20 @@ function Prototype({
       </div>
     </div>
   );
-}
+};
 
-export default async function LayoutStudy({
+const LayoutStudy = async ({
   searchParams,
 }: {
   searchParams: Promise<{ view?: string }>;
-}) {
-  if (process.env.NODE_ENV !== "development") notFound();
+}) => {
+  if (process.env.NODE_ENV !== "development") {
+    notFound();
+  }
+
   const [posts, query] = await Promise.all([getPublishedPosts(), searchParams]);
   const selected = directions.find((direction) => direction.id === query.view);
+
   return (
     <Typography as="main" variant="studyInterface" className={styles.study}>
       <header className={styles.studyHeader}>
@@ -237,8 +247,8 @@ export default async function LayoutStudy({
         </div>
         <Link
           className={typographyVariants({
-            variant: "studyNavigation",
             className: `${styles.link} ${styles.navigationLink}`,
+            variant: "studyNavigation",
           })}
           href={selected ? "/blog/layout-study" : "/blog"}
         >
@@ -283,4 +293,6 @@ export default async function LayoutStudy({
       )}
     </Typography>
   );
-}
+};
+
+export default LayoutStudy;
