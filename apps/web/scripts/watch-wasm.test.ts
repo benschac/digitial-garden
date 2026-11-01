@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { Effect, Exit } from "effect";
+import { Exit, ManagedRuntime } from "effect";
+import { TestClock } from "effect/testing";
 
 import { watchWasm } from "./watch-wasm-lifecycle";
 import type {
   WatchWasmDependencies,
-  WatchWasmError,
   WatchWasmSignal,
 } from "./watch-wasm-lifecycle";
 
@@ -24,7 +24,7 @@ const createProcess = () => {
   };
 };
 
-const cleanups: (() => Promise<Exit.Exit<void, WatchWasmError>>)[] = [];
+const cleanups: (() => Promise<void>)[] = [];
 
 const createHarness = (
   options: {
@@ -103,11 +103,15 @@ const createHarness = (
     watchingMessage: "Watching Rust…",
   };
 
-  const result = Effect.runPromiseExit(watchWasm(dependencies), {
+  const runtime = ManagedRuntime.make(TestClock.layer());
+
+  const result = runtime.runPromiseExit(watchWasm(dependencies), {
     signal: controller.signal,
   });
 
   const harness = {
+    advance: (milliseconds = 0) =>
+      runtime.runPromise(TestClock.adjust(milliseconds)),
     change() {
       for (const watcher of watchers) {
         watcher.change();
@@ -132,24 +136,15 @@ const createHarness = (
     watchers,
   };
 
-  cleanups.push(() => harness.stop());
+  cleanups.push(async () => {
+    try {
+      await harness.stop();
+    } finally {
+      await runtime.dispose();
+    }
+  });
 
   return harness;
-};
-
-const eventually = (
-  predicate: () => boolean,
-  deadline = Date.now() + 2000
-): Promise<void> => {
-  if (predicate()) {
-    return Promise.resolve();
-  }
-
-  if (Date.now() > deadline) {
-    return Promise.reject(new Error("Condition was not reached"));
-  }
-
-  return Bun.sleep(5).then(() => eventually(predicate, deadline));
 };
 
 const processAt = (
@@ -170,18 +165,20 @@ afterEach(() => Promise.all(cleanups.splice(0).map((cleanup) => cleanup())));
 describe("watch-wasm lifecycle", () => {
   test("builds initially and debounces bursts for 120ms after the last edit", async () => {
     const harness = createHarness();
-    await eventually(() => harness.spawns === 1);
+    await harness.advance();
+    expect(harness.spawns).toBe(1);
     expect(harness.watchers).toHaveLength(3);
     expect(harness.logs[0]).toBe("Watching Rust…");
     processAt(harness, 0).finish(0);
     harness.change();
-    await Bun.sleep(80);
+    await harness.advance(80);
     harness.change();
-    await Bun.sleep(80);
+    await harness.advance(119);
     expect(harness.spawns).toBe(1);
-    await eventually(() => harness.spawns === 2);
+    await harness.advance(1);
+    expect(harness.spawns).toBe(2);
     processAt(harness, 1).finish(0);
-    await Bun.sleep(160);
+    await harness.advance(160);
     expect(harness.spawns).toBe(2);
     await harness.stop();
     expect(harness.processes.map((process) => process.kills)).toEqual([0, 0]);
@@ -189,11 +186,12 @@ describe("watch-wasm lifecycle", () => {
 
   test("serializes builds and coalesces multiple debounced edits into one pending rebuild", async () => {
     const harness = createHarness();
-    await eventually(() => harness.spawns === 1);
+    await harness.advance();
+    expect(harness.spawns).toBe(1);
 
     const changeAndWait = async () => {
       harness.change();
-      await Bun.sleep(150);
+      await harness.advance(150);
     };
 
     await changeAndWait();
@@ -202,30 +200,35 @@ describe("watch-wasm lifecycle", () => {
 
     expect(harness.spawns).toBe(1);
     processAt(harness, 0).finish(0);
-    await eventually(() => harness.spawns === 2);
+    await harness.advance(120);
+    expect(harness.spawns).toBe(2);
     processAt(harness, 1).finish(0);
-    await Bun.sleep(150);
+    await harness.advance(150);
     expect(harness.spawns).toBe(2);
   });
 
   test("recovers from a spawn exception on the next edit", async () => {
     const harness = createHarness({ failSpawn: 1 });
-    await eventually(() => harness.errors.length === 1);
+    await harness.advance();
+    expect(harness.errors).toHaveLength(1);
     expect(harness.errors[0]).toContain(
       "build spawn failed: Error: cannot spawn"
     );
     harness.change();
-    await eventually(() => harness.processes.length === 1);
+    await harness.advance(120);
+    expect(harness.processes).toHaveLength(1);
     expect(harness.spawns).toBe(2);
   });
 
   test("reports a nonzero exit and still runs the pending rebuild", async () => {
     const harness = createHarness();
-    await eventually(() => harness.spawns === 1);
+    await harness.advance();
+    expect(harness.spawns).toBe(1);
     harness.change();
-    await Bun.sleep(150);
+    await harness.advance(150);
     processAt(harness, 0).finish(7);
-    await eventually(() => harness.spawns === 2);
+    await harness.advance(120);
+    expect(harness.spawns).toBe(2);
     expect(harness.errors).toEqual(["WASM build failed with exit code 7"]);
     expect(processAt(harness, 0).kills).toBe(0);
   });
@@ -241,17 +244,18 @@ describe("watch-wasm lifecycle", () => {
       expect(harness.signals.size).toBe(0);
       expect(harness.removed.toSorted()).toEqual(["SIGINT", "SIGTERM"]);
       harness.change();
-      await Bun.sleep(140);
+      await harness.advance(140);
       expect(harness.spawns).toBe(0);
     });
   }
 
   test("shutdown cancels debounce and ignores late callbacks and repeated signals", async () => {
     const harness = createHarness();
-    await eventually(() => harness.spawns === 1);
+    await harness.advance();
+    expect(harness.spawns).toBe(1);
     processAt(harness, 0).finish(0);
     harness.change();
-    await Bun.sleep(30);
+    await harness.advance(30);
     const stop = harness.signals.get("SIGINT");
 
     if (!stop) {
@@ -264,7 +268,7 @@ describe("watch-wasm lifecycle", () => {
     expect(Exit.isSuccess(await harness.result)).toBe(true);
     stop();
     harness.change();
-    await Bun.sleep(150);
+    await harness.advance(150);
     expect(harness.spawns).toBe(1);
     expect(harness.watchers.map((watcher) => watcher.closes)).toEqual([
       1, 1, 1,
@@ -275,9 +279,10 @@ describe("watch-wasm lifecycle", () => {
 
   test("shutdown kills the active child exactly once and discards pending work", async () => {
     const harness = createHarness();
-    await eventually(() => harness.spawns === 1);
+    await harness.advance();
+    expect(harness.spawns).toBe(1);
     harness.change();
-    await Bun.sleep(150);
+    await harness.advance(150);
     const stop = harness.signals.get("SIGTERM");
 
     if (!stop) {
@@ -288,7 +293,7 @@ describe("watch-wasm lifecycle", () => {
     stop();
     expect(Exit.isSuccess(await harness.result)).toBe(true);
     harness.change();
-    await Bun.sleep(150);
+    await harness.advance(150);
     expect(harness.spawns).toBe(1);
     expect(processAt(harness, 0).kills).toBe(1);
     expect(harness.errors).toEqual([]);
@@ -299,7 +304,8 @@ describe("watch-wasm lifecycle", () => {
 
   test("shutdown waits for the killed child to exit before completing", async () => {
     const harness = createHarness();
-    await eventually(() => harness.spawns === 1);
+    await harness.advance();
+    expect(harness.spawns).toBe(1);
     const process = processAt(harness, 0);
     process.kill = () => {
       process.kills += 1;
@@ -314,8 +320,9 @@ describe("watch-wasm lifecycle", () => {
 
     try {
       harness.signals.get("SIGTERM")?.();
-      await eventually(() => process.kills === 1);
-      await Bun.sleep(20);
+      await harness.advance();
+      expect(process.kills).toBe(1);
+      await harness.advance(20);
       expect(finished).toBe(false);
       harness.change();
       expect(harness.spawns).toBe(1);
@@ -329,7 +336,8 @@ describe("watch-wasm lifecycle", () => {
 
   test("external interruption releases the child, watchers and signals", async () => {
     const harness = createHarness();
-    await eventually(() => harness.spawns === 1);
+    await harness.advance();
+    expect(harness.spawns).toBe(1);
     harness.controller.abort();
     expect(Exit.isFailure(await harness.result)).toBe(true);
     expect(processAt(harness, 0).kills).toBe(1);
@@ -342,14 +350,17 @@ describe("watch-wasm lifecycle", () => {
 
   test("a rejected process wait is reported and releases its process before retrying", async () => {
     const harness = createHarness();
-    await eventually(() => harness.spawns === 1);
+    await harness.advance();
+    expect(harness.spawns).toBe(1);
     processAt(harness, 0).fail(new Error("lost process"));
-    await eventually(() =>
+    await harness.advance();
+    expect(
       harness.errors.some((error) => error.includes("build wait failed"))
-    );
+    ).toBe(true);
     expect(processAt(harness, 0).kills).toBe(1);
     harness.change();
-    await eventually(() => harness.spawns === 2);
+    await harness.advance(120);
+    expect(harness.spawns).toBe(2);
   });
 
   test("releases the first signal handler if registering the second fails", async () => {
@@ -362,7 +373,8 @@ describe("watch-wasm lifecycle", () => {
 
   test("one cleanup exception does not skip other resources", async () => {
     const harness = createHarness({ failClose: 2 });
-    await eventually(() => harness.spawns === 1);
+    await harness.advance();
+    expect(harness.spawns).toBe(1);
     await harness.stop();
     expect(harness.watchers.map((watcher) => watcher.closes)).toEqual([
       1, 1, 1,
