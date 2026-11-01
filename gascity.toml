@@ -3,7 +3,7 @@ provider = "codex"
 install_agent_hooks = []
 
 [beads]
-provider = "file"
+provider = "bd"
 
 [providers.codex]
 base = "builtin:codex"
