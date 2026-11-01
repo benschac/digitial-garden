@@ -59,7 +59,7 @@ The user reaffirmed task-specific model and reasoning selection on 2026-11-01. T
 
 These are capability assignments, not measured price claims. Record model, effort, input and output tokens, cache usage when available, elapsed time, retries, and accepted result. Show unknown price as unknown. Do not infer billed cost from cumulative usage snapshots or call a model cheaper without applicable pricing or measured billing.
 
-Use at most three implementation attempts per task across restarts and model changes. Start with a configurable 30-minute task deadline and a 10-minute checker deadline. A timeout preserves artifacts and marks the task for diagnosis. A new loop ID must not reset the lifetime budget. Infrastructure retries have their own native limit and still count toward elapsed time. Stop repeated identical failures or unchanged failed acceptance evidence after two attempts. Git churn is not evidence of progress.
+Use at most three implementation attempts per task across restarts and model changes. The qualification report demonstrates native counter persistence across dispatcher replacement. It does not establish a lifetime deadline: Gas City 1.5.1 check timeouts and session ages have narrower scopes, so A3 must supply or qualify that missing enforcement before unattended rollout. Start with a configurable 30-minute task deadline and a 10-minute checker deadline. A timeout preserves artifacts and marks the task for diagnosis. A new loop ID must not reset the lifetime budget. Infrastructure retries have their own native limit and still count toward elapsed time. Stop repeated identical failures or unchanged failed acceptance evidence after two attempts. Git churn is not evidence of progress.
 
 ## Integrate eligible work without asking again
 
