@@ -1,0 +1,1015 @@
+[
+  {
+    "id": "resource-ownership",
+    "title": "Scoped resource ownership",
+    "concerns": [
+      "cleanup",
+      "cancellation",
+      "late acquisition",
+      "GPU",
+      "dispose"
+    ],
+    "decision": "Reuse the renderer scope for native renderer allocations. Register release at acquisition and retain the scope until its owning renderer is destroyed.",
+    "owners": [
+      "apps/web/src/app/experiments/wasm-canvas/renderer-lifecycle.ts"
+    ],
+    "sources": [
+      {
+        "name": "effect",
+        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "paths": [
+          "ai-docs/src/01_effect/05_resources/10_acquire-release.ts",
+          "packages/effect/src/Scope.ts",
+          "packages/effect/src/internal/effect.ts",
+          "packages/effect/test/Scope.test.ts"
+        ]
+      }
+    ],
+    "references": ["https://ratstack.sh/lore/scopes-own-resources"],
+    "checks": [
+      {
+        "kind": "behavior",
+        "path": "apps/web/src/app/experiments/wasm-canvas/renderer-lifecycle.test.ts",
+        "claim": "Exercises renderer acquisition and cleanup paths."
+      }
+    ],
+    "exceptions": [
+      "Synchronous drawing stays outside Effect; nonabortable creation must settle under ownership."
+    ],
+    "gaps": [
+      "Native GPU behavior still requires browser or device verification."
+    ],
+    "related": ["actor-lifecycle", "replaceable-resources"]
+  },
+  {
+    "id": "actor-lifecycle",
+    "title": "Actor lifecycle and React ownership",
+    "concerns": ["xstate", "actor", "state machine", "fallback", "device loss"],
+    "decision": "Use the existing particle lifecycle owner for renderer initialization, fallback and loss. React retains activation and browser frame ownership.",
+    "owners": [
+      "apps/web/src/app/experiments/wasm-canvas/particle-lifecycle.ts"
+    ],
+    "sources": [
+      {
+        "name": "xstate-effect",
+        "commit": "8cf3f00b41984a32ce935db117f52b628cfcd5ac",
+        "paths": [
+          "packages/xstate-effect/README.md",
+          "packages/xstate-effect/src/createEffectActor.ts",
+          "packages/xstate-effect/src/runtime.test.ts"
+        ]
+      },
+      {
+        "name": "effect",
+        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "paths": [
+          "ai-docs/src/01_effect/05_resources/10_acquire-release.ts",
+          "packages/effect/src/Scope.ts",
+          "packages/effect/src/internal/effect.ts",
+          "packages/effect/test/Scope.test.ts"
+        ]
+      }
+    ],
+    "references": ["https://ratstack.sh/lore/lifecycles-are-machines"],
+    "checks": [
+      {
+        "kind": "behavior",
+        "path": "apps/web/src/app/experiments/wasm-canvas/particle-lifecycle.test.ts",
+        "claim": "Covers late acquisition, loss, replay, fallback and teardown."
+      }
+    ],
+    "exceptions": [
+      "Animation eligibility and renderer availability remain distinct."
+    ],
+    "gaps": ["Tests do not establish physical GPU behavior."],
+    "related": ["resource-ownership", "react-lifecycle"]
+  },
+  {
+    "id": "react-lifecycle",
+    "title": "React restart and observer lifetime",
+    "concerns": [
+      "react",
+      "strict mode",
+      "abort",
+      "observer",
+      "animation frame",
+      "dependency"
+    ],
+    "decision": "Choose the shared hook whose lifetime matches the task. useAbortableEffect callback changes do not restart work; reactive identity changes need an effect with explicit dependencies.",
+    "owners": [
+      "packages/react-hooks/src/use-abortable-effect.ts",
+      "packages/react-hooks/src/use-abort-controller.ts",
+      "packages/react-hooks/src/use-browser-lifecycle.ts"
+    ],
+    "sources": [],
+    "references": ["https://ratstack.sh/lore/scopes-own-resources"],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "docs/standard-libraries.md",
+        "claim": "Documents lifecycle selection and observer readiness requirements; not a runtime check."
+      }
+    ],
+    "exceptions": [
+      "Feature state and drawing belong to the app; shared hooks own browser subscriptions."
+    ],
+    "gaps": [
+      "Hook selection and readiness require review; this catalog does not prove Strict Mode behavior."
+    ],
+    "related": ["resource-ownership"]
+  },
+  {
+    "id": "shared-requests",
+    "title": "Shared requests and cancellation",
+    "concerns": [
+      "cache",
+      "coalescing",
+      "deduplication",
+      "request",
+      "waiter",
+      "HTTP"
+    ],
+    "decision": "Reuse the typography request owner for metrics. Preserve per-consumer cancellation and its pending-only policy. Search pinned HTTP capabilities before extending the transport.",
+    "owners": ["apps/web/src/app/typography-metric-requests.ts"],
+    "sources": [
+      {
+        "name": "effect",
+        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "paths": [
+          "packages/effect/src/Cache.ts",
+          "packages/effect/test/Cache.test.ts"
+        ]
+      }
+    ],
+    "references": ["https://ratstack.sh/lore/concurrent-work-needs-an-owner"],
+    "checks": [
+      {
+        "kind": "behavior",
+        "path": "apps/web/src/app/typography-metric-requests.test.ts",
+        "claim": "Exercises sharing, cancellation and retry behavior for metrics requests."
+      }
+    ],
+    "exceptions": [
+      "This owner uses an injected Promise fetch contract; it is not a universal HTTP adapter."
+    ],
+    "gaps": [
+      "Provider behavior and other cache policies require separate checks."
+    ],
+    "related": ["validated-input", "resource-ownership"]
+  },
+  {
+    "id": "validated-input",
+    "title": "Validate external values at entry",
+    "concerns": [
+      "schema",
+      "decode",
+      "external data",
+      "validation",
+      "font metrics"
+    ],
+    "decision": "Decode external metrics before they reach measurement or caches. Reuse the owning schema and preserve finite-number and positive-units constraints.",
+    "owners": ["apps/web/src/app/typography-metrics-schema.ts"],
+    "sources": [
+      {
+        "name": "effect",
+        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "paths": [
+          "ai-docs/src/01_effect/02_schema/10_schema-basics.ts",
+          "packages/effect/src/Schema.ts",
+          "packages/effect/test/schema/Schema.test.ts"
+        ]
+      }
+    ],
+    "references": ["https://ratstack.sh/AGENTS.md"],
+    "checks": [
+      {
+        "kind": "behavior",
+        "path": "apps/web/src/app/typography-metrics-schema.test.ts",
+        "claim": "Checks acceptance and rejection of metric payloads."
+      }
+    ],
+    "exceptions": [
+      "Other domains need their own schema rather than reuse of the metrics shape."
+    ],
+    "gaps": ["Changes to Schema APIs require the source lookup workflow."],
+    "related": ["shared-requests", "typed-failures"]
+  },
+  {
+    "id": "typed-failures",
+    "title": "Preserve typed failures",
+    "concerns": ["error", "tagged error", "failure", "cause", "recovery"],
+    "decision": "Retain failure stage and cause in the owning adapter; recover only the failures the application can handle. Use the installed tagged-error conventions.",
+    "owners": [
+      "apps/web/src/app/typography-metric-requests.ts",
+      "apps/web/scripts/social-preview-lifecycle.ts"
+    ],
+    "sources": [
+      {
+        "name": "effect",
+        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "paths": [
+          "ai-docs/src/01_effect/04_errors/10_catch-tags.ts",
+          "packages/effect/src/internal/effect.ts",
+          "packages/effect/test/Effect.test.ts",
+          "packages/effect/test/Layer.test.ts"
+        ]
+      }
+    ],
+    "references": ["https://ratstack.sh/AGENTS.md"],
+    "checks": [
+      {
+        "kind": "lint",
+        "path": "scripts/rule-coverage.test.mjs",
+        "claim": "Exercises the configured manual tagged comparison rejection."
+      },
+      {
+        "kind": "behavior",
+        "path": "apps/web/src/app/typography-metric-requests.test.ts",
+        "claim": "Exercises request failures through the application owner."
+      }
+    ],
+    "exceptions": [
+      "UI presentation and framework error contracts may require boundary conversion."
+    ],
+    "gaps": [
+      "Lint catches selected syntax, not correctness of recovery or preservation of every cause."
+    ],
+    "related": ["validated-input"]
+  },
+  {
+    "id": "runtime-boundary",
+    "title": "Runtime creation and disposal",
+    "concerns": [
+      "managed runtime",
+      "integration",
+      "promise API",
+      "database",
+      "shutdown"
+    ],
+    "decision": "Keep the sample database runtime behind its existing Promise facade. Isolated owners expose disposal; the host must end the lifetime explicitly.",
+    "owners": [
+      "apps/web/agent/lib/sample-db.ts",
+      "apps/web/agent/lib/sample-db-service.ts",
+      "tools/oxlint/project-patterns/index.mjs"
+    ],
+    "sources": [
+      {
+        "name": "effect",
+        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "paths": [
+          "ai-docs/src/04_integration/10_managed-runtime.ts",
+          "packages/effect/src/ManagedRuntime.ts",
+          "packages/effect/test/ManagedRuntime.test.ts"
+        ]
+      }
+    ],
+    "references": ["https://ratstack.sh/lore/run-effect-at-the-boundary"],
+    "checks": [
+      {
+        "kind": "behavior",
+        "path": "apps/web/agent/lib/sample-db.test.ts",
+        "claim": "Exercises lazy initialization and disposal behavior."
+      },
+      {
+        "kind": "lint",
+        "path": "scripts/pattern-boundaries.test.mjs",
+        "claim": "Exercises import restrictions for ManagedRuntime and execution imports in apps/**/*-service.ts, while permitting integration facades."
+      }
+    ],
+    "exceptions": [
+      "The default database facade intentionally owns module-lifetime state."
+    ],
+    "gaps": [
+      "Host shutdown wiring is not established by facade tests; SQL authorization is a separate concern.",
+      "Destructured or reassigned aliases, variable property names, indirect wrappers and filenames outside apps/**/*-service.ts remain review-only."
+    ],
+    "related": ["adapters-cartridges", "resource-ownership"]
+  },
+  {
+    "id": "adapters-cartridges",
+    "title": "Application contracts and provider adapters",
+    "concerns": [
+      "adapter",
+      "cartridge",
+      "provider",
+      "service",
+      "port",
+      "composition",
+      "replace"
+    ],
+    "decision": "Keep application job contracts and resource policy with their owner. Supply provider implementations at composition. A cartridge must identify its public contract, resources and removal dependencies.",
+    "owners": [
+      "apps/web/scripts/social-preview-lifecycle.ts",
+      "apps/web/scripts/social-preview-native.ts",
+      "apps/web/agent/lib/sample-db-service.ts"
+    ],
+    "sources": [
+      {
+        "name": "effect",
+        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "paths": [
+          "ai-docs/src/01_effect/03_services/20_layer-composition.ts",
+          "packages/effect/src/Layer.ts",
+          "packages/effect/test/Layer.test.ts"
+        ]
+      }
+    ],
+    "references": ["https://ratstack.sh/lore/cartridges"],
+    "checks": [
+      {
+        "kind": "behavior",
+        "path": "apps/web/scripts/social-preview-lifecycle.test.ts",
+        "claim": "Exercises workflow behavior through supplied dependencies."
+      },
+      {
+        "kind": "lint",
+        "path": "scripts/fence.test.mjs",
+        "claim": "Rejects shared-to-app imports and app imports of private package source."
+      }
+    ],
+    "exceptions": [
+      "Plain injected interfaces are appropriate at existing Promise boundaries; no mandatory package or Layer migration."
+    ],
+    "gaps": [
+      "Import fences do not prove provider interchangeability or that a cartridge can be removed; verify actual replacement callers."
+    ],
+    "related": ["runtime-boundary", "process-ownership"]
+  },
+  {
+    "id": "process-ownership",
+    "title": "Process and script ownership",
+    "concerns": [
+      "process",
+      "script",
+      "signal",
+      "shutdown",
+      "subprocess",
+      "execa"
+    ],
+    "decision": "Keep social-preview orchestration and native process adaptation separate. The lifecycle scope owns teardown; preserve exit status and await shutdown.",
+    "owners": [
+      "apps/web/scripts/social-preview-lifecycle.ts",
+      "apps/web/scripts/social-preview-native.ts"
+    ],
+    "sources": [
+      {
+        "name": "effect",
+        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "paths": [
+          "ai-docs/src/01_effect/05_resources/10_acquire-release.ts",
+          "packages/effect/src/Scope.ts",
+          "packages/effect/src/internal/effect.ts",
+          "packages/effect/test/Scope.test.ts"
+        ]
+      }
+    ],
+    "references": ["https://ratstack.sh/lore/scopes-own-resources"],
+    "checks": [
+      {
+        "kind": "behavior",
+        "path": "apps/web/scripts/social-preview-lifecycle.test.ts",
+        "claim": "Exercises preview resource cleanup through supplied dependencies."
+      }
+    ],
+    "exceptions": [
+      "Simple filesystem/path operations remain native; the root dev bootstrap retains flock while Execa owns process lifecycle without an Effect platform adapter."
+    ],
+    "gaps": [
+      "Process-tree and platform behavior need native verification beyond supplied adapters."
+    ],
+    "related": ["adapters-cartridges", "resource-ownership"]
+  },
+  {
+    "id": "replaceable-resources",
+    "title": "Replace resources without losing ownership",
+    "concerns": [
+      "texture",
+      "replacement",
+      "rollback",
+      "resource slot",
+      "superseded"
+    ],
+    "decision": "Reuse wet-ink resource slots for replaceable GPU textures. Keep candidate ownership during preparation and release superseded resources.",
+    "owners": ["apps/web/src/app/wet-ink-resources.ts"],
+    "sources": [
+      {
+        "name": "effect",
+        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "paths": [
+          "ai-docs/src/01_effect/05_resources/10_acquire-release.ts",
+          "packages/effect/src/Scope.ts",
+          "packages/effect/src/internal/effect.ts",
+          "packages/effect/test/Scope.test.ts"
+        ]
+      }
+    ],
+    "references": ["https://ratstack.sh/lore/scopes-own-resources"],
+    "checks": [
+      {
+        "kind": "behavior",
+        "path": "apps/web/src/app/wet-ink-resources.test.ts",
+        "claim": "Exercises replacement, rollback and close during preparation."
+      }
+    ],
+    "exceptions": [
+      "Restoring bindings depends on what the renderer can restore."
+    ],
+    "gaps": ["Real GPU binding validity requires browser evidence."],
+    "related": ["resource-ownership"]
+  },
+  {
+    "id": "submission-acceptance",
+    "title": "Submission acceptance and cancellation",
+    "concerns": [
+      "submit",
+      "attachment",
+      "acceptance",
+      "duplicate send",
+      "unconfirmed"
+    ],
+    "decision": "Keep attachment conversion and send identity in their existing coordinators. Clear input only after current accepted completion; preserve content on conversion failure or unconfirmed delivery.",
+    "owners": [
+      "apps/web/src/components/ai-elements/prompt-input-attachments.ts",
+      "apps/web/src/app/_components/agent-chat-submission.ts"
+    ],
+    "sources": [
+      {
+        "name": "effect",
+        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "paths": [
+          "ai-docs/src/01_effect/01_basics/10_creating-effects.ts",
+          "packages/effect/src/internal/effect.ts",
+          "packages/effect/test/Effect.test.ts"
+        ]
+      }
+    ],
+    "references": ["https://ratstack.sh/lore/concurrent-work-needs-an-owner"],
+    "checks": [
+      {
+        "kind": "behavior",
+        "path": "apps/web/src/components/ai-elements/prompt-input-attachments.test.ts",
+        "claim": "Exercises duplicate suppression, cancellation, failure and late completions."
+      },
+      {
+        "kind": "behavior",
+        "path": "apps/web/src/app/_components/agent-chat-submission.test.ts",
+        "claim": "Exercises acceptance outcomes through the Eve integration boundary."
+      }
+    ],
+    "exceptions": [
+      "Local cancellation does not undo remote acceptance; Eve retains session streaming and resume ownership."
+    ],
+    "gaps": ["Provider delivery guarantees require provider evidence."],
+    "related": ["typed-failures", "react-lifecycle"]
+  },
+  {
+    "id": "source-updates",
+    "title": "Source identity and dependency updates",
+    "concerns": [
+      "dependency",
+      "upgrade",
+      "source mirror",
+      "version",
+      "documentation",
+      "provenance"
+    ],
+    "decision": "Keep exact source provenance in the existing manifest. Check installed versions and mirrors before using their APIs; assess releases separately and revalidate dependent catalog entries when pins change.",
+    "owners": ["scripts/agent-sources.mjs", "scripts/agent-sources.json"],
+    "sources": [],
+    "references": ["https://ratstack.sh/AGENTS.md"],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "scripts/agent-sources.test.mjs",
+        "claim": "Exercises dirty mirrors, changed pins, moved tags and installed-version mismatches."
+      }
+    ],
+    "exceptions": [
+      "Source downloads are reference-only and do not authorize dependency upgrades."
+    ],
+    "gaps": [
+      "Matching source identity does not prove an agent read or understood it."
+    ],
+    "related": ["actor-lifecycle", "resource-ownership", "runtime-boundary"]
+  },
+  {
+    "id": "bounded-work",
+    "title": "Bound work before it reaches a provider",
+    "concerns": [
+      "concurrency",
+      "backpressure",
+      "admission",
+      "queue",
+      "result",
+      "bounds"
+    ],
+    "decision": "Name the producer, queue, active workers and result allocation separately. Bound each relevant stage using measured limits, propagate waiting or refusal to producers, and reserve independent capacity for work that must not starve. Apply result limits before the driver materializes rows.",
+    "owners": ["agent-patterns/engineering-policies.md"],
+    "sources": [],
+    "references": [
+      "https://ratstack.sh/lore/concurrent-work-needs-an-owner",
+      "https://ratstack.sh/lore/backpressure-reaches-the-producer",
+      "https://ratstack.sh/lore/admission-controls-new-work",
+      "https://ratstack.sh/lore/queries-need-result-bounds",
+      "https://ratstack.sh/lore/bulkheads-isolate-capacity"
+    ],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "agent-patterns/engineering-policies.md",
+        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+      }
+    ],
+    "exceptions": [
+      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+    ],
+    "gaps": [
+      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+    ],
+    "related": ["resource-ownership", "shared-requests"]
+  },
+  {
+    "id": "retry-and-timeout-policy",
+    "title": "Retries require identity and a budget",
+    "concerns": [
+      "retry",
+      "timeout",
+      "idempotency",
+      "deduplication",
+      "ambiguous",
+      "outcome"
+    ],
+    "decision": "Retry only classified transient failures under a total attempt and time budget. Establish receiver-side idempotency before retrying writes. A timeout means local waiting ended, not that remote execution failed. Treat already-absent cleanup as success only when absence is the promised postcondition.",
+    "owners": ["agent-patterns/engineering-policies.md"],
+    "sources": [],
+    "references": [
+      "https://ratstack.sh/lore/retry-needs-idempotency",
+      "https://ratstack.sh/lore/retry-load-needs-a-budget",
+      "https://ratstack.sh/lore/timeouts-bound-waiting",
+      "https://ratstack.sh/lore/cleanup-can-be-an-idempotent-postcondition"
+    ],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "agent-patterns/engineering-policies.md",
+        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+      }
+    ],
+    "exceptions": [
+      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+    ],
+    "gaps": [
+      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+    ],
+    "related": ["typed-failures", "submission-acceptance"]
+  },
+  {
+    "id": "durable-work-and-replay",
+    "title": "Persist required work and recovery facts",
+    "concerns": [
+      "durability",
+      "checkpoint",
+      "replay",
+      "timer",
+      "dead",
+      "letter",
+      "crash",
+      "restart"
+    ],
+    "decision": "Before promising crash recovery, name the authoritative durable store, work identity, commit boundary, checkpoint and redrive owner. Persist scheduled intent and external decisions needed for replay. Commit progress with state when one transaction can own both; otherwise design and test reconciliation. Retain exhausted work with a deliberate redrive path.",
+    "owners": ["agent-patterns/engineering-policies.md"],
+    "sources": [],
+    "references": [
+      "https://ratstack.sh/lore/durability",
+      "https://ratstack.sh/lore/durable-work-needs-storage",
+      "https://ratstack.sh/lore/request-lifetime-is-not-durability",
+      "https://ratstack.sh/lore/checkpoints-follow-commits",
+      "https://ratstack.sh/lore/replay-needs-stable-inputs",
+      "https://ratstack.sh/lore/durable-timers-need-recovery",
+      "https://ratstack.sh/lore/dead-letters-need-a-return-path"
+    ],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "agent-patterns/engineering-policies.md",
+        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+      }
+    ],
+    "exceptions": [
+      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+    ],
+    "gaps": [
+      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+    ],
+    "related": ["schema-evolution", "capacity-and-recovery"]
+  },
+  {
+    "id": "schema-evolution",
+    "title": "Preserve decoding during representation changes",
+    "concerns": [
+      "schema",
+      "migration",
+      "compatibility",
+      "old",
+      "events",
+      "transition"
+    ],
+    "decision": "Define which retained versions remain readable before changing a schema. Plan coexistence, conversion and consumer migration before deleting the old representation. Test historical payloads and rollback against the owning decoder.",
+    "owners": ["agent-patterns/engineering-policies.md"],
+    "sources": [],
+    "references": [
+      "https://ratstack.sh/lore/old-events-must-still-decode",
+      "https://ratstack.sh/lore/schema-changes-need-a-transition"
+    ],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "agent-patterns/engineering-policies.md",
+        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+      }
+    ],
+    "exceptions": [
+      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+    ],
+    "gaps": [
+      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+    ],
+    "related": ["validated-input", "durable-work-and-replay"]
+  },
+  {
+    "id": "service-composition",
+    "title": "Compose dependencies at the integration owner",
+    "concerns": [
+      "layer",
+      "service",
+      "dependency",
+      "injection",
+      "context",
+      "requirements",
+      "constructor"
+    ],
+    "decision": "Name services for application jobs, capture stable construction dependencies once, and supply implementations at the existing composition owner. Keep per-request identity separate from long-lived construction dependencies. Preserve visible requirements and deliberate sharing; verify exact library APIs through pinned source before changing composition.",
+    "owners": ["agent-patterns/engineering-policies.md"],
+    "sources": [],
+    "references": [
+      "https://ratstack.sh/lore/effect-basics",
+      "https://ratstack.sh/lore/context-and-requirements",
+      "https://ratstack.sh/lore/dependency-injection-is-the-reason-to-choose-effect",
+      "https://ratstack.sh/lore/layers-make-dependencies-explicit",
+      "https://ratstack.sh/lore/services-capture-dependencies",
+      "https://ratstack.sh/lore/layer-constructor-pattern"
+    ],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "agent-patterns/engineering-policies.md",
+        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+      }
+    ],
+    "exceptions": [
+      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+    ],
+    "gaps": [
+      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+    ],
+    "related": ["runtime-boundary", "adapters-cartridges"]
+  },
+  {
+    "id": "behavioral-verification",
+    "title": "Tests preserve independent behavioral evidence",
+    "concerns": [
+      "testing",
+      "property",
+      "model",
+      "generated",
+      "histories",
+      "mutation",
+      "agent",
+      "exploration"
+    ],
+    "decision": "State the failure a test detects before writing it. Keep the expected result independent of the implementation. Use a focused example for a seam, properties for input invariants and model histories for stateful ordering. Reproduce useful agent-discovered failures and demonstrate new guardrails reject a planted violation.",
+    "owners": ["agent-patterns/engineering-policies.md"],
+    "sources": [],
+    "references": [
+      "https://ratstack.sh/lore/tests-that-earn-their-place",
+      "https://ratstack.sh/lore/property-based-testing",
+      "https://ratstack.sh/lore/model-based-testing",
+      "https://ratstack.sh/lore/recovery-needs-model-tests",
+      "https://ratstack.sh/lore/agents-explore-tests-remember",
+      "https://ratstack.sh/lore/the-fence"
+    ],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "agent-patterns/engineering-policies.md",
+        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+      }
+    ],
+    "exceptions": [
+      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+    ],
+    "gaps": [
+      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+    ],
+    "related": ["actor-lifecycle", "source-updates"]
+  },
+  {
+    "id": "observability-policy",
+    "title": "Observe meaningful outcomes and overload",
+    "concerns": [
+      "observability",
+      "tracing",
+      "metrics",
+      "latency",
+      "traffic",
+      "saturation",
+      "errors",
+      "privacy"
+    ],
+    "decision": "Observe named application operations and their failures, latency, traffic and saturation. Preserve correlation and useful failure context while excluding credentials and private payloads. Capture only data the product is authorized to retain; define retention and deletion before adding event storage.",
+    "owners": ["agent-patterns/engineering-policies.md"],
+    "sources": [],
+    "references": [
+      "https://ratstack.sh/lore/trace-meaningful-operations",
+      "https://ratstack.sh/lore/golden-signals-expose-overload",
+      "https://ratstack.sh/lore/capture-first"
+    ],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "agent-patterns/engineering-policies.md",
+        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+      }
+    ],
+    "exceptions": [
+      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+    ],
+    "gaps": [
+      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+    ],
+    "related": ["typed-failures", "capacity-and-recovery"]
+  },
+  {
+    "id": "domain-boundaries",
+    "title": "Keep domain decisions independent of providers",
+    "concerns": [
+      "domain",
+      "pure",
+      "core",
+      "hexagonal",
+      "port",
+      "adapter",
+      "mutable",
+      "state"
+    ],
+    "decision": "Keep deterministic domain decisions separate from time, I/O and provider coordination. Group contracts and decisions with the application job, inject adapters at composition, and verify the import graph and callers before claiming a component can be replaced or removed.",
+    "owners": ["agent-patterns/engineering-policies.md"],
+    "sources": [],
+    "references": [
+      "https://ratstack.sh/lore/pure-cores-reduce-timelines",
+      "https://ratstack.sh/lore/structure-effect-by-domain",
+      "https://ratstack.sh/lore/hexagonal-architecture",
+      "https://ratstack.sh/lore/cartridges",
+      "https://ratstack.sh/lore/a-clean-playground"
+    ],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "agent-patterns/engineering-policies.md",
+        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+      }
+    ],
+    "exceptions": [
+      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+    ],
+    "gaps": [
+      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+    ],
+    "related": ["adapters-cartridges", "service-composition"]
+  },
+  {
+    "id": "transport-contracts",
+    "title": "Validate status and data at transport boundaries",
+    "concerns": [
+      "http",
+      "response",
+      "decode",
+      "status",
+      "schema",
+      "errors",
+      "openapi"
+    ],
+    "decision": "Validate transport status and external payloads before application use. Keep declared input, output and refusal behavior consistent across exposed surfaces. Preserve causes while reporting actionable location and repair information. Inspect framework-owned transport contracts and pinned HTTP client guidance before adding another adapter.",
+    "owners": ["agent-patterns/engineering-policies.md"],
+    "sources": [],
+    "references": [
+      "https://ratstack.sh/lore/http-responses-need-validation",
+      "https://ratstack.sh/lore/schemas-define-the-boundary",
+      "https://ratstack.sh/lore/one-schema-three-surfaces",
+      "https://ratstack.sh/lore/openapi-describes-the-refusal-too",
+      "https://ratstack.sh/lore/errors-are-part-of-the-interface",
+      "https://ratstack.sh/lore/error-model",
+      "https://ratstack.sh/lore/failures-keep-their-meaning"
+    ],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "agent-patterns/engineering-policies.md",
+        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+      }
+    ],
+    "exceptions": [
+      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+    ],
+    "gaps": [
+      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+    ],
+    "related": ["validated-input", "typed-failures"]
+  },
+  {
+    "id": "content-build-pipeline",
+    "title": "Preflight and resolve source content at build time",
+    "concerns": [
+      "content",
+      "snippets",
+      "highlighting",
+      "tokenize",
+      "build",
+      "preflight",
+      "diagnostics",
+      "provenance"
+    ],
+    "decision": "For future external source snippets, pin source identity, preflight independent requests before emitting assets, tokenize full source before selecting excerpt lines, and derive rendered views from one source model. Preserve the current content pipeline until a change has a concrete owner and behavior test; do not introduce request-time source fetching.",
+    "owners": ["agent-patterns/engineering-policies.md"],
+    "sources": [],
+    "references": [
+      "https://ratstack.sh/lore/build-time-work-stays-out-of-requests",
+      "https://ratstack.sh/lore/code-snippets",
+      "https://ratstack.sh/lore/one-snippet-model-two-renderers",
+      "https://ratstack.sh/lore/tokenize-before-slicing",
+      "https://ratstack.sh/lore/engine-neutral-tokens-keep-adapters-replaceable",
+      "https://ratstack.sh/lore/accumulate-independent-errors"
+    ],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "agent-patterns/engineering-policies.md",
+        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+      }
+    ],
+    "exceptions": [
+      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+    ],
+    "gaps": [
+      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+    ],
+    "related": ["validated-input", "source-updates", "adapters-cartridges"]
+  },
+  {
+    "id": "capacity-and-recovery",
+    "title": "Make recovery and overload policies explicit",
+    "concerns": [
+      "supervision",
+      "circuit",
+      "breaker",
+      "restart",
+      "recovery",
+      "resource",
+      "recycling"
+    ],
+    "decision": "Name each task lifetime, failure observer and recovery owner. Specify what restarts, which state is reconstructed and when repeated recovery stops. Model circuit-breaker states and probe admission before introducing one. Recycle bounded resources and verify recovery under load; in-process task ownership does not establish process isolation or durable recovery.",
+    "owners": ["agent-patterns/engineering-policies.md"],
+    "sources": [],
+    "references": [
+      "https://ratstack.sh/lore/effect-is-not-beam",
+      "https://ratstack.sh/lore/every-task-needs-an-owner",
+      "https://ratstack.sh/lore/supervision-is-a-recovery-policy",
+      "https://ratstack.sh/lore/restart-from-known-state",
+      "https://ratstack.sh/lore/circuit-breakers-have-state",
+      "https://ratstack.sh/lore/steady-state-recycles-resources"
+    ],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "agent-patterns/engineering-policies.md",
+        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+      }
+    ],
+    "exceptions": [
+      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+    ],
+    "gaps": [
+      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+    ],
+    "related": ["actor-lifecycle", "bounded-work", "durable-work-and-replay"]
+  },
+  {
+    "id": "agent-surface-parity",
+    "title": "Expose application jobs consistently to agents",
+    "concerns": [
+      "mcp",
+      "tool",
+      "cli",
+      "search",
+      "navigation",
+      "capability",
+      "permissions"
+    ],
+    "decision": "Expose existing application jobs through shared contracts and handlers when additional surfaces are needed. Provide discovery, actionable links and explicit permissions. Batch or compose calls only within the original authority. Verify the actual host can discover and execute the surface; a protocol response alone does not establish host UI behavior.",
+    "owners": ["agent-patterns/engineering-policies.md"],
+    "sources": [],
+    "references": [
+      "https://ratstack.sh/lore/one-capability-every-surface",
+      "https://ratstack.sh/lore/mcp-is-another-surface",
+      "https://ratstack.sh/lore/an-mcp-your-users-want",
+      "https://ratstack.sh/lore/one-program-can-replace-several-tool-calls",
+      "https://ratstack.sh/lore/hateoas",
+      "https://ratstack.sh/lore/two-lines-of-curl-is-a-front-door",
+      "https://ratstack.sh/lore/how-we-do-it-with-effect"
+    ],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "agent-patterns/engineering-policies.md",
+        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+      }
+    ],
+    "exceptions": [
+      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+    ],
+    "gaps": [
+      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+    ],
+    "related": ["transport-contracts", "adapters-cartridges"]
+  },
+  {
+    "id": "infrastructure-planning",
+    "title": "Review infrastructure ownership before applying",
+    "concerns": [
+      "infrastructure",
+      "alchemy",
+      "plan",
+      "bindings",
+      "deploy",
+      "permissions",
+      "initialization"
+    ],
+    "decision": "For new infrastructure, identify resource ownership, provider support, permission bindings and deploy-versus-runtime initialization. Inspect a concrete plan before applying it and test the target platform. Existing hosting and framework choices remain authoritative; this policy does not migrate the site to Alchemy or Cloudflare.",
+    "owners": ["agent-patterns/engineering-policies.md"],
+    "sources": [],
+    "references": [
+      "https://ratstack.sh/lore/infrastructure-as-effects",
+      "https://ratstack.sh/lore/cloud-as-a-library",
+      "https://ratstack.sh/lore/bindings",
+      "https://ratstack.sh/lore/plan-model",
+      "https://ratstack.sh/lore/init-runs-twice",
+      "https://ratstack.sh/lore/ambient-cloud",
+      "https://ratstack.sh/lore/distilled"
+    ],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "agent-patterns/engineering-policies.md",
+        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+      }
+    ],
+    "exceptions": [
+      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+    ],
+    "gaps": [
+      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+    ],
+    "related": ["adapters-cartridges", "source-updates"]
+  },
+  {
+    "id": "configuration-boundaries",
+    "title": "Validate configuration at its owner",
+    "concerns": [
+      "configuration",
+      "environment",
+      "secrets",
+      "redaction",
+      "startup",
+      "test",
+      "injection"
+    ],
+    "decision": "Read and validate configuration at the owning startup or integration boundary, pass typed values to consumers, and supply controlled settings in tests. Keep request identity outside shared configuration and redact secrets from diagnostics. Preserve framework-required environment handling.",
+    "owners": ["agent-patterns/engineering-policies.md"],
+    "sources": [],
+    "references": ["https://ratstack.sh/lore/configuration-is-a-dependency"],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "agent-patterns/engineering-policies.md",
+        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+      }
+    ],
+    "exceptions": [
+      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+    ],
+    "gaps": [
+      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+    ],
+    "related": ["service-composition", "validated-input"]
+  }
+]

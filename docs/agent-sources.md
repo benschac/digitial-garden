@@ -53,3 +53,9 @@ These checks establish source identity and declared peer compatibility; applicat
 4. Check upstream releases separately when assessing upgrades. Never substitute upstream HEAD for the version whose behavior the application depends on.
 
 The workflow adapts rat-stack's [source-first guidance](https://ratstack.sh/AGENTS.md) and [source mirror utility](https://github.com/joelhooks/rat-stack/blob/main/scripts/vendor-agent-sources.sh).
+
+## Pattern invalidation on upgrades
+
+The [pattern catalog](../agent-patterns/catalog.md) records the source commit supporting each library-dependent decision. Before changing a pin, run `bun run patterns affected effect` or `bun run patterns affected xstate-effect` to enumerate the decisions to revisit. This command remains available when recorded evidence is stale. After changing a pin, `patterns:check` fails until the corresponding catalog evidence matches the manifest; do not update commits mechanically. Read the changed upstream documentation, implementation, and tests, adjust the local decision where necessary, and run its behavioral checks.
+
+`bun run patterns:check` runs in the verification fence without requiring downloaded mirrors. `bun run patterns:check-sources` additionally checks mirror provenance and the cited upstream files. Missing mirrors require `sources:fetch`; dirty or mismatched mirrors remain protected by the existing source workflow. Neither command fetches documentation or upgrades dependencies.

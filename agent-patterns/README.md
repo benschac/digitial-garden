@@ -2,6 +2,8 @@
 
 Implementation agents and reviewers must use this workflow for work involving Effect, XState, or their framework integrations, including custom adapters that might duplicate a library capability. Read upstream documentation and examples from the matching source checkout; keep this directory procedural rather than copying API recipes here.
 
+Use the [pattern catalog](catalog.md) to find project decisions by concern: `bun run patterns search cancellation`, then `bun run patterns show <id>`. Entries link owners, upstream files, checks, exceptions, and related concerns. The catalog routes this workflow; it does not replace source reading. `bun run patterns list --json` exposes the same records to agent tooling without a separate knowledge store or server.
+
 ## Before implementation
 
 1. **Name the concern and owner.** Identify the behavior being changed and its application owner. Check the [standard-library directory](../docs/standard-libraries.md) and existing exports first. Search by the concern, such as HTTP, caching, retries, subscriptions, or resource lifetime, before choosing a low-level wrapper.

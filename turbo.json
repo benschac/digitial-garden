@@ -144,10 +144,31 @@
         "package.json",
         "bun.lock",
         "apps/*/turbo.json",
-        "packages/*/turbo.json"
+        "packages/*/turbo.json",
+        "agent-patterns/**"
       ]
     },
-    "test:content": {}
+    "test:content": {},
+    "//#patterns:check": {
+      "inputs": [
+        "AGENTS.md",
+        "agent-patterns/**",
+        "scripts/agent-patterns.mjs",
+        "scripts/agent-sources.mjs",
+        "scripts/agent-sources.json",
+        "apps/web/package.json",
+        "bun.lock",
+        "apps/web/src/**",
+        "apps/web/agent/**",
+        "apps/web/scripts/**",
+        "packages/*/src/**",
+        "scripts/**",
+        "tools/oxlint/**",
+        "oxlint.config.mts",
+        "docs/**",
+        "package.json"
+      ]
+    }
   },
   "cacheDir": ".turbo/cache",
   "futureFlags": {

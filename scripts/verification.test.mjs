@@ -29,6 +29,7 @@ const checks = [
   "format:check",
   "format:root",
   "test:tools",
+  "patterns:check",
   "check-types",
   "test",
   "test:content",
@@ -159,6 +160,30 @@ test("documentation changes select formatting without application checks or buil
   ]);
 });
 
+test("pattern evidence changes select catalog validation and tooling tests", (t) => {
+  const { plan, write } = fixture(t);
+  write("agent-patterns/catalog.json", "[]\n");
+  const tasks = plan(...checks);
+  assert.ok(tasks.includes("//#patterns:check"));
+  assert.ok(tasks.includes("//#test:tools"));
+  assert.ok(!tasks.includes("@personal-site/web#check-types"));
+});
+
+test("linked agent guidance invalidates inventory validation", (t) => {
+  const { plan, write } = fixture(t);
+  write("AGENTS.md", "Changed linked policy\n");
+  assert.ok(plan(...checks).includes("//#patterns:check"));
+});
+
+test("pattern plugins invalidate consumer lint and catalog checks", (t) => {
+  const { plan, write } = fixture(t);
+  write("tools/oxlint/patterns/index.ts", "export const plugin = 1;\n");
+  const tasks = plan(...checks);
+  assert.ok(tasks.includes("//#patterns:check"));
+  assert.ok(tasks.includes("//#test:tools"));
+  assert.ok(tasks.includes("@personal-site/web#lint"));
+});
+
 test("shared source selects consumer checks, while Storybook assets do not rebuild the app", (t) => {
   const { plan, write } = fixture(t);
   write("packages/ui/src/index.ts", "export const value = 2;\n");
@@ -267,13 +292,19 @@ test("standalone typechecks and tests use affected selection with explicit full 
   }
 });
 
-test("application source checks stay within the consumer package", (t) => {
+test("application source checks select the consumer and catalog links", (t) => {
   const { plan, write } = fixture(t);
   write("apps/web/src/components/button.tsx", "export const Button = 1;\n");
   const tasks = plan(...checks);
   assert.ok(tasks.includes("@personal-site/web#check-types"));
   assert.ok(tasks.includes("@personal-site/web#test"));
-  assert.ok(tasks.every((task) => task.startsWith("@personal-site/web#")));
+  assert.ok(tasks.includes("//#patterns:check"));
+  assert.ok(
+    tasks.every(
+      (task) =>
+        task.startsWith("@personal-site/web#") || task === "//#patterns:check"
+    )
+  );
   assert.deepEqual(plan("typegen"), []);
   assert.ok(!tasks.includes("@personal-site/web#test:content"));
 });

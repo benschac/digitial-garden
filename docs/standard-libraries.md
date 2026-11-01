@@ -2,6 +2,8 @@
 
 Check this directory before writing a new helper or adding a dependency. Read the linked implementation and its types before reuse; the source owns the contract.
 
+For the decision behind an owner, use the [pattern catalog](../agent-patterns/catalog.md): `bun run patterns search <concern>`. It links source evidence, enforcing checks, and known gaps. This directory remains the API discovery surface; catalog entries describe when and why to reuse the owner.
+
 ## React and browser lifecycle
 
 Import these from `@personal-site/react-hooks`. Public exports live in [`packages/react-hooks/src/index.ts`](../packages/react-hooks/src/index.ts).
