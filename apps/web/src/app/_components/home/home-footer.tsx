@@ -18,7 +18,7 @@ export const HomeFooter = () => {
 
   return (
     <footer className="mt-[clamp(2rem,4vw,4rem)] text-ink" translate="no">
-      <div className="mx-auto max-w-[80rem] px-[clamp(1.5rem,4vw,3rem)]">
+      <div className="mx-auto max-w-7xl px-[clamp(1.5rem,4vw,3rem)]">
         <div className={styles.wordmark}>
           <FooterAvatar />
           <div

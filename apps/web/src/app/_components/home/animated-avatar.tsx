@@ -18,7 +18,7 @@ export const AnimatedAvatar = ({ children }: { children: ReactNode }) => {
         className={cn(
           "absolute top-1/2 left-[75%] aspect-square",
           "w-[clamp(28rem,125vw,48rem)] sm:left-[72%] sm:w-[clamp(64rem,115vw,100rem)]",
-          "opacity-[0.22] [transform:translate(-50%,-46%)_rotate(-12deg)]"
+          "opacity-[0.22] transform-[translate(-50%,-46%)_rotate(-12deg)]"
         )}
       >
         {children}
