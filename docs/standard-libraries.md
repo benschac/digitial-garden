@@ -50,7 +50,7 @@ Refs must point to mounted elements when observation starts. If initialization i
 
 ## Next.js and tooling
 
-- [`dev.sh`](../scripts/dev.sh) owns the root development session. A per-checkout file lock prevents competing launchers from claiming the same city. It starts a stopped Gas City, runs Turbo in a separate process group, and releases both on exit or interruption. It leaves an independently running city alone. The root package has no Effect platform adapter, so this launcher uses Bash job control and traps without adding dependencies.
+- [`dev.sh`](../scripts/dev.sh) retains the per-checkout `flock` lock and starts [`dev.mjs`](../scripts/dev.mjs), which owns the root development session through Execa. It starts a stopped Gas City, runs Turbo in a separate process group, and waits for cancellation before stopping a city it started. An independently running city stays running. Execa's descendant termination owns process-group cleanup without forced escalation. The small Bash bootstrap preserves existing kernel locks; the root has no Effect platform adapter.
 
 - `bun run check-types:effect` runs the web project through the pinned Effect-patched `tsrs` runner. The Effect language-service plugin is configured in `apps/web/tsconfig.json`; the existing TypeScript checks remain the default. See [checks](../README.md#checks) for compatibility findings and editor setup boundaries.
 
