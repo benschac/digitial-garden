@@ -9,7 +9,7 @@
     "dev": "node scripts/dev.mjs",
     "eve:info": "eve info",
     "lint": "oxlint .",
-    "test": "bun test",
+    "test": "bun test --path-ignore-patterns '**/repository-posts.test.ts'",
     "check-types": "tsc --noEmit",
     "wasm:build": "CARGO_TARGET_DIR=/tmp/personal-site-wasm-target cargo build --manifest-path ../../packages/wasm-canvas-engine/Cargo.toml --target wasm32-unknown-unknown --release && mkdir -p public/wasm && cp /tmp/personal-site-wasm-target/wasm32-unknown-unknown/release/wasm_canvas_engine.wasm public/wasm/particle-engine.wasm",
     "wasm:dev": "bun run --parallel --no-orphans dev wasm:watch",
@@ -20,7 +20,8 @@
     "start": "next start",
     "start:eve": "eve start",
     "format:check": "oxfmt --check .",
-    "typegen": "next typegen"
+    "typegen": "next typegen",
+    "test:content": "bun test ./src/lib/content/repository-posts.test.ts"
   },
   "dependencies": {
     "@capsizecss/core": "^4.1.3",

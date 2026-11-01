@@ -19,7 +19,7 @@ const binary = fileURLToPath(
 
 const config = fileURLToPath(new URL("../oxlint.config.mts", import.meta.url));
 
-for (const probe of [
+const probes = [
   {
     file: "apps/web/src/probe.mjs",
     rejected: true,
@@ -80,43 +80,70 @@ for (const probe of [
     rejected: true,
     source: `// @ts-${directive}\nexport const value = 1;`,
   })),
-]) {
-  test(`${probe.rejected ? "rejects" : "accepts"} ${probe.file}: ${probe.source}`, (t) => {
-    const cwd = mkdtempSync(path.join(tmpdir(), "personal-site-fence-"));
-    t.after(() => rmSync(cwd, { force: true, recursive: true }));
-    copyFileSync(config, path.join(cwd, "oxlint.config.mts"));
+];
 
-    for (const directory of ["node_modules", "tools"]) {
-      symlinkSync(
-        fileURLToPath(new URL(`../${directory}`, import.meta.url)),
-        path.join(cwd, directory)
-      );
-    }
+test("enforces repository import and suppression boundaries", async (t) => {
+  const cwd = mkdtempSync(path.join(tmpdir(), "personal-site-fence-"));
+  t.after(() => rmSync(cwd, { force: true, recursive: true }));
+  copyFileSync(config, path.join(cwd, "oxlint.config.mts"));
 
-    const file = path.join(cwd, probe.file);
-    mkdirSync(path.dirname(file), { recursive: true });
-    writeFileSync(file, `${probe.source}\n`);
-
-    const result = spawnSync(
-      process.execPath,
-      [
-        binary,
-        "--config",
-        path.join(cwd, "oxlint.config.mts"),
-        "--format=json",
-        probe.file,
-      ],
-      { cwd, encoding: "utf-8" }
+  for (const directory of ["node_modules", "tools"]) {
+    symlinkSync(
+      fileURLToPath(new URL(`../${directory}`, import.meta.url)),
+      path.join(cwd, directory)
     );
+  }
 
-    assert.equal(
-      result.status,
-      probe.rejected ? 1 : 0,
-      `${result.stdout}${result.stderr}`
-    );
+  const files = probes.map((probe, index) => {
+    const extension = path.extname(probe.file);
+    const file = probe.file.replace(extension, `-${index}${extension}`);
+    const target = path.join(cwd, file);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, `${probe.source}\n`);
 
-    if (probe.rejected) {
-      assert.match(result.stdout, /no-restricted-imports|ban-ts-comment/u);
-    }
+    return file;
   });
-}
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      binary,
+      "--config",
+      path.join(cwd, "oxlint.config.mts"),
+      "--format=json",
+      ...files,
+    ],
+    { cwd, encoding: "utf-8" }
+  );
+
+  assert.equal(result.status, 1, `${result.stdout}${result.stderr}`);
+  const { diagnostics } = JSON.parse(result.stdout);
+
+  await Promise.all(
+    probes.map((probe, index) =>
+      t.test(
+        `${probe.rejected ? "rejects" : "accepts"} ${probe.file}: ${probe.source}`,
+        () => {
+          const actual = diagnostics.filter(
+            (diagnostic) => diagnostic.filename === files[index]
+          );
+
+          assert.equal(
+            actual.length > 0,
+            probe.rejected,
+            JSON.stringify(actual)
+          );
+
+          if (probe.rejected) {
+            assert.ok(
+              actual.some((diagnostic) =>
+                /no-restricted-imports|ban-ts-comment/u.test(diagnostic.code)
+              ),
+              JSON.stringify(actual)
+            );
+          }
+        }
+      )
+    )
+  );
+});

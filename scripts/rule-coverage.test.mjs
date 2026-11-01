@@ -93,7 +93,7 @@ test("all mapped Biome rules are enabled at their previous severity or higher", 
   }
 });
 
-for (const probe of [
+const probes = [
   {
     diagnostic: "anti-slop(no-array-filter-map)",
     name: "anti-slop array traversal",
@@ -106,43 +106,52 @@ for (const probe of [
     source:
       'export const ready = (value: { _tag: "Ready" | "Pending" }) => value._tag === "Ready";\n',
   },
-]) {
-  test(`reports ${probe.name}`, (t) => {
-    const cwd = fixture(t);
-    writeFileSync(path.join(cwd, "probe.tsx"), probe.source);
+  {
+    diagnostic: undefined,
+    name: "Biome's intentional loose null comparison exception",
+    source:
+      "export const isNullish = (value: string | null | undefined) => value == null;\n",
+  },
+];
 
-    const result = spawnSync(
-      process.execPath,
-      [binary, "--config", config, "--format=json", "probe.tsx"],
-      {
-        cwd,
-        encoding: "utf-8",
-      }
-    );
-
-    assert.equal(result.status, 1, result.stderr);
-    assert.ok(
-      `${result.stdout}${result.stderr}`.includes(probe.diagnostic),
-      `${probe.diagnostic} must be reported: ${result.stdout}${result.stderr}`
-    );
-  });
-}
-
-test("preserves Biome's intentional loose null comparison exception", (t) => {
+test("preserves behavioral rule coverage", async (t) => {
   const cwd = fixture(t);
-  writeFileSync(
-    path.join(cwd, "probe.ts"),
-    "export const isNullish = (value: string | null | undefined) => value == null;\n"
-  );
+
+  const files = probes.map((probe, index) => {
+    const file = `probe-${index}.tsx`;
+    writeFileSync(path.join(cwd, file), probe.source);
+
+    return file;
+  });
 
   const result = spawnSync(
     process.execPath,
-    [binary, "--config", config, "--format=json", "probe.ts"],
-    {
-      cwd,
-      encoding: "utf-8",
-    }
+    [binary, "--config", config, "--format=json", ...files],
+    { cwd, encoding: "utf-8" }
   );
 
-  assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+  assert.equal(result.status, 1, `${result.stdout}${result.stderr}`);
+  const { diagnostics } = JSON.parse(result.stdout);
+
+  await Promise.all(
+    probes.map((probe, index) =>
+      t.test(
+        probe.diagnostic ? `reports ${probe.name}` : `preserves ${probe.name}`,
+        () => {
+          const actual = diagnostics.filter(
+            (diagnostic) => diagnostic.filename === files[index]
+          );
+
+          if (probe.diagnostic) {
+            assert.ok(
+              actual.some((diagnostic) => diagnostic.code === probe.diagnostic),
+              JSON.stringify(actual)
+            );
+          } else {
+            assert.deepEqual(actual, []);
+          }
+        }
+      )
+    )
+  );
 });
