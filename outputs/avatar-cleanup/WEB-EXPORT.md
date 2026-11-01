@@ -24,11 +24,11 @@ The simplifier stops above 30,000 triangles to respect its error tolerance. The 
 ## Load in Three.js
 
 ```js
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-const avatar = await loader.loadAsync('/models/avatar-web.glb');
+const avatar = await loader.loadAsync("/models/avatar-web.glb");
 scene.add(avatar.scene);
 ```
 

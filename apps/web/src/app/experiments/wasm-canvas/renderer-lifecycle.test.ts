@@ -3,26 +3,16 @@ import { describe, expect, test } from "bun:test";
 import type { ParticleRenderer } from "./particle-renderer";
 import { createRendererScope, withRendererScope } from "./renderer-lifecycle";
 
-function makeRenderer(destroy: () => void): ParticleRenderer {
-  return {
-    destroy,
-    kind: "Rust/WASM + WebGPU",
-    maxParticleCount: 10,
-    render: () => undefined,
-    resize: () => undefined,
-    setParticleCount: (count) => count,
-  };
-}
+const makeRenderer = (destroy: () => void): ParticleRenderer => ({
+  destroy,
+  kind: "Rust/WASM + WebGPU",
+  maxParticleCount: 10,
+  render: () => {},
+  resize: () => {},
+  setParticleCount: (count) => count,
+});
 
-function deferred<T>() {
-  let resolveValue: (value: T) => void = () => {
-    throw new Error("Deferred value was not initialized.");
-  };
-  const promise = new Promise<T>((resolve) => {
-    resolveValue = resolve;
-  });
-  return { promise, resolve: resolveValue };
-}
+const deferred = <T>() => Promise.withResolvers<T>();
 
 describe("renderer lifecycle", () => {
   test("releases partial synchronous acquisitions when a later acquisition throws", () => {
@@ -31,15 +21,15 @@ describe("renderer lifecycle", () => {
 
     scope.acquire(
       () => "device",
-      (resource) => released.push(resource),
+      (resource) => released.push(resource)
     );
     expect(() =>
       scope.acquire(
         () => {
           throw new Error("Buffer allocation failed");
         },
-        () => undefined,
-      ),
+        () => {}
+      )
     ).toThrow("Buffer allocation failed");
 
     scope.close();
@@ -53,20 +43,19 @@ describe("renderer lifecycle", () => {
       withRendererScope(new AbortController().signal, async (activeScope) => {
         activeScope.acquire(
           () => "device",
-          (resource) => released.push(resource),
+          (resource) => released.push(resource)
         );
         activeScope.acquire(
           () => "buffer",
-          (resource) => released.push(resource),
+          (resource) => released.push(resource)
         );
         await activeScope.acquirePromise(
-          async () => {
-            throw new Error("Shader compilation failed");
-          },
-          () => undefined,
+          () => Promise.reject(new Error("Shader compilation failed")),
+          () => {}
         );
+
         return null;
-      }),
+      })
     ).rejects.toThrow();
 
     expect(released).toEqual(["buffer", "device"]);
@@ -77,13 +66,14 @@ describe("renderer lifecycle", () => {
 
     const renderer = await withRendererScope(
       new AbortController().signal,
-      async (scope) => {
+      (scope) => {
         scope.acquire(
           () => "device",
-          (resource) => released.push(resource),
+          (resource) => released.push(resource)
         );
-        return null;
-      },
+
+        return Promise.resolve(null);
+      }
     );
 
     expect(renderer).toBeNull();
@@ -92,9 +82,13 @@ describe("renderer lifecycle", () => {
 
   test("keeps the renderer alive until destroy and releases it exactly once", async () => {
     let destroyCount = 0;
-    const renderer = await withRendererScope(
-      new AbortController().signal,
-      async () => makeRenderer(() => destroyCount++),
+
+    const renderer = await withRendererScope(new AbortController().signal, () =>
+      Promise.resolve(
+        makeRenderer(() => {
+          destroyCount += 1;
+        })
+      )
     );
 
     expect(renderer).not.toBeNull();
@@ -108,15 +102,16 @@ describe("renderer lifecycle", () => {
     const initializationError = new Error("Shader setup failed");
 
     await expect(
-      withRendererScope(new AbortController().signal, async (scope) => {
+      withRendererScope(new AbortController().signal, (scope) => {
         scope.acquire(
           () => "device",
           () => {
             throw new Error("Device cleanup failed");
-          },
+          }
         );
-        throw initializationError;
-      }),
+
+        return Promise.reject(initializationError);
+      })
     ).rejects.toBe(initializationError);
   });
 
@@ -127,18 +122,21 @@ describe("renderer lifecycle", () => {
     const started = deferred<undefined>();
     const released: string[] = [];
     let rendererDestroyCount = 0;
+
     const initialization = withRendererScope(
       controller.signal,
       async (scope) => {
         await scope.acquirePromise(
           () => {
             started.resolve(undefined);
+
             return resource.promise;
           },
-          (value) => released.push(value),
+          (value) => released.push(value)
         );
-        return makeRenderer(() => rendererDestroyCount++);
-      },
+
+        return makeRenderer(() => (rendererDestroyCount += 1));
+      }
     );
 
     await started.promise;

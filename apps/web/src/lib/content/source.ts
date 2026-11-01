@@ -1,33 +1,31 @@
 import { stat } from "node:fs/promises";
 import path from "node:path";
-import {
-  isPublicationEligible,
-  normalizeTagSlug,
-  type PostRecord,
-  type PostSummary,
-} from "./schema";
+
+import { isPublicationEligible, normalizeTagSlug } from "./schema";
+import type { PostRecord, PostSummary } from "./schema";
 
 export interface PublishedPostOptions {
   now?: Date;
 }
 
-export function asSummary(post: PostRecord): PostSummary {
+export const asSummary = (post: PostRecord): PostSummary => {
   const { mdx: _, sourceFile: __, ...summary } = post;
-  return summary;
-}
 
-export async function assertLocalImageExists(
+  return summary;
+};
+
+export const assertLocalImageExists = async (
   image: string | undefined,
   fileName: string,
-  publicDirectory: string,
-): Promise<void> {
-  if (!image || /^https?:\/\//.test(image)) {
+  publicDirectory: string
+): Promise<void> => {
+  if (!image || /^https?:\/\//u.test(image)) {
     return;
   }
 
   if (!image.startsWith("/")) {
     throw new Error(
-      `Invalid post metadata in ${fileName}: local image paths must start with /`,
+      `Invalid post metadata in ${fileName}: local image paths must start with /`
     );
   }
 
@@ -36,83 +34,89 @@ export async function assertLocalImageExists(
 
   if (!resolvedImage.startsWith(`${resolvedPublicDirectory}${path.sep}`)) {
     throw new Error(
-      `Invalid post metadata in ${fileName}: image path escapes the public directory`,
+      `Invalid post metadata in ${fileName}: image path escapes the public directory`
     );
   }
 
   try {
     const imageStat = await stat(resolvedImage);
+
     if (!imageStat.isFile()) {
       throw new Error("not a file");
     }
   } catch (error) {
     throw new Error(
       `Invalid post metadata in ${fileName}: local image ${image} does not exist`,
-      { cause: error },
+      { cause: error }
     );
   }
-}
+};
 
-export function validatePostRegistry(posts: readonly PostRecord[]): void {
+export const validatePostRegistry = (posts: readonly PostRecord[]): void => {
   const slugOwners = new Map<string, string>();
+
   for (const post of posts) {
     const existingOwner = slugOwners.get(post.slug);
+
     if (existingOwner) {
       throw new Error(
-        `Duplicate post slug "${post.slug}" in ${existingOwner} and ${post.sourceFile}`,
+        `Duplicate post slug "${post.slug}" in ${existingOwner} and ${post.sourceFile}`
       );
     }
+
     slugOwners.set(post.slug, post.sourceFile);
 
     const tagSlugs = new Set<string>();
+
     for (const tag of post.tags) {
       const tagSlug = normalizeTagSlug(tag);
+
       if (!tagSlug) {
         throw new Error(
-          `Invalid post metadata in ${post.sourceFile}: tag "${tag}" has no URL-safe characters`,
+          `Invalid post metadata in ${post.sourceFile}: tag "${tag}" has no URL-safe characters`
         );
       }
+
       if (tagSlugs.has(tagSlug)) {
         throw new Error(
-          `Invalid post metadata in ${post.sourceFile}: duplicate normalized tag "${tagSlug}"`,
+          `Invalid post metadata in ${post.sourceFile}: duplicate normalized tag "${tagSlug}"`
         );
       }
+
       tagSlugs.add(tagSlug);
     }
   }
-}
+};
 
-export function getPublishedPostSummaries(
+export const getPublishedPostSummaries = (
   posts: readonly PostRecord[],
-  { now = new Date() }: PublishedPostOptions = {},
-): PostSummary[] {
-  return posts
-    .filter((post) => isPublicationEligible(post, now))
-    .map(asSummary);
-}
+  { now = new Date() }: PublishedPostOptions = {}
+): PostSummary[] =>
+  posts.flatMap((post) =>
+    isPublicationEligible(post, now) ? [asSummary(post)] : []
+  );
 
 // Draft previews belong only to blog pages, never RSS or sitemap consumers.
-export function getBlogPostSummaries(
+export const getBlogPostSummaries = (
   posts: readonly PostRecord[],
   environment: string | undefined,
-  { now = new Date() }: PublishedPostOptions = {},
-): PostSummary[] {
-  return posts
-    .filter(
-      (post) =>
-        isPublicationEligible(post, now) ||
-        (environment === "development" && post.status === "draft"),
-    )
-    .map(asSummary);
-}
+  { now = new Date() }: PublishedPostOptions = {}
+): PostSummary[] =>
+  posts.flatMap((post) =>
+    isPublicationEligible(post, now) ||
+    (environment === "development" && post.status === "draft")
+      ? [asSummary(post)]
+      : []
+  );
 
-export function getPostSummariesByTag(
+export const getPostSummariesByTag = (
   posts: readonly PostRecord[],
   tag: string,
-  options?: PublishedPostOptions,
-): PostSummary[] {
+  options?: PublishedPostOptions
+): PostSummary[] => {
   const requestedTag = normalizeTagSlug(tag);
+
   return getPublishedPostSummaries(posts, options).filter((post) =>
-    post.tags.some((postTag) => normalizeTagSlug(postTag) === requestedTag),
+    post.tags.some((postTag) => normalizeTagSlug(postTag) === requestedTag)
   );
-}
+};

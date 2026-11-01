@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+
 import { frameProgress } from "./svg-pattern-motion";
 
 test("a restarted loop advances on its first frame", () => {
@@ -17,7 +18,7 @@ test("duplicate or earlier frame timestamps cannot stall or reverse motion", () 
 });
 
 test("a long pause does not jump straight to the target", () => {
-  expect(frameProgress(1000, 10000)).toBeLessThan(0.6);
+  expect(frameProgress(1000, 10_000)).toBeLessThan(0.6);
 });
 
 test("60 and 120 fps converge by the same amount over equal time", () => {

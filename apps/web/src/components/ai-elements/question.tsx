@@ -64,7 +64,7 @@ export type QuestionProps = Omit<
   disabled?: boolean;
   onSubmit?: (
     response: QuestionResponse,
-    event: FormEvent<HTMLFormElement>,
+    event: FormEvent<HTMLFormElement>
   ) => void | Promise<void>;
   onValueChange?: (value: QuestionValue) => void;
   selectionMode?: SelectionMode;
@@ -76,7 +76,7 @@ const EMPTY_VALUE: QuestionValue = { selectedValues: [], text: "" };
 const getSelectedValues = (
   currentValues: readonly string[],
   optionValue: string,
-  selectionMode: SelectionMode,
+  selectionMode: SelectionMode
 ): readonly string[] => {
   const isSelected = currentValues.includes(optionValue);
 
@@ -110,16 +110,17 @@ export const Question = ({
       if (controlledValue === undefined) {
         setInternalValue(nextValue);
       }
+
       onValueChange?.(nextValue);
     },
-    [controlledValue, onValueChange],
+    [controlledValue, onValueChange]
   );
 
   const setText = useCallback(
     (text: string) => {
       setValue({ ...value, text });
     },
-    [setValue, value],
+    [setValue, value]
   );
 
   const toggleValue = useCallback(
@@ -127,11 +128,12 @@ export const Question = ({
       const selectedValues = getSelectedValues(
         value.selectedValues,
         optionValue,
-        selectionMode,
+        selectionMode
       );
+
       setValue({ ...value, selectedValues });
     },
-    [selectionMode, setValue, value],
+    [selectionMode, setValue, value]
   );
 
   const contextValue = useMemo(
@@ -143,17 +145,19 @@ export const Question = ({
       text: value.text,
       toggleValue,
     }),
-    [disabled, selectionMode, setText, toggleValue, value],
+    [disabled, selectionMode, setText, toggleValue, value]
   );
 
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
+
       if (disabled) {
         return;
       }
 
       const text = value.text.trim();
+
       if (value.selectedValues.length === 0 && text.length === 0) {
         return;
       }
@@ -163,10 +167,10 @@ export const Question = ({
           selectedValues: value.selectedValues,
           text: text.length > 0 ? text : undefined,
         },
-        event,
+        event
       );
     },
-    [disabled, onSubmit, value],
+    [disabled, onSubmit, value]
   );
 
   return (
@@ -175,6 +179,8 @@ export const Question = ({
         className={cn("space-y-3 rounded-xl border bg-card p-4", className)}
         onSubmit={handleSubmit}
         {...props}
+        target={props.target}
+        rel={`noopener noreferrer ${props.rel ?? ""}`}
       >
         {children}
       </form>
@@ -241,6 +247,7 @@ export const QuestionOption = ({
   const question = useQuestion();
   const isSelected = question.selectedValues.includes(value);
   const role = question.selectionMode === "single" ? "radio" : "checkbox";
+
   const handleClick = useCallback<
     NonNullable<ComponentProps<typeof Button>["onClick"]>
   >(
@@ -248,7 +255,7 @@ export const QuestionOption = ({
       question.toggleValue(value);
       onClick?.(event);
     },
-    [onClick, question, value],
+    [onClick, question, value]
   );
 
   return (
@@ -262,7 +269,7 @@ export const QuestionOption = ({
         isSelected
           ? "border-foreground/20 bg-accent text-accent-foreground disabled:opacity-100"
           : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-        className,
+        className
       )}
       data-state={isSelected ? "checked" : "unchecked"}
       disabled={question.disabled || disabled}
@@ -290,16 +297,19 @@ export const QuestionInput = ({
   ...props
 }: QuestionInputProps) => {
   const question = useQuestion();
+
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
       question.setText(event.currentTarget.value);
       onChange?.(event);
     },
-    [onChange, question],
+    [onChange, question]
   );
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
       onKeyDown?.(event);
+
       if (
         event.defaultPrevented ||
         event.key !== "Enter" ||
@@ -312,7 +322,7 @@ export const QuestionInput = ({
       event.preventDefault();
       event.currentTarget.form?.requestSubmit();
     },
-    [onKeyDown],
+    [onKeyDown]
   );
 
   return (
@@ -320,7 +330,7 @@ export const QuestionInput = ({
       className={cn(
         "min-h-16 resize-none rounded-lg shadow-none focus-visible:border-foreground!",
         typographyVariants({ variant: "uiBody" }),
-        className,
+        className
       )}
       disabled={question.disabled || disabled}
       onChange={handleChange}
@@ -355,6 +365,7 @@ export const QuestionSubmit = ({
   ...props
 }: QuestionSubmitProps) => {
   const question = useQuestion();
+
   const hasResponse =
     question.selectedValues.length > 0 || question.text.trim().length > 0;
 
@@ -363,7 +374,7 @@ export const QuestionSubmit = ({
       className={cn(
         "shadow-none",
         typographyVariants({ variant: "inputCompact" }),
-        className,
+        className
       )}
       disabled={question.disabled || disabled || !hasResponse}
       size={size}

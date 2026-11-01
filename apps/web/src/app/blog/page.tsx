@@ -10,12 +10,12 @@ import { BlogTransition } from "./blog-transition";
 import styles from "./index-styles";
 
 export const metadata: Metadata = {
-  title: "Blog",
-  description: "Writing about software, experiments, and interaction design.",
   alternates: { canonical: "/blog" },
+  description: "Writing about software, experiments, and interaction design.",
+  title: "Blog",
 };
 
-export default async function BlogIndexPage() {
+const BlogIndexPage = async () => {
   const posts = await getBlogPosts();
 
   return (
@@ -81,10 +81,10 @@ export default async function BlogIndexPage() {
                       {post.status === "draft" ? "Draft · Dev only · " : null}
                       <time dateTime={post.publishedAt}>
                         {new Intl.DateTimeFormat("en-US", {
-                          month: "short",
                           day: "numeric",
-                          year: "numeric",
+                          month: "short",
                           timeZone: "UTC",
+                          year: "numeric",
                         }).format(new Date(`${post.publishedAt}T00:00:00Z`))}
                       </time>
                     </Typography>
@@ -98,4 +98,6 @@ export default async function BlogIndexPage() {
       </Typography>
     </BlogTransition>
   );
-}
+};
+
+export default BlogIndexPage;

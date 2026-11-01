@@ -1,22 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { CSSProperties } from "react";
+
 import { Heading, Text, Typography } from "../components/typography";
 
 const meta = {
-  title: "Editorial/Typography",
-  component: Heading,
-  subcomponents: { Text },
-  parameters: {
-    layout: "padded",
-    docs: {
-      description: {
-        component:
-          "Shared editorial type styles. The web app owns font loading and preferences; these stories use serif fallbacks. Heading level and visual variant are independent. Spacing and reading measure belong to the caller.",
-      },
-    },
-  },
-  tags: ["autodocs"],
-  args: { as: "h2", variant: "section", children: "Selected work" },
   argTypes: {
     as: { control: "select", options: ["h1", "h2", "h3", "h4", "h5", "h6"] },
     variant: {
@@ -32,6 +19,8 @@ const meta = {
       ],
     },
   },
+  args: { as: "h2", children: "Selected work", variant: "section" },
+  component: Heading,
   decorators: [
     (Story) => (
       <div className="bg-paper p-6 text-ink">
@@ -39,9 +28,22 @@ const meta = {
       </div>
     ),
   ],
+  parameters: {
+    docs: {
+      description: {
+        component:
+          "Shared editorial type styles. The web app owns font loading and preferences; these stories use serif fallbacks. Heading level and visual variant are independent. Spacing and reading measure belong to the caller.",
+      },
+    },
+    layout: "padded",
+  },
+  subcomponents: { Text },
+  tags: ["autodocs"],
+  title: "Editorial/Typography",
 } satisfies Meta<typeof Heading>;
 
 export default meta;
+
 type Story = StoryObj<typeof meta>;
 
 export const Playground: Story = {};

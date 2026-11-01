@@ -6,18 +6,16 @@ import type { ComponentProps } from "react";
 
 import styles from "./editorial-font-switcher-styles";
 
-export function InspectorSelect({
+export const InspectorSelect = ({
   className,
   ...props
-}: ComponentProps<"select">) {
-  return (
-    <span className={styles.selectWrapper}>
-      <select {...props} className={cn(styles.select, className)} />
-      <ChevronDown
-        aria-hidden="true"
-        size={16}
-        className={styles.selectChevron}
-      />
-    </span>
-  );
-}
+}: ComponentProps<"select">) => (
+  <span className={styles.selectWrapper}>
+    <select {...props} className={cn(styles.select, className)} />
+    <ChevronDown
+      aria-hidden="true"
+      size={16}
+      className={styles.selectChevron}
+    />
+  </span>
+);

@@ -39,7 +39,7 @@ export const Message = ({ className, from, ...props }: MessageProps) => (
     className={cn(
       "group flex w-full max-w-[95%] flex-col gap-2",
       from === "user" ? "is-user ml-auto justify-end" : "is-assistant",
-      className,
+      className
     )}
     {...props}
   />
@@ -60,7 +60,7 @@ export const MessageContent = ({
       "group-[.is-user]:ml-auto group-[.is-user]:rounded-2xl group-[.is-user]:bg-primary group-[.is-user]:px-4 group-[.is-user]:py-2.5 group-[.is-user]:text-primary-foreground",
       "group-[.is-assistant]:w-full group-[.is-assistant]:text-foreground",
       "group-data-[optimistic=true]:opacity-70",
-      className,
+      className
     )}
     {...props}
   >
@@ -126,7 +126,7 @@ interface MessageBranchContextType {
 }
 
 const MessageBranchContext = createContext<MessageBranchContextType | null>(
-  null,
+  null
 );
 
 const useMessageBranch = () => {
@@ -134,7 +134,7 @@ const useMessageBranch = () => {
 
   if (!context) {
     throw new Error(
-      "MessageBranch components must be used within MessageBranch",
+      "MessageBranch components must be used within MessageBranch"
     );
   }
 
@@ -160,18 +160,20 @@ export const MessageBranch = ({
       setCurrentBranch(newBranch);
       onBranchChange?.(newBranch);
     },
-    [onBranchChange],
+    [onBranchChange]
   );
 
   const goToPrevious = useCallback(() => {
     const newBranch =
       currentBranch > 0 ? currentBranch - 1 : branches.length - 1;
+
     handleBranchChange(newBranch);
   }, [currentBranch, branches.length, handleBranchChange]);
 
   const goToNext = useCallback(() => {
     const newBranch =
       currentBranch < branches.length - 1 ? currentBranch + 1 : 0;
+
     handleBranchChange(newBranch);
   }, [currentBranch, branches.length, handleBranchChange]);
 
@@ -184,7 +186,7 @@ export const MessageBranch = ({
       setBranches,
       totalBranches: branches.length,
     }),
-    [branches, currentBranch, goToNext, goToPrevious],
+    [branches, currentBranch, goToNext, goToPrevious]
   );
 
   return (
@@ -204,9 +206,10 @@ export const MessageBranchContent = ({
   ...props
 }: MessageBranchContentProps) => {
   const { currentBranch, setBranches, branches } = useMessageBranch();
+
   const childrenArray = useMemo(
     () => (Array.isArray(children) ? children : [children]),
-    [children],
+    [children]
   );
 
   // Use useEffect to update branches when they change
@@ -220,7 +223,7 @@ export const MessageBranchContent = ({
     <div
       className={cn(
         "grid gap-2 overflow-hidden [&>div]:pb-0",
-        index === currentBranch ? "block" : "hidden",
+        index === currentBranch ? "block" : "hidden"
       )}
       key={branch.key}
       {...props}
@@ -247,7 +250,7 @@ export const MessageBranchSelector = ({
     <ButtonGroup
       className={cn(
         "[&>*:not(:first-child)]:rounded-l-md [&>*:not(:last-child)]:rounded-r-md",
-        className,
+        className
       )}
       orientation="horizontal"
       {...props}
@@ -313,7 +316,7 @@ export const MessageBranchPage = ({
     <ButtonGroupText
       className={cn(
         "border-none bg-transparent text-muted-foreground shadow-none",
-        className,
+        className
       )}
       {...props}
     >
@@ -326,20 +329,25 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
 const streamdownPlugins = { cjk, code, math };
 
+const MessageResponseImplementation = ({
+  className,
+  ...props
+}: MessageResponseProps) => (
+  <Streamdown
+    className={cn(
+      "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+      className
+    )}
+    plugins={streamdownPlugins}
+    {...props}
+  />
+);
+
 export const MessageResponse = memo(
-  ({ className, ...props }: MessageResponseProps) => (
-    <Streamdown
-      className={cn(
-        "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-        className,
-      )}
-      plugins={streamdownPlugins}
-      {...props}
-    />
-  ),
+  MessageResponseImplementation,
   (prevProps, nextProps) =>
     prevProps.children === nextProps.children &&
-    nextProps.isAnimating === prevProps.isAnimating,
+    nextProps.isAnimating === prevProps.isAnimating
 );
 
 MessageResponse.displayName = "MessageResponse";
@@ -354,7 +362,7 @@ export const MessageToolbar = ({
   <div
     className={cn(
       "mt-4 flex w-full items-center justify-between gap-4",
-      className,
+      className
     )}
     {...props}
   >

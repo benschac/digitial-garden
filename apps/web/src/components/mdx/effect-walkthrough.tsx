@@ -11,14 +11,14 @@ import { ArrowLeft, ArrowRight, Pause, Play, RotateCcw } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { ThemedToken } from "shiki";
 
-import {
-  type ArticleCodeTokens,
-  getArticleCodeTokenizer,
-} from "./article-code-theme";
+import { getArticleCodeTokenizer } from "./article-code-theme";
+import type { ArticleCodeTokens } from "./article-code-theme";
+import { effectWalkthroughs } from "./effect-walkthrough-data";
+import type { EffectWalkthroughKind } from "./effect-walkthrough-data";
 
 import styles from "./effect-walkthrough.module.css";
 
-function ColoredCode({
+const ColoredCode = ({
   line,
   tokens,
   start = 0,
@@ -28,46 +28,61 @@ function ColoredCode({
   tokens?: ThemedToken[];
   start?: number;
   end?: number;
-}) {
-  if (!tokens) return line.slice(start, end);
+}) => {
+  if (!tokens) {
+    return line.slice(start, end);
+  }
+
   let offset = 0;
+
   return tokens.map((token) => {
     const from = offset;
     offset += token.content.length;
-    if (offset <= start || from >= end) return null;
+
+    if (offset <= start || from >= end) {
+      return null;
+    }
+
     return (
       <span key={from} style={{ color: token.color }}>
         {token.content.slice(Math.max(0, start - from), end - from)}
       </span>
     );
   });
-}
+};
 
-import {
-  type EffectWalkthroughKind,
-  effectWalkthroughs,
-} from "./effect-walkthrough-data";
-
-export function EffectWalkthrough({ kind }: { kind: EffectWalkthroughKind }) {
+export const EffectWalkthrough = ({
+  kind,
+}: {
+  kind: EffectWalkthroughKind;
+}) => {
   const walkthrough = effectWalkthroughs[kind];
   const source = walkthrough.code.join("\n");
+
   const [highlighted, setHighlighted] = useState<{
     source: string;
     tokens: ArticleCodeTokens;
   } | null>(null);
+
   const createController = useAbortController();
   // The source can change with kind; cancel late async initialization on restart.
   useEffect(() => {
     const controller = createController();
-    void getArticleCodeTokenizer()
-      .then((tokenize) => {
+
+    const initializeHighlighting = async () => {
+      try {
+        const tokenize = await getArticleCodeTokenizer();
+
         if (!controller.signal.aborted) {
           setHighlighted({ source, tokens: tokenize(source) });
         }
-      })
-      .catch(() => {
+      } catch {
         // Plain source and expression highlighting remain usable without Shiki.
-      });
+      }
+    };
+
+    void initializeHighlighting();
+
     return () => controller.abort();
   }, [source, createController]);
   const [step, setStep] = useState(0);
@@ -79,43 +94,61 @@ export function EffectWalkthrough({ kind }: { kind: EffectWalkthroughKind }) {
   const titleId = useId();
   const current = walkthrough.steps[step];
   const last = step === walkthrough.steps.length - 1;
+  const playLabel = last ? "Replay" : "Play";
 
   const { requestFrame, cancelFrame } = useAnimationFrame((timestamp) => {
-    if (!playing) return false;
-    startedAt.current ??= timestamp;
+    if (!playing) {
+      return false;
+    }
+
+    if (startedAt.current === null) {
+      startedAt.current = timestamp;
+    }
+
     if (timestamp - startedAt.current >= 4200) {
       startedAt.current = timestamp;
+
       if (last) {
         setPlaying(false);
+
         return false;
       }
+
       setStep((value) => value + 1);
     }
+
     return true;
   });
 
-  function pause() {
+  const pause = () => {
     cancelFrame();
     setPlaying(false);
     startedAt.current = null;
-  }
+  };
 
   useMediaQuery("(prefers-reduced-motion: reduce)", (matches) => {
     setReducedMotion(matches);
-    if (matches) pause();
+
+    if (matches) {
+      pause();
+    }
   });
   useIntersectionObserver(host, (visible) => {
-    if (!visible) pause();
+    if (!visible) {
+      pause();
+    }
   });
   useDocumentEvent("visibilitychange", () => {
-    if (document.hidden) pause();
+    if (document.hidden) {
+      pause();
+    }
   });
 
-  function selectStep(index: number, fromKeyboard: boolean) {
+  const selectStep = (index: number, fromKeyboard: boolean) => {
     pause();
     setInstant(fromKeyboard);
     setStep(index);
-  }
+  };
 
   return (
     <figure
@@ -159,10 +192,12 @@ export function EffectWalkthrough({ kind }: { kind: EffectWalkthroughKind }) {
             {walkthrough.code.map((line, index) => {
               const active = index === current.line;
               const start = active ? line.indexOf(current.expression) : -1;
+
               const tokens =
                 highlighted?.source === source
                   ? highlighted.tokens[index]
                   : undefined;
+
               return (
                 <span className={styles.line} key={line} data-active={active}>
                   <span className={styles.lineNumber} aria-hidden="true">
@@ -238,21 +273,25 @@ export function EffectWalkthrough({ kind }: { kind: EffectWalkthroughKind }) {
                     pause();
                   } else {
                     setInstant(event.detail === 0);
-                    if (last) setStep(0);
+
+                    if (last) {
+                      setStep(0);
+                    }
+
                     startedAt.current = null;
                     setPlaying(true);
                     requestFrame();
                   }
                 }}
               >
-                {playing ? (
-                  <Pause size={14} aria-hidden="true" />
-                ) : last ? (
+                {playing ? <Pause size={14} aria-hidden="true" /> : null}
+                {!playing && last ? (
                   <RotateCcw size={14} aria-hidden="true" />
-                ) : (
+                ) : null}
+                {!playing && !last ? (
                   <Play size={14} aria-hidden="true" />
-                )}
-                {playing ? "Pause" : last ? "Replay" : "Play"}
+                ) : null}
+                {playing ? "Pause" : playLabel}
               </button>
             )}
             <button
@@ -269,4 +308,4 @@ export function EffectWalkthrough({ kind }: { kind: EffectWalkthroughKind }) {
       </figcaption>
     </figure>
   );
-}
+};

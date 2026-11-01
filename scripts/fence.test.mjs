@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
   copyFileSync,
   mkdirSync,
@@ -12,7 +13,9 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { runOxcTool } from "./oxc-tool.mjs";
+const binary = fileURLToPath(
+  new URL("../node_modules/oxlint/bin/oxlint", import.meta.url)
+);
 
 const config = fileURLToPath(new URL("../oxlint.config.mts", import.meta.url));
 
@@ -94,9 +97,10 @@ for (const probe of [
     mkdirSync(path.dirname(file), { recursive: true });
     writeFileSync(file, `${probe.source}\n`);
 
-    const result = runOxcTool(
-      "lint",
+    const result = spawnSync(
+      process.execPath,
       [
+        binary,
         "--config",
         path.join(cwd, "oxlint.config.mts"),
         "--format=json",

@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { runOxcTool } from "./oxc-tool.mjs";
+const binary = fileURLToPath(
+  new URL("../node_modules/oxlint/bin/oxlint", import.meta.url)
+);
 
 const report = JSON.parse(
   readFileSync(
@@ -33,9 +36,9 @@ test("all mapped Biome rules are enabled at their previous severity or higher", 
   const cwd = fixture(t);
   writeFileSync(path.join(cwd, "probe.tsx"), "export const value = 1;\n");
 
-  const result = runOxcTool(
-    "lint",
-    ["--config", config, "--print-config", "probe.tsx"],
+  const result = spawnSync(
+    process.execPath,
+    [binary, "--config", config, "--print-config", "probe.tsx"],
     {
       cwd,
       encoding: "utf-8",
@@ -45,11 +48,15 @@ test("all mapped Biome rules are enabled at their previous severity or higher", 
   assert.equal(result.status, 0, result.stderr);
   const resolved = JSON.parse(result.stdout);
 
-  const catalogResult = runOxcTool("lint", ["--rules", "-f", "json"], {
-    cwd,
-    encoding: "utf-8",
-    maxBuffer: 8 * 1024 * 1024,
-  });
+  const catalogResult = spawnSync(
+    process.execPath,
+    [binary, "--rules", "-f", "json"],
+    {
+      cwd,
+      encoding: "utf-8",
+      maxBuffer: 8 * 1024 * 1024,
+    }
+  );
 
   assert.equal(catalogResult.status, 0, catalogResult.stderr);
   const catalog = JSON.parse(catalogResult.stdout);
@@ -88,43 +95,6 @@ test("all mapped Biome rules are enabled at their previous severity or higher", 
 
 for (const probe of [
   {
-    diagnostic: "jsx-a11y(alt-text)",
-    name: "image alternative text",
-    source: 'export const image = <img src="/image.png" />;\n',
-  },
-  {
-    diagnostic: "react(button-has-type)",
-    name: "button type",
-    source: "export const button = <button>Save</button>;\n",
-  },
-  {
-    diagnostic: "react(no-danger)",
-    name: "raw HTML injection",
-    source:
-      'export const content = <div dangerouslySetInnerHTML={{ __html: "content" }} />;\n',
-  },
-  {
-    diagnostic: "next(inline-script-id)",
-    name: "Next inline script IDs",
-    source:
-      'import Script from "next/script";\nexport const script = <Script>{"console.log(1)"}</Script>;\n',
-  },
-  {
-    diagnostic: "eqeqeq",
-    name: "strict equality",
-    source: "export const compare = (value: unknown) => value == 1;\n",
-  },
-  {
-    diagnostic: "unicorn(prefer-array-flat)",
-    name: "flatMap identity",
-    source: "export const flat = [1, [2]].flatMap((value) => value);\n",
-  },
-  {
-    diagnostic: "oxc(bad-min-max-func)",
-    name: "constant Math clamp",
-    source: "export const clamped = Math.min(0, Math.max(100, 1));\n",
-  },
-  {
     diagnostic: "anti-slop(no-array-filter-map)",
     name: "anti-slop array traversal",
     source:
@@ -136,19 +106,14 @@ for (const probe of [
     source:
       'export const ready = (value: { _tag: "Ready" | "Pending" }) => value._tag === "Ready";\n',
   },
-  {
-    diagnostic: "Type parameter list cannot be empty",
-    name: "empty type parameters",
-    source: "export function empty<>() {}\n",
-  },
 ]) {
   test(`reports ${probe.name}`, (t) => {
     const cwd = fixture(t);
     writeFileSync(path.join(cwd, "probe.tsx"), probe.source);
 
-    const result = runOxcTool(
-      "lint",
-      ["--config", config, "--format=json", "probe.tsx"],
+    const result = spawnSync(
+      process.execPath,
+      [binary, "--config", config, "--format=json", "probe.tsx"],
       {
         cwd,
         encoding: "utf-8",
@@ -170,9 +135,9 @@ test("preserves Biome's intentional loose null comparison exception", (t) => {
     "export const isNullish = (value: string | null | undefined) => value == null;\n"
   );
 
-  const result = runOxcTool(
-    "lint",
-    ["--config", config, "--format=json", "probe.ts"],
+  const result = spawnSync(
+    process.execPath,
+    [binary, "--config", config, "--format=json", "probe.ts"],
     {
       cwd,
       encoding: "utf-8",

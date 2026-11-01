@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+
 import { AnimatedDiagram } from "@/components/mdx/animated-diagram";
 
-export function DiagramFixture() {
+export const DiagramFixture = () => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [missing, setMissing] = useState(false);
   const [mounted, setMounted] = useState(true);
+
   return (
     <main className="mx-auto max-w-3xl p-4 font-sans">
       <h1>Diagram integration checks</h1>
@@ -38,4 +40,4 @@ export function DiagramFixture() {
       )}
     </main>
   );
-}
+};

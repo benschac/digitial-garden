@@ -48,15 +48,15 @@ Each line in the grid is represented by an object with the following properties:
 ```ts
 interface Line {
   /** The x position of the line */
-  x: number
+  x: number;
   /** The y position of the line */
-  y: number
+  y: number;
   /** The current rotation of the line */
-  rotation: number
+  rotation: number;
   /** The target rotation of the line */
-  targetRotation: number
+  targetRotation: number;
   /** The color of the line */
-  color: string
+  color: string;
 }
 ```
 
@@ -76,20 +76,20 @@ Next, we calculate the distance between the mouse and the line.
 
 ```ts
 // Calculate the distance between the mouse and the x position of the line
-const dx = mousePos.x - line.x
+const dx = mousePos.x - line.x;
 // Calculate the distance between the mouse and the y position of the line
-const dy = mousePos.y - line.y
+const dy = mousePos.y - line.y;
 // Calculate the distance between the mouse and the line
 //  √((-dx)² + (-dy)²) - Euclidean distance
-const distance = Math.sqrt(dx * dx + dy * dy)
-const maxDistance = 10 // Max distance of effect
+const distance = Math.sqrt(dx * dx + dy * dy);
+const maxDistance = 10; // Max distance of effect
 
 // If the distance between the mouse and the line is less than the max distance, and the mouse is not at the edge of the screen, then we calculate the angle between the mouse and the line
 if (distance < maxDistance && mousePos.x !== -1 && mousePos.y !== -1) {
   // Calculate the angle between the mouse and the line
   // atan2(dy, dx) returns the angle in radians between the positive x-axis and the point (dy, dx)
-  const angle = Math.atan2(dy, dx) * (180 / Math.PI)
-  newTargetRotation = angle
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+  newTargetRotation = angle;
 }
 ```
 
@@ -102,9 +102,9 @@ Then, we convert radians to degrees for easier manipulation by multiplying by `(
 To create a smooth animation, the component doesn't immediately set the line to its target rotation, but gradually moves towards it.
 
 ```ts
-const rotationDiff = newTargetRotation - line.rotation
+const rotationDiff = newTargetRotation - line.rotation;
 // 0.1 is the speed of the line rotation to its target rotation
-const newRotation = line.rotation + rotationDiff * 0.1
+const newRotation = line.rotation + rotationDiff * 0.1;
 ```
 
 ### Performance Considerations
@@ -116,12 +116,12 @@ To ensure smooth performance, especially on lower-end devices, the component emp
 ```ts
 // Using lodash's debounce function would probably be better lol
 function debounce(func: Function, wait: number) {
-  let timeout: number
+  let timeout: number;
   return function (this: any, ...args: any[]) {
-    const context = this
-    clearTimeout(timeout)
-    timeout = window.setTimeout(() => func.apply(context, args), wait)
-  }
+    const context = this;
+    clearTimeout(timeout);
+    timeout = window.setTimeout(() => func.apply(context, args), wait);
+  };
 }
 
 /**
@@ -133,8 +133,8 @@ function debounce(func: Function, wait: number) {
 function useDebounce(callback: Function, delay: number) {
   // Make sure the debounce function is only created once
   // and not recreated on every render
-  const debouncedFn = useRef(debounce(callback, delay)).current
-  return debouncedFn
+  const debouncedFn = useRef(debounce(callback, delay)).current;
+  return debouncedFn;
 }
 ```
 

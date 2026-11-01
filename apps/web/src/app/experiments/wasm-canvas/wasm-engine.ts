@@ -1,18 +1,18 @@
 import { Effect, Predicate, Schema } from "effect";
 
-export type ParticleEngine = {
+export interface ParticleEngine {
   gpu_frame_command_byte_length: () => number;
   initialize: (
     seed: number,
     count: number,
     width: number,
-    height: number,
+    height: number
   ) => void;
   initialize_gpu_controller: (
     capacity: number,
     activeParticles: number,
     width: number,
-    height: number,
+    height: number
   ) => number;
   memory: WebAssembly.Memory;
   particle_count: () => number;
@@ -24,7 +24,7 @@ export type ParticleEngine = {
     pointerX: number,
     pointerY: number,
     interaction: number,
-    simulationSpeed: number,
+    simulationSpeed: number
   ) => number;
   resize: (width: number, height: number) => void;
   resize_gpu_controller: (width: number, height: number) => void;
@@ -35,35 +35,35 @@ export type ParticleEngine = {
     pointerX: number,
     pointerY: number,
     interaction: number,
-    simulationSpeed: number,
+    simulationSpeed: number
   ) => number;
-};
+}
 
 const WASM_PATH = "/wasm/particle-engine.wasm";
 
 export class ParticleEngineFetchError extends Schema.TaggedError<ParticleEngineFetchError>()(
   "ParticleEngineFetchError",
-  { cause: Schema.Defect() },
+  { cause: Schema.Defect() }
 ) {}
 
 export class ParticleEngineBodyError extends Schema.TaggedError<ParticleEngineBodyError>()(
   "ParticleEngineBodyError",
-  { cause: Schema.Defect() },
+  { cause: Schema.Defect() }
 ) {}
 
 export class ParticleEngineInstantiateError extends Schema.TaggedError<ParticleEngineInstantiateError>()(
   "ParticleEngineInstantiateError",
-  { cause: Schema.Defect() },
+  { cause: Schema.Defect() }
 ) {}
 
 export class ParticleEngineAbiError extends Schema.TaggedError<ParticleEngineAbiError>()(
   "ParticleEngineAbiError",
-  { cause: Schema.Defect() },
+  { cause: Schema.Defect() }
 ) {}
 
 class ParticleEngineAborted extends Schema.TaggedError<ParticleEngineAborted>()(
   "ParticleEngineAborted",
-  { cause: Schema.Defect() },
+  { cause: Schema.Defect() }
 ) {}
 
 const CallableExport = Schema.declare(Predicate.isFunction);
@@ -84,62 +84,73 @@ const ParticleEngineExports = Schema.Struct({
   step: CallableExport,
 });
 
-export const decodeParticleEngineExports = Effect.fnUntraced(function* (
-  exports: unknown,
-) {
-  const decoded = yield* Schema.decodeUnknownEffect(ParticleEngineExports)(
-    exports,
-  ).pipe(Effect.mapError((cause) => new ParticleEngineAbiError({ cause })));
-  return decoded as ParticleEngine;
-});
+export const decodeParticleEngineExports = Effect.fnUntraced(
+  function* decodeParticleEngineExports<Exports>(exports: Exports) {
+    const decoded = yield* Schema.decodeUnknownEffect(ParticleEngineExports)(
+      exports
+    ).pipe(Effect.mapError((cause) => new ParticleEngineAbiError({ cause })));
 
-const loadParticleEngineEffect = Effect.fnUntraced(function* (
-  signal: AbortSignal,
-) {
-  const checkAborted = Effect.try({
-    try: () => signal.throwIfAborted(),
-    catch: (cause) => new ParticleEngineAborted({ cause }),
-  });
-
-  yield* checkAborted;
-  const response = yield* Effect.tryPromise({
-    try: () => fetch(WASM_PATH, { signal }),
-    catch: (cause) =>
-      signal.aborted
-        ? new ParticleEngineAborted({ cause: signal.reason })
-        : new ParticleEngineFetchError({ cause }),
-  });
-  yield* checkAborted;
-  if (!response.ok) {
-    return yield* new ParticleEngineFetchError({
-      cause: new Error(`WASM request failed with ${response.status}`),
-    });
+    return decoded as ParticleEngine;
   }
+);
 
-  const bytes = yield* Effect.tryPromise({
-    try: () => response.arrayBuffer(),
-    catch: (cause) =>
-      signal.aborted
-        ? new ParticleEngineAborted({ cause: signal.reason })
-        : new ParticleEngineBodyError({ cause }),
-  });
-  yield* checkAborted;
-  const module = yield* Effect.tryPromise({
-    try: () => WebAssembly.instantiate(bytes, {}),
-    catch: (cause) =>
-      signal.aborted
-        ? new ParticleEngineAborted({ cause: signal.reason })
-        : new ParticleEngineInstantiateError({ cause }),
-  });
-  yield* checkAborted;
-  return yield* decodeParticleEngineExports(module.instance.exports);
-});
+const loadParticleEngineEffect = Effect.fnUntraced(
+  function* loadParticleEngineEffect(signal: AbortSignal) {
+    const checkAborted = Effect.try({
+      catch: (cause) => new ParticleEngineAborted({ cause }),
+      try: () => signal.throwIfAborted(),
+    });
 
-export async function loadParticleEngine(signal: AbortSignal) {
+    yield* checkAborted;
+
+    const response = yield* Effect.tryPromise({
+      catch: (cause) =>
+        signal.aborted
+          ? new ParticleEngineAborted({ cause: signal.reason })
+          : new ParticleEngineFetchError({ cause }),
+      try: () => fetch(WASM_PATH, { signal }),
+    });
+
+    yield* checkAborted;
+
+    if (!response.ok) {
+      return yield* new ParticleEngineFetchError({
+        cause: new Error(`WASM request failed with ${response.status}`),
+      });
+    }
+
+    const bytes = yield* Effect.tryPromise({
+      catch: (cause) =>
+        signal.aborted
+          ? new ParticleEngineAborted({ cause: signal.reason })
+          : new ParticleEngineBodyError({ cause }),
+      try: () => response.arrayBuffer(),
+    });
+
+    yield* checkAborted;
+
+    const wasmModule = yield* Effect.tryPromise({
+      catch: (cause) =>
+        signal.aborted
+          ? new ParticleEngineAborted({ cause: signal.reason })
+          : new ParticleEngineInstantiateError({ cause }),
+      try: () => WebAssembly.instantiate(bytes, {}),
+    });
+
+    yield* checkAborted;
+
+    return yield* decodeParticleEngineExports(wasmModule.instance.exports);
+  }
+);
+
+export const loadParticleEngine = async (signal: AbortSignal) => {
   try {
     return await Effect.runPromise(loadParticleEngineEffect(signal));
   } catch (error) {
-    if (error instanceof ParticleEngineAborted) throw error.cause;
+    if (error instanceof ParticleEngineAborted) {
+      throw error.cause;
+    }
+
     throw error;
   }
-}
+};

@@ -35,10 +35,10 @@ interface ParticleHeaderBackgroundProps {
   controlsClassName?: string;
 }
 
-export function ParticleHeaderBackground({
+export const ParticleHeaderBackground = ({
   canvasClassName,
   controlsClassName,
-}: ParticleHeaderBackgroundProps) {
+}: ParticleHeaderBackgroundProps) => {
   const particleInputId = useId();
   const gravityInputId = useId();
   const speedInputId = useId();
@@ -54,12 +54,16 @@ export function ParticleHeaderBackground({
   const previousFrameTimeRef = useRef<number | null>(null);
   const [density, setDensity] = useState(HEADER_PARTICLE_COUNT);
   const [gravity, setGravity] = useState(HEADER_GRAVITY);
+
   const [controlStatus, setControlStatus] =
     useState<HeaderControlStatus>("loading");
+
   const [particleLimit, setParticleLimit] = useState(GPU_PARTICLE_LIMIT);
   const [speed, setSpeed] = useState(HEADER_SIMULATION_SPEED);
+
   const { cancelFrame, requestFrame } = useAnimationFrame((milliseconds) => {
     const renderer = lifecycleRef.current;
+
     if (!renderer?.canAnimate()) {
       return false;
     }
@@ -68,10 +72,11 @@ export function ParticleHeaderBackground({
       previousFrameTimeRef.current,
       milliseconds
     );
+
     previousFrameTimeRef.current = milliseconds;
     renderer.render({
       deltaSeconds,
-      elapsedSeconds: milliseconds / 1_000,
+      elapsedSeconds: milliseconds / 1000,
       interaction: gravityRef.current,
       pointerX: pointerRef.current.x,
       pointerY: pointerRef.current.y,
@@ -83,6 +88,7 @@ export function ParticleHeaderBackground({
 
   const renderStaticFrame = () => {
     const renderer = lifecycleRef.current;
+
     if (!renderer) {
       return;
     }
@@ -90,7 +96,7 @@ export function ParticleHeaderBackground({
     const milliseconds = performance.now();
     renderer.render({
       deltaSeconds: frameDeltaSeconds(null, milliseconds),
-      elapsedSeconds: milliseconds / 1_000,
+      elapsedSeconds: milliseconds / 1000,
       interaction: gravityRef.current,
       pointerX: pointerRef.current.x,
       pointerY: pointerRef.current.y,
@@ -100,6 +106,7 @@ export function ParticleHeaderBackground({
 
   const resizeCanvas = () => {
     const canvas = canvasRef.current;
+
     if (!canvas) {
       return;
     }
@@ -109,10 +116,12 @@ export function ParticleHeaderBackground({
     canvasSize.width = Math.max(bounds.width, 1);
     canvasSize.height = Math.max(bounds.height, 1);
     canvasSize.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+
     if (!pointerRef.current.active) {
       pointerRef.current.x = canvasSize.width / 2;
       pointerRef.current.y = canvasSize.height / 2;
     }
+
     lifecycleRef.current?.resize(
       canvasSize.width,
       canvasSize.height,
@@ -135,6 +144,7 @@ export function ParticleHeaderBackground({
   useMediaQuery("(prefers-reduced-motion: reduce)", (matches) => {
     reducedMotionRef.current = matches;
     resumeWhenEligible();
+
     if (matches) {
       renderStaticFrame();
     }
@@ -149,12 +159,14 @@ export function ParticleHeaderBackground({
     "pointermove",
     (event) => {
       const canvas = canvasRef.current;
+
       if (!canvas) {
         return;
       }
 
       const bounds = canvas.getBoundingClientRect();
       const canvasSize = canvasSizeRef.current;
+
       const isInside =
         event.clientX >= bounds.left &&
         event.clientX <= bounds.right &&
@@ -182,6 +194,7 @@ export function ParticleHeaderBackground({
 
   useAbortableEffect((signal) => {
     const canvas = canvasRef.current;
+
     if (!canvas) {
       return;
     }
@@ -189,31 +202,6 @@ export function ParticleHeaderBackground({
     const canvasSize = canvasSizeRef.current;
 
     const lifecycle = createParticleLifecycle({
-      signal,
-      eligibility: {
-        hidden: document.hidden,
-        reducedMotion: reducedMotionRef.current,
-        visible: isVisibleRef.current,
-      },
-      createGpu: (rendererSignal, lost) =>
-        createWebGpuParticleRenderer(
-          canvas,
-          rendererSignal,
-          HEADER_PARTICLE_COUNT,
-          canvasSize.width,
-          canvasSize.height,
-          canvasSize.pixelRatio,
-          lost
-        ),
-      createFallback: (rendererSignal) =>
-        createWasmParticleRenderer(
-          canvas,
-          rendererSignal,
-          HEADER_PARTICLE_COUNT,
-          canvasSize.width,
-          canvasSize.height,
-          canvasSize.pixelRatio
-        ),
       configure: (renderer, rendererSignal) => {
         renderer.resize(
           canvasSize.width,
@@ -226,6 +214,38 @@ export function ParticleHeaderBackground({
         setDensity(actualDensity);
         setParticleLimit(renderer.maxParticleCount);
       },
+      createFallback: (rendererSignal) =>
+        createWasmParticleRenderer(
+          canvas,
+          rendererSignal,
+          HEADER_PARTICLE_COUNT,
+          canvasSize.width,
+          canvasSize.height,
+          canvasSize.pixelRatio
+        ),
+      createGpu: (rendererSignal, lost) =>
+        createWebGpuParticleRenderer(
+          canvas,
+          rendererSignal,
+          HEADER_PARTICLE_COUNT,
+          canvasSize.width,
+          canvasSize.height,
+          canvasSize.pixelRatio,
+          lost
+        ),
+      eligibility: {
+        hidden: document.hidden,
+        reducedMotion: reducedMotionRef.current,
+        visible: isVisibleRef.current,
+      },
+      onAnimationChange: (canAnimate) => {
+        if (canAnimate) {
+          previousFrameTimeRef.current = null;
+          requestFrame();
+        } else {
+          cancelFrame();
+        }
+      },
       onGpuFailure: (error) =>
         console.warn(
           "WebGPU header initialization failed; using WASM fallback.",
@@ -236,22 +256,18 @@ export function ParticleHeaderBackground({
           setControlStatus("ready");
           onRendererLoaded();
         }
+
         if (state === "lost" || state === "failed") {
           if (state === "failed") {
             console.error("The particle header could not be loaded.", detail);
           }
+
           setControlStatus("unavailable");
         }
       },
-      onAnimationChange: (canAnimate) => {
-        if (canAnimate) {
-          previousFrameTimeRef.current = null;
-          requestFrame();
-        } else {
-          cancelFrame();
-        }
-      },
+      signal,
     });
+
     lifecycleRef.current = lifecycle;
 
     return () => {
@@ -270,6 +286,7 @@ export function ParticleHeaderBackground({
   const updateDensity = (value: number) => {
     const actualDensity =
       lifecycleRef.current?.setParticleCount(value) ?? value;
+
     densityRef.current = actualDensity;
     setDensity(actualDensity);
     renderReducedMotionFrame();
@@ -289,6 +306,12 @@ export function ParticleHeaderBackground({
 
   const isReady = controlStatus === "ready";
 
+  const controlStatusText = {
+    loading: "Loading field…",
+    ready: "Controls ready",
+    unavailable: "Controls unavailable",
+  }[controlStatus];
+
   return (
     <>
       <canvas className={canvasClassName} ref={canvasRef} />
@@ -307,11 +330,11 @@ export function ParticleHeaderBackground({
             aria-valuetext={PARTICLE_NUMBER_FORMATTER.format(density)}
             id={particleInputId}
             max={particleLimit}
-            min={particleLimit > 2_400 ? GPU_PARTICLE_MINIMUM : 200}
+            min={particleLimit > 2400 ? GPU_PARTICLE_MINIMUM : 200}
             onChange={(event) =>
               updateDensity(Number(event.currentTarget.value))
             }
-            step={particleLimit > 2_400 ? GPU_PARTICLE_STEP : 50}
+            step={particleLimit > 2400 ? GPU_PARTICLE_STEP : 50}
             type="range"
             value={density}
           />
@@ -353,13 +376,9 @@ export function ParticleHeaderBackground({
           />
         </label>
         <span className={styles.status} aria-live="polite" data-particle-status>
-          {controlStatus === "ready"
-            ? "Controls ready"
-            : controlStatus === "unavailable"
-              ? "Controls unavailable"
-              : "Loading field…"}
+          {controlStatusText}
         </span>
       </fieldset>
     </>
   );
-}
+};

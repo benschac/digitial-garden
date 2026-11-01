@@ -1,15 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+
 import { Eyebrow } from "../components/eyebrow";
 import { PageNavigation } from "../components/page-navigation";
 
 const meta = {
-  title: "Shared UI/Page chrome",
   component: PageNavigation,
   parameters: { layout: "padded" },
   tags: ["autodocs"],
+  title: "Shared UI/Page chrome",
 } satisfies Meta<typeof PageNavigation>;
 
 export default meta;
+
 type Story = StoryObj<typeof meta>;
 
 export const WithContext: Story = {

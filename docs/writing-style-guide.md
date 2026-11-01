@@ -30,12 +30,12 @@ Reference posts for voice and structure:
 
 ## Words and patterns to replace
 
-| Avoid (spec / AI tone)                                                     | Prefer (Ben's voice)                                            |
-| -------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| "purchased entitlement", "held entitlement"                                | "credits", "held credits", "reserved credits"                   |
-| "counterparty", "accountable participant", "exiting participant"           | "Alice and Bob", "the other person", "the person who cancelled" |
-| "asserts completion", "contests the assertion"                             | "marks the pickup complete", "disputes it"                      |
-| "These tables describe the implemented rules in the source reviewed on..." | State how the app works directly; drop audit disclaimers        |
-| "an invariant maintained by the mutation functions"                        | "kept in sync inside our Postgres functions"                    |
-| Em dashes (`—`) and mid-sentence colons                                    | Periods, commas, or short bullet lists                          |
-| Dense prose paragraphs explaining rules and units                          | Short bullet points with a concrete example                     |
+| Avoid (spec / AI tone) | Prefer (Ben's voice) |
+| --- | --- |
+| "purchased entitlement", "held entitlement" | "credits", "held credits", "reserved credits" |
+| "counterparty", "accountable participant", "exiting participant" | "Alice and Bob", "the other person", "the person who cancelled" |
+| "asserts completion", "contests the assertion" | "marks the pickup complete", "disputes it" |
+| "These tables describe the implemented rules in the source reviewed on..." | State how the app works directly; drop audit disclaimers |
+| "an invariant maintained by the mutation functions" | "kept in sync inside our Postgres functions" |
+| Em dashes (`—`) and mid-sentence colons | Periods, commas, or short bullet lists |
+| Dense prose paragraphs explaining rules and units | Short bullet points with a concrete example |

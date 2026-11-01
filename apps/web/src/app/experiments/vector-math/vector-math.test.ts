@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import {
   addVectors,
   angleBetweenVectors,
@@ -59,7 +60,7 @@ describe("vector arithmetic", () => {
   test("compares two vectors", () => {
     expect(vectorDistance(u, v)).toBeCloseTo(Math.sqrt(8));
     expect(
-      angleBetweenVectors({ x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }),
+      angleBetweenVectors({ x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 })
     ).toBe(90);
     expect(dotVectors(u, v)).toBe(23);
     expect(crossVectors({ x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 })).toEqual({

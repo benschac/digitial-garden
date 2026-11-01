@@ -8,7 +8,8 @@ import styles from "./forces-styles";
 
 export const metadata = {
   title: "Newton's Laws, in Motion",
-  description: "An interactive canvas laboratory for Newton's three laws of motion.",
+  description:
+    "An interactive canvas laboratory for Newton's three laws of motion.",
   alternates: { canonical: "/experiments/forces" },
 };
 
@@ -19,15 +20,21 @@ export const metadata = {
     <span>Experiment 004</span>
   </PageNavigation>
 
-  <header className={styles.header}>
-    <Eyebrow className={`mb-4 ${styles.eyebrow}`}>Classical mechanics · Canvas · MDX + LaTeX</Eyebrow>
-    <Typography as="h1" className={styles.title} variant="experimentDisplay">Every motion has an account.</Typography>
-    <Typography as="p" variant="experimentForcesIntro" className={styles.intro}>
-      {"Change the conditions and watch the bookkeeping update. Velocity persists, force changes momentum, and every push returns an equal push."}
-    </Typography>
-  </header>
+<header className={styles.header}>
+  <Eyebrow className={`mb-4 ${styles.eyebrow}`}>
+    Classical mechanics · Canvas · MDX + LaTeX
+  </Eyebrow>
+  <Typography as="h1" className={styles.title} variant="experimentDisplay">
+    Every motion has an account.
+  </Typography>
+  <Typography as="p" variant="experimentForcesIntro" className={styles.intro}>
+    {
+      "Change the conditions and watch the bookkeeping update. Velocity persists, force changes momentum, and every push returns an equal push."
+    }
+  </Typography>
+</header>
 
-  <ForcesExperiment />
+<ForcesExperiment />
 
   <section className={styles.laws} aria-labelledby="field-notes">
     <Eyebrow className={`mb-4 ${styles.eyebrow}`}>Field notes</Eyebrow>
@@ -76,6 +83,7 @@ export const metadata = {
         </div>
       </article>
     </div>
+
   </section>
 
   <aside className={typographyVariants({ variant: "experimentForcesNotes", className: styles.notes })}>

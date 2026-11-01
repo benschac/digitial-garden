@@ -60,13 +60,13 @@ The shared client-signal schema accepts OCR and barcode fields. Adding local pre
 
 The server then follows this sequence:
 
-| Stage                 | Input and work                                                                                                                                                                               | What can reach the user                                                                                                               |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Accept the upload     | NestJS validates metadata, signals, image count, declared JPEG type, and byte limits; acquires a provider budget.                                                                            | An `accepted` event on the HTTP NDJSON response indicates that identification has been admitted.                                      |
-| Identify visually     | Sends the image bytes and an instruction prompt containing client observations to the configured visual model through the AI SDK.                                                            | A schema-valid partial candidate can be published over the control WebSocket before the complete model output arrives.                |
-| Return identification | Builds the candidate, merges local and provider OCR, and constructs a text search query from supported clues.                                                                                | The HTTP stream returns a `result`; the item can show an identity while research remains unfinished.                                  |
-| Research with Exa     | Sends a text query containing identity, OCR, barcode, and variant clues. Exa returns product-page URLs, titles, and text highlights. A matching cached barcode search can be reused.         | An evidence patch arrives over the control WebSocket. Image bytes are not sent to Exa by this search implementation.                  |
-| Resolve the evidence  | A second model call compares the candidate and signals with search evidence and available final seller narration. This call receives structured/text evidence, not the original image bytes. | Partial listing text, followed by identity status and metadata, condition, market, and draft patches, progressively updates the item. |
+| Stage | Input and work | What can reach the user |
+| --- | --- | --- |
+| Accept the upload | NestJS validates metadata, signals, image count, declared JPEG type, and byte limits; acquires a provider budget. | An `accepted` event on the HTTP NDJSON response indicates that identification has been admitted. |
+| Identify visually | Sends the image bytes and an instruction prompt containing client observations to the configured visual model through the AI SDK. | A schema-valid partial candidate can be published over the control WebSocket before the complete model output arrives. |
+| Return identification | Builds the candidate, merges local and provider OCR, and constructs a text search query from supported clues. | The HTTP stream returns a `result`; the item can show an identity while research remains unfinished. |
+| Research with Exa | Sends a text query containing identity, OCR, barcode, and variant clues. Exa returns product-page URLs, titles, and text highlights. A matching cached barcode search can be reused. | An evidence patch arrives over the control WebSocket. Image bytes are not sent to Exa by this search implementation. |
+| Resolve the evidence | A second model call compares the candidate and signals with search evidence and available final seller narration. This call receives structured/text evidence, not the original image bytes. | Partial listing text, followed by identity status and metadata, condition, market, and draft patches, progressively updates the item. |
 
 The visual provider's source default is `google/gemini-3.8-flash` through AI Gateway. The evidence resolver has the same source default. Both are configurable, so these names describe the checked-in defaults, not a verified deployed configuration. The first call performs structured visual identification and evidence extraction; the second evaluates retrieved evidence and drafts listing information.
 
@@ -100,15 +100,15 @@ _The first useful answer can appear before product research and listing generati
 
 The React Native architecture follows a simple rule: keep high-frequency sensor work native or off the React render path, then send compact, item-scoped observations into JavaScript. The capture-session controller composes the camera, models, capture policy, item lifecycle, cancellation, and UI feedback.
 
-| Boundary                 | Responsibility                                                                                                                                                   |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| VisionCamera             | Owns the camera session and separate photo, frame, barcode, and iOS salient-object outputs. Camera activity follows screen focus, session state, and permission. |
-| Frame/worklet path       | Runs object detection and quality, motion, and novelty checks; gates live OCR submissions; disposes frames on both analyzed and skipped paths.                   |
-| React Native ExecuTorch  | Runs native object detection, OCR, image classification, and optional local visual identity.                                                                     |
-| JavaScript controller    | Receives compact analysis and model results, selects useful views, and coordinates item ownership and progressive identification.                                |
-| Legend State             | Holds compact observable state for the rendered item and capture UI. Raw camera frames do not enter React state.                                                 |
-| Reanimated shared values | Carry high-frequency overlay and feedback values outside ordinary React rendering.                                                                               |
-| HTTP and oRPC WebSocket  | Upload selected JPEG evidence and receive identification results and progressive control patches.                                                                |
+| Boundary | Responsibility |
+| --- | --- |
+| VisionCamera | Owns the camera session and separate photo, frame, barcode, and iOS salient-object outputs. Camera activity follows screen focus, session state, and permission. |
+| Frame/worklet path | Runs object detection and quality, motion, and novelty checks; gates live OCR submissions; disposes frames on both analyzed and skipped paths. |
+| React Native ExecuTorch | Runs native object detection, OCR, image classification, and optional local visual identity. |
+| JavaScript controller | Receives compact analysis and model results, selects useful views, and coordinates item ownership and progressive identification. |
+| Legend State | Holds compact observable state for the rendered item and capture UI. Raw camera frames do not enter React state. |
+| Reanimated shared values | Carry high-frequency overlay and feedback values outside ordinary React rendering. |
+| HTTP and oRPC WebSocket | Upload selected JPEG evidence and receive identification results and progressive control patches. |
 
 The frame output uses VGA 16:9 RGB frames. RGB is a choice made for the current pixel-analysis path, not a claim that it is always the cheapest camera format. A skipped frame still needs disposal. A selected photo has a different lifetime: it becomes durable JPEG evidence and a small preview, then starts local and remote identification.
 
@@ -166,10 +166,10 @@ In our queue, `Effect.tryPromise` describes a Promise-producing task. Semaphore 
 
 There are two main places to follow in the application:
 
-| Location               | Responsibility                                                  | Effect primitives used                                             |
-| ---------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Mobile item task queue | Limit concurrent remote work and serialize work per item        | `Effect.tryPromise`, `Effect.runPromise`, `Semaphore`, `Scheduler` |
-| API control router     | Implement three oRPC procedures and express their failure paths | `.effect(function* …)`, `Effect.fail`, `Effect.tryPromise`         |
+| Location | Responsibility | Effect primitives used |
+| --- | --- | --- |
+| Mobile item task queue | Limit concurrent remote work and serialize work per item | `Effect.tryPromise`, `Effect.runPromise`, `Semaphore`, `Scheduler` |
+| API control router | Implement three oRPC procedures and express their failure paths | `.effect(function* …)`, `Effect.fail`, `Effect.tryPromise` |
 
 There is no application-wide Effect service or Layer architecture in these files. The subscription and response-stream procedures still use ordinary async generators. The queue still maintains its own counters, pending entries, and callbacks. That scope matters when explaining what benefits we actually get.
 
@@ -229,7 +229,7 @@ const execution = await remoteQueue.run(
   {
     signal: abortController.signal,
     // The source records queue and start events through callbacks.
-  },
+  }
 );
 ```
 
@@ -250,11 +250,11 @@ requestState.pendingItem = requestedItem;
 
 If another snapshot arrives during that cycle, it replaces the pending snapshot. This is coalescing: keep the most recent evidence for the next cycle instead of retaining every intermediate request. Here is a controlled example with distinct capture keys:
 
-| Event                     | Current cycle                 | Latest pending snapshot                      |
-| ------------------------- | ----------------------------- | -------------------------------------------- |
-| Begin processing A1       | A1                            | None after the loop consumes A1              |
-| A2 evidence arrives       | A1                            | A2                                           |
-| A3 evidence arrives       | A1                            | A3 replaces A2                               |
+| Event | Current cycle | Latest pending snapshot |
+| --- | --- | --- |
+| Begin processing A1 | A1 | None after the loop consumes A1 |
+| A2 evidence arrives | A1 | A2 |
+| A3 evidence arrives | A1 | A3 replaces A2 |
 | The current cycle settles | The loop can consider A3 next | A2 was not separately retained for execution |
 
 The semaphore answers “may this submitted task execute now?” The caller answers “which evidence should we submit next?” Those policies can coexist without making every camera observation a queued network operation.
@@ -318,7 +318,7 @@ The core composition is short enough to show directly:
 
 ```ts
 const program = itemSemaphore.semaphore.withPermit(
-  this.globalSemaphore.withPermit(executeTask),
+  this.globalSemaphore.withPermit(executeTask)
 );
 ```
 
@@ -350,7 +350,7 @@ Now imagine reversing the nesting. This is a hypothetical alternative, not our p
 ```ts
 // Teaching comparison: acquire shared capacity first.
 const program = this.globalSemaphore.withPermit(
-  itemSemaphore.semaphore.withPermit(executeTask),
+  itemSemaphore.semaphore.withPermit(executeTask)
 );
 ```
 
@@ -396,11 +396,11 @@ signal?.removeEventListener("abort", abortWhileQueued);
 
 The caller's signal still reaches the identification operation. The queue has disconnected the forwarding path that would interrupt its running Effect. It continues observing the task's Promise and holding the permits until that Promise settles.
 
-| Action                  | A1 and shared slot                         | B1                                   |
-| ----------------------- | ------------------------------------------ | ------------------------------------ |
-| Start the scenario      | Running; slot held                         | Waiting                              |
-| Request A1 cancellation | Stop requested; Promise pending; slot held | Waiting                              |
-| Settle A1's Promise     | Resolved or rejected; slot released        | Starts after the handoff; holds slot |
+| Action | A1 and shared slot | B1 |
+| --- | --- | --- |
+| Start the scenario | Running; slot held | Waiting |
+| Request A1 cancellation | Stop requested; Promise pending; slot held | Waiting |
+| Settle A1's Promise | Resolved or rejected; slot released | Starts after the handoff; holds slot |
 
 This prevents a subtle concurrency bug: declaring a task cancelled does not guarantee that the underlying asynchronous operation has stopped. Releasing its slot immediately could start replacement work while the old operation is still running.
 
@@ -428,11 +428,11 @@ A concurrency limit is only useful if it survives the unhappy path. Suppose A1 o
 
 There are three cleanup responsibilities in the implementation:
 
-| Owner                                   | What it cleans up                                                                        |
-| --------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Nested Effect `withPermit` calls        | The shared permit and item permit when their enclosed computation exits                  |
-| The task wrapper's JavaScript `finally` | The active count and active item set                                                     |
-| The returned Promise's `finally`        | Any remaining pending entry, the abort listener, and the reference to the item semaphore |
+| Owner | What it cleans up |
+| --- | --- |
+| Nested Effect `withPermit` calls | The shared permit and item permit when their enclosed computation exits |
+| The task wrapper's JavaScript `finally` | The active count and active item set |
+| The returned Promise's `finally` | Any remaining pending entry, the abort listener, and the reference to the item semaphore |
 
 Effect knows about its permits. Our queue knows about its public counters, listeners, and map entries. The task wrapper contains a particularly useful detail:
 
@@ -509,14 +509,14 @@ The generator syntax gives this procedure a sequential reading order: check the 
 
 The queue tests cover six concrete behaviors:
 
-| Verified behavior                                    | Practical value                                       |
-| ---------------------------------------------------- | ----------------------------------------------------- |
-| Four jobs run and excess work waits                  | A defined limit on active remote tasks per queue      |
-| A queued abort removes the pending job               | Obsolete work can be discarded before execution       |
-| Start context includes item ownership and queue wait | Callers can attribute waiting time separately         |
-| Same-item jobs serialize while another item runs     | Item ownership and concurrency coexist                |
-| Active abort retains capacity until settlement       | Cancellation does not falsely advertise free capacity |
-| Failure releases item and shared permits             | A failed task does not strand subsequent work         |
+| Verified behavior | Practical value |
+| --- | --- |
+| Four jobs run and excess work waits | A defined limit on active remote tasks per queue |
+| A queued abort removes the pending job | Obsolete work can be discarded before execution |
+| Start context includes item ownership and queue wait | Callers can attribute waiting time separately |
+| Same-item jobs serialize while another item runs | Item ownership and concurrency coexist |
+| Active abort retains capacity until settlement | Cancellation does not falsely advertise free capacity |
+| Failure releases item and shared permits | A failed task does not strand subsequent work |
 
 These are behaviors of the complete queue implementation, including our cancellation bridge and bookkeeping. Effect provides reusable coordination machinery, but it does not choose the policy for us.
 
@@ -659,33 +659,33 @@ Keep the fork for that validation. For upstream work, separate the frame-buffer 
 
 These source paths are relative to the Quick Catalog repository, not the personal site, and are retained for authoring. Replace them with public permalinks if the source is published, or leave the implementation references in this appendix when moving the article to the personal site.
 
-| Source                                                                                                                                  | Claims to check when editing                                                                               |
-| --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Item task queue (`apps/mobile/src/features/capture-session/identity/item-task-queue.ts`)                                                | Permits, cancellation bridge, scheduler, counters, reference cleanup                                       |
-| Progressive identification hook (`apps/mobile/src/features/capture-session/identity/use-progressive-identification.ts`)                 | Queue lifetime, caller signal, aborted-result check, latest pending snapshot, `Promise.allSettled` barrier |
-| Queue tests (`apps/mobile/tests/item-task-queue.test.mjs`)                                                                              | Six tested behaviors and controlled Promise scenarios                                                      |
-| API router (`apps/api/src/orpc.ts`)                                                                                                     | Generator procedures and failure mapping                                                                   |
-| Capture flow (`apps/mobile/src/features/capture-session/capture/use-photo-capture.ts`)                                                  | Photo persistence, independently started OCR and identification                                            |
-| Capture-session controller (`apps/mobile/src/features/capture-session/use-capture-session-controller.ts`)                               | Client composition, Legend State, shared values, model and transport ownership                             |
-| Camera session (`apps/mobile/src/features/capture-session/camera/use-camera-session.ts`)                                                | Camera activity, photo, barcode, and salient-object outputs                                                |
-| Frame delivery (`apps/mobile/src/features/capture-session/camera/use-frame-delivery.ts`)                                                | VGA RGB frames, native analysis, compact observations, worker submission/polling, frame disposal           |
-| OCR signal hook (`apps/mobile/src/features/capture-session/identity/use-ocr-signal.ts`)                                                 | Extraction merging, local observations, refinement requests                                                |
-| ExecuTorch inference (`apps/mobile/src/features/capture-session/inference/use-executorch-inference.ts`)                                 | Detector, CRAFT OCR, EfficientNet classification                                                           |
-| Local visual identity (`apps/mobile/src/features/capture-session/identity/use-local-visual-identity.ts`)                                | Optional local model, shared generation queue, interruption and settlement                                 |
-| Mobile request wrapper (`apps/mobile/src/features/backend/backend-client.ts`)                                                           | Multipart fields, request timeout, HTTP stream parsing                                                     |
-| Identity controller (`apps/api/src/identity/identity.controller.ts`)                                                                    | Validation, admission, NDJSON response, disconnection signal                                               |
-| Identification service (`apps/api/src/identity/identification.service.ts`)                                                              | Partial candidates, OCR merge, Exa query, detached research, listing events                                |
-| Visual provider (`apps/api/src/providers/visual-identity.ts`)                                                                           | Configurable model default, image/prompt input, structured streaming                                       |
-| Exa search (`apps/api/src/providers/exa-search.ts`)                                                                                     | Text-only query, retrieved evidence, timeout                                                               |
-| Evidence resolver (`apps/api/src/providers/identity-evidence-resolver.ts`)                                                              | Evidence/narration input, listing streaming, identity and price guardrails                                 |
-| Provider budget (`apps/api/src/providers/provider-budget.ts`)                                                                           | Explicit backend admission limits; no Effect scheduler                                                     |
-| Control stream consumer (`apps/mobile/src/features/capture-session/identity/use-identity-control-stream.ts`)                            | Progressive patches, candidate image checks, session ownership                                             |
-| Candidate reconciliation (`apps/mobile/src/features/capture-session/identity/progressive-identity.ts`)                                  | Source/specificity/confidence ranking and server revisions                                                 |
-| Listing narration (`apps/mobile/src/features/capture-session/speech/use-audio-telemetry.ts`)                                            | Short-lived token, PCM audio, Scribe connection, partial and committed transcripts                         |
-| Voice-agent screen (`apps/mobile/src/features/voice/elevenlabs-conversation-screen.tsx`)                                                | Separate WebRTC conversation route                                                                         |
-| Forked frame extractor (`vendor/react-native-executorch/packages/react-native-executorch/common/rnexecutorch/utils/FrameExtractor.cpp`) | Native buffer locking and owned pixel clone                                                                |
-| Forked OCR worker (`vendor/react-native-executorch/packages/react-native-executorch/common/rnexecutorch/models/ocr/OCR.cpp`)            | Active/pending work, replacement, result generation, inference mutex, thread teardown                      |
-| Installed Effect (`node_modules/effect/src/Semaphore.ts`, `node_modules/effect/src/Scheduler.ts`)                                       | Permit finalization, sync execution mode, microtask dispatcher                                             |
+| Source | Claims to check when editing |
+| --- | --- |
+| Item task queue (`apps/mobile/src/features/capture-session/identity/item-task-queue.ts`) | Permits, cancellation bridge, scheduler, counters, reference cleanup |
+| Progressive identification hook (`apps/mobile/src/features/capture-session/identity/use-progressive-identification.ts`) | Queue lifetime, caller signal, aborted-result check, latest pending snapshot, `Promise.allSettled` barrier |
+| Queue tests (`apps/mobile/tests/item-task-queue.test.mjs`) | Six tested behaviors and controlled Promise scenarios |
+| API router (`apps/api/src/orpc.ts`) | Generator procedures and failure mapping |
+| Capture flow (`apps/mobile/src/features/capture-session/capture/use-photo-capture.ts`) | Photo persistence, independently started OCR and identification |
+| Capture-session controller (`apps/mobile/src/features/capture-session/use-capture-session-controller.ts`) | Client composition, Legend State, shared values, model and transport ownership |
+| Camera session (`apps/mobile/src/features/capture-session/camera/use-camera-session.ts`) | Camera activity, photo, barcode, and salient-object outputs |
+| Frame delivery (`apps/mobile/src/features/capture-session/camera/use-frame-delivery.ts`) | VGA RGB frames, native analysis, compact observations, worker submission/polling, frame disposal |
+| OCR signal hook (`apps/mobile/src/features/capture-session/identity/use-ocr-signal.ts`) | Extraction merging, local observations, refinement requests |
+| ExecuTorch inference (`apps/mobile/src/features/capture-session/inference/use-executorch-inference.ts`) | Detector, CRAFT OCR, EfficientNet classification |
+| Local visual identity (`apps/mobile/src/features/capture-session/identity/use-local-visual-identity.ts`) | Optional local model, shared generation queue, interruption and settlement |
+| Mobile request wrapper (`apps/mobile/src/features/backend/backend-client.ts`) | Multipart fields, request timeout, HTTP stream parsing |
+| Identity controller (`apps/api/src/identity/identity.controller.ts`) | Validation, admission, NDJSON response, disconnection signal |
+| Identification service (`apps/api/src/identity/identification.service.ts`) | Partial candidates, OCR merge, Exa query, detached research, listing events |
+| Visual provider (`apps/api/src/providers/visual-identity.ts`) | Configurable model default, image/prompt input, structured streaming |
+| Exa search (`apps/api/src/providers/exa-search.ts`) | Text-only query, retrieved evidence, timeout |
+| Evidence resolver (`apps/api/src/providers/identity-evidence-resolver.ts`) | Evidence/narration input, listing streaming, identity and price guardrails |
+| Provider budget (`apps/api/src/providers/provider-budget.ts`) | Explicit backend admission limits; no Effect scheduler |
+| Control stream consumer (`apps/mobile/src/features/capture-session/identity/use-identity-control-stream.ts`) | Progressive patches, candidate image checks, session ownership |
+| Candidate reconciliation (`apps/mobile/src/features/capture-session/identity/progressive-identity.ts`) | Source/specificity/confidence ranking and server revisions |
+| Listing narration (`apps/mobile/src/features/capture-session/speech/use-audio-telemetry.ts`) | Short-lived token, PCM audio, Scribe connection, partial and committed transcripts |
+| Voice-agent screen (`apps/mobile/src/features/voice/elevenlabs-conversation-screen.tsx`) | Separate WebRTC conversation route |
+| Forked frame extractor (`vendor/react-native-executorch/packages/react-native-executorch/common/rnexecutorch/utils/FrameExtractor.cpp`) | Native buffer locking and owned pixel clone |
+| Forked OCR worker (`vendor/react-native-executorch/packages/react-native-executorch/common/rnexecutorch/models/ocr/OCR.cpp`) | Active/pending work, replacement, result generation, inference mutex, thread teardown |
+| Installed Effect (`node_modules/effect/src/Semaphore.ts`, `node_modules/effect/src/Scheduler.ts`) | Permit finalization, sync execution mode, microtask dispatcher |
 
 ### Recorded local category feedback — September 3
 
@@ -754,13 +754,13 @@ The fork's default branch is not the worker implementation. The worker integrati
 
 ### What the rewrite replaces, and what the application still owns
 
-| Fork change                                                            | What upstream 0.10 supplies                                             | Assessment                                                                           |
-| ---------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Native thread that runs OCR outside the camera callback                | Background worklet runtimes and asynchronous OCR execution              | Potentially replaceable with app-level scheduling.                                   |
-| One active frame, one replaceable pending frame, latest-result polling | Ordinary asynchronous dispatch                                          | Still needs implementation. Upstream does not reproduce the bounded worker contract. |
-| Generation reset and item-scoped results                               | General inference results                                               | Still needed in Snap to Post to reject stale results.                                |
-| Locked frame extraction followed by an owned pixel copy                | New pipelines accept an `ImageBuffer`; legacy retains the old extractor | Depends on the migration path. Pixel lifetime still needs explicit handling.         |
-| Workspace build scripts, dependency alignment, and lockfile repairs    | Published package distribution                                          | Mostly unnecessary once the app stops consuming the vendored workspace packages.     |
+| Fork change | What upstream 0.10 supplies | Assessment |
+| --- | --- | --- |
+| Native thread that runs OCR outside the camera callback | Background worklet runtimes and asynchronous OCR execution | Potentially replaceable with app-level scheduling. |
+| One active frame, one replaceable pending frame, latest-result polling | Ordinary asynchronous dispatch | Still needs implementation. Upstream does not reproduce the bounded worker contract. |
+| Generation reset and item-scoped results | General inference results | Still needed in Snap to Post to reject stale results. |
+| Locked frame extraction followed by an owned pixel copy | New pipelines accept an `ImageBuffer`; legacy retains the old extractor | Depends on the migration path. Pixel lifetime still needs explicit handling. |
+| Workspace build scripts, dependency alignment, and lockfile repairs | Published package distribution | Mostly unnecessary once the app stops consuming the vendored workspace packages. |
 
 The current `use-executorch-inference.ts` directly consumes `submitFrame`, `takeLatestFrameResult`, and `resetFrameWorker`. The camera path submits gated frames, polls completed results, and records queue, inference, and submission timing. Those custom worker APIs are absent from upstream, including its legacy entry point.
 

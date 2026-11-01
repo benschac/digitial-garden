@@ -8,14 +8,17 @@ const args = process.argv.slice(2);
 
 try {
   let nextArgs = args;
+
   if (!args.includes("--help") && !args.includes("-h")) {
     const options = devOptions(args);
     const port = await findAvailablePort(options.port, options.hostname);
+
     if (options.port !== 0 && port !== options.port) {
       console.log(
-        `Port ${options.port} is in use; using port ${port} instead.`,
+        `Port ${options.port} is in use; using port ${port} instead.`
       );
     }
+
     nextArgs = [
       "--port",
       String(port),
@@ -24,11 +27,13 @@ try {
       ...options.args,
     ];
   }
+
   const child = spawn(
     process.execPath,
     [require.resolve("next/dist/bin/next"), "dev", ...nextArgs],
-    { stdio: "inherit" },
+    { stdio: "inherit" }
   );
+
   const interrupt = () => child.kill("SIGINT");
   const terminate = () => child.kill("SIGTERM");
   process.on("SIGINT", interrupt);

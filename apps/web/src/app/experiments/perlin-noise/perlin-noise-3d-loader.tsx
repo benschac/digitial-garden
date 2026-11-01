@@ -1,7 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
+
 import { typographyVariants } from "@/components/page-typography";
+
 import styles from "./perlin-noise-styles";
 
 /**
@@ -9,20 +11,18 @@ import styles from "./perlin-noise-styles";
  *
  * @returns An accessible loading region with the same footprint as the 3D scene.
  */
-function Noise3DLoading() {
-  return (
-    <section className={styles.threeExperiment} aria-busy="true">
-      <div
-        className={typographyVariants({
-          variant: "experimentNoiseThreeLoading",
-          className: styles.threeLoading,
-        })}
-      >
-        Loading the 3D comparison…
-      </div>
-    </section>
-  );
-}
+const Noise3DLoading = () => (
+  <section className={styles.threeExperiment} aria-busy="true">
+    <div
+      className={typographyVariants({
+        className: styles.threeLoading,
+        variant: "experimentNoiseThreeLoading",
+      })}
+    >
+      Loading the 3D comparison…
+    </div>
+  </section>
+);
 
 /**
  * Lazily loads the React Three Fiber experiment only in the browser.
@@ -33,7 +33,7 @@ function Noise3DLoading() {
 export const PerlinNoise3DExperiment = dynamic(
   () =>
     import("./perlin-noise-3d-experiment").then(
-      (module) => module.PerlinNoise3DExperiment,
+      (module) => module.PerlinNoise3DExperiment
     ),
-  { loading: Noise3DLoading, ssr: false },
+  { loading: Noise3DLoading, ssr: false }
 );

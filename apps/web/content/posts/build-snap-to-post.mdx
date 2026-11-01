@@ -165,11 +165,11 @@ The phone sends **selected photographs and available OCR or barcode observations
 
 The request goes to `POST /v1/identify` as a multipart upload:
 
-| Part            | Contents                                                                      |
-| --------------- | ----------------------------------------------------------------------------- |
-| `images`        | One to three selected JPEGs.                                                  |
-| `signals`       | JSON containing the OCR request, any extracted text, and an optional barcode. |
-| Request headers | Session, item, and image IDs to associate results with the right capture.     |
+| Part | Contents |
+| --- | --- |
+| `images` | One to three selected JPEGs. |
+| `signals` | JSON containing the OCR request, any extracted text, and an optional barcode. |
+| Request headers | Session, item, and image IDs to associate results with the right capture. |
 
 For the bottle example, the `signals` field could contain:
 

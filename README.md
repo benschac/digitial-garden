@@ -34,7 +34,7 @@ Configure model access with `AI_GATEWAY_API_KEY` in `apps/web/.env.local`, or li
 
 ```bash
 bun run dev
-bun --cwd apps/web run eve:dev
+bun --cwd apps/web run dev:eve
 ```
 
 Use `bun --cwd apps/web run eve:info` to inspect the discovered agent surface. The default browser channel accepts local development traffic but remains fail-closed in production until an explicit authentication policy is added.
@@ -87,7 +87,15 @@ Regenerate both committed assets from `apps/web` with `bun run social:render`. T
 
 ## Checks
 
-`bun run verify` is the full local and CI gate. It runs the following checks sequentially, stopping on failure: lint and formatting, tooling tests, workspace typechecks (including content validation), application tests, and the production build. Serial execution avoids competing content generators. GitHub Actions runs the same command after a frozen-lockfile install on pushes and pull requests. Repository branch protection must require the `verify` job separately; the workflow alone does not prevent merging.
+`bun run verify` is the fast agent gate: Turbo selects affected lint, formatting, tooling tests, typechecks, and application tests using task inputs, then reuses successful cached results. It does not build the application. By default, affected selection compares the current branch against `main`, including staged, unstaged, and untracked changes. Use `TURBO_SCM_BASE=HEAD TURBO_SCM_HEAD=HEAD bun run verify` for only current uncommitted changes. `bun run verify --dry=json` shows selected tasks, inputs, hashes, and cache status without running them.
+
+`bun run verify:full` checks every task and the production build, reusing valid cache entries. It runs serially because Next also writes generated content during its build. Content validation is one cached prerequisite shared by typechecks and tests. GitHub Actions runs this full gate after a frozen-lockfile install and restores `.turbo/cache` across runs. Repository branch protection must require the `verify` job separately; the workflow alone does not prevent merging.
+
+PR verification uses [Graphite's CI optimizer](https://graphite.com/docs/stacking-and-ci). Configure this repository in [Graphite CI Optimizations](https://app.graphite.com/settings/ci-optimizations) with zero bottom PRs and top-of-stack CI enabled, then save its token as the GitHub Actions secret `GRAPHITE_CI_OPTIMIZER_TOKEN`. Missing credentials or optimizer errors run verification normally. Feature-branch pushes do not start duplicate Actions runs; `main`, merge queues, and manual runs always verify. Graphite also runs CI during stack merges.
+
+Vercel previews use the small `scripts/vercel-ignore-build.mjs` guard to skip temporary Graphite branches and branches with an open same-repository child PR. Production always builds. The guard uses the public GitHub API and continues building on errors, rate limits, or uncertain results. It checks up to 100 child PRs; a child beyond that limit may cause an extra build. Keep Vercel's project root at `apps/web` and expose system environment variables. Decisions reflect the stack when the build starts; skipped deployments appear as canceled and still count toward Vercel's deployment limits.
+
+Task inputs distinguish authored blog content from repository documentation. Shared source changes invalidate consumer checks through transit tasks; documentation and Storybook image assets do not trigger application checks or builds. Storybook source remains a build input because Tailwind scans it. Lint/format configuration, ignore files, installed tool versions, and vendored plugin changes invalidate the corresponding checks. Cache directories are local to each checkout because generated content can contain absolute paths.
 
 Import restrictions keep shared package source independent of the web app and require app consumers to use public package exports. These are syntax-based static import/re-export checks, not a whole-program dependency graph: computed imports, CommonJS calls, and new path aliases need review. TypeScript suppression directives are errors. Assertion invariants belong in the change summary under `AGENTS.md`, so the conflicting safety-comment rule is disabled; the other assertion rules remain enabled.
 
@@ -102,12 +110,14 @@ bun run test:tools
 bun run build
 ```
 
-Linting uses Oxlint with Ultracite's core, React, and Next.js presets in `oxlint.config.mts`. Formatting uses Ultracite's Oxfmt preset in `oxfmt.config.mts`. All tooling is installed by `bun install`; there is no separate Bun canary download. Bun 1.4.3 remains the package manager.
+Linting uses Oxlint with Ultracite's core, React, and Next.js presets in `oxlint.config.mts`. Formatting uses Ultracite's Oxfmt preset in `oxfmt.config.mts`. `bun install` installs the tools.
 
-Run `bun run format` to format the workspace, `bun run lint:fix` for safe lint fixes, or `bun run check:write` for both. These commands also accept explicit paths, for example `bun run format scripts/oxc-tool.mjs`. Formatting sorts imports and package.json fields. Tailwind class sorting stays disabled to preserve authored class order and `cn()` merging behavior.
+Run `bun run format` to format the workspace or `bun run lint:fix` for safe lint fixes. Both accept paths, for example `bun run format scripts/agent-sources.mjs`. Formatting sorts imports and package.json fields; Tailwind class sorting stays disabled to preserve class order and `cn()` behavior.
 
 [Anti-slop](https://github.com/dmmulroy/anti-slop) is vendored under `tools/oxlint/anti-slop`, with its generic and Effect rules enabled. Source identity and local adaptations are recorded in its `UPSTREAM.md`. Keep `oxlint` and `@oxlint/plugins` pinned to the same exact version when upgrading. The [coverage audit](docs/oxc-rule-parity.md) records the former Biome mappings and remaining gaps. Oxlint does not lint CSS or JSON. Type-aware linting is not enabled; the existing TypeScript checks remain separate.
 
-The stricter presets expose existing source violations and formatting differences. The tooling migration does not bulk-rewrite application code or articles. Run `bun run test:tools` to check mapped rule severities, representative native and anti-slop diagnostics, and changed-file hook behavior.
+ESLint is not installed or invoked by this workspace. Oxlint owns linting; its built-in `eslint/...` rule names and the vendored compatibility API do not run ESLint. Ultracite lists ESLint as an optional peer for its other presets, which does not install or enable it here.
 
-The project Codex Stop hook in `.codex/hooks.json` runs Oxfmt formatting checks and Oxlint on staged, unstaged, and untracked files. Checks are read-only, respect ignored/generated paths, and skip deleted files and symlinks. Failures request one follow-up pass; `stop_hook_active` prevents a continuation loop. See [official Codex hooks documentation](https://learn.chatgpt.com/docs/hooks).
+The source backlog from the stricter presets is resolved. Narrow framework adaptations preserve Effect error factories, GPU binary field order and bitwise operations, canvas/SVG accessibility, React child adapters, and explicit DOM measurement restart dependencies. The [coverage audit](docs/oxc-rule-parity.md) explains these boundaries. Run `bun run test:tools` to check mapped rule severities, package boundaries, framework exceptions, and vendored plugin registration.
+
+`git commit` does not run automatic verification. Run `bun run verify` before committing; GitHub Actions runs `bun run verify:full`.

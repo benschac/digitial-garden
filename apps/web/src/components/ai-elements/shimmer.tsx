@@ -5,11 +5,11 @@ import { motion } from "motion/react";
 import type { CSSProperties, ElementType } from "react";
 import { memo, useMemo } from "react";
 
-type ShimmerElementProps = {
+interface ShimmerElementProps {
   children: string;
   className?: string;
   style?: CSSProperties;
-};
+}
 
 type ShimmerElement = ElementType<ShimmerElementProps>;
 
@@ -23,10 +23,12 @@ const motionComponentCache = new Map<
 
 const getMotionComponent = (element: ShimmerElement) => {
   let component = motionComponentCache.get(element);
+
   if (!component) {
     component = createMotionComponent(element);
     motionComponentCache.set(element, component);
   }
+
   return component;
 };
 
@@ -49,8 +51,9 @@ const ShimmerComponent = ({
 
   const dynamicSpread = useMemo(
     () => (children?.length ?? 0) * spread,
-    [children, spread],
+    [children, spread]
   );
+
   const style = {
     "--spread": `${dynamicSpread}px`,
     backgroundImage:
@@ -63,7 +66,7 @@ const ShimmerComponent = ({
       className={cn(
         "relative inline-block bg-[length:250%_100%,auto] bg-clip-text text-transparent",
         "[--bg:linear-gradient(90deg,#0000_calc(50%-var(--spread)),var(--color-background),#0000_calc(50%+var(--spread)))] [background-repeat:no-repeat,padding-box]",
-        className,
+        className
       )}
       initial={{ backgroundPosition: "100% center" }}
       style={style}

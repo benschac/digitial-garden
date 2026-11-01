@@ -1,14 +1,10 @@
 import { Typography } from "@personal-site/ui/components/typography";
+import { Predicate } from "effect";
 import type { MDXComponents } from "mdx/types";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  Children,
-  cloneElement,
-  type ComponentPropsWithoutRef,
-  isValidElement,
-  type ReactNode,
-} from "react";
+import { Children, cloneElement, isValidElement } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 import { AnimatedDiagram } from "./components/mdx/animated-diagram";
 import { Callout } from "./components/mdx/callout";
@@ -16,32 +12,42 @@ import { ComingSoon } from "./components/mdx/coming-soon";
 import { EffectWalkthrough } from "./components/mdx/effect-walkthrough";
 import { MermaidDiagram } from "./components/mdx/mermaid-diagram";
 
-function MdxLink({ href = "", ...props }: ComponentPropsWithoutRef<"a">) {
+export const MdxLink = ({
+  href = "",
+  children,
+  ...props
+}: ComponentPropsWithoutRef<"a">) => {
   if (href.startsWith("/")) {
-    return <Link href={href} transitionTypes={["nav-lateral"]} {...props} />;
+    return (
+      <Link href={href} transitionTypes={["nav-lateral"]} {...props}>
+        {children}
+      </Link>
+    );
   }
 
-  const opensNewTab = props.target === "_blank";
   return (
     <a
       {...props}
       href={href}
-      rel={opensNewTab ? "noopener noreferrer" : props.rel}
-    />
+      target={props.target}
+      rel={`noopener noreferrer ${props.rel ?? ""}`}
+    >
+      {children}
+    </a>
   );
-}
+};
 
-export function MdxImage({
+export const MdxImage = ({
   alt = "",
   src = "",
   title,
-}: ComponentPropsWithoutRef<"img">) {
+}: ComponentPropsWithoutRef<"img">) => {
   if (
-    typeof src !== "string" ||
+    !Predicate.isString(src) ||
     (!src.startsWith("/") && !src.startsWith("https://"))
   ) {
     throw new Error(
-      "Markdown images must use repository-local /public paths or HTTPS URLs.",
+      "Markdown images must use repository-local /public paths or HTTPS URLs."
     );
   }
 
@@ -58,12 +64,12 @@ export function MdxImage({
       {title ? <Typography as="figcaption">{title}</Typography> : null}
     </figure>
   );
-}
+};
 
-export function MdxParagraph({
+export const MdxParagraph = ({
   children,
   ...props
-}: ComponentPropsWithoutRef<"p">) {
+}: ComponentPropsWithoutRef<"p">) => {
   if (isValidElement(children) && children.type === MdxImage) {
     return children;
   }
@@ -73,35 +79,39 @@ export function MdxParagraph({
       {children}
     </Typography>
   );
-}
+};
 
-function tableText(node: ReactNode): string {
-  if (typeof node === "string" || typeof node === "number") {
+const tableText = (node: ReactNode): string => {
+  if (Predicate.isString(node) || Predicate.isNumber(node)) {
     return String(node);
   }
+
   if (Array.isArray(node)) {
     return node.map(tableText).join("");
   }
+
   return isValidElement<{ children?: ReactNode }>(node)
     ? tableText(node.props.children)
     : "";
-}
+};
 
-export function MdxTable({
+export const MdxTable = ({
   children,
   ...props
-}: ComponentPropsWithoutRef<"table">) {
+}: ComponentPropsWithoutRef<"table">) => {
   const head = Children.toArray(children).find(
-    (part) => isValidElement(part) && part.type === "thead",
+    (part) => isValidElement(part) && part.type === "thead"
   );
+
   const headerRow = isValidElement<{ children?: ReactNode }>(head)
     ? Children.toArray(head.props.children)[0]
     : null;
+
   const labels = isValidElement<{ children?: ReactNode }>(headerRow)
     ? Children.toArray(headerRow.props.children).map((cell) =>
         isValidElement<{ children?: ReactNode }>(cell) && cell.type === "th"
           ? tableText(cell.props.children)
-          : "",
+          : ""
       )
     : [];
 
@@ -112,11 +122,15 @@ export function MdxTable({
     ) {
       return part;
     }
+
     return cloneElement(
       part,
       {},
       Children.map(part.props.children, (row) => {
-        if (!isValidElement<{ children?: ReactNode }>(row)) return row;
+        if (!isValidElement<{ children?: ReactNode }>(row)) {
+          return row;
+        }
+
         return cloneElement(
           row,
           {},
@@ -125,10 +139,10 @@ export function MdxTable({
               ComponentPropsWithoutRef<"td"> & { "data-column-label"?: string }
             >(cell) && labels[index]
               ? cloneElement(cell, { "data-column-label": labels[index] })
-              : cell,
-          ),
+              : cell
+          )
         );
-      }),
+      })
     );
   });
 
@@ -148,31 +162,29 @@ export function MdxTable({
       <table {...props}>{labeledChildren}</table>
     </section>
   );
-}
+};
 
 const components = {
+  AnimatedDiagram,
+  Callout,
+  ComingSoon,
+  EffectWalkthrough,
+  MermaidDiagram,
   a: MdxLink,
-  img: MdxImage,
-  p: MdxParagraph,
-  table: MdxTable,
+  blockquote: (props) => <Typography as="blockquote" {...props} />,
+  code: (props) => <Typography as="code" {...props} />,
+  em: (props) => <Typography as="em" {...props} />,
   h1: (props) => <Typography as="h1" {...props} />,
   h2: (props) => <Typography as="h2" {...props} />,
   h3: (props) => <Typography as="h3" {...props} />,
   h4: (props) => <Typography as="h4" {...props} />,
   h5: (props) => <Typography as="h5" {...props} />,
   h6: (props) => <Typography as="h6" {...props} />,
-  strong: (props) => <Typography as="strong" {...props} />,
-  em: (props) => <Typography as="em" {...props} />,
-  blockquote: (props) => <Typography as="blockquote" {...props} />,
-  code: (props) => <Typography as="code" {...props} />,
+  img: MdxImage,
+  p: MdxParagraph,
   pre: (props) => <Typography as="pre" {...props} />,
-  Callout,
-  ComingSoon,
-  AnimatedDiagram,
-  EffectWalkthrough,
-  MermaidDiagram,
+  strong: (props) => <Typography as="strong" {...props} />,
+  table: MdxTable,
 } satisfies MDXComponents;
 
-export function useMDXComponents(): MDXComponents {
-  return components;
-}
+export const useMDXComponents = (): MDXComponents => components;

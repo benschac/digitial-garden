@@ -8,14 +8,16 @@ import { Typography } from "@/components/page-typography";
 import { PageTransition } from "../_components/page-transition";
 
 export const metadata: Metadata = {
-  title: "About",
+  alternates: { canonical: "/about" },
   description:
     "About Benjamin Schachter, with notes on motivation, learning, and work worth doing.",
-  alternates: { canonical: "/about" },
+  title: "About",
 };
 
-export default function AboutLayout({ children }: { children: ReactNode }) {
-  if (process.env.NODE_ENV !== "development") notFound();
+const AboutLayout = ({ children }: { children: ReactNode }) => {
+  if (process.env.NODE_ENV !== "development") {
+    notFound();
+  }
 
   return (
     <PageTransition>
@@ -42,4 +44,6 @@ export default function AboutLayout({ children }: { children: ReactNode }) {
       </main>
     </PageTransition>
   );
-}
+};
+
+export default AboutLayout;

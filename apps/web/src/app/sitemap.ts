@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 import { getPublishedPosts } from "@/lib/content";
 import { getSiteUrl } from "@/lib/site";
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+const sitemap = async (): Promise<MetadataRoute.Sitemap> => {
   const siteUrl = getSiteUrl();
   const posts = await getPublishedPosts();
 
@@ -14,8 +14,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ? [{ url: new URL("/about", siteUrl).toString() }]
       : []),
     ...posts.map((post) => ({
-      url: new URL(`/blog/${post.slug}`, siteUrl).toString(),
       lastModified: post.updatedAt ?? post.publishedAt,
+      url: new URL(`/blog/${post.slug}`, siteUrl).toString(),
     })),
   ];
-}
+};
+
+export default sitemap;

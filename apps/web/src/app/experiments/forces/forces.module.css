@@ -9,7 +9,11 @@
     padding: clamp(1.25rem, 3vw, 2.5rem);
     color: var(--experiment-ink);
     background:
-      radial-gradient(circle at 75% 0%, rgb(37 99 235 / 18%), transparent 34rem),
+      radial-gradient(
+        circle at 75% 0%,
+        rgb(37 99 235 / 18%),
+        transparent 34rem
+      ),
       #0b0e14;
   }
 

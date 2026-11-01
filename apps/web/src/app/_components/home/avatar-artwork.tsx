@@ -1,9 +1,28 @@
 import { cn } from "@personal-site/ui/lib/utils";
 import type { CSSProperties, ReactNode } from "react";
+
 import styles from "./avatar-artwork.module.css";
 
+// Separate wrappers preserve the tracking and blink transforms on inner layers.
+const FeatureEntrance = ({
+  children,
+  delay,
+  animate = true,
+}: {
+  children: ReactNode;
+  delay: number;
+  animate?: boolean;
+}) => (
+  <g
+    className={animate ? styles.featureEntrance : undefined}
+    style={{ "--avatar-enter-delay": `${delay}ms` } as CSSProperties}
+  >
+    {children}
+  </g>
+);
+
 // Geometry from public/images/avatar-pieces/avatar-layered.svg.
-export function AvatarArtwork({
+export const AvatarArtwork = ({
   variant = "hero",
   revealed = false,
   className,
@@ -11,8 +30,9 @@ export function AvatarArtwork({
   variant?: "hero" | "peek";
   revealed?: boolean;
   className?: string;
-}) {
+}) => {
   const peek = variant === "peek";
+
   return (
     <svg
       viewBox={peek ? "90 40 280 230" : "0 0 460 460"}
@@ -127,24 +147,4 @@ export function AvatarArtwork({
       </g>
     </svg>
   );
-}
-
-// Separate wrappers preserve the tracking and blink transforms on inner layers.
-function FeatureEntrance({
-  children,
-  delay,
-  animate = true,
-}: {
-  children: ReactNode;
-  delay: number;
-  animate?: boolean;
-}) {
-  return (
-    <g
-      className={animate ? styles.featureEntrance : undefined}
-      style={{ "--avatar-enter-delay": `${delay}ms` } as CSSProperties}
-    >
-      {children}
-    </g>
-  );
-}
+};

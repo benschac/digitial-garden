@@ -1,12 +1,14 @@
 "use client";
 
-import { useAbortableEffect } from "@personal-site/react-hooks";
+import { useAbortableEffect, useMediaQuery } from "@personal-site/react-hooks";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { Ref } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PlaneGeometry } from "three";
+
 import { Typography, typographyVariants } from "@/components/page-typography";
 import { perlinNoise3D } from "@/lib/perlin-noise";
+
 import { loadParticleEngine } from "../wasm-canvas/wasm-engine";
 import styles from "./perlin-noise-styles";
 
@@ -24,12 +26,12 @@ const PARITY_SAMPLE_INTERVAL = 0.2;
 
 type Noise3D = (x: number, y: number, z: number) => number;
 
-type SurfaceSettings = {
+interface SurfaceSettings {
   frequency: number;
   xOffset: number;
   yOffset: number;
   zOffset: number;
-};
+}
 
 type NoiseSurfacePairProps = SurfaceSettings & {
   animationSpeed: number;
@@ -45,7 +47,275 @@ type NoiseSurfacePairProps = SurfaceSettings & {
  *
  * @returns The React Three Fiber scene, parity readout, and coordinate controls.
  */
-export function PerlinNoise3DExperiment() {
+/**
+ * Measures parity at every vertex represented by the rendered surface grid.
+ *
+ * @param typescriptNoise - TypeScript 3D noise implementation.
+ * @param rustNoise - Rust/WASM 3D noise implementation.
+ * @param settings - Current frequency and X/Y/Z offsets.
+ * @returns The largest absolute difference across the grid.
+ */
+const measureSurfaceDifference = (
+  typescriptNoise: Noise3D,
+  rustNoise: Noise3D,
+  settings: SurfaceSettings
+) => {
+  const vertexCount = SURFACE_SEGMENTS + 1;
+  let maxDifference = 0;
+
+  for (let row = 0; row < vertexCount; row += 1) {
+    const localY = (row / SURFACE_SEGMENTS - 0.5) * SURFACE_SIZE;
+
+    for (let column = 0; column < vertexCount; column += 1) {
+      const localX = (column / SURFACE_SEGMENTS - 0.5) * SURFACE_SIZE;
+      const x = settings.xOffset + localX * settings.frequency;
+      const y = settings.yOffset + localY * settings.frequency;
+      const typescriptValue = typescriptNoise(x, y, settings.zOffset);
+      const rustValue = rustNoise(x, y, settings.zOffset);
+      maxDifference = Math.max(
+        maxDifference,
+        Math.abs(typescriptValue - rustValue)
+      );
+    }
+  }
+
+  return maxDifference;
+};
+
+/** Formats exact agreement plainly and drift in compact scientific notation. */
+const formatDifference = (value: number) =>
+  value === 0 ? "0" : value.toExponential(3);
+
+/**
+ * Displaces both surfaces from one shared, optionally animated Z coordinate.
+ *
+ * Keeping the animation cursor and geometry writes inside the render loop means
+ * React only handles controls and the throttled parity measurement.
+ *
+ * @param props - Noise functions, sampling controls, and animation callbacks.
+ * @returns Matching TypeScript and Rust/WASM terrain meshes.
+ */
+/**
+ * Writes fresh height samples into a plane without allocating new geometry.
+ *
+ * @param geometry - Existing plane geometry, or `null` before it mounts.
+ * @param noise - Noise implementation used for this surface.
+ * @param frequency - Scale applied to local plane coordinates.
+ * @param xOffset - Horizontal position in the noise volume.
+ * @param yOffset - Vertical position in the noise volume.
+ * @param zOffset - Depth of the current volume slice.
+ */
+const updateSurfaceGeometry = (
+  geometry: PlaneGeometry | null,
+  noise: Noise3D | null,
+  frequency: number,
+  xOffset: number,
+  yOffset: number,
+  zOffset: number
+) => {
+  if (!geometry || !noise) {
+    return;
+  }
+
+  const positions = geometry.getAttribute("position");
+
+  for (let index = 0; index < positions.count; index += 1) {
+    const localX = positions.getX(index);
+    const localY = positions.getY(index);
+
+    const sample = noise(
+      xOffset + localX * frequency,
+      yOffset + localY * frequency,
+      zOffset
+    );
+
+    positions.setZ(index, sample * SURFACE_AMPLITUDE);
+  }
+
+  positions.needsUpdate = true;
+  geometry.computeVertexNormals();
+};
+
+/**
+ * Wraps Z at the permutation-table period so the animation repeats seamlessly.
+ *
+ * @param offset - Unbounded position along the noise volume's Z axis.
+ * @returns The equivalent offset in the half-open range `[-128, 128)`.
+ */
+const wrapNoiseOffset = (offset: number) => {
+  const halfPeriod = NOISE_PERIOD / 2;
+
+  return (
+    ((((offset + halfPeriod) % NOISE_PERIOD) + NOISE_PERIOD) % NOISE_PERIOD) -
+    halfPeriod
+  );
+};
+
+/**
+ * Renders one plane whose vertex buffer is owned by the shared surface pair.
+ *
+ * @param props - Geometry ref and world position for one implementation.
+ * @returns A lit React Three Fiber terrain mesh.
+ */
+const NoiseSurfaceMesh = ({
+  geometryRef,
+  position,
+}: {
+  geometryRef: Ref<PlaneGeometry>;
+  position: [number, number, number];
+}) => (
+  <mesh position={position} rotation={[-Math.PI / 2, 0, 0]}>
+    <planeGeometry
+      args={[SURFACE_SIZE, SURFACE_SIZE, SURFACE_SEGMENTS, SURFACE_SEGMENTS]}
+      ref={geometryRef}
+    />
+    <meshStandardMaterial color="#c96849" metalness={0.08} roughness={0.7} />
+  </mesh>
+);
+
+const NoiseSurfacePair = ({
+  animationSpeed,
+  frequency,
+  isPlaying,
+  onAnimatedZOffset,
+  onParitySample,
+  rustNoise,
+  xOffset,
+  yOffset,
+  zOffset,
+}: NoiseSurfacePairProps) => {
+  const typescriptGeometryRef = useRef<PlaneGeometry>(null);
+  const rustGeometryRef = useRef<PlaneGeometry>(null);
+  const animatedZOffsetRef = useRef(zOffset);
+  const parityElapsedRef = useRef(0);
+  const invalidate = useThree((state) => state.invalidate);
+
+  useEffect(() => {
+    if (!isPlaying) {
+      animatedZOffsetRef.current = zOffset;
+    }
+
+    updateSurfaceGeometry(
+      typescriptGeometryRef.current,
+      perlinNoise3D,
+      frequency,
+      xOffset,
+      yOffset,
+      animatedZOffsetRef.current
+    );
+    updateSurfaceGeometry(
+      rustGeometryRef.current,
+      rustNoise,
+      frequency,
+      xOffset,
+      yOffset,
+      animatedZOffsetRef.current
+    );
+    invalidate();
+  }, [frequency, invalidate, isPlaying, rustNoise, xOffset, yOffset, zOffset]);
+
+  useFrame((_state, delta) => {
+    if (!isPlaying) {
+      return;
+    }
+
+    const boundedDelta = Math.min(delta, MAX_FRAME_DELTA);
+
+    const animatedZOffset = wrapNoiseOffset(
+      animatedZOffsetRef.current + boundedDelta * animationSpeed
+    );
+
+    animatedZOffsetRef.current = animatedZOffset;
+
+    updateSurfaceGeometry(
+      typescriptGeometryRef.current,
+      perlinNoise3D,
+      frequency,
+      xOffset,
+      yOffset,
+      animatedZOffset
+    );
+    updateSurfaceGeometry(
+      rustGeometryRef.current,
+      rustNoise,
+      frequency,
+      xOffset,
+      yOffset,
+      animatedZOffset
+    );
+    onAnimatedZOffset(animatedZOffset);
+
+    parityElapsedRef.current += boundedDelta;
+
+    if (parityElapsedRef.current >= PARITY_SAMPLE_INTERVAL) {
+      parityElapsedRef.current = 0;
+      onParitySample(animatedZOffset);
+    }
+  });
+
+  return (
+    <>
+      <NoiseSurfaceMesh
+        geometryRef={typescriptGeometryRef}
+        position={[-1.65, 0.15, 0]}
+      />
+      {rustNoise ? (
+        <NoiseSurfaceMesh
+          geometryRef={rustGeometryRef}
+          position={[1.65, 0.15, 0]}
+        />
+      ) : null}
+    </>
+  );
+};
+
+/**
+ * Renders one controlled slider with a live fixed-precision readout.
+ *
+ * @param props - Slider range, label, current value, and update callback.
+ * @returns A labeled range control.
+ */
+const NoiseSlider = ({
+  disabled = false,
+  inputRef,
+  label,
+  max,
+  min,
+  onChange,
+  outputRef,
+  step,
+  value,
+}: {
+  disabled?: boolean;
+  inputRef?: Ref<HTMLInputElement>;
+  label: string;
+  max: number;
+  min: number;
+  onChange: (value: number) => void;
+  outputRef?: Ref<HTMLOutputElement>;
+  step: number;
+  value: number;
+}) => (
+  <label className={styles.threeControl}>
+    <span>{label}</span>
+    <output className={styles.threeControlOutput} ref={outputRef}>
+      {value.toFixed(2)}
+    </output>
+    <input
+      className={styles.threeControlInput}
+      disabled={disabled}
+      ref={inputRef}
+      max={max}
+      min={min}
+      onChange={(event) => onChange(Number(event.currentTarget.value))}
+      step={step}
+      type="range"
+      value={value}
+    />
+  </label>
+);
+
+export const PerlinNoise3DExperiment = () => {
   const [frequency, setFrequency] = useState(DEFAULT_FREQUENCY);
   const [xOffset, setXOffset] = useState(DEFAULT_X_OFFSET);
   const [yOffset, setYOffset] = useState(DEFAULT_Y_OFFSET);
@@ -53,70 +323,72 @@ export function PerlinNoise3DExperiment() {
   const [animationSpeed, setAnimationSpeed] = useState(DEFAULT_ANIMATION_SPEED);
   const [isPlaying, setIsPlaying] = useState(false);
   const [rustNoise, setRustNoise] = useState<Noise3D | null>(null);
+
   const [status, setStatus] = useState<"error" | "loading" | "ready">(
-    "loading",
+    "loading"
   );
-  const [maxDifference, setMaxDifference] = useState(0);
+
+  const [parityZOffset, setParityZOffset] = useState(DEFAULT_Z_OFFSET);
+  const initializedMotionPreference = useRef(false);
   const animatedZOffsetRef = useRef(DEFAULT_Z_OFFSET);
   const zOffsetInputRef = useRef<HTMLInputElement>(null);
   const zOffsetOutputRef = useRef<HTMLOutputElement>(null);
 
-  useEffect(() => {
-    const reducedMotionQuery = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    );
-
-    if (!reducedMotionQuery.matches) {
+  useMediaQuery("(prefers-reduced-motion: reduce)", (matches) => {
+    if (matches) {
+      setZOffset(animatedZOffsetRef.current);
+      setIsPlaying(false);
+    } else if (!initializedMotionPreference.current) {
       setIsPlaying(true);
     }
 
-    /** Pauses automatic movement when the operating-system preference changes. */
-    const handleReducedMotionChange = (event: MediaQueryListEvent) => {
-      if (!event.matches) {
-        return;
-      }
-
-      setZOffset(animatedZOffsetRef.current);
-      setIsPlaying(false);
-    };
-
-    reducedMotionQuery.addEventListener("change", handleReducedMotionChange);
-    return () =>
-      reducedMotionQuery.removeEventListener(
-        "change",
-        handleReducedMotionChange,
-      );
-  }, []);
-
-  useAbortableEffect((signal) => {
-    loadParticleEngine(signal)
-      .then((engine) => {
-        setRustNoise(() => engine.perlin_noise_3d);
-        setStatus("ready");
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-        console.error(error);
-        setStatus("error");
-      });
+    initializedMotionPreference.current = true;
   });
 
-  useEffect(() => {
+  useAbortableEffect((signal) => {
+    const loadNoise = async () => {
+      try {
+        const engine = await loadParticleEngine(signal);
+
+        if (signal.aborted) {
+          return;
+        }
+
+        setRustNoise(() => engine.perlin_noise_3d);
+        setStatus("ready");
+      } catch (error) {
+        if (signal.aborted) {
+          return;
+        }
+
+        console.error(error);
+        setStatus("error");
+      }
+    };
+
+    void loadNoise();
+  });
+
+  const maxDifference = useMemo(() => {
     if (!rustNoise) {
-      return;
+      return 0;
     }
 
-    setMaxDifference(
-      measureSurfaceDifference(perlinNoise3D, rustNoise, {
-        frequency,
-        xOffset,
-        yOffset,
-        zOffset,
-      }),
-    );
-  }, [frequency, rustNoise, xOffset, yOffset, zOffset]);
+    return measureSurfaceDifference(perlinNoise3D, rustNoise, {
+      frequency,
+      xOffset,
+      yOffset,
+      zOffset: isPlaying ? parityZOffset : zOffset,
+    });
+  }, [
+    frequency,
+    isPlaying,
+    parityZOffset,
+    rustNoise,
+    xOffset,
+    yOffset,
+    zOffset,
+  ]);
 
   const isDefaultView =
     !isPlaying &&
@@ -146,6 +418,7 @@ export function PerlinNoise3DExperiment() {
     if (zOffsetInputRef.current) {
       zOffsetInputRef.current.value = String(value);
     }
+
     if (zOffsetOutputRef.current) {
       zOffsetOutputRef.current.value = value.toFixed(2);
     }
@@ -157,14 +430,7 @@ export function PerlinNoise3DExperiment() {
       return;
     }
 
-    setMaxDifference(
-      measureSurfaceDifference(perlinNoise3D, rustNoise, {
-        frequency,
-        xOffset,
-        yOffset,
-        zOffset: animatedZOffset,
-      }),
-    );
+    setParityZOffset(animatedZOffset);
   };
 
   /** Starts or pauses the volume traversal while preserving the current slice. */
@@ -172,6 +438,7 @@ export function PerlinNoise3DExperiment() {
     if (isPlaying) {
       setZOffset(animatedZOffsetRef.current);
     }
+
     setIsPlaying((playing) => !playing);
   };
 
@@ -243,8 +510,8 @@ export function PerlinNoise3DExperiment() {
         </Canvas>
         <div
           className={typographyVariants({
-            variant: "experimentNoiseThreeLegend",
             className: styles.threeLegend,
+            variant: "experimentNoiseThreeLegend",
           })}
           aria-hidden="true"
         >
@@ -325,269 +592,4 @@ export function PerlinNoise3DExperiment() {
       </div>
     </section>
   );
-}
-
-/**
- * Displaces both surfaces from one shared, optionally animated Z coordinate.
- *
- * Keeping the animation cursor and geometry writes inside the render loop means
- * React only handles controls and the throttled parity measurement.
- *
- * @param props - Noise functions, sampling controls, and animation callbacks.
- * @returns Matching TypeScript and Rust/WASM terrain meshes.
- */
-function NoiseSurfacePair({
-  animationSpeed,
-  frequency,
-  isPlaying,
-  onAnimatedZOffset,
-  onParitySample,
-  rustNoise,
-  xOffset,
-  yOffset,
-  zOffset,
-}: NoiseSurfacePairProps) {
-  const typescriptGeometryRef = useRef<PlaneGeometry>(null);
-  const rustGeometryRef = useRef<PlaneGeometry>(null);
-  const animatedZOffsetRef = useRef(zOffset);
-  const parityElapsedRef = useRef(0);
-  const invalidate = useThree((state) => state.invalidate);
-
-  useEffect(() => {
-    if (!isPlaying) {
-      animatedZOffsetRef.current = zOffset;
-    }
-
-    updateSurfaceGeometry(
-      typescriptGeometryRef.current,
-      perlinNoise3D,
-      frequency,
-      xOffset,
-      yOffset,
-      animatedZOffsetRef.current,
-    );
-    updateSurfaceGeometry(
-      rustGeometryRef.current,
-      rustNoise,
-      frequency,
-      xOffset,
-      yOffset,
-      animatedZOffsetRef.current,
-    );
-    invalidate();
-  }, [frequency, invalidate, isPlaying, rustNoise, xOffset, yOffset, zOffset]);
-
-  useFrame((_state, delta) => {
-    if (!isPlaying) {
-      return;
-    }
-
-    const boundedDelta = Math.min(delta, MAX_FRAME_DELTA);
-    const animatedZOffset = wrapNoiseOffset(
-      animatedZOffsetRef.current + boundedDelta * animationSpeed,
-    );
-    animatedZOffsetRef.current = animatedZOffset;
-
-    updateSurfaceGeometry(
-      typescriptGeometryRef.current,
-      perlinNoise3D,
-      frequency,
-      xOffset,
-      yOffset,
-      animatedZOffset,
-    );
-    updateSurfaceGeometry(
-      rustGeometryRef.current,
-      rustNoise,
-      frequency,
-      xOffset,
-      yOffset,
-      animatedZOffset,
-    );
-    onAnimatedZOffset(animatedZOffset);
-
-    parityElapsedRef.current += boundedDelta;
-    if (parityElapsedRef.current >= PARITY_SAMPLE_INTERVAL) {
-      parityElapsedRef.current = 0;
-      onParitySample(animatedZOffset);
-    }
-  });
-
-  return (
-    <>
-      <NoiseSurfaceMesh
-        geometryRef={typescriptGeometryRef}
-        position={[-1.65, 0.15, 0]}
-      />
-      {rustNoise ? (
-        <NoiseSurfaceMesh
-          geometryRef={rustGeometryRef}
-          position={[1.65, 0.15, 0]}
-        />
-      ) : null}
-    </>
-  );
-}
-
-/**
- * Renders one plane whose vertex buffer is owned by the shared surface pair.
- *
- * @param props - Geometry ref and world position for one implementation.
- * @returns A lit React Three Fiber terrain mesh.
- */
-function NoiseSurfaceMesh({
-  geometryRef,
-  position,
-}: {
-  geometryRef: Ref<PlaneGeometry>;
-  position: [number, number, number];
-}) {
-  return (
-    <mesh position={position} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry
-        args={[SURFACE_SIZE, SURFACE_SIZE, SURFACE_SEGMENTS, SURFACE_SEGMENTS]}
-        ref={geometryRef}
-      />
-      <meshStandardMaterial color="#c96849" metalness={0.08} roughness={0.7} />
-    </mesh>
-  );
-}
-
-/**
- * Renders one controlled slider with a live fixed-precision readout.
- *
- * @param props - Slider range, label, current value, and update callback.
- * @returns A labeled range control.
- */
-function NoiseSlider({
-  disabled = false,
-  inputRef,
-  label,
-  max,
-  min,
-  onChange,
-  outputRef,
-  step,
-  value,
-}: {
-  disabled?: boolean;
-  inputRef?: Ref<HTMLInputElement>;
-  label: string;
-  max: number;
-  min: number;
-  onChange: (value: number) => void;
-  outputRef?: Ref<HTMLOutputElement>;
-  step: number;
-  value: number;
-}) {
-  return (
-    <label className={styles.threeControl}>
-      <span>{label}</span>
-      <output className={styles.threeControlOutput} ref={outputRef}>
-        {value.toFixed(2)}
-      </output>
-      <input
-        className={styles.threeControlInput}
-        disabled={disabled}
-        ref={inputRef}
-        max={max}
-        min={min}
-        onChange={(event) => onChange(Number(event.currentTarget.value))}
-        step={step}
-        type="range"
-        value={value}
-      />
-    </label>
-  );
-}
-
-/**
- * Writes fresh height samples into a plane without allocating new geometry.
- *
- * @param geometry - Existing plane geometry, or `null` before it mounts.
- * @param noise - Noise implementation used for this surface.
- * @param frequency - Scale applied to local plane coordinates.
- * @param xOffset - Horizontal position in the noise volume.
- * @param yOffset - Vertical position in the noise volume.
- * @param zOffset - Depth of the current volume slice.
- */
-function updateSurfaceGeometry(
-  geometry: PlaneGeometry | null,
-  noise: Noise3D | null,
-  frequency: number,
-  xOffset: number,
-  yOffset: number,
-  zOffset: number,
-) {
-  if (!geometry || !noise) {
-    return;
-  }
-
-  const positions = geometry.getAttribute("position");
-  for (let index = 0; index < positions.count; index += 1) {
-    const localX = positions.getX(index);
-    const localY = positions.getY(index);
-    const sample = noise(
-      xOffset + localX * frequency,
-      yOffset + localY * frequency,
-      zOffset,
-    );
-    positions.setZ(index, sample * SURFACE_AMPLITUDE);
-  }
-
-  positions.needsUpdate = true;
-  geometry.computeVertexNormals();
-}
-
-/**
- * Wraps Z at the permutation-table period so the animation repeats seamlessly.
- *
- * @param offset - Unbounded position along the noise volume's Z axis.
- * @returns The equivalent offset in the half-open range `[-128, 128)`.
- */
-function wrapNoiseOffset(offset: number) {
-  const halfPeriod = NOISE_PERIOD / 2;
-  return (
-    ((((offset + halfPeriod) % NOISE_PERIOD) + NOISE_PERIOD) % NOISE_PERIOD) -
-    halfPeriod
-  );
-}
-
-/**
- * Measures parity at every vertex represented by the rendered surface grid.
- *
- * @param typescriptNoise - TypeScript 3D noise implementation.
- * @param rustNoise - Rust/WASM 3D noise implementation.
- * @param settings - Current frequency and X/Y/Z offsets.
- * @returns The largest absolute difference across the grid.
- */
-function measureSurfaceDifference(
-  typescriptNoise: Noise3D,
-  rustNoise: Noise3D,
-  settings: SurfaceSettings,
-) {
-  const vertexCount = SURFACE_SEGMENTS + 1;
-  let maxDifference = 0;
-
-  for (let row = 0; row < vertexCount; row += 1) {
-    const localY = (row / SURFACE_SEGMENTS - 0.5) * SURFACE_SIZE;
-    for (let column = 0; column < vertexCount; column += 1) {
-      const localX = (column / SURFACE_SEGMENTS - 0.5) * SURFACE_SIZE;
-      const x = settings.xOffset + localX * settings.frequency;
-      const y = settings.yOffset + localY * settings.frequency;
-      const typescriptValue = typescriptNoise(x, y, settings.zOffset);
-      const rustValue = rustNoise(x, y, settings.zOffset);
-      maxDifference = Math.max(
-        maxDifference,
-        Math.abs(typescriptValue - rustValue),
-      );
-    }
-  }
-
-  return maxDifference;
-}
-
-/** Formats exact agreement plainly and drift in compact scientific notation. */
-function formatDifference(value: number) {
-  return value === 0 ? "0" : value.toExponential(3);
-}
+};

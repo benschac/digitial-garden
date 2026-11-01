@@ -49,7 +49,8 @@ This repository uses the Effect TypeScript library. Before writing Effect code, 
 
 ## Verification fence
 
-- Run `bun run verify` before delivery. It checks formatting, lint, tooling tests, types, application tests, and the production build in sequence. Content validation runs through the type and test scripts. Do not suppress failures or weaken checks to pass.
+- Keep tests proportional to the behavior at risk. Prefer existing coverage and the smallest focused regression test; use static checks or a smoke check for simple configuration and vendor wiring. Avoid suites that restate implementation details or exhaustively mock third-party behavior. Explain the concrete failure a new test would catch before adding it.
+- Run `bun run verify` before delivery. Turbo selects affected lint, format, tooling-test, typecheck, and application-test tasks from their declared inputs and reuses successful cached results. Use `TURBO_SCM_BASE=HEAD TURBO_SCM_HEAD=HEAD bun run verify` to check only current uncommitted changes; the default compares the branch against `main`. Content generation is a shared prerequisite. Run `bun run verify:full` for build/configuration changes and before release; CI runs this full gate. Do not suppress failures or weaken checks to pass.
 - Shared package source must not import app-owned code. Apps consume shared packages through their public exports, not `src` paths.
 - TypeScript suppression directives (`@ts-ignore`, `@ts-nocheck`, and `@ts-expect-error`) are prohibited. Fix the owning type relationship.
 - Necessary assertions follow the policy above; explain their invariant in the change summary, not a safety comment.

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { perlinNoise2D, perlinNoise3D } from "./perlin-noise";
 
 describe("perlinNoise2D", () => {
@@ -13,7 +14,7 @@ describe("perlinNoise2D", () => {
   test("wraps gradients every 256 lattice cells", () => {
     expect(perlinNoise2D(12.125, -4.5)).toBeCloseTo(
       perlinNoise2D(268.125, 251.5),
-      14,
+      14
     );
   });
 
@@ -30,7 +31,7 @@ describe("perlinNoise3D", () => {
   test("wraps gradients every 256 lattice cells", () => {
     expect(perlinNoise3D(12.125, -4.5, 9.75)).toBeCloseTo(
       perlinNoise3D(268.125, 251.5, 265.75),
-      14,
+      14
     );
   });
 

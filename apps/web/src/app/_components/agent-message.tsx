@@ -33,9 +33,11 @@ import {
   QuestionOption,
   QuestionOptions,
   QuestionPrompt,
-  type QuestionResponse,
   QuestionSubmit,
-  type QuestionValue,
+} from "@/components/ai-elements/question";
+import type {
+  QuestionResponse,
+  QuestionValue,
 } from "@/components/ai-elements/question";
 import {
   Reasoning,
@@ -51,146 +53,244 @@ import {
   ToolOutput,
 } from "@/components/ai-elements/tool";
 
-export type AgentInputResponse = {
+export interface AgentInputResponse {
   readonly optionId?: string;
   readonly requestId: string;
   readonly text?: string;
-};
+}
 
 type EveFilePart = Extract<EveMessagePart, { type: "file" }>;
 
-export function AgentMessage({
-  canRespond,
-  isStreaming,
-  message,
-  onInputResponses,
-}: {
-  readonly canRespond: boolean;
-  readonly isStreaming: boolean;
-  readonly message: EveMessage;
-  readonly onInputResponses: (
-    responses: readonly AgentInputResponse[],
-  ) => void | Promise<void>;
-}) {
-  const lastTextIndex = message.parts.reduce(
-    (last, part, index) => (part.type === "text" ? index : last),
-    -1,
-  );
-  const hasAssistantText =
-    message.role === "assistant" &&
-    message.parts.some((part) => part.type === "text" && part.text.length > 0);
+const formatBytes = (size: number | undefined): string | undefined => {
+  if (size === undefined) {
+    return undefined;
+  }
 
-  return (
-    <Message
-      data-optimistic={message.metadata?.optimistic ? "true" : undefined}
-      from={message.role}
+  if (size < 1024) {
+    return `${size} B`;
+  }
+
+  if (size < 1024 * 1024) {
+    return `${(size / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const AttachmentPart = ({ part }: { readonly part: EveFilePart }) => {
+  const label = part.filename ?? "Attachment";
+
+  const detail = [part.mediaType, formatBytes(part.size)]
+    .filter(Boolean)
+    .join(" - ");
+
+  const isImage = part.mediaType.startsWith("image/") && part.url !== undefined;
+  const Icon = isImage ? ImageIcon : FileIcon;
+
+  const body = (
+    <Typography
+      as="span"
+      variant="uiBody"
+      className="flex max-w-sm items-center gap-3 rounded-md border bg-background/60 p-2"
     >
-      <MessageContent>
-        {message.parts.map((part, index) =>
-          hasAssistantText && part.type === "reasoning" ? null : (
-            <AgentMessagePart
-              canRespond={canRespond}
-              key={partKey(part, index)}
-              onInputResponses={onInputResponses}
-              part={part}
-              showCaret={
-                isStreaming &&
-                message.role === "assistant" &&
-                index === lastTextIndex
-              }
-            />
-          ),
-        )}
-      </MessageContent>
-    </Message>
+      {isImage ? (
+        // oxlint-disable-next-line @next/next/no-img-element -- Attachments may use arbitrary or temporary browser URLs that Next Image cannot safely optimize.
+        <img
+          alt={label}
+          className="size-12 shrink-0 rounded-sm object-cover"
+          src={part.url}
+        />
+      ) : (
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-sm bg-muted text-muted-foreground">
+          <Icon className="size-4" />
+        </span>
+      )}
+      <span className="min-w-0 flex-1">
+        <Typography as="span" variant="medium" className="block truncate">
+          {label}
+        </Typography>
+        {detail ? (
+          <span className="block truncate text-muted-foreground">{detail}</span>
+        ) : null}
+      </span>
+      {part.url ? (
+        <ExternalLinkIcon className="size-4 shrink-0 text-muted-foreground" />
+      ) : null}
+    </Typography>
   );
-}
 
-function AgentMessagePart({
-  canRespond,
-  onInputResponses,
-  part,
-  showCaret,
-}: {
-  readonly canRespond: boolean;
-  readonly onInputResponses: (
-    responses: readonly AgentInputResponse[],
-  ) => void | Promise<void>;
-  readonly part: EveMessagePart;
-  readonly showCaret: boolean;
-}) {
-  switch (part.type) {
-    case "step-start":
-      return null;
-    case "text":
-      return (
-        <MessageResponse caret="block" isAnimating={showCaret}>
-          {part.text}
-        </MessageResponse>
-      );
-    case "reasoning":
-      return (
-        <Reasoning defaultOpen isStreaming={part.state === "streaming"}>
-          <ReasoningTrigger />
-          <ReasoningContent>{part.text}</ReasoningContent>
-        </Reasoning>
-      );
-    case "file":
-      return <AttachmentPart part={part} />;
-    case "authorization":
-      return <AuthorizationPrompt part={part} />;
-    case "dynamic-tool": {
-      const inputRequest = part.toolMetadata?.eve?.inputRequest;
-      if (inputRequest?.kind === "question") {
-        return (
-          <QuestionRequest
-            canRespond={canRespond}
-            inputRequest={inputRequest}
-            inputResponse={part.toolMetadata?.eve?.inputResponse}
-            onInputResponses={onInputResponses}
-          />
-        );
-      }
+  return part.url ? (
+    <a href={part.url} rel="noreferrer" target="_blank">
+      {body}
+    </a>
+  ) : (
+    body
+  );
+};
 
-      return (
-        <Tool
-          defaultOpen={
-            part.state === "approval-requested" ||
-            part.state === "approval-responded"
-          }
-        >
-          <ToolHeader
-            state={part.state}
-            title={part.toolName}
-            toolName={part.toolName}
-            type="dynamic-tool"
-          />
-          <ToolContent>
-            {part.toolName === "bash" ? (
-              <BashToolContent
-                errorText={part.errorText}
-                input={part.input}
-                output={part.output}
-              />
-            ) : (
-              <ToolInput input={part.input} />
-            )}
-            <InputRequestActions
-              canRespond={canRespond}
-              part={part}
-              onInputResponses={onInputResponses}
-            />
-            {part.toolName === "bash" ? null : (
-              <ToolOutput errorText={part.errorText} output={part.output} />
-            )}
-          </ToolContent>
-        </Tool>
-      );
+const formatAuthorizationOutcome = (
+  outcome: NonNullable<EveAuthorizationPart["outcome"]>
+): string => {
+  switch (outcome) {
+    case "authorized": {
+      return "authorized";
+    }
+
+    case "declined": {
+      return "declined";
+    }
+
+    case "failed": {
+      return "failed";
+    }
+
+    case "timed-out": {
+      return "timed out";
+    }
+
+    default: {
+      return outcome;
     }
   }
-}
+};
 
-function QuestionRequest({
+const authorizationTitle = (part: EveAuthorizationPart): string => {
+  if (part.state === "required") {
+    return `Connect ${part.displayName}`;
+  }
+
+  if (part.outcome === "authorized") {
+    return `${part.displayName} connected`;
+  }
+
+  return `${part.displayName} authorization ${formatAuthorizationOutcome(part.outcome)}`;
+};
+
+const authorizationDescription = (part: EveAuthorizationPart): string => {
+  if (part.state === "required") {
+    return part.description;
+  }
+
+  if (part.outcome === "authorized") {
+    return `${part.displayName} connected.`;
+  }
+
+  const tail = part.reason === undefined ? "" : ` (${part.reason})`;
+
+  return `${part.displayName} authorization ${formatAuthorizationOutcome(part.outcome)}${tail}.`;
+};
+
+const authorizationAppearance = (authorized: boolean, completed: boolean) => {
+  if (authorized) {
+    return {
+      icon: CheckCircleIcon,
+      iconClass: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+      rootClass: "border-emerald-500/30 bg-emerald-500/5",
+    };
+  }
+
+  if (completed) {
+    return {
+      icon: XCircleIcon,
+      iconClass: "bg-destructive/10 text-destructive",
+      rootClass: "border-destructive/30 bg-destructive/5",
+    };
+  }
+
+  return {
+    icon: KeyRoundIcon,
+    iconClass: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+    rootClass: "border-blue-500/30 bg-blue-500/5",
+  };
+};
+
+const AuthorizationPrompt = ({
+  part,
+}: {
+  readonly part: EveAuthorizationPart;
+}) => {
+  const isAuthorized =
+    part.state === "completed" && part.outcome === "authorized";
+
+  const isCompleted = part.state === "completed";
+
+  const appearance = authorizationAppearance(isAuthorized, isCompleted);
+  const Icon = appearance.icon;
+
+  const instructions = part.authorization?.instructions;
+
+  const shouldShowInstructions =
+    instructions !== undefined && instructions !== part.description;
+
+  return (
+    <div
+      className={cn("space-y-3 rounded-md border p-3", appearance.rootClass)}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className={cn(
+            "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full",
+            appearance.iconClass
+          )}
+        >
+          <Icon className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1 space-y-2">
+          <Typography as="p" variant="uiLabel">
+            {authorizationTitle(part)}
+          </Typography>
+          <Typography as="p" variant="uiBody" className="text-muted-foreground">
+            {authorizationDescription(part)}
+          </Typography>
+          {shouldShowInstructions ? (
+            <Typography
+              as="p"
+              variant="uiBody"
+              className="text-muted-foreground"
+            >
+              {instructions}
+            </Typography>
+          ) : null}
+          {part.state === "required" && part.authorization?.userCode ? (
+            <Typography
+              as="div"
+              variant="uiBody"
+              className="flex flex-wrap items-center gap-2"
+            >
+              <span className="text-muted-foreground">Code</span>
+              <Typography
+                as="code"
+                variant="mono"
+                className="rounded-md bg-background px-2 py-1"
+              >
+                {part.authorization.userCode}
+              </Typography>
+            </Typography>
+          ) : null}
+          {part.state === "required" && part.authorization?.url ? (
+            <Button
+              size="sm"
+              nativeButton={false}
+              render={
+                <a
+                  aria-label={`Sign in with ${part.displayName}`}
+                  href={part.authorization.url}
+                  rel="noreferrer"
+                  target="_blank"
+                />
+              }
+            >
+              <ExternalLinkIcon className="size-4" />
+              Sign in with {part.displayName}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const QuestionRequest = ({
   canRespond,
   inputRequest,
   inputResponse,
@@ -200,11 +300,12 @@ function QuestionRequest({
   readonly inputRequest: EveMessageInputRequest;
   readonly inputResponse?: AgentInputResponse;
   readonly onInputResponses: (
-    responses: readonly AgentInputResponse[],
+    responses: readonly AgentInputResponse[]
   ) => void | Promise<void>;
-}) {
+}) => {
   const hasOptions = (inputRequest.options?.length ?? 0) > 0;
   const acceptsFreeform = inputRequest.allowFreeform === true || !hasOptions;
+
   const [questionValue, setQuestionValue] = useState<QuestionValue>({
     selectedValues: inputResponse?.optionId ? [inputResponse.optionId] : [],
     text: inputResponse?.text ?? "",
@@ -212,6 +313,7 @@ function QuestionRequest({
 
   const submitOption = (optionId: string) => {
     setQuestionValue((value) => ({ ...value, selectedValues: [optionId] }));
+
     return onInputResponses([
       {
         optionId,
@@ -246,7 +348,7 @@ function QuestionRequest({
             <QuestionOption
               className="justify-start px-3 py-2 text-left"
               key={option.id}
-              onClick={() => void submitOption(option.id)}
+              onClick={() => submitOption(option.id)}
               value={option.id}
             >
               <span className="min-w-0 flex-1">
@@ -306,219 +408,29 @@ function QuestionRequest({
       ) : null}
     </Question>
   );
-}
+};
 
-function AttachmentPart({ part }: { readonly part: EveFilePart }) {
-  const label = part.filename ?? "Attachment";
-  const detail = [part.mediaType, formatBytes(part.size)]
-    .filter(Boolean)
-    .join(" - ");
-  const isImage = part.mediaType.startsWith("image/") && part.url !== undefined;
-  const Icon = isImage ? ImageIcon : FileIcon;
-  const body = (
-    <Typography
-      as="span"
-      variant="uiBody"
-      className="flex max-w-sm items-center gap-3 rounded-md border bg-background/60 p-2"
-    >
-      {isImage ? (
-        // oxlint-disable-next-line @next/next/no-img-element -- Attachments may use arbitrary or temporary browser URLs that Next Image cannot safely optimize.
-        <img
-          alt={label}
-          className="size-12 shrink-0 rounded-sm object-cover"
-          src={part.url}
-        />
-      ) : (
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-sm bg-muted text-muted-foreground">
-          <Icon className="size-4" />
-        </span>
-      )}
-      <span className="min-w-0 flex-1">
-        <Typography as="span" variant="medium" className="block truncate">
-          {label}
-        </Typography>
-        {detail ? (
-          <span className="block truncate text-muted-foreground">{detail}</span>
-        ) : null}
-      </span>
-      {part.url ? (
-        <ExternalLinkIcon className="size-4 shrink-0 text-muted-foreground" />
-      ) : null}
-    </Typography>
-  );
-
-  return part.url ? (
-    <a href={part.url} rel="noreferrer" target="_blank">
-      {body}
-    </a>
-  ) : (
-    body
-  );
-}
-
-function AuthorizationPrompt({
-  part,
-}: {
-  readonly part: EveAuthorizationPart;
-}) {
-  const isAuthorized =
-    part.state === "completed" && part.outcome === "authorized";
-  const isCompleted = part.state === "completed";
-  const Icon = isAuthorized
-    ? CheckCircleIcon
-    : isCompleted
-      ? XCircleIcon
-      : KeyRoundIcon;
-  const instructions = part.authorization?.instructions;
-  const shouldShowInstructions =
-    instructions !== undefined && instructions !== part.description;
-
-  return (
-    <div
-      className={cn(
-        "space-y-3 rounded-md border p-3",
-        isAuthorized
-          ? "border-emerald-500/30 bg-emerald-500/5"
-          : isCompleted
-            ? "border-destructive/30 bg-destructive/5"
-            : "border-blue-500/30 bg-blue-500/5",
-      )}
-    >
-      <div className="flex items-start gap-3">
-        <span
-          className={cn(
-            "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full",
-            isAuthorized
-              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-              : isCompleted
-                ? "bg-destructive/10 text-destructive"
-                : "bg-blue-500/10 text-blue-700 dark:text-blue-300",
-          )}
-        >
-          <Icon className="size-4" />
-        </span>
-        <div className="min-w-0 flex-1 space-y-2">
-          <Typography as="p" variant="uiLabel">
-            {authorizationTitle(part)}
-          </Typography>
-          <Typography as="p" variant="uiBody" className="text-muted-foreground">
-            {authorizationDescription(part)}
-          </Typography>
-          {shouldShowInstructions ? (
-            <Typography
-              as="p"
-              variant="uiBody"
-              className="text-muted-foreground"
-            >
-              {instructions}
-            </Typography>
-          ) : null}
-          {part.state === "required" && part.authorization?.userCode ? (
-            <Typography
-              as="div"
-              variant="uiBody"
-              className="flex flex-wrap items-center gap-2"
-            >
-              <span className="text-muted-foreground">Code</span>
-              <Typography
-                as="code"
-                variant="mono"
-                className="rounded-md bg-background px-2 py-1"
-              >
-                {part.authorization.userCode}
-              </Typography>
-            </Typography>
-          ) : null}
-          {part.state === "required" && part.authorization?.url ? (
-            <Button
-              size="sm"
-              nativeButton={false}
-              render={
-                <a
-                  href={part.authorization.url}
-                  rel="noreferrer"
-                  target="_blank"
-                />
-              }
-            >
-              <ExternalLinkIcon className="size-4" />
-              Sign in with {part.displayName}
-            </Button>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function authorizationTitle(part: EveAuthorizationPart): string {
-  if (part.state === "required") {
-    return `Connect ${part.displayName}`;
-  }
-  if (part.outcome === "authorized") {
-    return `${part.displayName} connected`;
-  }
-  return `${part.displayName} authorization ${formatAuthorizationOutcome(part.outcome)}`;
-}
-
-function authorizationDescription(part: EveAuthorizationPart): string {
-  if (part.state === "required") {
-    return part.description;
-  }
-  if (part.outcome === "authorized") {
-    return `${part.displayName} connected.`;
-  }
-  const tail = part.reason !== undefined ? ` (${part.reason})` : "";
-  return `${part.displayName} authorization ${formatAuthorizationOutcome(part.outcome)}${tail}.`;
-}
-
-function formatAuthorizationOutcome(
-  outcome: NonNullable<EveAuthorizationPart["outcome"]>,
-): string {
-  switch (outcome) {
-    case "authorized":
-      return "authorized";
-    case "declined":
-      return "declined";
-    case "failed":
-      return "failed";
-    case "timed-out":
-      return "timed out";
-  }
-}
-
-function formatBytes(size: number | undefined): string | undefined {
-  if (size === undefined) {
-    return undefined;
-  }
-  if (size < 1024) {
-    return `${size} B`;
-  }
-  if (size < 1024 * 1024) {
-    return `${(size / 1024).toFixed(1)} KB`;
-  }
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function InputRequestActions({
+const InputRequestActions = ({
   canRespond,
   onInputResponses,
   part,
 }: {
   readonly canRespond: boolean;
   readonly onInputResponses: (
-    responses: readonly AgentInputResponse[],
+    responses: readonly AgentInputResponse[]
   ) => void | Promise<void>;
   readonly part: EveDynamicToolPart;
-}) {
+}) => {
   const inputRequest = part.toolMetadata?.eve?.inputRequest;
+
   if (!inputRequest) {
     return null;
   }
 
   const inputResponse = part.toolMetadata?.eve?.inputResponse;
+
   const selectedOption = inputRequest.options?.find(
-    (option) => option.id === inputResponse?.optionId,
+    (option) => option.id === inputResponse?.optionId
   );
 
   return (
@@ -539,14 +451,11 @@ function InputRequestActions({
             <Button
               disabled={!canRespond}
               key={option.id}
-              onClick={() => {
-                void onInputResponses([
-                  {
-                    optionId: option.id,
-                    requestId: inputRequest.requestId,
-                  },
-                ]);
-              }}
+              onClick={() =>
+                onInputResponses([
+                  { optionId: option.id, requestId: inputRequest.requestId },
+                ])
+              }
               size="sm"
               type="button"
               variant={option.style === "danger" ? "destructive" : "default"}
@@ -558,15 +467,166 @@ function InputRequestActions({
       )}
     </div>
   );
-}
+};
 
-function partKey(part: EveMessagePart, index: number): string {
+const AgentMessagePart = ({
+  canRespond,
+  onInputResponses,
+  part,
+  showCaret,
+}: {
+  readonly canRespond: boolean;
+  readonly onInputResponses: (
+    responses: readonly AgentInputResponse[]
+  ) => void | Promise<void>;
+  readonly part: EveMessagePart;
+  readonly showCaret: boolean;
+}) => {
   switch (part.type) {
-    case "authorization":
-      return `authorization:${part.turnId}:${part.stepIndex}:${part.name}`;
-    case "dynamic-tool":
-      return part.toolCallId;
-    default:
-      return `${part.type}:${index}`;
+    case "step-start": {
+      return null;
+    }
+
+    case "text": {
+      return (
+        <MessageResponse caret="block" isAnimating={showCaret}>
+          {part.text}
+        </MessageResponse>
+      );
+    }
+
+    case "reasoning": {
+      return (
+        <Reasoning defaultOpen isStreaming={part.state === "streaming"}>
+          <ReasoningTrigger />
+          <ReasoningContent>{part.text}</ReasoningContent>
+        </Reasoning>
+      );
+    }
+
+    case "file": {
+      return <AttachmentPart part={part} />;
+    }
+
+    case "authorization": {
+      return <AuthorizationPrompt part={part} />;
+    }
+
+    case "dynamic-tool": {
+      const inputRequest = part.toolMetadata?.eve?.inputRequest;
+
+      if (inputRequest?.kind === "question") {
+        return (
+          <QuestionRequest
+            canRespond={canRespond}
+            inputRequest={inputRequest}
+            inputResponse={part.toolMetadata?.eve?.inputResponse}
+            onInputResponses={onInputResponses}
+          />
+        );
+      }
+
+      return (
+        <Tool
+          defaultOpen={
+            part.state === "approval-requested" ||
+            part.state === "approval-responded"
+          }
+        >
+          <ToolHeader
+            state={part.state}
+            title={part.toolName}
+            toolName={part.toolName}
+            type="dynamic-tool"
+          />
+          <ToolContent>
+            {part.toolName === "bash" ? (
+              <BashToolContent
+                errorText={part.errorText}
+                input={part.input}
+                output={part.output}
+              />
+            ) : (
+              <ToolInput input={part.input} />
+            )}
+            <InputRequestActions
+              canRespond={canRespond}
+              part={part}
+              onInputResponses={onInputResponses}
+            />
+            {part.toolName === "bash" ? null : (
+              <ToolOutput errorText={part.errorText} output={part.output} />
+            )}
+          </ToolContent>
+        </Tool>
+      );
+    }
+
+    default: {
+      return null;
+    }
   }
-}
+};
+
+const partKey = (part: EveMessagePart, index: number): string => {
+  switch (part.type) {
+    case "authorization": {
+      return `authorization:${part.turnId}:${part.stepIndex}:${part.name}`;
+    }
+
+    case "dynamic-tool": {
+      return part.toolCallId;
+    }
+
+    default: {
+      return `${part.type}:${index}`;
+    }
+  }
+};
+
+export const AgentMessage = ({
+  canRespond,
+  isStreaming,
+  message,
+  onInputResponses,
+}: {
+  readonly canRespond: boolean;
+  readonly isStreaming: boolean;
+  readonly message: EveMessage;
+  readonly onInputResponses: (
+    responses: readonly AgentInputResponse[]
+  ) => void | Promise<void>;
+}) => {
+  const lastTextIndex = message.parts.findLastIndex(
+    (part) => part.type === "text"
+  );
+
+  const hasAssistantText =
+    message.role === "assistant" &&
+    message.parts.some((part) => part.type === "text" && part.text.length > 0);
+
+  return (
+    <Message
+      data-optimistic={message.metadata?.optimistic ? "true" : undefined}
+      from={message.role}
+    >
+      <MessageContent>
+        {message.parts.map((part, index) =>
+          hasAssistantText && part.type === "reasoning" ? null : (
+            <AgentMessagePart
+              canRespond={canRespond}
+              key={partKey(part, index)}
+              onInputResponses={onInputResponses}
+              part={part}
+              showCaret={
+                isStreaming &&
+                message.role === "assistant" &&
+                index === lastTextIndex
+              }
+            />
+          )
+        )}
+      </MessageContent>
+    </Message>
+  );
+};

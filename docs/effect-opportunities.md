@@ -45,7 +45,6 @@ The audit inventoried 173 TypeScript, TSX, MJS, and Rust source/test files under
 | `apps/web/src/components/ai-elements/conversation.tsx:112` | Schema-decode saved scroll JSON (`atBottom`, finite/nonnegative `scrollTop`); handle sessionStorage access at lines 70 and 83. | Good small validation boundary if touched. No runtime migration needed for scrolling. |
 | `apps/web/src/lib/site.ts:3` | `Config` plus URL validation for `SITE_URL`. | Low value for one setting. Worth centralizing if server configuration grows; preserve the current missing-value default deliberately. Do not wrap framework `NODE_ENV` switches. |
 | `apps/web/src/app/_components/agent-chat.tsx:81`, `:88`; `agent-message.tsx:193`, `:503`; `apps/web/src/components/ai-elements/question.tsx:150` | Typed command errors if send/cancel/respond operations gain multi-step preparation. | Low today. Eve owns sessions, streaming, resume, and cancellation. Replacing Eve with Effect AI or adding another stream abstraction is an architectural change with no demonstrated need here. Never blanket-retry sends, approvals, or user responses. |
-| `scripts/check-changed.mjs:9` | Schema for hook JSON, typed subprocess failures, a shared deadline around checks. | Low. Preserve NUL-safe paths, output protocol, batching, time limits, and existing tests. Root scripts currently have no Effect dependency. `Effect.timeout` cannot preempt a blocking `spawnSync`. |
 | `apps/web/src/app/blog/paper-valley.tsx:111` | Typed image-decode batch and stale-completion suppression. | Low. The current cancellation boolean is adequate; `decode()` itself is not abortable. |
 | `apps/web/src/app/editorial-font-preference.tsx:55`; `apps/web/src/app/typography-inspector.tsx:432`; `apps/web/src/components/ai-elements/code-block.tsx:474` | Typed storage or clipboard failures. | Low. Small local fallbacks are proportionate. Keep `editorial-fonts.ts:41` prehydration script independent of runtime loading. |
 
@@ -55,7 +54,7 @@ The audit inventoried 173 TypeScript, TSX, MJS, and Rust source/test files under
 - `packages/ui`, styles, stories, page layout, navigation, avatar animation, article rhythm/DOM measurements, Motion springs, and ordinary state updates: no meaningful runtime adoption benefit identified.
 - GPU/WGSL calculations, synchronous WASM stepping, Rust simulation, Perlin, vector math, force simulation, and render loops: retain native synchronous execution. An Effect lifecycle around a renderer need not wrap every frame.
 - `lib/content/index.ts`, blog pages, RSS, sitemap, and session pages: the current async adapters mostly perform generated-registry lookup or await Next params. Keep framework boundaries; add Effect only behind them when real work merits it.
-- Next `dynamic`, Content Collections configuration, Eve agent/auth declarations, `scripts/oxc-tool.mjs`, and simple config files: no compelling rewrite.
+- Next `dynamic`, Content Collections configuration, Eve agent/auth declarations, and simple config files: no compelling rewrite.
 - Typed Eve message rendering, context invariant throws, object-URL state, conversation download, walkthrough playback, and synchronous SVG token drawing: retain current owners. Do not validate already-typed internal values repeatedly.
 
 ## Adoption rules and suggested order

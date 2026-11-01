@@ -17,29 +17,50 @@ import {
 } from "./sample-db-service";
 import type { SampleDbConnection } from "./sample-db-service";
 
-function createDriver() {
-  const calls = { loads: 0, creates: 0, seeds: 0, queries: 0, closes: 0 };
+const createDriver = (
+  failures: { construct?: Error; seed?: Error; query?: Error } = {}
+) => {
+  const calls = { closes: 0, creates: 0, loads: 0, queries: 0, seeds: 0 };
+
   class Database implements SampleDbConnection {
+    private readonly calls = calls;
+    private readonly failures = failures;
     constructor() {
-      calls.creates++;
+      this.calls.creates += 1;
+
+      if (this.calls.creates === 1 && this.failures.construct) {
+        throw this.failures.construct;
+      }
     }
-    run() {
-      calls.seeds++;
-    }
-    exec() {
-      calls.queries++;
+    run = () => {
+      this.calls.seeds += 1;
+
+      if (this.calls.seeds === 1 && this.failures.seed) {
+        throw this.failures.seed;
+      }
+    };
+    exec = () => {
+      this.calls.queries += 1;
+
+      if (this.calls.queries === 1 && this.failures.query) {
+        throw this.failures.query;
+      }
+
       return [{ columns: ["value"], values: [[42]] }];
-    }
-    close() {
-      calls.closes++;
-    }
+    };
+    close = () => {
+      this.calls.closes += 1;
+    };
   }
-  const initialize = async () => {
-    calls.loads++;
-    return { Database };
+
+  const initialize = () => {
+    calls.loads += 1;
+
+    return Promise.resolve({ Database });
   };
-  return { calls, Database, initialize };
-}
+
+  return { Database, calls, initialize };
+};
 
 describe("sample-db", () => {
   test("keeps the public Promise owner alive until explicit disposal", async () => {
@@ -53,19 +74,21 @@ describe("sample-db", () => {
     } finally {
       await disposeSampleDb();
     }
+
     await disposeSampleDb();
     await expect(runReadOnlySql("SELECT 1")).rejects.toBeInstanceOf(
-      SampleDbDisposedError,
+      SampleDbDisposedError
     );
   });
 
   test("executes real sql.js with the existing seed, output, and persistent mutations", async () => {
     const database = createSampleDb();
+
     try {
       expect(
         await database.runReadOnlySql(
-          "SELECT customers.name, SUM(orders.amount_cents) AS total FROM orders JOIN customers ON customers.id = orders.customer_id GROUP BY customers.id ORDER BY customers.id",
-        ),
+          "SELECT customers.name, SUM(orders.amount_cents) AS total FROM orders JOIN customers ON customers.id = orders.customer_id GROUP BY customers.id ORDER BY customers.id"
+        )
       ).toEqual({
         columns: ["name", "total"],
         rows: [
@@ -80,53 +103,59 @@ describe("sample-db", () => {
       });
       expect(
         await database.runReadOnlySql(
-          "INSERT INTO customers VALUES (13, 'New customer', 'free')",
-        ),
+          "INSERT INTO customers VALUES (13, 'New customer', 'free')"
+        )
       ).toEqual({ columns: [], rows: [] });
       expect(
         await database.runReadOnlySql(
-          "SELECT name FROM customers WHERE id = 13; SELECT 99",
-        ),
+          "SELECT name FROM customers WHERE id = 13; SELECT 99"
+        )
       ).toEqual({ columns: ["name"], rows: [["New customer"]] });
       expect(
-        await database.runReadOnlySql("SELECT id FROM customers WHERE id = -1"),
+        await database.runReadOnlySql("SELECT id FROM customers WHERE id = -1")
       ).toEqual({ columns: [], rows: [] });
       await expect(
         database.runReadOnlySql(
-          "UPDATE orders SET amount_cents = amount_cents + 1 WHERE id = 1; SELECT missing FROM orders",
-        ),
+          "UPDATE orders SET amount_cents = amount_cents + 1 WHERE id = 1; SELECT missing FROM orders"
+        )
       ).rejects.toBeInstanceOf(SampleDbQueryError);
       expect(
         await database.runReadOnlySql(
-          "SELECT amount_cents FROM orders WHERE id = 1",
-        ),
+          "SELECT amount_cents FROM orders WHERE id = 1"
+        )
       ).toEqual({ columns: ["amount_cents"], rows: [[4201]] });
     } finally {
       await database.dispose();
     }
+
     await expect(database.runReadOnlySql("SELECT 1")).rejects.toBeInstanceOf(
-      SampleDbDisposedError,
+      SampleDbDisposedError
     );
   });
 
   test("retries real initialization only on a later request after failure", async () => {
     let attempts = 0;
     const failure = new Error("module unavailable");
+
     const database = createSampleDb(
       makeSampleDbLayer(() => {
-        attempts++;
-        if (attempts === 1) throw failure;
+        attempts += 1;
+
+        if (attempts === 1) {
+          throw failure;
+        }
+
         return initSqlJs();
-      }),
+      })
     );
+
     try {
-      await expect(database.runReadOnlySql("SELECT 1")).rejects.toMatchObject({
-        _tag: "SampleDbInitializationError",
-        cause: failure,
-      });
+      await expect(database.runReadOnlySql("SELECT 1")).rejects.toMatchObject(
+        new SampleDbInitializationError({ cause: failure })
+      );
       expect(attempts).toBe(1);
       expect(
-        await database.runReadOnlySql("SELECT COUNT(*) AS count FROM orders"),
+        await database.runReadOnlySql("SELECT COUNT(*) AS count FROM orders")
       ).toEqual({
         columns: ["count"],
         rows: [[4]],
@@ -142,37 +171,42 @@ describe("sample-db", () => {
     const driver = createDriver();
     const started = Promise.withResolvers<undefined>();
     const ready = Promise.withResolvers<undefined>();
+
     const database = createSampleDb(
       makeSampleDbLayer(async () => {
         started.resolve(undefined);
         await ready.promise;
+
         return driver.initialize();
-      }),
+      })
     );
+
     try {
       const pending = Array.from({ length: 10 }, () =>
-        database.runReadOnlySql("SELECT 42"),
+        database.runReadOnlySql("SELECT 42")
       );
+
       await started.promise;
       ready.resolve(undefined);
       expect(await Promise.all(pending)).toEqual(
         Array.from({ length: 10 }, () => ({
           columns: ["value"],
           rows: [[42]],
-        })),
+        }))
       );
       await database.runReadOnlySql("SELECT 42");
       expect(driver.calls).toEqual({
-        loads: 1,
-        creates: 1,
-        seeds: 1,
-        queries: 11,
         closes: 0,
+        creates: 1,
+        loads: 1,
+        queries: 11,
+        seeds: 1,
       });
     } finally {
       ready.resolve(undefined);
       await database.dispose();
     }
+
     expect(driver.calls.closes).toBe(1);
   });
 
@@ -182,32 +216,37 @@ describe("sample-db", () => {
     const ready = Promise.withResolvers<undefined>();
     const failure = new Error("load rejected");
     let attempts = 0;
+
     const database = createSampleDb(
       makeSampleDbLayer(async () => {
-        attempts++;
+        attempts += 1;
+
         if (attempts === 1) {
           started.resolve(undefined);
           await ready.promise;
           throw failure;
         }
+
         return driver.initialize();
-      }),
+      })
     );
+
     try {
       const pending = Promise.allSettled([
         database.runReadOnlySql("SELECT 1"),
         database.runReadOnlySql("SELECT 2"),
       ]);
+
       await started.promise;
       ready.resolve(undefined);
       expect(await pending).toMatchObject([
         {
+          reason: new SampleDbInitializationError({ cause: failure }),
           status: "rejected",
-          reason: { _tag: "SampleDbInitializationError", cause: failure },
         },
         {
+          reason: new SampleDbInitializationError({ cause: failure }),
           status: "rejected",
-          reason: { _tag: "SampleDbInitializationError", cause: failure },
         },
       ]);
       expect(attempts).toBe(1);
@@ -221,57 +260,54 @@ describe("sample-db", () => {
   });
 
   test("closes a database immediately when seeding fails before retrying", async () => {
-    const driver = createDriver();
     const failure = new Error("seed failed");
-    class Database extends driver.Database {
-      override run() {
-        super.run();
-        if (driver.calls.seeds === 1) throw failure;
-      }
-    }
+    const driver = createDriver({ seed: failure });
+    const { Database } = driver;
+
     const database = createSampleDb(
-      makeSampleDbLayer(async () => ({ Database })),
+      makeSampleDbLayer(() => Promise.resolve({ Database }))
     );
+
     try {
-      await expect(database.runReadOnlySql("SELECT 1")).rejects.toMatchObject({
-        _tag: "SampleDbInitializationError",
-        cause: failure,
-      });
+      await expect(database.runReadOnlySql("SELECT 1")).rejects.toMatchObject(
+        new SampleDbInitializationError({ cause: failure })
+      );
       expect(driver.calls).toEqual({
-        loads: 0,
-        creates: 1,
-        seeds: 1,
-        queries: 0,
         closes: 1,
+        creates: 1,
+        loads: 0,
+        queries: 0,
+        seeds: 1,
       });
       await database.runReadOnlySql("SELECT 1");
       expect(driver.calls).toEqual({
-        loads: 0,
-        creates: 2,
-        seeds: 2,
-        queries: 1,
         closes: 1,
+        creates: 2,
+        loads: 0,
+        queries: 1,
+        seeds: 2,
       });
     } finally {
       await database.dispose();
     }
+
     expect(driver.calls.closes).toBe(2);
   });
 
   test("types constructor failures and permits a later initialization attempt", async () => {
-    const driver = createDriver();
-    class Database extends driver.Database {
-      constructor() {
-        super();
-        if (driver.calls.creates === 1) throw new Error("construction failed");
-      }
-    }
+    const driver = createDriver({
+      construct: new Error("construction failed"),
+    });
+
+    const { Database } = driver;
+
     const database = createSampleDb(
-      makeSampleDbLayer(async () => ({ Database })),
+      makeSampleDbLayer(() => Promise.resolve({ Database }))
     );
+
     try {
       await expect(database.runReadOnlySql("SELECT 1")).rejects.toBeInstanceOf(
-        SampleDbInitializationError,
+        SampleDbInitializationError
       );
       expect(driver.calls.closes).toBe(0);
       await database.runReadOnlySql("SELECT 1");
@@ -279,35 +315,31 @@ describe("sample-db", () => {
     } finally {
       await database.dispose();
     }
+
     expect(driver.calls.closes).toBe(1);
   });
 
   test("does not retry SQL failures or discard the initialized database", async () => {
-    const driver = createDriver();
     const failure = new Error("invalid SQL");
-    class Database extends driver.Database {
-      override exec() {
-        const result = super.exec();
-        if (driver.calls.queries === 1) throw failure;
-        return result;
-      }
-    }
+    const driver = createDriver({ query: failure });
+    const { Database } = driver;
+
     const database = createSampleDb(
-      makeSampleDbLayer(async () => ({ Database })),
+      makeSampleDbLayer(() => Promise.resolve({ Database }))
     );
+
     try {
-      await expect(database.runReadOnlySql("invalid")).rejects.toMatchObject({
-        _tag: "SampleDbQueryError",
-        cause: failure,
-      });
+      await expect(database.runReadOnlySql("invalid")).rejects.toMatchObject(
+        new SampleDbQueryError({ cause: failure })
+      );
       expect(driver.calls.queries).toBe(1);
       await database.runReadOnlySql("SELECT 42");
       expect(driver.calls).toEqual({
-        loads: 0,
-        creates: 1,
-        seeds: 1,
-        queries: 2,
         closes: 0,
+        creates: 1,
+        loads: 0,
+        queries: 2,
+        seeds: 1,
       });
     } finally {
       await database.dispose();
@@ -321,16 +353,16 @@ describe("sample-db", () => {
     const disposal = database.dispose();
     expect(database.dispose()).toBe(disposal);
     await expect(database.runReadOnlySql("SELECT 42")).rejects.toBeInstanceOf(
-      SampleDbDisposedError,
+      SampleDbDisposedError
     );
     await disposal;
     await database.dispose();
     expect(driver.calls).toEqual({
-      loads: 1,
-      creates: 1,
-      seeds: 1,
-      queries: 1,
       closes: 1,
+      creates: 1,
+      loads: 1,
+      queries: 1,
+      seeds: 1,
     });
   });
 
@@ -339,14 +371,14 @@ describe("sample-db", () => {
     const database = createSampleDb(makeSampleDbLayer(driver.initialize));
     await database.dispose();
     await expect(database.runReadOnlySql("SELECT 42")).rejects.toBeInstanceOf(
-      SampleDbDisposedError,
+      SampleDbDisposedError
     );
     expect(driver.calls).toEqual({
-      loads: 0,
-      creates: 0,
-      seeds: 0,
-      queries: 0,
       closes: 0,
+      creates: 0,
+      loads: 0,
+      queries: 0,
+      seeds: 0,
     });
   });
 
@@ -354,16 +386,20 @@ describe("sample-db", () => {
     const driver = createDriver();
     const started = Promise.withResolvers<undefined>();
     const ready = Promise.withResolvers<{ Database: typeof driver.Database }>();
+
     const database = createSampleDb(
       makeSampleDbLayer(() => {
         started.resolve(undefined);
+
         return ready.promise;
-      }),
+      })
     );
+
     const pending = Promise.allSettled([
       database.runReadOnlySql("SELECT 1"),
       database.runReadOnlySql("SELECT 2"),
     ]);
+
     await started.promise;
     await database.dispose();
     ready.resolve({ Database: driver.Database });
@@ -373,28 +409,31 @@ describe("sample-db", () => {
       { status: "rejected" },
     ]);
     await expect(database.runReadOnlySql("SELECT 3")).rejects.toBeInstanceOf(
-      SampleDbDisposedError,
+      SampleDbDisposedError
     );
     expect(driver.calls).toEqual({
-      loads: 0,
-      creates: 0,
-      seeds: 0,
-      queries: 0,
       closes: 0,
+      creates: 0,
+      loads: 0,
+      queries: 0,
+      seeds: 0,
     });
   });
 
   test("accepts a substitute service layer without sql.js initialization", async () => {
     const queries: string[] = [];
+
     const database = createSampleDb(
       Layer.succeed(SampleDb)({
         query: (sql) =>
           Effect.sync(() => {
             queries.push(sql);
+
             return { columns: ["substitute"], rows: [[sql]] };
           }),
-      }),
+      })
     );
+
     try {
       expect(await database.runReadOnlySql("test query")).toEqual({
         columns: ["substitute"],

@@ -37,10 +37,10 @@
   }
   @media (prefers-color-scheme: dark) {
     &:where(
-        [data-ui-theme="system"],
-        [data-ui-theme="system"] *,
-        body:has([data-ui-theme="system"]) *
-      ) {
+      [data-ui-theme="system"],
+      [data-ui-theme="system"] *,
+      body:has([data-ui-theme="system"]) *
+    ) {
       @slot;
     }
   }

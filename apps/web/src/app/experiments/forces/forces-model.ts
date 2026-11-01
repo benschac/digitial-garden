@@ -1,16 +1,16 @@
-export function acceleration(forceNewtons: number, massKilograms: number) {
+export const acceleration = (forceNewtons: number, massKilograms: number) => {
   if (massKilograms <= 0) {
     throw new RangeError("Mass must be greater than zero.");
   }
 
   return forceNewtons / massKilograms;
-}
+};
 
-export function velocitiesAfterImpulse(
+export const velocitiesAfterImpulse = (
   impulseNewtonSeconds: number,
   firstMassKilograms: number,
-  secondMassKilograms: number,
-) {
+  secondMassKilograms: number
+) => {
   if (firstMassKilograms <= 0 || secondMassKilograms <= 0) {
     throw new RangeError("Both masses must be greater than zero.");
   }
@@ -19,12 +19,10 @@ export function velocitiesAfterImpulse(
     first: -impulseNewtonSeconds / firstMassKilograms,
     second: impulseNewtonSeconds / secondMassKilograms,
   };
-}
+};
 
-export function advancePosition(
+export const advancePosition = (
   positionMeters: number,
   velocityMetersPerSecond: number,
-  deltaSeconds: number,
-) {
-  return positionMeters + velocityMetersPerSecond * Math.max(0, deltaSeconds);
-}
+  deltaSeconds: number
+) => positionMeters + velocityMetersPerSecond * Math.max(0, deltaSeconds);

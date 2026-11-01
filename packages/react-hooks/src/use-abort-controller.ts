@@ -13,22 +13,24 @@ export type CreateAbortController = () => AbortController;
  * Creating controllers on demand avoids reusing an aborted signal when React
  * replays effects in Strict Mode.
  */
-export function useAbortController(): CreateAbortController {
+export const useAbortController = (): CreateAbortController => {
   const activeController = useRef<AbortController | null>(null);
 
   const createController = useCallback(() => {
     activeController.current?.abort();
     const controller = new AbortController();
     activeController.current = controller;
+
     return controller;
   }, []);
 
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       activeController.current?.abort();
       activeController.current = null;
-    };
-  }, []);
+    },
+    []
+  );
 
   return createController;
-}
+};

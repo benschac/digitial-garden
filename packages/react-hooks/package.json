@@ -6,8 +6,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "lint": "node ../../scripts/oxc-tool.mjs lint .",
-    "check-types": "tsc --noEmit"
+    "lint": "oxlint .",
+    "check-types": "tsc --noEmit",
+    "format:check": "oxfmt --check ."
   },
   "devDependencies": {
     "@types/react": "19.3.0",
