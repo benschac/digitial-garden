@@ -2,20 +2,15 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 
-import { createBuilder } from "@content-collections/core";
 import { MDXContent } from "@content-collections/mdx/react";
 import { Schema } from "effect";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { useMDXComponents } from "../../mdx-components";
-import {
-  postMetadataParseOptions,
-  postMetadataSchema,
-  sortPostsNewestFirst,
-} from "./schema";
+import { loadPostRegistry as buildPostRegistry } from "./post-registry-fixture";
+import { postMetadataParseOptions, postMetadataSchema } from "./schema";
 import {
   getBlogPostSummaries,
   getPostSummariesByTag,
@@ -23,16 +18,6 @@ import {
 } from "./source";
 
 const temporaryDirectories: string[] = [];
-
-const parsePostRecords = Schema.decodeUnknownSync(
-  Schema.Array(
-    Schema.Struct({
-      ...postMetadataSchema.fields,
-      mdx: Schema.String,
-      sourceFile: Schema.String,
-    })
-  )
-);
 
 afterEach(async () => {
   await Promise.all(
@@ -53,59 +38,10 @@ const createFixture = async () => {
   return { contentDirectory, publicDirectory };
 };
 
-const loadPostRegistry = async (paths: {
+const loadPostRegistry = (paths: {
   contentDirectory: string;
   publicDirectory: string;
-}) => {
-  const root = path.dirname(paths.publicDirectory);
-  await mkdir(path.join(process.cwd(), ".content-collections"), {
-    recursive: true,
-  });
-
-  const buildDirectory = await mkdtemp(
-    path.join(process.cwd(), ".content-collections/test-")
-  );
-
-  temporaryDirectories.push(buildDirectory);
-  const configPath = path.join(buildDirectory, "content-collections.ts");
-
-  const collectionPath = path.join(
-    process.cwd(),
-    "src/lib/content/collection.ts"
-  );
-
-  await writeFile(
-    configPath,
-    `import { createPostsCollection } from ${JSON.stringify(collectionPath)};
-export default { content: [createPostsCollection(${JSON.stringify(root)}, ${JSON.stringify(path.relative(buildDirectory, paths.contentDirectory))})] };`
-  );
-  const builder = await createBuilder(configPath);
-  const errors: string[] = [];
-  builder.on("_error", (event) => {
-    errors.push(event.error.message);
-  });
-
-  try {
-    await builder.build();
-  } catch (error) {
-    if (!errors.length) {
-      throw error;
-    }
-  }
-
-  if (errors.length) {
-    throw new Error(errors.join("\n"));
-  }
-
-  const generatedPath = path.join(
-    buildDirectory,
-    ".content-collections/generated/index.js"
-  );
-
-  const { allPosts } = await import(pathToFileURL(generatedPath).href);
-
-  return sortPostsNewestFirst(parsePostRecords(allPosts));
-};
+}) => buildPostRegistry(paths, temporaryDirectories);
 
 const postSource = ({
   publishedAt = "2026-08-20",
@@ -288,55 +224,6 @@ describe("file-based post registry", () => {
       await expect(loadPostRegistry(paths)).rejects.toThrow(error);
     }
   );
-
-  test("validates the repository posts", async () => {
-    const posts = await loadPostRegistry({
-      contentDirectory: path.join(process.cwd(), "content", "posts"),
-      publicDirectory: path.join(process.cwd(), "public"),
-    });
-
-    expect(posts.map((post) => post.slug)).toEqual([
-      "marketplace-policies-with-a-decider",
-      "creating-double-sided-accounting",
-      "coordinating-identification-with-effect",
-      "build-snap-to-post",
-      "how-we-use-effect-in-snap-to-post",
-      "rust-wasm-webgpu-particles",
-      "upload-to-pinata-ipfs",
-      "persist-react-navigation-router-state",
-      "animated-blog-post-background",
-      "how-to-configure-and-package-fonts-with-tamagui",
-      "fixing-react-native-universal-fs-node-module",
-      "return-statement",
-      "what-i-learned-fixing-one-line-of-css-in-svelte",
-      "what-i-learned-from-failure",
-      "what-i-learned-9-months-into-my-first-programming-job",
-      "self-positioning-react-components",
-      "how-i-got-my-first-developer-job",
-    ]);
-
-    const draft = posts.find(
-      (post) => post.slug === "how-we-use-effect-in-snap-to-post"
-    );
-
-    const ledgerSlug = "creating-double-sided-accounting";
-    expect(posts.find((post) => post.slug === ledgerSlug)?.status).toBe(
-      "draft"
-    );
-    expect(
-      getBlogPostSummaries(posts, "development").map((post) => post.slug)
-    ).toContain(ledgerSlug);
-    expect(
-      getBlogPostSummaries(posts, "production").map((post) => post.slug)
-    ).not.toContain(ledgerSlug);
-    expect(
-      getPublishedPostSummaries(posts).map((post) => post.slug)
-    ).not.toContain(ledgerSlug);
-    expect(draft?.status).toBe("draft");
-    expect(
-      getPublishedPostSummaries(posts).map((post) => post.slug)
-    ).not.toContain(draft?.slug);
-  }, 15_000);
 
   test("renders compiled MDX with the existing plugins and components", async () => {
     const paths = await createFixture();

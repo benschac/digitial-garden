@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -11,12 +12,16 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const binary = path.join(root, "node_modules/turbo/bin/turbo");
 const packages = ["apps/web", "packages/ui", "packages/react-hooks"];
+
+const rootScripts = JSON.parse(
+  readFileSync(path.join(root, "package.json"), "utf-8")
+).scripts;
 
 const checks = [
   "lint",
@@ -26,11 +31,12 @@ const checks = [
   "test:tools",
   "check-types",
   "test",
+  "test:content",
 ];
 
-const fixture = (t) => {
+const createTemplate = () => {
   const cwd = mkdtempSync(path.join(tmpdir(), "personal-site-verification-"));
-  t.after(() => rmSync(cwd, { force: true, recursive: true }));
+  after(() => rmSync(cwd, { force: true, recursive: true }));
 
   const write = (file, source) => {
     mkdirSync(path.dirname(path.join(cwd, file)), { recursive: true });
@@ -106,6 +112,21 @@ if (process.argv[3] === "typegen") {
     "Baseline"
   );
 
+  return cwd;
+};
+
+const template = createTemplate();
+
+const fixture = (t) => {
+  const cwd = mkdtempSync(path.join(tmpdir(), "personal-site-verification-"));
+  t.after(() => rmSync(cwd, { force: true, recursive: true }));
+  cpSync(template, cwd, { recursive: true });
+
+  const write = (file, source) => {
+    mkdirSync(path.dirname(path.join(cwd, file)), { recursive: true });
+    writeFileSync(path.join(cwd, file), source);
+  };
+
   const run = (args) => {
     const result = spawnSync(process.execPath, [binary, "run", ...args], {
       cwd,
@@ -145,7 +166,7 @@ test("shared source selects consumer checks, while Storybook assets do not rebui
   assert.ok(tasks.includes("@personal-site/ui#check-types"));
   assert.ok(tasks.includes("@personal-site/web#check-types"));
   assert.ok(tasks.includes("@personal-site/web#test"));
-  assert.ok(tasks.includes("@personal-site/web#lint"));
+  assert.ok(!tasks.includes("@personal-site/web#lint"));
   assert.ok(!tasks.some((task) => task.endsWith("#build")));
   write("packages/ui/src/index.ts", "export const value = 1;\n");
   write("packages/ui/src/stories/assets/demo.png", "export default {};\n");
@@ -216,4 +237,79 @@ test("content generation is shared and unchanged successful tasks hit cache", (t
     ),
     "export const posts = [];\n"
   );
+
+  write("apps/web/src/components/button.tsx", "export const Button = 1;\n");
+  run([...checks, "--affected"]);
+  const updated = readFileSync(log, "utf-8");
+  assert.equal(updated.split("apps/web#typegen").length - 1, 1);
+  assert.equal(updated.split("apps/web#check-types").length - 1, 2);
+  assert.equal(updated.split("apps/web#test\n").length - 1, 2);
 });
+
+test("standalone typechecks and tests use affected selection with explicit full alternatives", (t) => {
+  const { run, write } = fixture(t);
+  write("packages/ui/README.md", "Changed documentation\n");
+
+  for (const name of ["check-types", "test"]) {
+    const args = rootScripts[name].split(" ").slice(2);
+    const { tasks } = JSON.parse(run([...args, "--dry=json"]));
+    assert.deepEqual(
+      tasks.filter((task) => task.command !== "<NONEXISTENT>"),
+      []
+    );
+    const allArgs = rootScripts[`${name}:all`].split(" ").slice(2);
+    const allTasks = JSON.parse(run([...allArgs, "--dry=json"])).tasks;
+    assert.ok(allTasks.some((task) => task.taskId.endsWith(`#${name}`)));
+
+    if (name === "test") {
+      assert.ok(allTasks.some((task) => task.taskId.endsWith("#test:content")));
+    }
+  }
+});
+
+test("application source checks stay within the consumer package", (t) => {
+  const { plan, write } = fixture(t);
+  write("apps/web/src/components/button.tsx", "export const Button = 1;\n");
+  const tasks = plan(...checks);
+  assert.ok(tasks.includes("@personal-site/web#check-types"));
+  assert.ok(tasks.includes("@personal-site/web#test"));
+  assert.ok(tasks.every((task) => task.startsWith("@personal-site/web#")));
+  assert.deepEqual(plan("typegen"), []);
+  assert.ok(!tasks.includes("@personal-site/web#test:content"));
+});
+
+test("styles and public assets do not select syntax-only lint", (t) => {
+  const { plan, write } = fixture(t);
+  write("apps/web/src/app/globals.css", "body { color: red; }\n");
+  write("apps/web/public/example.png", "image\n");
+  const tasks = plan(...checks);
+  assert.ok(tasks.includes("@personal-site/web#format:check"));
+  assert.ok(!tasks.some((task) => task.endsWith("#lint")));
+});
+
+for (const file of [
+  "apps/web/src/app/example/page.tsx",
+  "apps/web/src/lib/content/schema.ts",
+  "apps/web/agent/index.ts",
+  "apps/web/next.config.mjs",
+  "apps/web/content/posts/example.mdx",
+  "apps/web/public/example.png",
+]) {
+  test(`generation remains affected by ${file}`, (t) => {
+    const { plan, write } = fixture(t);
+    write(file, "changed\n");
+    assert.ok(plan("typegen").includes("@personal-site/web#typegen"));
+  });
+}
+
+for (const file of [
+  "apps/web/content/posts/example.mdx",
+  "apps/web/src/lib/content/schema.ts",
+  "apps/web/public/example.png",
+]) {
+  test(`repository post validation remains affected by ${file}`, (t) => {
+    const { plan, write } = fixture(t);
+    write(file, "changed\n");
+    assert.ok(plan(...checks).includes("@personal-site/web#test:content"));
+  });
+}

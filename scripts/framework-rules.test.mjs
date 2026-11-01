@@ -103,30 +103,56 @@ const fixture = (t, file, source) => {
   return { cwd, target };
 };
 
-for (const probe of probes) {
-  test(`${probe.rejected ? "enforces" : "adapts"} ${probe.rule} in ${probe.file}`, (t) => {
-    const { cwd } = fixture(t, probe.file, probe.source);
+test("enforces framework rules outside their scoped adaptations", async (t) => {
+  const files = probes.map((probe, index) =>
+    probe.file.includes("/probe.")
+      ? probe.file.replace("/probe.", `/probe-${index}.`)
+      : probe.file
+  );
 
-    const result = spawnSync(
-      process.execPath,
-      [binary, "--format=json", probe.file],
-      {
-        cwd,
-        encoding: "utf-8",
-      }
-    );
+  const [first] = probes;
+  const { cwd } = fixture(t, files[0], first.source);
 
-    assert.ok(result.status === 0 || result.status === 1, result.stderr);
-    const { diagnostics } = JSON.parse(result.stdout);
-    assert.equal(
-      diagnostics.some((diagnostic) =>
-        diagnostic.code?.includes(`(${probe.rule})`)
-      ),
-      probe.rejected,
-      result.stdout
-    );
-  });
-}
+  for (const [index, probe] of probes.entries()) {
+    const target = path.join(cwd, files[index]);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, `${probe.source}\n`);
+  }
+
+  mkdirSync(path.join(cwd, "packages/ui"), { recursive: true });
+  symlinkSync(
+    fileURLToPath(new URL("../packages/ui/node_modules", import.meta.url)),
+    path.join(cwd, "packages/ui/node_modules")
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [binary, "--format=json", ...files],
+    { cwd, encoding: "utf-8" }
+  );
+
+  assert.equal(result.status, 1, `${result.stdout}${result.stderr}`);
+  const { diagnostics } = JSON.parse(result.stdout);
+
+  await Promise.all(
+    probes.map((probe, index) =>
+      t.test(
+        `${probe.rejected ? "enforces" : "adapts"} ${probe.rule} in ${probe.file}`,
+        () => {
+          assert.equal(
+            diagnostics.some(
+              (diagnostic) =>
+                diagnostic.filename === files[index] &&
+                diagnostic.code?.includes(`(${probe.rule})`)
+            ),
+            probe.rejected,
+            result.stdout
+          );
+        }
+      )
+    )
+  );
+});
 
 test("safe fixes preserve Effect's tagged error factory call", (t) => {
   const file = "apps/web/agent/lib/sample-db.ts";

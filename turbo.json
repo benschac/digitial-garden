@@ -37,8 +37,7 @@
         "$TURBO_ROOT$/tools/oxlint/anti-slop/**",
         "$TURBO_ROOT$/bun.lock",
         "$TURBO_ROOT$/.gitignore"
-      ],
-      "dependsOn": ["transit"]
+      ]
     },
     "check-types": {
       "dependsOn": ["transit"],
@@ -147,7 +146,8 @@
         "apps/*/turbo.json",
         "packages/*/turbo.json"
       ]
-    }
+    },
+    "test:content": {}
   },
   "cacheDir": ".turbo/cache",
   "futureFlags": {

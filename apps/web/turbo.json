@@ -56,7 +56,8 @@
         ".babelrc",
         "bunfig.toml",
         ".env*",
-        "!public/**/*.md"
+        "!public/**/*.md",
+        "!src/lib/content/repository-posts.test.ts"
       ]
     },
     "content:validate": {
@@ -101,7 +102,10 @@
     },
     "typegen": {
       "inputs": [
-        "src/**",
+        "src/app/**",
+        "src/pages/**",
+        "src/lib/content/**",
+        "agent/**",
         "content/**",
         "public/**",
         "!public/**/*.md",
@@ -118,6 +122,18 @@
         ".next/types/**",
         ".content-collections/**",
         "!.content-collections/test-*/**"
+      ]
+    },
+    "test:content": {
+      "inputs": [
+        "src/lib/content/**",
+        "content/**",
+        "public/**",
+        "!public/**/*.md",
+        "content-collections.ts",
+        "package.json",
+        "tsconfig.json",
+        ".env*"
       ]
     }
   }
