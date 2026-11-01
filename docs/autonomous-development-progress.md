@@ -1,5 +1,19 @@
 # Gas City bootstrap evidence
 
+## Native registry continuation
+
+The 2026-11-01 continuation moved the complete plan into canonical `.tools/gascity-beads-pilot`, using Beads-managed proxied Dolt. Specification commits `e0dda12` and `89678b2` record native execution ownership and the approved blog filter. Native registry review `psbp-8zk` checked all 18 contracts and 31 edges against the specification and approved the corrected seed with explicit runtime caveats. Canonical P0 `psbp-f71` records the continuation authority; A1 `psbp-0z7` accepts only the demonstrated managed-proxy backend and same-mode backup/restore. A2 and A3 remain incomplete.
+
+D1 `psbp-28r` is accepted and locally integrated as `b4d9e96081c86140168e734b6660f35779842e4f`, resulting tree `402518fb8ab99d753df48529deda27b31e3cdc66`, from expected main base `89678b25020ae83a18b989861430c172260ca497`. Original candidate `6c3272e` preserves worker attribution. Native independent review `psbp-hpq` found and then verified the correction for nested, case-insensitive `.git` ownership components. The resulting tree passed all 10 affected repository tasks in an isolated integration worktree before main fast-forwarded. No dependency or build configuration changed.
+
+Canonical import resolved 18 IDs before wiring 29 blocking and two grouping edges. The second import returned only `keep` actions with structurally identical ID mappings. Existing statuses, claims, notes, descriptions, start/close fields, external references and every metadata key were preserved, including closed B1 evidence and active lifetime budgets. The coordinator's initial JSON-string comparison differed only in object-key insertion order; structural comparison passed without a third import. Evidence is under `.tools/gascity-bootstrap/canonical-{before-import,first-import,second-import,after-import,import-qualification}.json`. Native backup sync passed after import. This is local durable state, not off-machine recovery.
+
+Gas City now carries coding and review work in the canonical graph. Native readiness is not integration authorization: the coordinator still resolves actual consumed commits, reservations, trusted policy and acceptance evidence before dispatch or integration. D1 supplies no scheduler, concurrent-import uniqueness or runtime deadline enforcement. Its native transport was exercised against the actual canonical proxy, in addition to the earlier disposable embedded-store qualification. Source decisions and exact checks are retained in the native implementation/review records; Effect remains 4.0.5 and Execa 10.2.1.
+
+At D1 acceptance, B2 and C1 remained unaccepted. Review caught successful-check process leakage, unreachable-result transport and dependency-scope contamination in B2; the next patch fixed those, but native security review then demonstrated workspace executable contamination through `.bin`. C1 required producer-schema alignment and scalar-test classification corrections. Those findings remain attached to their original tasks and budgets. Suspension did not freeze one nudged worker; explicit session closure established later review freezes. No automatic integration or complete unattended recovery is claimed. Unrelated README edits and generated `.codex/hooks.json` were preserved.
+
+## Original bootstrap
+
 The first local qualification ran on 2026-11-01 from base `ad1cc29861b6ad849bcd8a55bea6eb7e4928f100`. Gas City launched the workers; native Codex subagents were not used for execution. The implementation program is incomplete. No source change, remote push, deployment, or autonomous integration occurred.
 
 ## Verified results
