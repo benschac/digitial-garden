@@ -6,7 +6,7 @@ Use the [execution plan](autonomous-development-plan.md) for authorization, evid
 
 - [ ] P0. The coordinator freezes the approved base SHA, assigns one worktree and branch per owner, and settles the task, verification, and integration interfaces before implementation. Record allowed paths, verifier identity, dependency artifact IDs, attempt budget, and integration target. Use `gpt-6-astra` at `high` effort for this contract decision. The evidence is an agreed contract and a clean base, not this unchecked box.
 
-Every task below is unstarted. Hard dependencies require completed artifacts. Contract dependencies allow implementation against P0 interfaces before providers exist. Git parents describe code ancestry, not scheduling. A task can become ready before its stack predecessor finishes when it needs no predecessor code.
+This table is the original work contract; runtime evidence and task state live in Beads. The qualification progress report records which portions have actually run. Hard dependencies require completed artifacts. Contract dependencies allow implementation against P0 interfaces before providers exist. Git parents describe code ancestry, not scheduling. A task can become ready before its stack predecessor finishes when it needs no predecessor code.
 
 After A1 proves the selected Beads backend, D1 imports these IDs into Beads exactly once and records their Beads IDs. Beads then owns status, claims, blockers, attempts, and evidence. Keep this file as the versioned execution contract; do not maintain a competing live queue here. Reconcile existing IDs before retrying an import.
 
@@ -41,6 +41,12 @@ All stacks begin at P0's frozen base. Within each stack, use the predecessor as 
 | B1 | Define and validate immutable evidence records. Bind task and attempt identity, candidate commit and tree, base SHA, command, exit status, toolchain, verifier version, and artifact references. Reject missing or mismatched identity. | Hard P0. No runtime prerequisite. Git base P0. | `gpt-6.1-sol`, `high` | Focused valid and invalid record fixtures. An unreferenced contract module may use the local fast lane after required checks and review. |
 | B2 | Connect existing repository verification to the trusted gate. Load verifier policy from the approved control revision, not the candidate. Preserve logs and distinguish test failure from infrastructure failure. | Hard B1. Contract P0. Git parent B1. | `gpt-6.1-sol`, `high` | Run known passing and failing candidates. A candidate that edits its verifier cannot authorize itself. Bind evidence to the actual resulting tree. Automated review lane. |
 | B3 | Add the regression checks that reject stale evidence and changed acceptance rules. Wire owned tooling inputs into existing verification through coordinator edits. | Hard B2. Git parent B2. | `gpt-6.1-sol`, `high` | Rebase, changed base, changed verifier, and modified tracked files invalidate acceptance. Run relevant tests and repository gates. Automated review lane. |
+
+### B1 execution refinement
+
+The first executable leaf, B1a, is the pure identity validator in `scripts/orchestrator-evidence.mjs` and its focused tests. It rejects missing task/attempt fields, mismatched candidate/base/verifier identities, malformed checks and nonzero exits. It does not authenticate the producer, require a particular check set, prove a Git object exists, or grant integration permission.
+
+B1b remains necessary before the parent B1 contract is complete: bind the expected attempt, command arguments, toolchain identity and artifact references in the persisted receipt. B2 must then load trusted commands and check requirements from the approved verifier revision. Do not close the parent or dispatch its hard dependents merely because B1a passes.
 
 ## Execute stack C
 

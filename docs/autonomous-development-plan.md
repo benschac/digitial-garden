@@ -47,12 +47,15 @@ Shared files such as `package.json`, `turbo.json`, `gascity.toml`, and `docs/sta
 | Work | Initial model | Effort | Escalation |
 | --- | --- | --- | --- |
 | Inventory, documentation, mechanical edits against an approved example | `gpt-6-luna` | `medium` | Move to Sol after a substantive failure or ambiguity |
-| Ordinary implementation, tests, formula wiring | `gpt-6.1-sol` | `high` | Move to Astra for conflicting patterns or architectural failure |
+| Routine implementation and tests against established patterns | `gpt-6.1-sol` | `medium` | Increase to high after a substantive failure or unexpected boundary behavior |
+| Boundary validation, unfamiliar formula wiring, nontrivial correctness | `gpt-6.1-sol` | `high` | Move to Astra for conflicting patterns or architectural failure |
 | Integration races, permission boundaries, crash recovery, architectural contracts | `gpt-6-astra` | `high` | Increase effort for a specific unresolved question, not by default |
 | Ordinary independent review | `gpt-6.1-sol` | `high` | Use Astra for sensitive integration or permission code |
 | Formatting, tests, type checks, builds, graph validation | No model | Not applicable | Report deterministic failures to the task owner |
 
 These identifiers and efforts were present in the local Codex catalog during the audit. Check support again at launch. Do not silently substitute an unavailable model. Record the fallback and keep the same authorization and attempt budget.
+
+The user reaffirmed task-specific model and reasoning selection on 2026-11-01. The coordinating conversation does not determine worker settings: each dispatch records its own model and effort. Existing high-effort assignments in the task registry are initial ceilings; use medium for routine work once its contract and patterns are established. Do not duplicate a completed investigation merely to use another model.
 
 These are capability assignments, not measured price claims. Record model, effort, input and output tokens, cache usage when available, elapsed time, retries, and accepted result. Show unknown price as unknown. Do not infer billed cost from cumulative usage snapshots or call a model cheaper without applicable pricing or measured billing.
 
