@@ -7,6 +7,7 @@
       "devDependencies": {
         "@effect/tsgo": "0.63.0",
         "@oxlint/plugins": "1.90.0",
+        "effect": "4.0.5",
         "execa": "10.2.1",
         "oxfmt": "0.75.0",
         "oxlint": "1.90.0",
