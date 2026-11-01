@@ -50,6 +50,8 @@ Refs must point to mounted elements when observation starts. If initialization i
 
 ## Next.js and tooling
 
+- [`dev.sh`](../scripts/dev.sh) owns the root development session. A per-checkout file lock prevents competing launchers from claiming the same city. It starts a stopped Gas City, runs Turbo in a separate process group, and releases both on exit or interruption. It leaves an independently running city alone. The root package has no Effect platform adapter, so this launcher uses Bash job control and traps without adding dependencies.
+
 - `bun run check-types:effect` runs the web project through the pinned Effect-patched `tsrs` runner. The Effect language-service plugin is configured in `apps/web/tsconfig.json`; the existing TypeScript checks remain the default. See [checks](../README.md#checks) for compatibility findings and editor setup boundaries.
 
 - [Library source references](agent-sources.md) provides pinned, reference-only Effect, XState core, and XState Effect checkouts. `bun run sources:fetch` downloads them; `sources:check` validates them; `sources:updates` reports registry tags without upgrading dependencies.

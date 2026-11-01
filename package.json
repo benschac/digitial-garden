@@ -7,8 +7,7 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
-    "storybook": "turbo run storybook",
+    "dev": "bash scripts/dev.sh",
     "build-storybook": "turbo run build-storybook",
     "lint": "turbo run lint lint:root",
     "format": "oxfmt",

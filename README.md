@@ -11,6 +11,8 @@ bun install
 bun run dev
 ```
 
+`bun run dev` starts Gas City alongside the site. Stopping development also stops the city if this command started it; an already-running city stays running. The shared machine-wide supervisor stays running. Initialize Gas City once using the setup below before running development. Storybook is excluded from this command; run `bun run --cwd packages/ui storybook` when needed.
+
 The development server prefers [http://localhost:3000](http://localhost:3000). If that port is occupied, it checks subsequent ports until it finds a free one and prints the selected URL. It does not stop the process using the original port.
 
 Set a different preferred port through the shell or a CLI flag:
@@ -23,6 +25,40 @@ bun run --cwd apps/web dev --port 4000
 Both commands fall back to the next available port if `4000` is busy. CLI flags take precedence over `PORT`; do not put `PORT` in `.env.local`. This also applies to `bun run wasm:dev` and the web workspace's `dev` command. Production `next start` retains its fixed-port behavior.
 
 This handles ports occupied by other projects. Next.js still permits only one development server per checkout because they share `.next/dev`; use a separate checkout or worktree to run two copies of this project.
+
+## Gas City coding agents
+
+[Gas City](https://github.com/gastownhall/gascity) coordinates coding agents for this repository. The setup below targets Gas City 1.5.1 and Codex CLI 0.166.0. It keeps the city in `.tools/gascity` and registers this checkout as the `personal-site` rig.
+
+Install the CLI and initialize a new local city from the repository root:
+
+```bash
+brew install gascity
+GC_BEADS=file command gc init --template minimal --default-provider codex --name personal-site --no-start .tools/gascity
+cp gascity.toml .tools/gascity/city.toml
+command gc --city .tools/gascity rig add "$PWD" --name personal-site --prefix site --default-branch main
+command gc --city .tools/gascity config show --validate
+```
+
+Run initialization once per checkout. The checked-in `gascity.toml` is the setup template; Gas City maintains the local copy and stores the checkout path in `.tools/gascity/.gc/site.toml`. To update an existing city, edit its local configuration without overwriting the generated `[[rigs]]` entries.
+
+The template uses `gpt-6.1-sol` with high reasoning effort, a workspace-write sandbox, and approvals on request. It replaces the built-in permission option because Gas City's Codex preset defaults to unrestricted execution. The file-backed work store needs no Beads or Dolt service. Agent hook installation is disabled. Generated state under `.tools/`, `.gc/`, and `.beads/` stays outside Git.
+
+Inspect routing without creating work or launching an agent:
+
+```bash
+command gc --city .tools/gascity sling personal-site/codex "Inspect the repository without changing files" --dry-run --no-formula
+```
+
+After setup, `bun run dev` starts the city and site together. To open a Codex session in another terminal:
+
+```bash
+command gc --city .tools/gascity session new personal-site/codex
+```
+
+To route a task, run `command gc --city .tools/gascity sling personal-site/codex "Your task"`. Inspect the city with `command gc --city .tools/gascity status`, and stop it with `command gc --city .tools/gascity stop`.
+
+The `command gc` form bypasses shell aliases such as Oh My Zsh's `gc` alias for Git commits. See the upstream [quickstart](https://github.com/gastownhall/gascity/blob/v1.5.1/docs/getting-started/quickstart.md) for orchestration workflows.
 
 ## Eve agent
 

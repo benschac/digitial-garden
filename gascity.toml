@@ -1,0 +1,26 @@
+[workspace]
+provider = "codex"
+install_agent_hooks = []
+
+[beads]
+provider = "file"
+
+[providers.codex]
+base = "builtin:codex"
+options_schema_merge = "by_key"
+
+[providers.codex.option_defaults]
+model = "gpt-6.1-sol"
+effort = "high"
+permission_mode = "workspace"
+
+[[providers.codex.options_schema]]
+key = "permission_mode"
+label = "Permissions"
+type = "select"
+default = "workspace"
+
+[[providers.codex.options_schema.choices]]
+value = "workspace"
+label = "Workspace sandbox with approvals"
+flag_args = ["--sandbox", "workspace-write", "--ask-for-approval", "on-request"]
