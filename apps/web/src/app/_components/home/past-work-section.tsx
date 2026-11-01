@@ -99,7 +99,7 @@ export const PastWorkSection = () => (
             variant="item"
             className={cn(
               "flex items-center gap-2",
-              "text-balance font-[family-name:var(--home-entry-font,var(--font-sans))]"
+              "text-balance font-(family-name:--home-entry-font,var(--font-sans))"
             )}
           >
             <span
