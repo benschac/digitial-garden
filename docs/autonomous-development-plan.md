@@ -1,6 +1,8 @@
 # Deliver the local autonomous development pilot
 
-Planning is approved; runtime implementation has not started. The coordinating agent owns this plan. Its scope is this repository, local execution, and local integration. The companion [task registry](autonomous-development-tasks.md) assigns executable units to parallel stacks.
+Execution is authorized and underway. Gas City owns worker execution and scheduling in the canonical `.tools/gascity-beads-pilot` city, backed by Beads-managed proxied Dolt. The coordinating agent owns policy, integration and acceptance. Scope remains this repository, local execution and local integration. The companion [task registry](autonomous-development-tasks.md) is the versioned specification; canonical Beads records own live state.
+
+The 2026-11-01 continuation directs isolated implementation worktrees, at most three concurrent lanes plus a Sol/high coordinator, and accepted local integration onto `main`. These instructions supersede the original pilot-branch and one-worker bootstrap restrictions below. Preserve existing attempts, deadlines, evidence and closed B1 records during registry import. Use native Gas City tasks for reviews and recovery as well as coding; this conversation is not the durable queue. Until A3 qualifies lifetime deadline enforcement, the coordinator supervises bounded execution and must not describe it as unattended recovery.
 
 ## Use this plan
 
@@ -97,7 +99,7 @@ Tests must reject stale evidence, concurrent base movement, duplicate delivery, 
 
 First qualify one task through execution, interruption, verification, and local integration. Then use a real feature with two independent implementation branches and at least one hard dependency. Do not manufacture ten tasks or install an unnecessary library.
 
-Blog title and summary filtering is the proposed feature, not an approved UX contract. Before writing feature code, settle URL state versus browser-only state, server-rendered list behavior, keyboard behavior, empty results, draft visibility, and preservation of existing view transitions. Record a human question only if the answer changes product behavior and cannot be derived from established conventions.
+The user approved browser-only blog filtering on 2026-11-01. Match a trimmed, case-insensitive query as a substring of title or summary. Server-render the full eligible list, preserve order and visibility rules, and filter locally after hydration without URL persistence. Include a labeled accessible search field, clear control, result count and no-match state. Preserve keyboard navigation and article view transitions; verify desktop and mobile. These choices are settled unless implementation reveals a material conflict.
 
 Once the contract is accepted, implement matching logic and the accessible filter control independently. Integrate the page after both are verified. Runtime infrastructure work can continue while the product decision waits. Existing content ownership is under `apps/web/src/lib/content`; the list is in `apps/web/src/app/blog/page.tsx`.
 
