@@ -1,10 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { spawn } from "node:child_process";
-import { once } from "node:events";
+
+import { execa } from "execa";
 
 import {
   createPreviewConnection,
-  observePreviewProcess,
   spawnPreviewProcess,
 } from "./social-preview-native";
 import type { PreviewSocket } from "./social-preview-native";
@@ -121,30 +120,62 @@ describe("native preview adapters", () => {
   });
 
   test("controlled native child is terminated and reaped once", async () => {
-    const child = spawn(
-      process.execPath,
-      ["-e", "setInterval(() => {}, 1000)"],
-      { stdio: "ignore" }
-    );
+    const child = spawnPreviewProcess(process.execPath, [
+      "-e",
+      "setInterval(() => {}, 1000)",
+    ]);
 
-    const observed = observePreviewProcess(child);
-    await once(child, "spawn");
-    await Promise.all([observed.stop(), observed.stop()]);
-    const result = await observed.exited;
+    const stopped = child.stop();
+    expect(child.stop()).toBe(stopped);
+    await stopped;
+    const result = await child.exited;
+    expect(result.code).toBeNull();
     expect(result.signal).toBe("SIGTERM");
   });
 
   test("already signal-exited native child does not wait for another exit", async () => {
-    const child = spawn(
-      process.execPath,
-      ["-e", "process.kill(process.pid, 'SIGTERM')"],
-      { stdio: "ignore" }
-    );
+    const child = spawnPreviewProcess(process.execPath, [
+      "-e",
+      "process.kill(process.pid, 'SIGTERM')",
+    ]);
 
-    await once(child, "exit");
-    const observed = observePreviewProcess(child);
-    await observed.stop();
-    const result = await observed.exited;
+    const result = await child.exited;
+    await child.stop();
     expect(result.signal).toBe("SIGTERM");
   });
+
+  test.each([0, 7])("retains native exit code %s", async (code) => {
+    const child = spawnPreviewProcess(process.execPath, [
+      "-e",
+      `process.exit(${code})`,
+    ]);
+
+    const result = await child.exited;
+    await child.stop();
+    expect(result.code).toBe(code);
+    expect(result.signal).toBeNull();
+
+    if (code === 0) {
+      expect(result.error).toBeUndefined();
+    } else {
+      expect(result.error).toBeInstanceOf(Error);
+    }
+  });
+
+  test.each([true, false])(
+    "preserves inherited stdio (%s)",
+    async (inherit) => {
+      const moduleUrl = new URL("social-preview-native.ts", import.meta.url);
+
+      const script = [
+        `import { spawnPreviewProcess } from ${JSON.stringify(moduleUrl.href)};`,
+        `const child = spawnPreviewProcess(process.execPath, ["-e", "console.log('preview stdout'); console.error('preview stderr')"], ${inherit});`,
+        "await child.exited; await child.stop();",
+      ].join("\n");
+
+      const result = await execa(process.execPath, ["-e", script]);
+      expect(result.stdout).toBe(inherit ? "preview stdout" : "");
+      expect(result.stderr).toBe(inherit ? "preview stderr" : "");
+    }
+  );
 });
