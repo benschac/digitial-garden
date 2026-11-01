@@ -13,10 +13,11 @@
   },
   "scripts": {
     "dev": "bun run storybook",
-    "lint": "node ../../scripts/oxc-tool.mjs lint .",
+    "lint": "oxlint .",
     "check-types": "tsc --noEmit",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "format:check": "oxfmt --check ."
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",

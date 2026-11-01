@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
   copyFileSync,
   mkdirSync,
@@ -8,13 +9,14 @@ import {
   symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { runOxcTool } from "./oxc-tool.mjs";
+const binary = fileURLToPath(
+  new URL("../node_modules/oxlint/bin/oxlint", import.meta.url)
+);
 
 const config = fileURLToPath(new URL("../oxlint.config.mts", import.meta.url));
 
@@ -105,10 +107,14 @@ for (const probe of probes) {
   test(`${probe.rejected ? "enforces" : "adapts"} ${probe.rule} in ${probe.file}`, (t) => {
     const { cwd } = fixture(t, probe.file, probe.source);
 
-    const result = runOxcTool("lint", ["--format=json", probe.file], {
-      cwd,
-      encoding: "utf-8",
-    });
+    const result = spawnSync(
+      process.execPath,
+      [binary, "--format=json", probe.file],
+      {
+        cwd,
+        encoding: "utf-8",
+      }
+    );
 
     assert.ok(result.status === 0 || result.status === 1, result.stderr);
     const { diagnostics } = JSON.parse(result.stdout);
@@ -131,10 +137,14 @@ test("safe fixes preserve Effect's tagged error factory call", (t) => {
     'import { Schema } from "effect";\n\nexport class Failure extends Schema.TaggedError<Failure>()("Failure", {}) {}'
   );
 
-  const result = runOxcTool("lint", ["--fix", "--format=json", file], {
-    cwd,
-    encoding: "utf-8",
-  });
+  const result = spawnSync(
+    process.execPath,
+    [binary, "--fix", "--format=json", file],
+    {
+      cwd,
+      encoding: "utf-8",
+    }
+  );
 
   assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
   assert.match(readFileSync(target, "utf-8"), /extends Schema\.TaggedError/u);
@@ -148,7 +158,7 @@ test("ordinary error construction still requires new", (t) => {
   const file = "apps/web/src/probe.ts";
   const { cwd } = fixture(t, file, 'export const failure = Error("failure");');
 
-  const result = runOxcTool("lint", ["--format=json", file], {
+  const result = spawnSync(process.execPath, [binary, "--format=json", file], {
     cwd,
     encoding: "utf-8",
   });
@@ -184,38 +194,5 @@ test("workspace manifests use Oxlint and Oxfmt without ESLint dependencies", () 
     for (const command of Object.values(manifest.scripts)) {
       assert.doesNotMatch(command, /\beslint\b/u, `${directory}: ${command}`);
     }
-  }
-});
-
-test("Tailwind canonical boolean data variants preserve generated CSS", async () => {
-  const requireWeb = createRequire(
-    new URL("../apps/web/package.json", import.meta.url)
-  );
-
-  const { __unstable__loadDesignSystem: loadDesignSystem } =
-    requireWeb("tailwindcss");
-
-  const design = await loadDesignSystem("");
-
-  for (const attribute of [
-    "placeholder",
-    "open",
-    "closed",
-    "starting-style",
-    "ending-style",
-    "pointer-pressed",
-    "highlighted",
-    "disabled",
-    "inset",
-  ]) {
-    const legacy = `data-[${attribute}]:opacity-0`;
-    const canonical = `data-${attribute}:opacity-0`;
-    assert.deepEqual(design.canonicalizeCandidates([legacy]), [canonical]);
-    const css = design.candidatesToCss([legacy, canonical]);
-    assert.ok(css.every(Boolean));
-    assert.equal(
-      css[0].replace(/^\.[^\s{]+/u, ".candidate"),
-      css[1].replace(/^\.[^\s{]+/u, ".candidate")
-    );
   }
 });

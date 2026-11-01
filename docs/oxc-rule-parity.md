@@ -2,7 +2,7 @@
 
 Oxlint 1.90.0 uses Ultracite 8.1.0's core, React, and Next.js presets. Project options preserve the former unused-binding, use-before-definition, null comparison, and new-tab link policies. Anti-slop's 18 generic rules and five Effect rules are enabled. The native accumulating-spread check is also enabled by Ultracite. Type-aware linting is not enabled; run the separate TypeScript checks for compiler diagnostics.
 
-The [coverage manifest](biome-rule-coverage.json) retains the repository's former Biome 2.5.15 recommended baseline, React/Next domains, source mappings, and known gaps. `bun run test:tools` checks every available mapping against Oxlint's resolved configuration and verifies representative native, generic anti-slop, and Effect diagnostics. Related source mappings do not guarantee identical diagnostics or fixes.
+The [coverage manifest](biome-rule-coverage.json) retains the repository's former Biome 2.5.15 recommended baseline, React/Next domains, source mappings, and known gaps. `bun run test:tools` checks every available mapping against Oxlint's resolved configuration and exercises project-specific policy exceptions and vendored plugin registration. Related source mappings do not guarantee identical diagnostics or fixes.
 
 ## Remaining differences
 
@@ -16,7 +16,7 @@ The [coverage manifest](biome-rule-coverage.json) retains the repository's forme
 
 ## Migration boundary
 
-This migration replaces the project-local Bun canary runner, installer, and `bunfig.toml` lint/format configuration. `bun install` now installs all tooling. The workspace scripts and read-only Codex changed-file hook invoke the installed Oxlint and Oxfmt packages through `scripts/oxc-tool.mjs`.
+This migration replaces the project-local Bun canary runner, installer, and `bunfig.toml` lint/format configuration. `bun install` now installs all tooling. Workspace scripts invoke the installed `oxlint` and `oxfmt` commands directly.
 
 The application and formatting backlog is resolved against these installed versions. ESLint has no workspace dependency, configuration, or script. The `eslint/...` prefix names Oxlint's native implementations; `eslintCompatPlugin` adapts the vendored rules to Oxlint. Ultracite's optional ESLint peer supports its separate ESLint presets and does not activate ESLint here.
 
@@ -40,7 +40,7 @@ These scoped adaptations do not establish full Biome parity or enable type-aware
 
 ## Tailwind editor diagnostics
 
-`tailwindCSS.lint.suggestCanonicalClasses` belongs to Tailwind CSS IntelliSense, separately from Oxlint and Oxfmt. Its editor Quick Fix replaces a class with Tailwind's canonical spelling. Boolean data variants now use `data-placeholder:`, `data-open:`, and equivalent forms instead of bracketed spellings. Tooling tests compare generated CSS against the installed Tailwind 4.3.3 compiler. This does not sort class lists or change attribute-value variants such as `data-[state=open]:`.
+`tailwindCSS.lint.suggestCanonicalClasses` belongs to Tailwind CSS IntelliSense, separately from Oxlint and Oxfmt. Its editor Quick Fix replaces a class with Tailwind's canonical spelling. Boolean data variants now use `data-placeholder:`, `data-open:`, and equivalent forms instead of bracketed spellings. The class migration was checked against the installed Tailwind 4.3.3 compiler. This does not sort class lists or change attribute-value variants such as `data-[state=open]:`.
 
 ## Library source checks
 

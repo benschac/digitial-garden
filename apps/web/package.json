@@ -7,12 +7,10 @@
     "content:validate": "content-collections build",
     "social:render": "bun scripts/render-social-preview.tsx",
     "dev": "node scripts/dev.mjs",
-    "eve:build": "eve build",
-    "eve:dev": "eve dev",
     "eve:info": "eve info",
-    "lint": "node ../../scripts/oxc-tool.mjs lint .",
-    "test": "bun run content:validate && bun test",
-    "check-types": "bun run content:validate && tsc --noEmit",
+    "lint": "oxlint .",
+    "test": "bun test",
+    "check-types": "tsc --noEmit",
     "wasm:build": "CARGO_TARGET_DIR=/tmp/personal-site-wasm-target cargo build --manifest-path ../../packages/wasm-canvas-engine/Cargo.toml --target wasm32-unknown-unknown --release && mkdir -p public/wasm && cp /tmp/personal-site-wasm-target/wasm32-unknown-unknown/release/wasm_canvas_engine.wasm public/wasm/particle-engine.wasm",
     "wasm:dev": "bun run --parallel --no-orphans dev wasm:watch",
     "wasm:setup": "rustup target add wasm32-unknown-unknown",
@@ -21,7 +19,8 @@
     "dev:eve": "eve dev",
     "start": "next start",
     "start:eve": "eve start",
-    "typecheck": "bun run check-types"
+    "format:check": "oxfmt --check .",
+    "typegen": "next typegen"
   },
   "dependencies": {
     "@capsizecss/core": "^4.1.3",

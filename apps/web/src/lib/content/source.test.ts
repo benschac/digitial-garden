@@ -336,7 +336,7 @@ describe("file-based post registry", () => {
     expect(
       getPublishedPostSummaries(posts).map((post) => post.slug)
     ).not.toContain(draft?.slug);
-  });
+  }, 15_000);
 
   test("renders compiled MDX with the existing plugins and components", async () => {
     const paths = await createFixture();

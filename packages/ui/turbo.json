@@ -2,7 +2,31 @@
   "extends": ["//"],
   "tasks": {
     "check-types": {
-      "outputs": []
+      "inputs": [
+        "src/**",
+        ".storybook/**/*.{ts,tsx}",
+        "package.json",
+        "tsconfig.json",
+        "!src/stories/assets/**"
+      ]
+    },
+    "transit": {
+      "inputs": [
+        "src/**",
+        "!src/stories/assets/**",
+        "package.json",
+        "tsconfig.json",
+        "!**/*.test.*"
+      ]
+    },
+    "build": {
+      "inputs": [
+        "src/**",
+        "!src/stories/assets/**",
+        "package.json",
+        "tsconfig.json",
+        "!**/*.test.*"
+      ]
     }
   }
 }

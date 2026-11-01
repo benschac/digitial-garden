@@ -2,7 +2,8 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "transit": {
-      "dependsOn": ["^transit"]
+      "dependsOn": ["^transit"],
+      "inputs": ["src/**", "package.json", "tsconfig.json", "!**/*.test.*"]
     },
     "build": {
       "dependsOn": ["^build"],
@@ -11,7 +12,8 @@
         "!.next/cache/**",
         "!.next/dev/**",
         ".content-collections/**"
-      ]
+      ],
+      "inputs": ["src/**", "package.json", "tsconfig.json", "!**/*.test.*"]
     },
     "dev": {
       "cache": false,
@@ -27,26 +29,28 @@
       "outputs": ["storybook-static/**"]
     },
     "lint": {
-      "dependsOn": ["transit"],
       "inputs": [
         "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/oxlint.config.mts",
-        "$TURBO_ROOT$/scripts/oxc-tool.mjs",
+        "!**/*.{md,mdx,css,html,yaml,yml,toml,png,jpg,jpeg,gif,svg,avif,webp,woff,woff2,ttf,otf,wasm,wgsl,mp4,webm,ico,txt}",
+        "package.json",
+        "$TURBO_ROOT$/{.oxlintrc.*,oxlint.config.*}",
         "$TURBO_ROOT$/tools/oxlint/anti-slop/**",
-        "$TURBO_ROOT$/package.json",
-        "$TURBO_ROOT$/bun.lock"
-      ]
+        "$TURBO_ROOT$/bun.lock",
+        "$TURBO_ROOT$/.gitignore"
+      ],
+      "dependsOn": ["transit"]
     },
     "check-types": {
       "dependsOn": ["transit"],
-      "outputs": [".next/cache/tsconfig.tsbuildinfo"]
+      "inputs": ["src/**", "package.json", "tsconfig.json"]
     },
     "content:validate": {
-      "dependsOn": ["transit"],
+      "inputs": ["src/**", "package.json", "tsconfig.json"],
       "outputs": [".content-collections/**"]
     },
     "test": {
-      "dependsOn": ["transit"]
+      "dependsOn": ["transit"],
+      "inputs": ["src/**", "package.json", "tsconfig.json"]
     },
     "wasm:build": {
       "inputs": [
@@ -68,6 +72,85 @@
     "wasm:watch": {
       "cache": false,
       "persistent": true
+    },
+    "format:check": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.{png,jpg,jpeg,gif,svg,avif,webp,woff,woff2,ttf,otf,wasm,wgsl,mp4,webm,ico}",
+        "$TURBO_ROOT$/{.oxfmtrc.*,oxfmt.config.*}",
+        "$TURBO_ROOT$/bun.lock",
+        "$TURBO_ROOT$/.gitignore"
+      ]
+    },
+    "//#lint:root": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!apps/**",
+        "!packages/**",
+        "!**/*.{md,mdx,css,html,yaml,yml,toml,png,jpg,jpeg,gif,svg,avif,webp,woff,woff2,ttf,otf,wasm,wgsl,mp4,webm,ico,txt}",
+        "$TURBO_ROOT$/{.oxlintrc.*,oxlint.config.*}",
+        "$TURBO_ROOT$/tools/oxlint/anti-slop/**",
+        "$TURBO_ROOT$/bun.lock",
+        "$TURBO_ROOT$/.gitignore",
+        "!.agent/**",
+        "!.agent_sources/**",
+        "!.agents/**",
+        "!.claude/**",
+        "!.codex/**",
+        "!.continue/**",
+        "!.cursor/**",
+        "!.gemini/**",
+        "!.opencode/**",
+        "!.pi/**",
+        "!.roo/**",
+        "!.windsurf/**",
+        "apps/web/scripts/dev-port.mjs",
+        "apps/web/scripts/dev.mjs"
+      ]
+    },
+    "//#format:root": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!apps/**",
+        "!packages/**",
+        "!tools/oxlint/anti-slop/**",
+        "!.agent_sources/**",
+        "$TURBO_ROOT$/{.oxfmtrc.*,oxfmt.config.*}",
+        "$TURBO_ROOT$/bun.lock",
+        ".gitignore",
+        "!.agent/**",
+        "!.agents/**",
+        "!.claude/**",
+        "!.codex/**",
+        "!.continue/**",
+        "!.cursor/**",
+        "!.gemini/**",
+        "!.opencode/**",
+        "!.pi/**",
+        "!.roo/**",
+        "!.windsurf/**"
+      ]
+    },
+    "//#test:tools": {
+      "inputs": [
+        "scripts/**",
+        "docs/biome-rule-coverage.json",
+        "oxlint.config.mts",
+        "oxfmt.config.mts",
+        "tools/oxlint/anti-slop/**",
+        "apps/web/scripts/dev-port.mjs",
+        "apps/web/scripts/dev.mjs",
+        "apps/web/package.json",
+        "packages/*/package.json",
+        "package.json",
+        "bun.lock",
+        "apps/*/turbo.json",
+        "packages/*/turbo.json"
+      ]
     }
+  },
+  "cacheDir": ".turbo/cache",
+  "futureFlags": {
+    "affectedUsingTaskInputs": true
   }
 }

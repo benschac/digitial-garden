@@ -1,0 +1,124 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "transit": {
+      "inputs": [
+        "src/**",
+        "agent/**",
+        "scripts/**",
+        "content/**",
+        "public/**",
+        "package.json",
+        "tsconfig.json",
+        "content-collections.ts",
+        "next.config.mjs",
+        "postcss.config.mjs",
+        ".babelrc",
+        "bunfig.toml",
+        ".env*",
+        "!public/**/*.md",
+        "!**/*.test.*"
+      ]
+    },
+    "check-types": {
+      "dependsOn": ["transit", "typegen"],
+      "inputs": [
+        "src/**",
+        "agent/**",
+        "scripts/**",
+        "content/**",
+        "public/**",
+        "package.json",
+        "tsconfig.json",
+        "content-collections.ts",
+        "next.config.mjs",
+        "postcss.config.mjs",
+        ".babelrc",
+        "bunfig.toml",
+        ".env*",
+        "!public/**/*.md"
+      ],
+      "outputs": [".next/cache/tsconfig.tsbuildinfo"]
+    },
+    "test": {
+      "dependsOn": ["transit", "typegen"],
+      "inputs": [
+        "src/**",
+        "agent/**",
+        "scripts/**",
+        "content/**",
+        "public/**",
+        "package.json",
+        "tsconfig.json",
+        "content-collections.ts",
+        "next.config.mjs",
+        "postcss.config.mjs",
+        ".babelrc",
+        "bunfig.toml",
+        ".env*",
+        "!public/**/*.md"
+      ]
+    },
+    "content:validate": {
+      "inputs": [
+        "content/**",
+        "src/lib/content/**",
+        "content-collections.ts",
+        "public/**",
+        "!public/**/*.md",
+        "package.json",
+        "!**/*.test.*"
+      ],
+      "outputs": [".content-collections/**", "!.content-collections/test-*/**"]
+    },
+    "build": {
+      "dependsOn": ["^build", "transit"],
+      "inputs": [
+        "src/**",
+        "agent/**",
+        "scripts/**",
+        "content/**",
+        "public/**",
+        "package.json",
+        "tsconfig.json",
+        "content-collections.ts",
+        "next.config.mjs",
+        "postcss.config.mjs",
+        ".babelrc",
+        "bunfig.toml",
+        ".env*",
+        "!public/**/*.md",
+        "!**/*.test.*"
+      ],
+      "env": ["SITE_URL", "VERCEL_PROJECT_PRODUCTION_URL", "VERCEL_URL"],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "!.next/dev/**",
+        ".content-collections/**",
+        "!.content-collections/test-*/**"
+      ]
+    },
+    "typegen": {
+      "inputs": [
+        "src/**",
+        "content/**",
+        "public/**",
+        "!public/**/*.md",
+        "!**/*.test.*",
+        "next.config.mjs",
+        "content-collections.ts",
+        "scripts/prepare-typography-metrics.mjs",
+        "package.json",
+        "tsconfig.json",
+        ".env*"
+      ],
+      "outputs": [
+        "next-env.d.ts",
+        ".next/types/**",
+        ".content-collections/**",
+        "!.content-collections/test-*/**"
+      ]
+    }
+  }
+}

@@ -29,7 +29,7 @@ Workspace no-op coverage is explicit:
 - `packages/ui/**`: 63 tracked files, including controls, utilities, stories, and Storybook configuration. No Zod usage or Effect Schema owner.
 - `packages/react-hooks/**`: 8 tracked files, including lifecycle hooks, exports, and configuration. No Zod usage or Effect Schema owner.
 - `packages/wasm-canvas-engine/**`: 6 tracked files, including Cargo metadata and four Rust modules. No Zod usage; the JavaScript ABI validator remains app-owned.
-- Root `scripts/**`: 7 MJS files. Native hook JSON parsing in `scripts/check-changed.mjs:12` is not leftover Zod. Root scripts, UI, and hooks do not declare either Zod or Effect. Root configuration, manifests, hidden tooling configuration, and app scripts/configuration likewise contain no executable Zod schema to replace.
+- Root `scripts/**`: 7 MJS files at the time of this audit. Root scripts, UI, and hooks do not declare either Zod or Effect. Root configuration, manifests, hidden tooling configuration, and app scripts/configuration likewise contain no executable Zod schema to replace.
 
 Introducing Effect to these shared or bootstrap packages would be a new dependency and ownership decision, not completion of an existing Zod migration.
 
