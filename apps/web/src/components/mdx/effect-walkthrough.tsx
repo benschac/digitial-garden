@@ -10,11 +10,14 @@ import {
 import { ArrowLeft, ArrowRight, Pause, Play, RotateCcw } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { ThemedToken } from "shiki";
+import { createActor, initialTransition } from "xstate";
+import type { ActorRefFrom } from "xstate";
 
 import { getArticleCodeTokenizer } from "./article-code-theme";
 import type { ArticleCodeTokens } from "./article-code-theme";
 import { effectWalkthroughs } from "./effect-walkthrough-data";
 import type { EffectWalkthroughKind } from "./effect-walkthrough-data";
+import { effectWalkthroughPlayback } from "./effect-walkthrough-playback";
 
 import styles from "./effect-walkthrough.module.css";
 
@@ -51,11 +54,7 @@ const ColoredCode = ({
   });
 };
 
-export const EffectWalkthrough = ({
-  kind,
-}: {
-  kind: EffectWalkthroughKind;
-}) => {
+const EffectWalkthroughPlayer = ({ kind }: { kind: EffectWalkthroughKind }) => {
   const walkthrough = effectWalkthroughs[kind];
   const source = walkthrough.code.join("\n");
 
@@ -85,52 +84,82 @@ export const EffectWalkthrough = ({
 
     return () => controller.abort();
   }, [source, createController]);
-  const [step, setStep] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(true);
+  const stepCount = walkthrough.steps.length;
+
+  const [snapshot, setSnapshot] = useState(
+    () => initialTransition(effectWalkthroughPlayback, { stepCount })[0]
+  );
+
+  const actorRef = useRef<ActorRefFrom<
+    typeof effectWalkthroughPlayback
+  > | null>(null);
+
   const [instant, setInstant] = useState(false);
   const host = useRef<HTMLElement>(null);
-  const startedAt = useRef<number | null>(null);
+
+  const startedAt = useRef<{ timestamp: number; generation: number } | null>(
+    null
+  );
+
   const titleId = useId();
+  const { step, reducedMotion } = snapshot.context;
+  const playing = snapshot.matches("playing");
   const current = walkthrough.steps[step];
-  const last = step === walkthrough.steps.length - 1;
+  const last = step === stepCount - 1;
   const playLabel = last ? "Replay" : "Play";
 
   const { requestFrame, cancelFrame } = useAnimationFrame((timestamp) => {
-    if (!playing) {
+    const actor = actorRef.current;
+    const active = actor?.getSnapshot();
+
+    if (!actor || !active?.matches("playing")) {
       return false;
     }
 
-    if (startedAt.current === null) {
-      startedAt.current = timestamp;
+    const { generation } = active.context;
+
+    if (startedAt.current?.generation !== generation) {
+      startedAt.current = { generation, timestamp };
     }
 
-    if (timestamp - startedAt.current >= 4200) {
-      startedAt.current = timestamp;
-
-      if (last) {
-        setPlaying(false);
-
-        return false;
-      }
-
-      setStep((value) => value + 1);
+    if (timestamp - startedAt.current.timestamp >= 4200) {
+      startedAt.current = { generation, timestamp };
+      actor.send({ generation, type: "INTERVAL" });
     }
 
-    return true;
+    return actor.getSnapshot().matches("playing");
   });
+
+  useEffect(() => {
+    const actor = createActor(effectWalkthroughPlayback, {
+      input: { stepCount },
+    });
+
+    const subscription = actor.subscribe(setSnapshot);
+    actorRef.current = actor;
+    actor.start();
+
+    return () => {
+      actorRef.current = null;
+      cancelFrame();
+      startedAt.current = null;
+      subscription.unsubscribe();
+      actor.stop();
+    };
+  }, [stepCount, cancelFrame]);
 
   const pause = () => {
     cancelFrame();
-    setPlaying(false);
+    actorRef.current?.send({ type: "PAUSE" });
     startedAt.current = null;
   };
 
   useMediaQuery("(prefers-reduced-motion: reduce)", (matches) => {
-    setReducedMotion(matches);
+    actorRef.current?.send({ reduced: matches, type: "MOTION" });
 
     if (matches) {
-      pause();
+      cancelFrame();
+      startedAt.current = null;
     }
   });
   useIntersectionObserver(host, (visible) => {
@@ -147,7 +176,7 @@ export const EffectWalkthrough = ({
   const selectStep = (index: number, fromKeyboard: boolean) => {
     pause();
     setInstant(fromKeyboard);
-    setStep(index);
+    actorRef.current?.send({ step: index, type: "SELECT" });
   };
 
   return (
@@ -274,13 +303,11 @@ export const EffectWalkthrough = ({
                   } else {
                     setInstant(event.detail === 0);
 
-                    if (last) {
-                      setStep(0);
-                    }
+                    actorRef.current?.send({ type: "PLAY" });
 
-                    startedAt.current = null;
-                    setPlaying(true);
-                    requestFrame();
+                    if (actorRef.current?.getSnapshot().matches("playing")) {
+                      requestFrame();
+                    }
                   }
                 }}
               >
@@ -309,3 +336,9 @@ export const EffectWalkthrough = ({
     </figure>
   );
 };
+
+export const EffectWalkthrough = ({
+  kind,
+}: {
+  kind: EffectWalkthroughKind;
+}) => <EffectWalkthroughPlayer key={kind} kind={kind} />;
