@@ -23,6 +23,10 @@ export default defineConfig({
   ],
   jsPlugins: [
     {
+      name: "project-patterns",
+      specifier: "./tools/oxlint/project-patterns/index.mjs",
+    },
+    {
       name: "anti-slop",
       specifier: "./tools/oxlint/anti-slop/index.ts",
     },
@@ -196,6 +200,64 @@ export default defineConfig({
             ],
           },
         ],
+      },
+    },
+    {
+      files: ["**/apps/**/*-service.ts"],
+      rules: {
+        "no-restricted-imports": [
+          "error",
+          {
+            paths: [
+              {
+                importNames: ["ManagedRuntime", "Runtime"],
+                message:
+                  "Service modules return Effects and Layers; create runtimes in the integration owner.",
+                name: "effect",
+              },
+              {
+                message:
+                  "Create managed runtimes in the integration owner, not a service module.",
+                name: "effect/ManagedRuntime",
+              },
+              {
+                message: "Keep runtime execution in the integration owner.",
+                name: "effect/Runtime",
+              },
+              {
+                importNames: [
+                  "runPromise",
+                  "runPromiseWith",
+                  "runPromiseExit",
+                  "runPromiseExitWith",
+                  "runSync",
+                  "runSyncWith",
+                  "runSyncExit",
+                  "runSyncExitWith",
+                  "runFork",
+                  "runForkWith",
+                  "runCallback",
+                  "runCallbackWith",
+                ],
+                message:
+                  "Return composable Effects from services; run them in the integration owner.",
+                name: "effect/Effect",
+              },
+            ],
+            patterns: [
+              {
+                group: [
+                  "**/packages/*/src",
+                  "**/packages/*/src/**",
+                  "@personal-site/*/src",
+                  "@personal-site/*/src/**",
+                ],
+                message: "Import shared packages through their public exports.",
+              },
+            ],
+          },
+        ],
+        "project-patterns/service-execution": "error",
       },
     },
   ],

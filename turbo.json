@@ -34,7 +34,7 @@
         "!**/*.{md,mdx,css,html,yaml,yml,toml,png,jpg,jpeg,gif,svg,avif,webp,woff,woff2,ttf,otf,wasm,wgsl,mp4,webm,ico,txt}",
         "package.json",
         "$TURBO_ROOT$/{.oxlintrc.*,oxlint.config.*}",
-        "$TURBO_ROOT$/tools/oxlint/anti-slop/**",
+        "$TURBO_ROOT$/tools/oxlint/**",
         "$TURBO_ROOT$/bun.lock",
         "$TURBO_ROOT$/.gitignore"
       ]
@@ -88,7 +88,7 @@
         "!packages/**",
         "!**/*.{md,mdx,css,html,yaml,yml,toml,png,jpg,jpeg,gif,svg,avif,webp,woff,woff2,ttf,otf,wasm,wgsl,mp4,webm,ico,txt}",
         "$TURBO_ROOT$/{.oxlintrc.*,oxlint.config.*}",
-        "$TURBO_ROOT$/tools/oxlint/anti-slop/**",
+        "$TURBO_ROOT$/tools/oxlint/**",
         "$TURBO_ROOT$/bun.lock",
         "$TURBO_ROOT$/.gitignore",
         "!.agent/**",
@@ -136,7 +136,7 @@
         "docs/biome-rule-coverage.json",
         "oxlint.config.mts",
         "oxfmt.config.mts",
-        "tools/oxlint/anti-slop/**",
+        "tools/oxlint/**",
         "apps/web/scripts/dev-port.mjs",
         "apps/web/scripts/dev.mjs",
         "apps/web/package.json",
