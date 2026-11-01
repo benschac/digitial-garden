@@ -15,6 +15,7 @@
     "format:check": "turbo run format:check format:root",
     "check": "turbo run lint lint:root format:check format:root --affected --output-logs=errors-only",
     "check-types": "turbo run check-types",
+    "check-types:effect": "bun run --cwd apps/web typegen && effect-tsgo tsrs@0.20.1-ts7.1.0-beta --project apps/web/tsconfig.json --noEmit --incremental false",
     "content:validate": "turbo run content:validate",
     "test": "turbo run test",
     "wasm:build": "turbo run wasm:build --filter=@personal-site/web",
@@ -32,6 +33,7 @@
     "verify:full": "turbo run lint lint:root format:check format:root test:tools check-types test build --concurrency=1 --output-logs=errors-only"
   },
   "devDependencies": {
+    "@effect/tsgo": "0.63.0",
     "@oxlint/plugins": "1.90.0",
     "oxfmt": "0.75.0",
     "oxlint": "1.90.0",

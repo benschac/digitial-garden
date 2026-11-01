@@ -104,11 +104,18 @@ bun run lint
 bun run format:check
 bun run check
 bun run check-types
+bun run check-types:effect
 bun run content:validate
 bun run test
 bun run test:tools
 bun run build
 ```
+
+`bun run check-types:effect` generates route/content types and checks the web project with the [Effect-patched `tsrs`](https://github.com/Effect-TS/tsgo/blob/7d25af7531707a9a728b4f7c337f8694c1b4ee16/README.md#run-the-patched-tools-without-patching). It pins `@effect/tsgo` 0.63.0 and `tsrs` `0.20.1-ts7.1.0-beta`, uses no incremental cache, and fails on Effect errors and warnings. The default checks and build retain TypeScript 7.0.2.
+
+The additional check currently fails on four TS2615 content-AST errors and three Effect warnings in `particle-lifecycle.ts` and `renderer-lifecycle.ts`. Patched TypeScript 7.1 beta reports the same errors. Resolve these before making it the default.
+
+Editors must launch the patched language server with `bun run effect-tsgo tsrs@0.20.1-ts7.1.0-beta --lsp --stdio`; editor integration is unverified.
 
 Linting uses Oxlint with Ultracite's core, React, and Next.js presets in `oxlint.config.mts`. Formatting uses Ultracite's Oxfmt preset in `oxfmt.config.mts`. `bun install` installs the tools.
 

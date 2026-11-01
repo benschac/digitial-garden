@@ -15,7 +15,7 @@
     "incremental": true,
     "tsBuildInfoFile": ".next/cache/tsconfig.tsbuildinfo",
     "types": ["@webgpu/types", "bun", "mdx", "node"],
-    "plugins": [{ "name": "next" }],
+    "plugins": [{ "name": "next" }, { "name": "@effect/language-service" }],
     "paths": {
       "@/*": ["./src/*"],
       "content-collections": ["./.content-collections/generated"]

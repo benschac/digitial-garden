@@ -50,6 +50,8 @@ Refs must point to mounted elements when observation starts. If initialization i
 
 ## Next.js and tooling
 
+- `bun run check-types:effect` runs the web project through the pinned Effect-patched `tsrs` runner. The Effect language-service plugin is configured in `apps/web/tsconfig.json`; the existing TypeScript checks remain the default. See [checks](../README.md#checks) for compatibility findings and editor setup boundaries.
+
 - [Library source references](agent-sources.md) provides pinned, reference-only Effect, XState core, and XState Effect checkouts. `bun run sources:fetch` downloads them; `sources:check` validates them; `sources:updates` reports registry tags without upgrading dependencies.
 
 - Runtime validation uses `effect/Schema` (Effect v4). Blog metadata and document schemas live in `apps/web/src/lib/content/schema.ts`; use the exported parser options to reject unknown frontmatter keys and collect all validation issues. Content Collections consumes `Schema.toStandardSchemaV1`. Eve tools also need `Schema.toStandardJSONSchemaV1`; expose the resulting `~standard` property in a plain object because Eve's schema detection does not accept function values.
