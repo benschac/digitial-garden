@@ -452,10 +452,10 @@ export const createTypeGpuParticleRenderer = (
             TEXTURE_USAGE_TEXTURE_BINDING | TEXTURE_USAGE_RENDER_ATTACHMENT,
         });
 
-      trailTextures.push(
-        createTrailTexture("particle-trail-a"),
-        createTrailTexture("particle-trail-b")
-      );
+      for (const label of ["particle-trail-a", "particle-trail-b"]) {
+        trailTextures.push(createTrailTexture(label));
+      }
+
       trailViews = [
         trailTextures[0].createView(),
         trailTextures[1].createView(),
