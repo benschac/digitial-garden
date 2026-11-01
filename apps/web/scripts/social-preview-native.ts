@@ -1,10 +1,9 @@
-import type { ChildProcess } from "node:child_process";
-import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 import { Schema } from "effect";
+import { execa } from "execa";
 
 import type {
   PreviewConnection,
@@ -12,51 +11,36 @@ import type {
 } from "./social-preview-lifecycle";
 import { previewCommandResultSchema } from "./social-preview-lifecycle";
 
-type ProcessExit = Awaited<PreviewProcess["exited"]>;
-
 type CommandResult = typeof previewCommandResultSchema.Type;
 
-export const observePreviewProcess = (child: ChildProcess): PreviewProcess => {
-  let settled = false;
-  let stopping: Promise<void> | undefined;
-  const completion = Promise.withResolvers<ProcessExit>();
-
-  const finish = (result: ProcessExit) => {
-    if (settled) {
-      return;
-    }
-
-    settled = true;
-    completion.resolve(result);
-  };
-
-  const onError = (error: Error) => finish({ code: null, error, signal: null });
-
-  const onExit = (code: number | null, signal: string | null) =>
-    finish({ code, signal });
-
-  child.on("error", onError);
-  child.on("exit", onExit);
-
-  const exited = completion.promise.then((result) => {
-    child.off("error", onError);
-    child.off("exit", onExit);
-
-    return result;
+export const spawnPreviewProcess = (
+  command: string,
+  args: string[],
+  inherit = false
+): PreviewProcess => {
+  const child = execa(command, args, {
+    cleanup: false,
+    forceKillAfterDelay: false,
+    reject: false,
+    stdio: inherit ? "inherit" : "ignore",
   });
 
-  if (child.exitCode !== null || child.signalCode !== null) {
-    finish({ code: child.exitCode, signal: child.signalCode });
-  }
+  const exited = child.then((result) => {
+    const exit = {
+      code: result.exitCode ?? null,
+      signal: result.signal ?? null,
+    };
+
+    return result instanceof Error ? { ...exit, error: result } : exit;
+  });
+
+  let stopping: Promise<void> | undefined;
 
   return {
     exited,
     stop() {
       stopping ??= (async () => {
-        if (!settled) {
-          child.kill();
-        }
-
+        child.kill();
         await exited;
       })();
 
@@ -64,15 +48,6 @@ export const observePreviewProcess = (child: ChildProcess): PreviewProcess => {
     },
   };
 };
-
-export const spawnPreviewProcess = (
-  command: string,
-  args: string[],
-  inherit = false
-): PreviewProcess =>
-  observePreviewProcess(
-    spawn(command, args, { stdio: inherit ? "inherit" : "ignore" })
-  );
 
 const responseSchema = Schema.Struct({
   error: Schema.optionalKey(Schema.Unknown),
