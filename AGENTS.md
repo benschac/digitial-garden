@@ -1,5 +1,12 @@
 # Repository conventions
 
+## Response style and token efficiency
+
+- Condense responses to the point. Lead with the answer or outcome; use bullets for multiple points and nested bullets for subpoints. A simple answer can be one sentence.
+- Include only decision-relevant details: changed files, validation, and material risks or blockers. Omit preambles, repeated plans, full logs, and code dumps unless requested; expand when the task requires explanation.
+- Search first, then read relevant files and ranges. Reuse gathered evidence while it remains current. Keep tool output focused, summarize successful checks, and retain actionable failure details. Required guidance, source lookup, reviews, and verification still apply.
+- When delegating, request only task-relevant findings with file and symbol references, nesting supporting details. Read the owning code before editing based on a summary.
+
 ## Learning more about Effect
 
 This repository uses the Effect TypeScript library. Before writing Effect code, read `apps/web/node_modules/effect/AGENTS.md` completely and follow its required links. For APIs and concepts the guide does not cover, search `apps/web/node_modules/effect/src`.
@@ -23,6 +30,13 @@ This repository uses the Effect TypeScript library. Before writing Effect code, 
 - Do not hide reactive dependencies just to use a helper. Check cancellation on restart/unmount, Strict Mode replay, async initialization, and observer readiness when refactoring effects.
 - If a native API is needed because the shared helper cannot express its lifecycle, explain that reason in the change summary rather than forcing the abstraction.
 - Update the directory when adding or changing a shared API so future work can discover it. These are project-owned defaults, not permission to add dependencies.
+
+## Scripts, processes, and platform services
+
+- Prefer Effect for script orchestration, typed failures, dependencies, concurrency, cancellation, and resource ownership. Before adding a custom platform adapter, evaluate the installed Effect APIs through the [source lookup workflow](agent-patterns/README.md).
+- In Effect-owned workflows, prefer `effect/process`, `effect/FileSystem`, and `effect/Path` when they remove custom coordination. Use a platform implementation compatible with the installed Effect version, such as `@effect/platform-node` for Node.js; v3 `@effect/platform` examples require adaptation for this repository's v4 APIs.
+- Use Execa for Promise-based subprocess adapters when it reduces lifecycle code and preserves the caller's contract. Keep Effect scopes responsible for cleanup in existing integrations; verify stdio, exit status, signals, cancellation, and shutdown policy before replacing a process owner.
+- Keep simple filesystem and path operations on `node:fs/promises` and `node:path`. These defaults do not authorize dependency additions or broad migrations.
 
 ## Tailwind class readability
 
