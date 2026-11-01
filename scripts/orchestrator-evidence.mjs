@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import { isProxy } from "node:util/types";
 
 import { Predicate, Result, Schema } from "effect";
@@ -10,6 +11,7 @@ const commit = Schema.String.check(
 );
 
 const identity = Schema.Struct({
+  attemptId: nonblankString,
   baseCommit: commit,
   candidateCommit: commit,
   candidateTree: commit,
@@ -17,21 +19,57 @@ const identity = Schema.Struct({
   verifierCommit: commit,
 });
 
+const toolchain = Schema.Struct({
+  arch: nonblankString,
+  bun: nonblankString,
+  node: nonblankString,
+  platform: nonblankString,
+});
+
 const check = Schema.Struct({
-  exitCode: Schema.Literal(0),
+  command: Schema.TupleWithRest(Schema.Tuple([nonblankString]), [
+    Schema.String,
+  ]),
+  logArtifactId: nonblankString,
   name: nonblankString,
 });
 
-const evidence = Schema.Struct({
+const successfulCheck = Schema.Struct({
+  ...check.fields,
+  exitCode: Schema.Literal(0),
+});
+
+const artifact = Schema.Struct({
+  id: nonblankString,
+  path: nonblankString,
+  sha256: Schema.String.check(
+    Schema.isBetweenLength(64, 64),
+    Schema.isPattern(/^[\da-f]{64}$/iu)
+  ),
+});
+
+const expectedEvidence = Schema.Struct({
   ...identity.fields,
-  attemptId: nonblankString,
+  artifacts: Schema.NonEmptyArray(artifact),
   checks: Schema.NonEmptyArray(check),
+  toolchain,
+});
+
+const evidence = Schema.Struct({
+  ...expectedEvidence.fields,
+  checks: Schema.NonEmptyArray(successfulCheck),
 });
 
 const identityFields = Object.keys(identity.fields);
 const evidenceFields = Object.keys(evidence.fields);
-const checkFields = Object.keys(check.fields);
-const decodeIdentity = Schema.decodeUnknownResult(identity, { errors: "all" });
+const checkFields = Object.keys(successfulCheck.fields);
+const artifactFields = Object.keys(artifact.fields);
+const toolchainFields = Object.keys(toolchain.fields);
+
+const decodeExpected = Schema.decodeUnknownResult(expectedEvidence, {
+  errors: "all",
+});
+
 const decodeEvidence = Schema.decodeUnknownResult(evidence, { errors: "all" });
 
 const ownValue = (record, key) =>
@@ -53,22 +91,80 @@ const ownData = (value, fields) => {
   );
 };
 
-export const validateEvidence = (record, expected) => {
-  const errors = [];
-  const recordData = ownData(record, evidenceFields);
-
-  if (recordData !== undefined) {
-    const { checks } = recordData;
-    recordData.checks =
-      isProxy(checks) || !Array.isArray(checks)
-        ? undefined
-        : Array.from({ length: checks.length }, (_, index) =>
-            ownData(ownValue(checks, String(index)), checkFields)
-          );
+const ownArray = (value, snapshot) => {
+  if (isProxy(value) || !Array.isArray(value)) {
+    return;
   }
 
-  const decodedRecord = decodeEvidence(recordData);
-  const decodedExpected = decodeIdentity(ownData(expected, identityFields));
+  const items = [];
+  const length = ownValue(value, "length");
+
+  for (let index = 0; index < length; index += 1) {
+    const item = snapshot(ownValue(value, String(index)));
+
+    if (item === undefined) {
+      return;
+    }
+
+    items.push(item);
+  }
+
+  return items;
+};
+
+const snapshotEvidence = (value) => {
+  const data = ownData(value, evidenceFields);
+
+  if (data === undefined) {
+    return;
+  }
+
+  data.toolchain = ownData(data.toolchain, toolchainFields);
+  data.artifacts = ownArray(data.artifacts, (item) =>
+    ownData(item, artifactFields)
+  );
+  data.checks = ownArray(data.checks, (item) => {
+    const checkData = ownData(item, checkFields);
+
+    if (checkData !== undefined) {
+      checkData.command = ownArray(checkData.command, (argument) => argument);
+    }
+
+    return checkData;
+  });
+
+  return data;
+};
+
+const validateReferences = (data, label, errors) => {
+  const artifactIds = new Set();
+  const checkNames = new Set();
+
+  for (const item of data.artifacts) {
+    if (artifactIds.has(item.id)) {
+      errors.push(`${label}.artifacts contains duplicate ids`);
+    }
+
+    artifactIds.add(item.id);
+  }
+
+  for (const item of data.checks) {
+    if (checkNames.has(item.name)) {
+      errors.push(`${label}.checks contains duplicate names`);
+    }
+
+    checkNames.add(item.name);
+
+    if (!artifactIds.has(item.logArtifactId)) {
+      errors.push(`${label}.checks has an unresolved logArtifactId`);
+    }
+  }
+};
+
+export const validateEvidence = (record, expected) => {
+  const errors = [];
+  const decodedRecord = decodeEvidence(snapshotEvidence(record));
+  const decodedExpected = decodeExpected(snapshotEvidence(expected));
 
   for (const [label, decoded] of [
     ["record", decodedRecord],
@@ -76,14 +172,37 @@ export const validateEvidence = (record, expected) => {
   ]) {
     if (Result.isFailure(decoded)) {
       errors.push(`${label}: ${decoded.failure.message}`);
+    } else {
+      validateReferences(decoded.success, label, errors);
     }
   }
 
   if (Result.isSuccess(decodedRecord) && Result.isSuccess(decodedExpected)) {
+    const actual = decodedRecord.success;
+    const wanted = decodedExpected.success;
+
     for (const field of identityFields) {
-      if (decodedRecord.success[field] !== decodedExpected.success[field]) {
+      if (actual[field] !== wanted[field]) {
         errors.push(`record.${field} does not match expected.${field}`);
       }
+    }
+
+    for (const field of ["toolchain", "artifacts"]) {
+      if (!isDeepStrictEqual(actual[field], wanted[field])) {
+        errors.push(`record.${field} does not match expected.${field}`);
+      }
+    }
+
+    const actualChecks = actual.checks.map(
+      ({ command, logArtifactId, name }) => ({
+        command,
+        logArtifactId,
+        name,
+      })
+    );
+
+    if (!isDeepStrictEqual(actualChecks, wanted.checks)) {
+      errors.push("record.checks does not match expected.checks");
     }
   }
 
