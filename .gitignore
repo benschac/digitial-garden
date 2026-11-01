@@ -39,3 +39,9 @@ storybook-static
 .tools/
 
 .agent_sources/
+
+# Gas City
+.gc/
+.beads/
+.agents/skills/.gc-skill-ownership.json
+.agents/skills/core.gc-*
