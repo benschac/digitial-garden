@@ -1,0 +1,11 @@
+[pack]
+name = "personal-site-beads-pilot"
+schema = 2
+
+[imports]
+[imports.bd]
+source = "https://github.com/gastownhall/gascity/tree/main/examples/bd"
+version = "sha:2e643dc2eb5ff84d9853ecaa6961a87a8e4043ae"
+[imports.core]
+source = "https://github.com/gastownhall/gascity/tree/main/internal/bootstrap/packs/core"
+version = "sha:2e643dc2eb5ff84d9853ecaa6961a87a8e4043ae"

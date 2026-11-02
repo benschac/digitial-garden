@@ -1,5 +1,7 @@
 # Scoped registry planning
 
+Use the [supervised operating contract](operating-contract.md) for current authority, capacity and budgets. The registry schema and original qualification graph below remain historical import contracts. They do not require reopening superseded tasks, rebuilding the autonomous-system program or repeating the canonical import.
+
 Produce a proposed JSON registry for the coordinator. Read `AGENTS.md`, the autonomous development plan, task registry, progress report, prepared handoffs and the exact upstream contract revisions first. Beads owns live status, claims, attempts and evidence. This prompt does not authorize import, dispatch, scheduling or acceptance.
 
 The coordinator is the sole canonical importer. Preserve `orchestrator-B1` → `psbp-ix9`, `orchestrator-B1a` → `psbp-yvt`, and `orchestrator-B1b` → `psbp-ix9.1`. Preserve the existing closed receipts, publication metadata and B1a published commit `8c5d2681d5aeb2432f97020baa9b59bb8d2bd14f`. Missing bootstrap records must be restored and independently checked before import. Never reconstruct their completed state from this prompt. A1 backend health, A2 launch evidence and A3 recovery/budget enforcement are distinct qualifications; the progress report does not establish all three are complete.

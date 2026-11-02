@@ -28,6 +28,8 @@ This handles ports occupied by other projects. Next.js still permits only one de
 
 ## Gas City coding agents
 
+The supervised pilot uses the separate canonical city `.tools/gascity-beads-pilot`. Start with its [operating contract](orchestration/personal-site/operating-contract.md), [portable city template](orchestration/personal-site/city-template/README.md) and [reporting commands](orchestration/personal-site/reporting.md). The development-city setup below does not initialize or replace that pilot.
+
 [Gas City](https://github.com/gastownhall/gascity) coordinates coding agents for this repository. The setup below targets Gas City 1.5.1 and Codex CLI 0.166.0. It keeps the city in `.tools/gascity` and registers this checkout as the `personal-site` rig.
 
 Install the CLI and initialize a new local city from the repository root:

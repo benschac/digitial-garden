@@ -36,6 +36,6 @@ The desktop session verifies that the server serves the reserved candidate, then
 
 If desktop preflight reports `The browser access host is unavailable`, record that result once and return to handoff mode. Retry only after an explicit host change; do not loop through reinstalls, configuration resets or new worker attempts. If budget expires, preserve the candidate and report the pending gate.
 
-The coordinator checks returned evidence against the exact integration candidate, requires independent reviews and repository verification, and reruns affected checks after code changes. A pending handoff, a loaded example page, or CLI test success cannot satisfy browser acceptance. Any separately running verification worker counts toward the five-lane cap; coordinator-performed checks remain coordinator work. Integration stays serialized.
+The coordinator checks returned evidence against the exact integration candidate, requires independent reviews and repository verification, and reruns affected checks after code changes. A pending handoff, a loaded example page, or CLI test success cannot satisfy browser acceptance. Any separately running verification worker counts toward the [current lane ceiling](operating-contract.md#capacity-and-budgets); coordinator-performed checks remain coordinator work. Integration stays serialized.
 
 Email alert delivery is a separate prerequisite. A Beads handoff is durable state, not proof that an email was sent.

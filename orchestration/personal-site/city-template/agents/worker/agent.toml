@@ -1,0 +1,14 @@
+scope = "city"
+provider = "codex"
+suspended = true
+min_active_sessions = 0
+max_active_sessions = 1
+idle_timeout = "10m"
+max_session_age = "30m"
+wake_mode = "fresh"
+work_dir = ".gc/worktrees/{{.Agent}}"
+
+[option_defaults]
+model = "gpt-6.1-sol"
+effort = "high"
+permission_mode = "workspace"

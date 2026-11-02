@@ -2,19 +2,19 @@
 
 ## Current supervised scope
 
-On 2026-11-02, the user explicitly chose a practical supervised local workflow. Canonical decision `psbp-fzk` supersedes the general autonomous-system qualification program below. Gas City runs scoped workers in isolated worktrees. The coordinator assigns supported models and bounded attempts, preserves unrelated work, runs ordinary tests and focused independent review, and integrates locally against the current `main`.
+The [supervised operating contract](../orchestration/personal-site/operating-contract.md) governs current work, including capacity, budgets, review and local integration. It records the scope adopted in canonical decision `psbp-fzk`. Beads owns current task state and explicit amendments.
 
-Finish the useful verifier repair and the approved blog filter. Exhaustive sandbox/escalation qualification, an unattended recovery engine, a custom integration authority, crash reconciliation, and additional dispatcher/model-policy infrastructure are no longer prerequisites. Original A3, B3, C2, C3, D2, D3 and E2 records are closed as superseded, not as implemented or qualified. A2 is accepted only for observed supervised execution. Preserve every earlier attempt and failed receipt.
+The remainder preserves the original qualification design and historical authorization. Superseded requirements are not current prerequisites or passing results. Do not use these historical checkboxes, lane counts or budget defaults to override the operating contract or renew an existing task.
 
-No remote push or deployment is authorized. The continuation still ends at `2026-11-02T19:21:20.095780Z`. Browser verification follows [browser routing](../orchestration/personal-site/browser-routing.md); an unavailable desktop host leaves that check pending. Beads owns current state. The remaining sections preserve the original design and history where this scope does not supersede them.
+## Historical program
 
-Execution is authorized and underway. Gas City owns worker execution and scheduling in the canonical `.tools/gascity-beads-pilot` city, backed by Beads-managed proxied Dolt. The coordinating agent owns policy, integration and acceptance. Scope remains this repository, local execution and local integration. The companion [task registry](autonomous-development-tasks.md) is the versioned specification; canonical Beads records own live state.
+The original program assigned worker execution and scheduling to Gas City in `.tools/gascity-beads-pilot`, backed by Beads-managed proxied Dolt. The coordinating agent owned policy, integration and acceptance. The companion [task registry](autonomous-development-tasks.md) retains that versioned specification.
 
-The 2026-11-01 continuation directs isolated implementation worktrees, at most three concurrent lanes plus a Sol/high coordinator, and accepted local integration onto `main`. These instructions supersede the original pilot-branch and one-worker bootstrap restrictions below. Preserve existing attempts, deadlines, evidence and closed B1 records during registry import. Use native Gas City tasks for reviews and recovery as well as coding; this conversation is not the durable queue. Until A3 qualifies lifetime deadline enforcement, the coordinator supervises bounded execution and must not describe it as unattended recovery.
+The initial 2026-11-01 continuation allowed three concurrent lanes plus a Sol/high coordinator and local integration onto `main`. A later convoy amendment raised the ceiling to five worker/reviewer lanes; the current operating contract records that amendment. The subsequent supervised scope superseded the requirement to qualify A3 before practical delivery.
 
 ## Use this plan
 
-Treat this document as the standing execution contract. Check a task only when its recorded evidence exists. A proposal, agent completion message, or passing check on an earlier tree is not completion evidence.
+Treat this section as the original execution design. Check a historical task only when its recorded evidence exists. A proposal, agent completion message, or passing check on an earlier tree is not completion evidence.
 
 The user authorized a durable plan, parallel agent stacks, model selection, and automatic landing of work that does not require their verification. This planning delivery does not launch the autonomous program. Start runtime implementation on an explicit instruction to execute this plan. Once started, do not ask again for routine local edits, tests, retries, worktrees, reviews, or eligible local integrations.
 

@@ -1,8 +1,8 @@
 # Execute the autonomous development stacks
 
-The current scope is the [supervised workflow](autonomous-development-plan.md#current-supervised-scope), adopted in canonical decision `psbp-fzk`. The tables below retain the original contracts. Superseded tasks are not implementation successes. The remaining delivery is the useful B2 verifier repair and E3 blog filter, with coordinator-managed checks, review and local integration.
+The [supervised operating contract](../orchestration/personal-site/operating-contract.md) governs current work under canonical decision `psbp-fzk`. The tables below retain the original qualification contracts. Superseded tasks are not implementation successes or current prerequisites. Read live delivery state and explicit amendments from Beads.
 
-Use the [execution plan](autonomous-development-plan.md) for authorization, evidence, integration policy, and stop conditions. This file seeds the task graph. It does not claim the tasks have been dispatched or completed.
+The [original execution plan](autonomous-development-plan.md) supplies historical rationale. This file preserves the task-graph seed; it does not authorize a new import, dispatch, budget or acceptance.
 
 ## Establish task ownership
 
