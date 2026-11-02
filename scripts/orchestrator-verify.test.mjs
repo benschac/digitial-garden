@@ -84,6 +84,8 @@ const fixture = async (context, options = {}) => {
         verify: "node scripts/check.mjs",
         "verify:full": "node scripts/full.mjs",
       },
+      workspaces: ["packages/*"],
+      ...options.manifest,
     })
   );
   await put(
@@ -230,6 +232,50 @@ test("candidate verifier, manifests, policy and transitive gates cannot authoriz
       assert.equal(report.checks.length, 0);
     })
   );
+});
+
+test("production policy rejects an emptied rule baseline before commands run", async (context) => {
+  const policy = JSON.parse(
+    await readFile(
+      new URL(
+        "../orchestration/personal-site/verification-policy.json",
+        import.meta.url
+      ),
+      "utf-8"
+    )
+  );
+
+  const baseline = JSON.parse(
+    await readFile(
+      new URL("../docs/biome-rule-coverage.json", import.meta.url),
+      "utf-8"
+    )
+  );
+
+  assert.ok(baseline.rules.length > 0);
+
+  const f = await fixture(context, {
+    policy: { protectedPaths: policy.protectedPaths },
+  });
+
+  f.git("checkout", "--detach", f.request.controlCommit);
+  await f.put("docs/biome-rule-coverage.json", JSON.stringify(baseline));
+  f.request.controlCommit = f.commit("approve rule baseline");
+  f.request.expectedBase = f.request.controlCommit;
+  await f.put(
+    "docs/biome-rule-coverage.json",
+    JSON.stringify({ ...baseline, rules: [] })
+  );
+  f.request.candidateCommit = f.commit("empty rule baseline");
+  f.request.resultCommit = f.request.candidateCommit;
+
+  const report = await verifyCandidate(f.request);
+  assert.equal(report.status, "rejected", JSON.stringify(report));
+  assert.match(
+    report.errors[0],
+    /Protected verification inputs changed: docs\/biome-rule-coverage\.json/u
+  );
+  assert.equal(report.checks.length, 0);
 });
 
 test("changed control gate is rejected even if candidate base already contains it", async (context) => {
@@ -468,6 +514,113 @@ test("coordinator dependency links are limited to node_modules and cannot overla
     })
   );
   assert.deepEqual(await readdir(source), ["fixture.txt"]);
+});
+
+test("undeclared boundary manifests do not prevent declared workspace verification", async (context) => {
+  const f = await fixture(context, {
+    manifest: { workspaces: ["apps/*", "packages/*"] },
+  });
+
+  await f.put("tools/oxlint/anti-slop/package.json", '{"type":"module"}');
+  await f.put("packages/fixture/package.json", '{"name":"declared"}');
+  await f.put("packages/fixture/nested/package.json", '{"type":"module"}');
+  await f.put("src/value.txt", "base");
+  f.request.controlCommit = f.commit(
+    "approve declared workspaces and boundaries"
+  );
+  f.request.expectedBase = f.request.controlCommit;
+  await f.put("src/value.txt", "pass");
+  f.request.candidateCommit = f.commit("candidate");
+  f.request.resultCommit = f.request.candidateCommit;
+
+  const report = await verifyCandidate(f.request);
+  assert.equal(report.status, "passed", JSON.stringify(report));
+  assert.equal(report.checks.length, 1);
+});
+
+for (const value of ["pass", "fail"]) {
+  test(`exact workspace declarations ignore unrelated manifests and execute a ${value} candidate`, async (context) => {
+    const f = await fixture(context, {
+      manifest: { workspaces: ["packages/declared"] },
+    });
+
+    await f.put("packages/declared/package.json", '{"name":"declared"}');
+    await f.put("packages/other/package.json", '{"type":"module"}');
+    await f.put("src/value.txt", "base");
+    f.request.controlCommit = f.commit("approve exact workspace declaration");
+    f.request.expectedBase = f.request.controlCommit;
+    await f.put("src/value.txt", value);
+    f.request.candidateCommit = f.commit("candidate");
+    f.request.resultCommit = f.request.candidateCommit;
+
+    const report = await verifyCandidate(f.request);
+    assert.equal(
+      report.status,
+      value === "pass" ? "passed" : "check_failure",
+      JSON.stringify(report)
+    );
+    assert.equal(report.checks.length, 1);
+  });
+}
+
+for (const scenario of [
+  { error: /name/u, name: "unnamed declared workspace", packages: [{}] },
+  {
+    error: /Duplicate workspace package names/u,
+    name: "duplicate declared names",
+    packages: [{ name: "duplicate" }, { name: "duplicate" }],
+  },
+  { error: /workspaces/u, name: "invalid declarations", workspaces: {} },
+  { error: /workspaces/u, name: "nonstring declaration", workspaces: [123] },
+  {
+    error: /workspaces/u,
+    name: "unsupported exclusion declaration",
+    workspaces: ["packages/*", "!packages/excluded"],
+  },
+]) {
+  test(`${scenario.name} fails closed before checks`, async (context) => {
+    const f = await fixture(context, {
+      manifest: { workspaces: scenario.workspaces ?? ["packages/*"] },
+    });
+
+    await Promise.all(
+      (scenario.packages ?? []).map((manifest, index) =>
+        f.put(
+          `packages/fixture-${index}/package.json`,
+          JSON.stringify(manifest)
+        )
+      )
+    );
+    await f.put("src/value.txt", "base");
+    f.request.controlCommit = f.commit("approve workspace fixture");
+    f.request.expectedBase = f.request.controlCommit;
+    await f.put("src/value.txt", "candidate");
+    f.request.candidateCommit = f.commit("candidate");
+    f.request.resultCommit = f.request.candidateCommit;
+
+    const report = await verifyCandidate(f.request);
+    assert.equal(
+      report.status,
+      "infrastructure_failure",
+      JSON.stringify(report)
+    );
+    assert.match(report.errors[0], scenario.error);
+    assert.equal(report.checks.length, 0);
+  });
+}
+
+test("root without workspace declarations ignores nested boundary manifests", async (context) => {
+  const f = await fixture(context, { manifest: { workspaces: undefined } });
+  await f.put("packages/boundary/package.json", '{"type":"module"}');
+  await f.put("src/value.txt", "base");
+  f.request.controlCommit = f.commit("approve non-workspace repository");
+  f.request.expectedBase = f.request.controlCommit;
+  await f.put("src/value.txt", "pass");
+  f.request.candidateCommit = f.commit("candidate");
+  f.request.resultCommit = f.request.candidateCommit;
+
+  const report = await verifyCandidate(f.request);
+  assert.equal(report.status, "passed", JSON.stringify(report));
 });
 
 for (const installedName of ["@fixture/package", "workspace-alias"]) {

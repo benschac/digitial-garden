@@ -439,12 +439,25 @@ const inspectToolchain = async (request, policy) => {
 };
 
 const workspacePackages = async (request, checkout) => {
+  const root = Schema.decodeUnknownSync(
+    Schema.Struct({
+      workspaces: Schema.optionalKey(
+        Schema.Array(relativePath.check(Schema.isPattern(/^[^!]/u)))
+      ),
+    })
+  )(JSON.parse(await readFile(path.join(checkout, "package.json"), "utf-8")));
+
   const tracked = await git(request, ["ls-files", "-z"], checkout);
 
   const manifests = tracked
     .split("\0")
     .filter(
-      (file) => file === "package.json" || file.endsWith("/package.json")
+      (file) =>
+        file === "package.json" ||
+        (file.endsWith("/package.json") &&
+          (root.workspaces ?? []).some((pattern) =>
+            path.matchesGlob(path.posix.dirname(file), pattern)
+          ))
     );
 
   const entries = await settleOperations(
