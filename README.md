@@ -34,15 +34,24 @@ Install the CLI and initialize a new local city from the repository root:
 
 ```bash
 brew install gascity
-GC_BEADS=file command gc init --template minimal --default-provider codex --name personal-site --no-start .tools/gascity
-cp gascity.toml .tools/gascity/city.toml
+command gc init --file gascity.toml --default-provider codex --name personal-site --beads-target local --beads-transport proxied --no-start .tools/gascity
 command gc --city .tools/gascity rig add "$PWD" --name personal-site --prefix site --default-branch main
 command gc --city .tools/gascity config show --validate
 ```
 
 Run initialization once per checkout. The checked-in `gascity.toml` is the setup template; Gas City maintains the local copy and stores the checkout path in `.tools/gascity/.gc/site.toml`. To update an existing city, edit its local configuration without overwriting the generated `[[rigs]]` entries.
 
-The template uses `gpt-6.1-sol` with high reasoning effort, a workspace-write sandbox, and approvals on request. It replaces the built-in permission option because Gas City's Codex preset defaults to unrestricted execution. The file-backed work store needs no Beads or Dolt service. Agent hook installation is disabled. Generated state under `.tools/`, `.gc/`, and `.beads/` stays outside Git.
+The template uses `gpt-6.1-sol` with high reasoning effort, a workspace-write sandbox, and approvals on request. It replaces the built-in permission option because Gas City's Codex preset defaults to unrestricted execution. The Beads provider requires `bd` 1.3.0 or newer and owns the local proxied Dolt service. Agent hook installation is disabled. Generated state under `.tools/`, `.gc/`, and `.beads/` stays outside Git.
+
+### Beads storage and Git
+
+The setup above uses Gas City's Beads/Dolt backend. Run `bd context` to identify its active database before changing storage settings. This checkout uses Beads 1.3.2 in `proxied-server` mode with the `site` database. Do not reinitialize it to repeat the fresh-checkout instructions.
+
+This repository ignores all of `.beads/`, including local configuration, routing, and issue data. Git commits and ordinary Git pushes therefore do not save Beads issues. Keep the Dolt database, credentials, locks, and machine-specific connection files out of Git. Commit reusable setup templates and workflow documentation separately.
+
+Beads supports Dolt-native synchronization and backups, but commands depend on the backend: `bd dolt remote list` is unsupported in this pilot's proxied-server mode. Its configured backup destination is `.tools/gascity/.dolt-backup/site`, on the same machine and also ignored by Git. That destination alone provides no off-machine recovery. The [qualification report](docs/autonomous-development-progress.md#native-backup-and-restore-result) records a successful local restore in managed-proxy mode and a failed cross-mode embedded restore. Off-machine recovery remains unconfigured. A fresh Git clone does not recover the issue database.
+
+See the pinned [Beads storage documentation](https://github.com/steveyegge/beads/blob/v1.3.2/docs/architecture/dolt.md) and [configuration reference](https://github.com/steveyegge/beads/blob/v1.3.2/docs/reference/configuration.md). JSONL exports are interchange files, not a replacement for a full database backup.
 
 Inspect routing without creating work or launching an agent:
 
