@@ -38,6 +38,30 @@ Beads has stored statuses `open`, `in_progress`, `blocked`, `deferred`, and `clo
 
 Missing phase, receipt, commit, or publication evidence stays missing in the report. A phase label alone is not proof of its associated artifact. Native list/show and comments can expose recorded metadata and notes, but the CLI does not render a complete evidence dashboard or these derived lifecycle queues.
 
+## Monitor the pilot without the retained-history scan
+
+Gas City 1.5.1 can report `store health: counting retained bead rows: hydrating list fallback: list timed out` on the proxied Beads backend. Its full status read falls back to loading retained history within a one-second deadline. A partial result also marks non-running agents unknown; that warning alone does not prove their sessions failed. The owning paths are [store-health counting](https://github.com/gastownhall/gascity/blob/v1.5.1/internal/api/store_health.go) and [status rendering](https://github.com/gastownhall/gascity/blob/v1.5.1/cmd/gc/city_status_snapshot.go).
+
+For fleet monitoring, use the supported [lightweight status API](https://github.com/gastownhall/gascity/blob/v1.5.1/internal/api/handler_status.go). The local supervisor was verified on port 8372. Check `gc doctor --check supervisor-http-api` if that endpoint changes.
+
+```sh
+status_json=$(curl --fail --silent --show-error --max-time 10 \
+  'http://127.0.0.1:8372/v0/city/personal-site-beads-pilot/status?lite=true&index=0&wait=1ms') &&
+  printf '%s\n' "$status_json" | jq -e '
+    if .name != "personal-site-beads-pilot" then error("unexpected city")
+    elif .partial == true then error((.partial_errors // ["partial status"]) | join("; "))
+    else {name, path, agents, suspended}
+    end'
+```
+
+The index query bypasses the response cache, but the underlying store snapshot can still lag. Lite mode omits retained-store health, detailed session counts, and work-count reads. Its zero-valued work fields are not queue evidence. Continue using `gc bd status --json` and task-specific reads for the queue, and `gc doctor --json` for diagnostics. This monitoring path does not repair the full `gc status` command or establish task acceptance.
+
+## Interpret the restricted provider warning
+
+The pilot's `a2-continuation` agent uses `pilot-restricted-exec` with `wake_mode = "fresh"`. Gas City deliberately clears the conversation key on [fresh wake](https://github.com/gastownhall/gascity/blob/v1.5.1/internal/session/lifecycle_transition.go). The [provider-parity check](https://github.com/gastownhall/gascity/blob/v1.5.1/internal/doctor/checks_provider_parity.go) warns about missing resume fields without considering that policy.
+
+Keep fresh wake and the restricted launch arguments intact. Do not add a dummy resume flag or inherit a different provider merely to silence the warning. A future resumable provider needs separate verification that it captures the real Codex thread ID and preserves every restriction on resume.
+
 ## Preserve evidence and usage
 
 Record concise progress and durable evidence locations on the owning bead, for example:
