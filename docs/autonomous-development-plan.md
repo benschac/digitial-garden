@@ -1,5 +1,13 @@
 # Deliver the local autonomous development pilot
 
+## Current supervised scope
+
+On 2026-11-02, the user explicitly chose a practical supervised local workflow. Canonical decision `psbp-fzk` supersedes the general autonomous-system qualification program below. Gas City runs scoped workers in isolated worktrees. The coordinator assigns supported models and bounded attempts, preserves unrelated work, runs ordinary tests and focused independent review, and integrates locally against the current `main`.
+
+Finish the useful verifier repair and the approved blog filter. Exhaustive sandbox/escalation qualification, an unattended recovery engine, a custom integration authority, crash reconciliation, and additional dispatcher/model-policy infrastructure are no longer prerequisites. Original A3, B3, C2, C3, D2, D3 and E2 records are closed as superseded, not as implemented or qualified. A2 is accepted only for observed supervised execution. Preserve every earlier attempt and failed receipt.
+
+No remote push or deployment is authorized. The continuation still ends at `2026-11-02T19:21:20.095780Z`. Browser verification follows [browser routing](../orchestration/personal-site/browser-routing.md); an unavailable desktop host leaves that check pending. Beads owns current state. The remaining sections preserve the original design and history where this scope does not supersede them.
+
 Execution is authorized and underway. Gas City owns worker execution and scheduling in the canonical `.tools/gascity-beads-pilot` city, backed by Beads-managed proxied Dolt. The coordinating agent owns policy, integration and acceptance. Scope remains this repository, local execution and local integration. The companion [task registry](autonomous-development-tasks.md) is the versioned specification; canonical Beads records own live state.
 
 The 2026-11-01 continuation directs isolated implementation worktrees, at most three concurrent lanes plus a Sol/high coordinator, and accepted local integration onto `main`. These instructions supersede the original pilot-branch and one-worker bootstrap restrictions below. Preserve existing attempts, deadlines, evidence and closed B1 records during registry import. Use native Gas City tasks for reviews and recovery as well as coding; this conversation is not the durable queue. Until A3 qualifies lifetime deadline enforcement, the coordinator supervises bounded execution and must not describe it as unattended recovery.
