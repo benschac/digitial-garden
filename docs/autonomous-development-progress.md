@@ -1,5 +1,17 @@
 # Gas City bootstrap evidence
 
+## Current supervised delivery (2026-11-02)
+
+The user approved finishing a practical supervised local workflow in decision `psbp-fzk`. The earlier qualification program below is retained as history. A3, B3, C2, C3, D2, D3 and E2 were explicitly superseded; their abandoned requirements were not reported as passing. Native Gas City dispatch, isolated worktrees, independent review, repository checks and coordinator-owned local integration remain in use. Remote publication and deployment remain outside scope.
+
+A2 (`psbp-bh7`) is accepted only for supervised use: the final native worker demonstrated a denied out-of-workspace write, unavailable delegation tools and live process cancellation with a stopped heartbeat. Exhaustive unattended sandbox qualification is not claimed.
+
+B2 (`psbp-t38`) now selects packages from declared root workspaces, excludes generated workspace Turbo logs from input drift, and protects the tracked lint coverage baseline. Native independent reviews covered the correction, including the focused baseline regression. Real-repository verification produced the expected `passed` and `check_failure` outcomes. The delivery code is commit `708aeab358d55f6ea1d988a714cbe01a92ba4ed4`; detailed attempts and reviews remain on the original task.
+
+E3's blog filter implementation (`psbp-08u.1`, candidate `acdde276228a5758f5ed78de566a224d65149aa0`) preserves server-owned eligibility and order and adds local title/summary search, a result count, Clear and a no-match message. Five matcher tests passed. The combined candidate passed all 16 repository checks and a fresh production build. Independent review and desktop/mobile browser acceptance are separate gates; consult the live bead for their current results. No browser acceptance is inferred from the build.
+
+The CLI host uses `desktop-handoff` under [browser routing](../orchestration/personal-site/browser-routing.md). Local receipts, review reports and the concrete desktop handoff are retained in `.tools/gascity-bootstrap/end-to-end-20261102/`. This ignored directory is local evidence, not an off-machine backup. The original shared continuation deadline is 2026-11-02T19:21:20Z; handoff does not renew it.
+
 ## Native registry continuation
 
 The 2026-11-01 continuation moved the complete plan into canonical `.tools/gascity-beads-pilot`, using Beads-managed proxied Dolt. Specification commits `e0dda12` and `89678b2` record native execution ownership and the approved blog filter. Native registry review `psbp-8zk` checked all 18 contracts and 31 edges against the specification and approved the corrected seed with explicit runtime caveats. Canonical P0 `psbp-f71` records the continuation authority; A1 `psbp-0z7` accepts only the demonstrated managed-proxy backend and same-mode backup/restore. A2 and A3 remain incomplete.
