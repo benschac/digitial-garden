@@ -1,23 +1,24 @@
 # Native task reporting
 
+The current supervised scope is recorded in decision `psbp-fzk`. Tasks marked `pilot.phase=superseded_by_supervised_scope` were intentionally retired; their closed status does not mean their original acceptance checks passed.
+
 Beads is the live task record. Reconstruct state after restart from the canonical city; do not infer completion from a session, branch, or worker message. `docs/autonomous-development-tasks.md` remains the specification. `orchestration/personal-site/planner.md` describes registry and contract fields.
 
 ## Read the live queue
 
-Start at the repository root and enter the canonical city. Keep that working directory for subsequent commands so discovery cannot select the original city. These commands do not change task state:
+Select the canonical city explicitly. In this workspace, directory discovery can select the original city even from the pilot directory. These commands do not change task state:
 
 ```sh
-cd .tools/gascity-beads-pilot
-gc status --json
-gc bd status --json
-gc bd ready --json
-gc bd blocked --json
-gc bd list --all --limit 0 --flat --json
-gc bd show TASK_ID --json
-gc bd comments TASK_ID
+gc --city .tools/gascity-beads-pilot status --json
+gc --city .tools/gascity-beads-pilot bd status --json
+gc --city .tools/gascity-beads-pilot bd ready --json
+gc --city .tools/gascity-beads-pilot bd blocked --json
+gc --city .tools/gascity-beads-pilot bd list --all --limit 0 --flat --json
+gc --city .tools/gascity-beads-pilot bd show TASK_ID --json
+gc --city .tools/gascity-beads-pilot bd comments TASK_ID
 ```
 
-Use `gc convoy status psbp-ftb` for the complete 18-task pilot initiative. This owned convoy targets local `main` with local merge policy; it does not authorize publication.
+Use `gc --city .tools/gascity-beads-pilot convoy status psbp-ftb` for the complete 18-task pilot initiative. This owned convoy targets local `main` with local merge policy; it does not authorize publication.
 
 Use `gc status` for city health, running agents, and rigs; `gc bd status` for issue counts and database activity; `ready` for dependency-unblocked claimable work; `blocked` and `list` for the broader queue; and `show` for the task's contract, dependencies, claim/lease, and metadata. `ready` is a view, not a stored status. Use `gc bd list --all --limit 0 --flat --json` to avoid the default row limit; filter canonical tasks by `external_ref` beginning `orchestrator-`. Do not treat ephemeral review/session wisps as canonical tasks.
 
