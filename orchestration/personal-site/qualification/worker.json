@@ -1,0 +1,414 @@
+{
+  "schema_version": 1,
+  "task_id": "psbp-bh7",
+  "external_ref": "orchestrator-A2",
+  "attempt": 1,
+  "attempt_limit": 3,
+  "phase": "qualification_observed",
+  "accepted": false,
+  "supervised": true,
+  "observed_at": "2026-11-02T01:34:24.447777+00:00",
+  "deadline": "2026-11-02T01:57:29.901938+00:00",
+  "specification_revision": "89678b25020ae83a18b989861430c172260ca497",
+  "city": "/Users/benjaminschachter/personal-site/.tools/gascity-beads-pilot",
+  "agent": "a2",
+  "session_id": "psbp-wisp-9kmx4",
+  "provider_thread_id": "01a199df-1fa6-7033-9b52-8951c00f152f",
+  "candidate": {
+    "cwd": "/Users/benjaminschachter/personal-site/.tools/gascity-worktrees/a2",
+    "base_commit": "d49af324f3dfd38402fc665c40b3402cfd04e2d6",
+    "base_tree": "21a92489c2ebff2eb433926900fa03dc9ed62567",
+    "head_commit": "d49af324f3dfd38402fc665c40b3402cfd04e2d6",
+    "head_tree": "21a92489c2ebff2eb433926900fa03dc9ed62567",
+    "commit_created": false,
+    "candidate_tree_created": false,
+    "uncommitted_owned_paths": [
+      "orchestration/personal-site/agents/worker.toml",
+      "orchestration/personal-site/qualification/worker.json"
+    ],
+    "shared_git_dir": "/Users/benjaminschachter/personal-site/.git",
+    "worktree_git_dir": "/Users/benjaminschachter/personal-site/.git/worktrees/a2"
+  },
+  "toolchain": {
+    "gas_city": "1.5.1",
+    "codex": "0.166.0",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  },
+  "startup": {
+    "observed": true,
+    "provider": "codex",
+    "command": "codex --disable hooks --sandbox workspace-write --ask-for-approval on-request --model gpt-6.1-sol -c model_reasoning_effort=high",
+    "attached": false,
+    "session_created_at": "2026-11-02T01:28:15Z",
+    "kind": "native Codex TUI with automatically submitted task prompt",
+    "codex_exec_used": false,
+    "evidence": [
+      ".tools/a2/attempt-1/session-list.json",
+      ".tools/a2/attempt-1/rollout-session_meta.json",
+      ".tools/a2/attempt-1/startup-input-summary.json"
+    ],
+    "limit": "Observed initial task input and autonomous tool execution; no independent controller-side keystroke audit. This is supervised startup, not unattended recovery."
+  },
+  "claim": {
+    "argv": ["gc", "hook", "--claim", "--json"],
+    "default_exit": 1,
+    "default_error": "native repository cache-lock EPERM",
+    "authorized_cache_lock_rerun_exit": 0,
+    "claimed_task": "psbp-bh7",
+    "assignee": "a2",
+    "evidence": ".tools/a2/attempt-1/claim-transcript.json",
+    "limit": "Native cache-lock escalation required; no denied-action probe was escalated."
+  },
+  "permissions": {
+    "observed_turn_context": {
+      "path": "/Users/benjaminschachter/.codex/sessions/2026/11/01/rollout-2026-11-01T20-28-19-01a199df-1fa6-7033-9b52-8951c00f152f.jsonl",
+      "timestamp": "2026-11-02T01:28:21.418Z",
+      "type": "turn_context",
+      "payload": {
+        "cwd": "/Users/benjaminschachter/personal-site/.tools/gascity-worktrees/a2",
+        "model": "gpt-6.1-sol",
+        "effort": "high",
+        "approval_policy": "on-request",
+        "sandbox_policy": {
+          "type": "workspace-write",
+          "network_access": false,
+          "exclude_tmpdir_env_var": false,
+          "exclude_slash_tmp": false
+        },
+        "permission_profile": {
+          "type": "managed",
+          "file_system": {
+            "type": "restricted",
+            "entries": [
+              {
+                "path": {
+                  "type": "special",
+                  "value": {
+                    "kind": "root"
+                  }
+                },
+                "access": "read"
+              },
+              {
+                "path": {
+                  "type": "path",
+                  "path": "/Users/benjaminschachter/personal-site/.tools/gascity-worktrees/a2"
+                },
+                "access": "write"
+              },
+              {
+                "path": {
+                  "type": "special",
+                  "value": {
+                    "kind": "slash_tmp"
+                  }
+                },
+                "access": "write"
+              },
+              {
+                "path": {
+                  "type": "special",
+                  "value": {
+                    "kind": "tmpdir"
+                  }
+                },
+                "access": "write"
+              },
+              {
+                "path": {
+                  "type": "path",
+                  "path": "/Users/benjaminschachter/personal-site/.tools/gascity-worktrees/a2/.git"
+                },
+                "access": "read",
+                "missing_path_behavior": "skip"
+              },
+              {
+                "path": {
+                  "type": "path",
+                  "path": "/Users/benjaminschachter/personal-site/.tools/gascity-worktrees/a2/.agents"
+                },
+                "access": "read",
+                "missing_path_behavior": "skip"
+              },
+              {
+                "path": {
+                  "type": "path",
+                  "path": "/Users/benjaminschachter/personal-site/.tools/gascity-worktrees/a2/.codex"
+                },
+                "access": "read",
+                "missing_path_behavior": "skip"
+              },
+              {
+                "path": {
+                  "type": "path",
+                  "path": "/Users/benjaminschachter/personal-site/.tools/gascity-worktrees/a2/.aws"
+                },
+                "access": "read",
+                "missing_path_behavior": "skip"
+              }
+            ]
+          },
+          "network": "restricted"
+        }
+      }
+    },
+    "writable_roots": [
+      "/Users/benjaminschachter/personal-site/.tools/gascity-worktrees/a2",
+      "/private/tmp",
+      "/private/var/folders/d_/ltjc6h250k98l5xw8464d8s40000gn/T"
+    ],
+    "roots_source": "current provider rollout permission_profile and task runtime permissions; tmp paths canonicalized",
+    "authoritative_checkout": "/Users/benjaminschachter/personal-site",
+    "authoritative_checkout_is_writable_root": false,
+    "shared_git_is_writable_root": false,
+    "outside_root_probe": {
+      "argv": [
+        "python3",
+        "-c",
+        "import os,sys; p=sys.argv[1]; fd=os.open(p,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600); os.write(fd,b\"A2 disposable permission probe\\n\"); os.close(fd); os.unlink(p)",
+        "/Users/Shared/codex-a2-psbp-bh7-b0525733-6850-433f-b3fb-8b501886d23d.marker"
+      ],
+      "exit": 1,
+      "errno": 1,
+      "escalated": false,
+      "marker_absent_before": true,
+      "marker_absent_after": true,
+      "log": ".tools/a2/attempt-1/outside-root-denial.json"
+    },
+    "authoritative_or_shared_git_write_attempted": false,
+    "network_probe_attempted": false,
+    "remote_push_attempted": false,
+    "remote_push_prevention_proven": false,
+    "limit": "The scratch probe proves one filesystem denial. Authoritative/shared Git exclusion follows observed roots, without writing those paths. Restricted network is reported by the running provider; no push/network probe was authorized. On-request escalation exists, so unconditional push prevention is not qualified."
+  },
+  "output_capture": {
+    "observed": true,
+    "peek_argv": [
+      "gc",
+      "session",
+      "peek",
+      "psbp-wisp-9kmx4",
+      "--json",
+      "--lines",
+      "20"
+    ],
+    "peek_exit": 0,
+    "peek_log": ".tools/a2/attempt-1/session-peek-final.json",
+    "logs_argv": [
+      "gc",
+      "session",
+      "logs",
+      "psbp-wisp-9kmx4",
+      "--json",
+      "--tail",
+      "2"
+    ],
+    "logs_exit": 0,
+    "logs_log": ".tools/a2/attempt-1/session-logs-final.json",
+    "limit": "Use native session peek and own uniquely named file logs. Native session logs are excluded as proof of session correlation. Direct own CODEX_THREAD_ID rollout is separately identified; coordinator must verify that binding.",
+    "native_logs_trusted_for_correlation": false,
+    "native_logs_limit": "Coordinator reports gc session logs may correlate an approval-review transcript; retained as diagnostic bytes only, not session identity or output proof."
+  },
+  "native_settings": {
+    "file": "orchestration/personal-site/agents/worker.toml",
+    "source": "/Users/benjaminschachter/personal-site/.tools/gascity-beads-pilot/agents/a2/agent.toml",
+    "same_bytes_as_observed": false,
+    "sha256": "9317278a83c8dbd1e78106c2bbe921510057132376800d7427fc8f17d173ee36",
+    "applied": false,
+    "limit": "Unreferenced observed native agent settings, not accepted runtime configuration. The workspace permission option mapping is inherited from city.toml captured in resolved-city.toml. No scheduler, adapter, permission profile or live city configuration changed.",
+    "observed_sha256": "a52f4bbdd36d354ecc8e96e043df3bb5e7ab77ef6ceb002b403293190faa902c",
+    "normalization": "Repository formatting only; parsed settings match the observed snapshot preserved in commit 435b7cfdc6f84e5def2e26e93083ccb2cc2a5c59."
+  },
+  "cancellation": {
+    "ready_for_coordinator": true,
+    "exercised": false,
+    "target_session": "psbp-wisp-9kmx4",
+    "native_stop_argv": ["gc", "session", "close", "psbp-wisp-9kmx4", "--json"],
+    "help_exit": 0,
+    "help_log": ".tools/a2/attempt-1/gc-session-suspend-help.json",
+    "limit": "Coordinator closes exact native session and verifies probe process termination and heartbeat stability before 120-second natural completion. No cancellation success claimed in pre-launch evidence.",
+    "probe_prepared": true,
+    "probe_started": false,
+    "probe_argv": [
+      "python3",
+      "-u",
+      ".tools/a2/attempt-1/cancellation-psbp-wisp-9kmx4/foreground-probe.py"
+    ],
+    "probe_pid_log": ".tools/a2/attempt-1/cancellation-psbp-wisp-9kmx4/pid.json",
+    "probe_heartbeat_log": ".tools/a2/attempt-1/cancellation-psbp-wisp-9kmx4/heartbeat.jsonl",
+    "probe_natural_completion_log": ".tools/a2/attempt-1/cancellation-psbp-wisp-9kmx4/natural-completion.json",
+    "probe_duration_seconds": 120,
+    "probe_foreground": true,
+    "probe_detached": false,
+    "readiness_before_launch": "Native Beads readiness note must succeed before launch."
+  },
+  "acceptance_gaps": [
+    "Coordinator cancellation and post-stop output/artifact verification pending.",
+    "Unconditional remote-push prevention unproven; no network write probe performed.",
+    "Claim required authorized native cache-lock escalation.",
+    "Controller-side noninteractive startup audit not independently captured; native startup observed as automated TUI.",
+    "Coordinator verify/verify:full and independent review pending; no integrated or candidate commit claimed."
+  ],
+  "validation": {
+    "command": ["python3", ".tools/a2/attempt-1/validation-command.txt"],
+    "exit": 0,
+    "log": ".tools/a2/attempt-1/validation-cancellation-preparation.log",
+    "initial_validation": {
+      "exit": 1,
+      "log": ".tools/a2/attempt-1/validation-initial.log",
+      "reason": "Validator treated git diff --no-index exit 1 for new-file differences as a check failure; replaced with explicit final-newline and trailing-whitespace assertions."
+    },
+    "repository_gates_run": false,
+    "repository_gates_owner": "coordinator",
+    "reason": "Qualification predicates remain incomplete; observation handoff, not delivery acceptance.",
+    "scope": "Static preparation only; the foreground cancellation probe has not been executed."
+  },
+  "preservation": {
+    "legacy_bootstrap_files": "Read-only hashes in input-hashes.json; none overwritten.",
+    "other_edits": "Initial untracked dependency links, .agent_sources and .codex/hooks.json preserved.",
+    "commits": false,
+    "shared_refs_changed": false,
+    "credentials_read": false,
+    "external_connectors_used": false,
+    "dependencies_installed": false
+  },
+  "artifacts": [
+    {
+      "path": ".tools/a2/attempt-1/claim-transcript.json",
+      "sha256": "f4d9a995188cac1a42d7bb5e652b27045550a8112034c435f37ef62925109c46",
+      "bytes": 1722
+    },
+    {
+      "path": ".tools/a2/attempt-1/codex-exec-help.json",
+      "sha256": "47739378c3c18a7520c2142c531aa085eb30e48601c842640ed1eae74cb54384",
+      "bytes": 4743
+    },
+    {
+      "path": ".tools/a2/attempt-1/codex-help.json",
+      "sha256": "27890b8d8eced5610768e51387d199b43e2e4b4649fdea5a27c3bc1b192ed0f8",
+      "bytes": 6362
+    },
+    {
+      "path": ".tools/a2/attempt-1/codex-sandbox-help.json",
+      "sha256": "15714e72eb55e933a59c1aa24c912c110d5f02908ea041661abaf76b69f644c1",
+      "bytes": 2658
+    },
+    {
+      "path": ".tools/a2/attempt-1/gc-config-help.json",
+      "sha256": "ab91fed73635b95e3fc438f9ae2f07108162b1a2d11b6929c53872e02df3ec65",
+      "bytes": 1402
+    },
+    {
+      "path": ".tools/a2/attempt-1/gc-session-close-help.json",
+      "sha256": "f5cf1f95dc7d9fc397946442eac87446efb1fe2edd180ceb065cc2f10350f130",
+      "bytes": 1115
+    },
+    {
+      "path": ".tools/a2/attempt-1/gc-session-suspend-help.json",
+      "sha256": "a94f35613575c8c81348567bb0bd0ef25a2922587afce56a77720dcb68b8d337",
+      "bytes": 1166
+    },
+    {
+      "path": ".tools/a2/attempt-1/initial-status.json",
+      "sha256": "6ae31e706c9eee1f73e05332eb62beec44ce97e861e91766bc7c1966d9534d06",
+      "bytes": 336
+    },
+    {
+      "path": ".tools/a2/attempt-1/input-hashes.json",
+      "sha256": "13326208f21d9524c7f2c7a21a1d69dcff77191cbfdeb4c72ea60a8769bca00d",
+      "bytes": 1875
+    },
+    {
+      "path": ".tools/a2/attempt-1/outside-root-denial.json",
+      "sha256": "ddfac2cc5602ad29007fb26135d2f863f284c185d2daa18355ef7a0a4bebb9ff",
+      "bytes": 1199
+    },
+    {
+      "path": ".tools/a2/attempt-1/provenance.json",
+      "sha256": "95fe6b6dd818c7aff79c2a4acd650e82c10f0cbfac129d3b0b1737bee2a73f5e",
+      "bytes": 519
+    },
+    {
+      "path": ".tools/a2/attempt-1/resolved-city.toml",
+      "sha256": "f8fa8a18695889df00ab0016834efe8e7858648ef6fbcbbad29dda69d6904a71",
+      "bytes": 7542
+    },
+    {
+      "path": ".tools/a2/attempt-1/rollout-session_meta.json",
+      "sha256": "9577f7794fe7c32b722dc7ae6054635ad95f3723db98ee8626078f95d71ed32b",
+      "bytes": 440
+    },
+    {
+      "path": ".tools/a2/attempt-1/rollout-turn_context.json",
+      "sha256": "354c5988f6ea4b47b7f8540f1b173db62a69030111c2b3a70becefb7a6b3956e",
+      "bytes": 2607
+    },
+    {
+      "path": ".tools/a2/attempt-1/session-list.json",
+      "sha256": "a36ab53b3c5f072330179a1cd3db65c1588d2c5858a1311a3e226553ae42ec45",
+      "bytes": 1267
+    },
+    {
+      "path": ".tools/a2/attempt-1/session-logs-final.json",
+      "sha256": "0b2a663e88f4d49877595fcdc76b68b88d499247b27c4497380f43d084df84eb",
+      "bytes": 2045
+    },
+    {
+      "path": ".tools/a2/attempt-1/session-logs.jsonl",
+      "sha256": "8d17f5e29bfea1e1b9a615ed6d8ace7487f8e092da885d5d88bd739b35ca1863",
+      "bytes": 1639
+    },
+    {
+      "path": ".tools/a2/attempt-1/session-peek-final.json",
+      "sha256": "3853cbec84e88bd12feb7b5af81e712f88efae37616fdf049d25317fd2d8624e",
+      "bytes": 1515
+    },
+    {
+      "path": ".tools/a2/attempt-1/session-peek.json",
+      "sha256": "ea36ee39ec943385fc4b87cd59be625b2d8f6eec152e2e494bb371402ab52577",
+      "bytes": 1177
+    },
+    {
+      "path": ".tools/a2/attempt-1/startup-input-summary.json",
+      "sha256": "3a71b3b30ecd3b0e1adc2853d9d38c995247054a4a9a0189c41cec98a1df876b",
+      "bytes": 478
+    },
+    {
+      "path": ".tools/a2/attempt-1/validation-command.txt",
+      "sha256": "e4d752a1c6d54578460c2de9e5c4028e0ad25d6be7f331437cb794f0e1d4bfa1",
+      "bytes": 3269
+    },
+    {
+      "path": ".tools/a2/attempt-1/validation-initial.log",
+      "sha256": "1d8e1bbf4bf789e300899207f40bc03c9b07eaf5fd3f5b6c9bd924bc58f194bf",
+      "bytes": 789
+    },
+    {
+      "path": ".tools/a2/attempt-1/worker.pre-cancellation.66e25f708ffea4f4274b4bf9cac595f28044c32682b7682618f5c338ab5bb3df.json",
+      "sha256": "66e25f708ffea4f4274b4bf9cac595f28044c32682b7682618f5c338ab5bb3df",
+      "bytes": 14333
+    },
+    {
+      "path": ".tools/a2/attempt-1/cancellation-psbp-wisp-9kmx4/foreground-probe.py",
+      "sha256": "9fcb5ab2982c16ec5883cbcbae23c73c6ff63fe2c1fb3e865fdb450df35f2352",
+      "bytes": 1305
+    }
+  ],
+  "session_history": [
+    {
+      "session_id": "psbp-wisp-vo0e5",
+      "attempt": 1,
+      "deadline": "2026-11-02T01:57:29.901938+00:00",
+      "status": "replaced before explicit claim",
+      "source": "coordinator deferred reminder"
+    },
+    {
+      "session_id": "psbp-wisp-9kmx4",
+      "attempt": 1,
+      "deadline": "2026-11-02T01:57:29.901938+00:00",
+      "status": "current claimed native session",
+      "source": ".tools/a2/attempt-1/session-list.json"
+    }
+  ]
+}

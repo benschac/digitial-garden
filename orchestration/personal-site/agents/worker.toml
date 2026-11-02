@@ -1,0 +1,12 @@
+idle_timeout = "5m"
+max_active_sessions = 1
+max_session_age = "15m"
+min_active_sessions = 1
+provider = "codex"
+wake_mode = "fresh"
+work_dir = "/Users/benjaminschachter/personal-site/.tools/gascity-worktrees/a2"
+
+[option_defaults]
+effort = "high"
+model = "gpt-6.1-sol"
+permission_mode = "workspace"
