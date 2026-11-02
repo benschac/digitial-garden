@@ -74,6 +74,60 @@
     padding-block-start: 0;
   }
 
+  .filter {
+    display: grid;
+    gap: 0.75rem;
+    margin-block-end: 2rem;
+  }
+
+  .filterControls {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .searchInput {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    border: 1px solid var(--blog-rule);
+    border-radius: 0.25rem;
+    padding: 0.75rem;
+    background: var(--color-paper);
+    color: inherit;
+    font: inherit;
+  }
+
+  .searchInput::placeholder {
+    color: var(--blog-supporting-text);
+    opacity: 1;
+  }
+
+  .clearButton {
+    border: 1px solid var(--blog-rule);
+    border-radius: 0.25rem;
+    padding: 0.75rem;
+    background: var(--color-paper);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .clearButton:hover:enabled {
+    color: var(--blog-accent);
+    border-color: var(--blog-accent);
+  }
+
+  .clearButton:disabled {
+    color: var(--blog-supporting-text);
+    cursor: default;
+  }
+
+  .searchInput:focus-visible,
+  .clearButton:focus-visible {
+    outline: 2px solid var(--blog-accent);
+    outline-offset: 3px;
+  }
+
   @container journal (min-width: 56rem) {
     .layout {
       grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);

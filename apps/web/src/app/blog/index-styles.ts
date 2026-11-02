@@ -4,8 +4,14 @@ import layout from "./index.module.css";
 
 // Local utility recipes; CSS retains the authored layout and motion rules.
 const styles = {
+  clearButton: layout.clearButton,
+  emptyState: "m-0 text-[var(--blog-supporting-text)]",
+  filter: layout.filter,
+  filterControls: layout.filterControls,
+  filterLabel: "text-sm font-medium",
   layout: layout.layout,
   link: layout.link,
+  listColumn: "min-w-0 w-full max-w-[42rem]",
   page: cn(layout.page, "paper-surface"),
   post: "grid gap-3 min-w-0",
   postDate: cn("[margin:0.25rem_0_0]", "text-[var(--blog-supporting-text)]"),
@@ -19,6 +25,8 @@ const styles = {
   ),
   postSummary: cn("m-0", "text-[var(--blog-supporting-text)]"),
   postTitle: "m-0",
+  resultCount: "m-0 text-sm text-[var(--blog-supporting-text)]",
+  searchInput: layout.searchInput,
   shell: layout.shell,
   skipLink: layout.skipLink,
   surface: cn("absolute inset-0 z-[-1] pointer-events-none", "paper-surface"),

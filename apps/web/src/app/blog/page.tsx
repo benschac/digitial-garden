@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ViewTransition } from "react";
 
 import { Typography } from "@/components/page-typography";
 import { getBlogPosts } from "@/lib/content";
 
-import { ArticleSurface } from "./article-surface";
+import { BlogPostList } from "./blog-post-list";
 import { BlogTransition } from "./blog-transition";
 import styles from "./index-styles";
 
@@ -35,64 +33,7 @@ const BlogIndexPage = async () => {
                 Blog
               </Typography>
             </div>
-            <ol
-              className={styles.postList}
-              id="posts"
-              tabIndex={-1}
-              aria-label="Articles"
-            >
-              {posts.map((post) => (
-                <li key={post.slug} className={styles.postItem}>
-                  <ArticleSurface slug={post.slug} className={styles.surface} />
-                  <article className={styles.post}>
-                    <ViewTransition
-                      name={`post-title-${post.slug}`}
-                      default="none"
-                      share="blog-title"
-                    >
-                      <Typography
-                        as="h2"
-                        variant="journalPostTitle"
-                        className={styles.postTitle}
-                      >
-                        <Link
-                          data-cuelume-navigate=""
-                          data-cuelume-emphasis="subtle"
-                          className={`${styles.link} ${styles.postLink}`}
-                          href={`/blog/${post.slug}`}
-                          transitionTypes={["blog-open"]}
-                        >
-                          {post.title}
-                        </Link>
-                      </Typography>
-                    </ViewTransition>
-                    <Typography
-                      as="p"
-                      variant="journalSummary"
-                      className={styles.postSummary}
-                    >
-                      {post.summary}
-                    </Typography>
-                    <Typography
-                      as="p"
-                      variant="journalDate"
-                      className={styles.postDate}
-                    >
-                      {post.status === "draft" ? "Draft · Dev only · " : null}
-                      <time dateTime={post.publishedAt}>
-                        {new Intl.DateTimeFormat("en-US", {
-                          day: "numeric",
-                          month: "short",
-                          timeZone: "UTC",
-                          year: "numeric",
-                        }).format(new Date(`${post.publishedAt}T00:00:00Z`))}
-                      </time>
-                    </Typography>
-                  </article>
-                </li>
-              ))}
-            </ol>
-            {posts.length === 0 ? <p>No articles published yet.</p> : null}
+            <BlogPostList posts={posts} />
           </div>
         </div>
       </Typography>
