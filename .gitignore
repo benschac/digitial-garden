@@ -52,3 +52,5 @@ storybook-static
 .agents/skills/.gc-skill-ownership.json
 .agents/skills/core.gc-*
 .agents/skills/gc.mayor
+.codex/hooks.json
+.gc/
