@@ -84,7 +84,7 @@
     "xstate": "6.0.0-alpha.71"
   },
   "devDependencies": {
-    "@shikijs/rehype": "^4.5.0",
+    "@shikijs/rehype": "^4.6.0",
     "@types/bun": "1.4.4",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
