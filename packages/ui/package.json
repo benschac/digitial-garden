@@ -22,7 +22,7 @@
     "@base-ui/react": "1.9.0",
     "clsx": "2.1.1",
     "cmdk": "1.1.1",
-    "lucide-react": "1.59.0",
+    "lucide-react": "1.67.0",
     "tailwind-merge": "3.7.0",
     "tailwind-variants": "3.3.1"
   },
