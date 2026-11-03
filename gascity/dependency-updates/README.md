@@ -1,6 +1,6 @@
 # Run daily dependency updates
 
-At 09:00 America/New_York, the scanner inventories all direct dependencies and devDependencies. Each eligible package gets one persistent bead. Three `gpt-6-luna` workers with low reasoning effort can prepare updates concurrently in separate clones. A single publisher lands their commits one at a time directly on `benschac/digitial-garden` main.
+At 09:00 America/New_York, the scanner inventories all direct dependencies and devDependencies. Each eligible package gets one persistent bead. Eight `gpt-6-luna` workers with low reasoning effort can prepare updates concurrently in separate clones. A single publisher lands their commits one at a time directly on `benschac/digitial-garden` main.
 
 Each commit contains one package's affected `package.json` declarations and the root `bun.lock`, including necessary transitive changes. Subjects name the actual bump, such as `chore(deps): bump turbo from 2.11.9 to 2.11.10`. Preparation workers do not push. The publisher applies each commit above current main. If manifests or the lockfile conflict, it reapplies only the selected version change and runs `bun install` to regenerate the lockfile. It preserves updates already landed below it. Conflicting versions of the selected package require review.
 
@@ -12,7 +12,7 @@ A package uses the same bead throughout its lifecycle:
 
 | Phase | Owner | Result |
 | --- | --- | --- |
-| `prepare` | One of three workers | A verified local commit and preserved clone |
+| `prepare` | One of eight workers | A verified local commit and preserved clone |
 | `ready` | Singleton publisher | One commit applied above current main |
 | `landed` | Closed bead | Confirmed remote commit and recorded evidence |
 | `review` | Blocked, unassigned bead | Evidence for manual review, no automatic retry |
@@ -21,7 +21,7 @@ Clones and commit artifacts live under `$GC_CITY/.gc/dependency-updates/<bead-id
 
 Workers run frozen-lock installation, focused checks, and affected `bun run verify`. The publisher reruns relevant verification when applying a commit changes its verified tree or base. Local production builds are skipped. Vercel builds after publication, and a failed deployment does not automatically revert the commit. Existing check failures are recorded for review, not suppressed or fixed by this order.
 
-These are agent instructions, not a deterministic dependency policy or Git authorization gate. Gas City provides pool caps and atomic bead claims. Git rejects non-fast-forward pushes. Compatibility and diff-scope checks remain agent judgments. Three preparation slots bound parallel work, not spending or completion time. No throughput or cost saving has been measured.
+These are agent instructions, not a deterministic dependency policy or Git authorization gate. Gas City provides pool caps and atomic bead claims. Git rejects non-fast-forward pushes. Compatibility and diff-scope checks remain agent judgments. Eight preparation slots bound parallel work, not spending or completion time. No throughput or cost saving has been measured.
 
 ## Install and inspect
 
