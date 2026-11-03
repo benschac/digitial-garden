@@ -133,6 +133,7 @@
     "//#test:tools": {
       "inputs": [
         "scripts/**",
+        "gascity/dependency-updates/**",
         "docs/biome-rule-coverage.json",
         "oxlint.config.mts",
         "oxfmt.config.mts",
@@ -166,7 +167,16 @@
         "tools/oxlint/**",
         "oxlint.config.mts",
         "docs/**",
-        "package.json"
+        "package.json",
+        "gascity/**"
+      ]
+    },
+    "//#check-types:root": {
+      "inputs": [
+        "gascity/**/*.ts",
+        "gascity/tsconfig.json",
+        "package.json",
+        "bun.lock"
       ]
     }
   },

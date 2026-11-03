@@ -1,0 +1,7 @@
+[order]
+description = "Wake the Mayor when dependency work changes"
+trigger = "event"
+on = "bead.updated"
+exec = 'bash "$PACK_DIR/assets/scripts/supervise-wake.sh"'
+timeout = "1m"
+enabled = true

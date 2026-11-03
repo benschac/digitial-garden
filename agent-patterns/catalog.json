@@ -1011,5 +1011,61 @@
       "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
     ],
     "related": ["service-composition", "validated-input"]
+  },
+  {
+    "id": "dependency-supervision",
+    "title": "Effect-owned dependency supervision",
+    "concerns": [
+      "dependency updates",
+      "supervision",
+      "process",
+      "shutdown",
+      "schema",
+      "diagnostics"
+    ],
+    "decision": "Run wake reconciliation as an Effect at the Bun CLI boundary. Effect owns command completion and temporary receipt cleanup; preserve the inherited flock descriptor and raw JSON snapshot identity. Validate external data with Effect Schema. Gas City uses the pinned Effect-aware compiler.",
+    "owners": [
+      "gascity/dependency-updates/assets/scripts/supervise-wake.ts",
+      "gascity/dependency-updates/assets/scripts/supervise-wake.sh",
+      "gascity/tsconfig.json"
+    ],
+    "sources": [
+      {
+        "name": "effect",
+        "commit": "506eef143bcc1750ce58920aac1e45da7265d103",
+        "paths": [
+          "ai-docs/src/01_effect/05_resources/10_acquire-release.ts",
+          "ai-docs/src/01_effect/06_running/10_run-main.ts",
+          "packages/effect/src/Effect.ts",
+          "packages/effect/src/Runtime.ts",
+          "packages/effect/src/Schema.ts",
+          "packages/effect/test/Effect.test.ts",
+          "packages/effect/test/schema/Schema.test.ts",
+          "packages/platform/bun/src/BunRuntime.ts",
+          "packages/platform/node-shared/src/NodeRuntime.ts"
+        ]
+      }
+    ],
+    "references": [
+      "https://ratstack.sh/lore/scopes-own-resources",
+      "https://ratstack.sh/lore/schemas-define-the-boundary"
+    ],
+    "checks": [
+      {
+        "kind": "behavior",
+        "path": "scripts/dependency-supervision.test.mjs",
+        "claim": "Exercises actual helper processes with fixture gc commands for wake decisions, snapshot compatibility, exact exit statuses, graceful cancellation, lock retention and receipt cleanup."
+      }
+    ],
+    "exceptions": [
+      "Execa preserves inherited fd9 for the flock contract; effect/process stream descriptors do not replace that contract. Simple filesystem operations remain native adapters.",
+      "jq preserves raw snapshot numbers and canonical hashes. BunRuntime.runMain is the only explicitly allowed unstable API in the Gas City compiler config.",
+      "The throw-new-error lint rule is disabled for this file because it misidentifies the required Schema.TaggedError factory call as an Error instance construction."
+    ],
+    "gaps": [
+      "Tests use fixture gc commands, not live delivery.",
+      "Compiler and lint diagnostics enforce their configured checks, not every architectural recommendation."
+    ],
+    "related": ["process-ownership", "validated-input", "schema-evolution"]
   }
 ]

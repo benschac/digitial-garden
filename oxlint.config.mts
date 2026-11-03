@@ -44,6 +44,7 @@ export default defineConfig({
         "**/apps/web/src/app/experiments/wasm-canvas/particle-initialization.ts",
         "**/apps/web/src/app/experiments/wasm-canvas/wasm-engine.ts",
         "**/apps/web/src/components/ai-elements/prompt-input-attachments.ts",
+        "**/gascity/dependency-updates/assets/scripts/supervise-wake.ts",
       ],
       rules: { "unicorn/throw-new-error": "off" },
     },

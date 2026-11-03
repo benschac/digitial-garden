@@ -38,6 +38,8 @@ Refs must point to mounted elements when observation starts. If initialization i
 - [`watch-wasm-lifecycle`](../apps/web/scripts/watch-wasm-lifecycle.ts) owns filesystem watchers, signal handlers, debounce queues and child processes in an Effect scope. Native adapters remain in `watch-wasm.ts`. Builds run serially with a 120ms debounce and one pending rebuild; shutdown discards queued work, terminates the direct child and waits for its exit before releasing the scope.
 - [`social-preview-lifecycle`](../apps/web/scripts/social-preview-lifecycle.ts) owns temporary files, browser, socket and encoder lifetimes in an Effect scope. [`social-preview-native`](../apps/web/scripts/social-preview-native.ts) uses Execa for process completion and idempotent shutdown, retaining exit codes, signals and structured errors. It owns socket requests and settles waiters on disconnect. The CLI preserves ordered frame capture and owns interruption; Execa's parent-exit cleanup and forced termination are disabled so Effect scopes retain direct-child ownership and shutdown waits for exit without escalation. Filesystem and path operations use native Node APIs. Follow [the script and platform policy](../AGENTS.md#scripts-processes-and-platform-services) when choosing adapters for new workflows.
 
+- [`supervise-wake`](../gascity/dependency-updates/assets/scripts/supervise-wake.ts) owns dependency wake reconciliation through Effect and `BunRuntime.runMain`. Execa commands retain the shell lock descriptor; interruption terminates and awaits each child. Scoped receipt publication waits for file operations before cleanup. Effect Schema validates inputs, while `jq` preserves historical snapshot bytes and numeric equality. Gas City retains durable scheduling and recovery ownership. See the [pattern evidence](../agent-patterns/catalog.json) and [supervision contract](../gascity/dependency-updates/SUPERVISION.md).
+
 ## UI, styling, and motion
 
 | Need | Existing owner |
@@ -51,6 +53,8 @@ Refs must point to mounted elements when observation starts. If initialization i
 | Page typography and feature effects | Keep in `apps/web`; for example [`useWetInk`](../apps/web/src/app/use-wet-ink.ts) composes shared lifecycle hooks but owns ink rendering |
 
 ## Next.js and tooling
+
+- `bun run check-types:root` checks Gas City scripts with the Effect-patched TypeScript 7.0.2 runner from pinned `@effect/tsgo`. Effect warnings and errors fail the command, and `verify` includes it.
 
 - `bun run check-types:effect` runs the web project through the pinned Effect-patched `tsrs` runner. The Effect language-service plugin is configured in `apps/web/tsconfig.json`; the existing TypeScript checks remain the default. See [checks](../README.md#checks) for compatibility findings and editor setup boundaries.
 
