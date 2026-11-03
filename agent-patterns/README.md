@@ -2,7 +2,9 @@
 
 Implementation agents and reviewers must use this workflow for work involving Effect, XState, or their framework integrations, including custom adapters that might duplicate a library capability. Read upstream documentation and examples from the matching source checkout; keep this directory procedural rather than copying API recipes here.
 
-Use the [pattern catalog](catalog.md) to find project decisions by concern: `bun run patterns search cancellation`, then `bun run patterns show <id>`. Entries link owners, upstream files, checks, exceptions, and related concerns. The catalog routes this workflow; it does not replace source reading. `bun run patterns list --json` exposes the same records to agent tooling without a separate knowledge store or server.
+Start with `bun run patterns consult cancellation` to search the [pattern catalog](catalog.md) and the full [Rat Stack brain index](ratstack-adoption.md) together. Read local decisions with `bun run patterns show <id>`. Source results retain their adoption status and pinned links. Read the source before applying it. Indexed archive material is not automatically an adopted policy.
+
+Entries link owners, upstream files, checks, exceptions, and related concerns. The catalog routes this workflow; it does not replace source reading. `bun run patterns consult <concern> --json` returns separate `patterns` and `references` arrays. `bun run patterns list --json` and `bun run patterns search <concern> --json` retain their catalog-only record format.
 
 ## Before implementation
 

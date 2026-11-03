@@ -2,7 +2,9 @@
 
 The [catalog](catalog.json) connects task concerns to existing application owners, source evidence and checks. Start with the concern, follow related entries, then read the owning code. Follow the [source lookup workflow](README.md) before changing library-dependent behavior. The catalog is navigation and recorded decisions, not an API recipe book or a replacement for review.
 
-The [Rat Stack adoption record](ratstack-adoption.md) accounts for the inspected brain's lore, learn cards and related tooling. Use `bun run ratstack:adoption search <concern>` to find what was adopted, retained as reference or excluded. The [engineering policies](engineering-policies.md) cover additional applicable principles, explicitly as review guidance where no local runtime implementation exists. `bun run ratstack:adoption audit /path/to/meeeeed` checks the imported inventory against its source bytes; normal verification checks the receipt and local destinations without requiring that checkout.
+Run `bun run patterns consult <concern>` to search local decisions and the [Rat Stack brain index](ratstack-adoption.md) together. The index includes every tracked brain file and selected tooling. Source results distinguish adopted principles, reference material and exclusions, and link to the recorded revision. `bun run ratstack:adoption search <concern>` searches only those source records.
+
+The [engineering policies](engineering-policies.md) cover additional applicable principles, explicitly as review guidance where no local runtime implementation exists. `bun run ratstack:adoption audit /path/to/meeeeed` checks complete brain coverage, source bytes and indexed terms. Normal verification checks the receipt and local destinations without requiring that checkout. Neither check proves that an agent consulted the material.
 
 ## Reading an entry
 

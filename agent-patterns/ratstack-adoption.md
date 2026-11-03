@@ -1,15 +1,17 @@
 # Rat Stack adoption
 
-These Rat Stack principles were inspected in the `meeeeed` checkout. The inventory preserves that repository and its original paths as source provenance.
+The [inventory](ratstack-inventory.json) records Rat Stack material inherited by the `meeeeed` checkout. It preserves the source repository, revision, paths and content hashes. Local adoption decisions remain separate from source discovery.
 
-The [inventory](ratstack-inventory.json) records every file in the inspected checkout's `.brain/resources/lore` and `.brain/data/learn-cards`, plus 38 related archive and tooling files. The snapshot contains 121 lore files, 27 learn-card files, and 38 related files: 186 items total. This is exhaustive for those two directories, not for the entire `.brain` or source repository.
+The index covers all 242 tracked `.brain` files at revision `20afc6d3ea8980d133f3b3014d018ba1e37b58a0`, plus nine tooling files. This includes lore, resources, areas, projects, tasks, learn cards and other datasets. The earlier adoption pass classified 186 files. The additional 65 files are indexed as historical references, without claiming they have been reviewed or adopted.
 
-Each item records the source path, SHA-256 of the inspected bytes, disposition, reason, and local destination. The repository URL and Git revision identify the checkout; content hashes identify the inspected bytes even when a file differs from that revision. Files were read from the local checkout. This receipt does not claim that the source worktree was clean or that the archived prose is current product authority.
+Each item records its source path, SHA-256, disposition, rationale, local destinations and searchable terms derived from the source bytes. Terms are sorted, unique lowercase words and numbers. Searches can find words inside documents without needing the sibling checkout or a network connection. The index does not retain word order or support phrase search. Use the original document to understand a match.
+
+The archive's own `.brain/index.svx` identifies its pages as historical evidence, not current instructions. Archived implementation claims do not establish current behavior in either project. The current Rat Stack website and this recorded archive can differ.
 
 ## Dispositions
 
 - **Adopted:** a principle is represented in local guidance, a catalog entry, or an executable check. Review-only policies remain review-only; adoption does not assert a runtime subsystem exists. Original snippets are not copied API authority.
-- **Reference:** useful research or future design context without an installed local implementation. Follow its source path in the recorded repository when needed.
+- **Reference:** historical research, project records or future design context without an adopted local implementation. Automatically indexed files remain in this category until reviewed. Follow the pinned source link before applying a principle.
 - **Excluded:** historical speaker material, incompatible source-stack details, or tooling that would silently change this project's framework or build ownership.
 
 The [engineering policies](engineering-policies.md) cover applicable principles beyond today's implementations. The [catalog](catalog.md) routes those principles and existing owners. Pinned library mirrors continue to own API evidence.
@@ -22,14 +24,24 @@ The existing source-reference tooling already supplies exact commits, package ch
 
 `find-peers.ts` remains a research reference: it queries Sourcegraph for package families and ranks candidates, not verified exact-version implementations. The source-specific checker-bump script and audited regex allowlist are excluded; they target a different package manager, checker setup and content parser. Learn-card fixtures are evidence of selected syntax checks, not proof that examples typecheck or behave correctly. Local owners and their behavior tests remain the preferred examples.
 
-This inventory is a recorded adoption decision, not a live upstream synchronization service. A later source refresh must compare bytes and revisit dispositions. It must not automatically replace local rules, update dependency pins, or mark a review-only policy as enforced.
+The index command rebuilds derived search terms at the recorded revision. It does not advance that revision or adopt new rules. Updating the source revision requires a separate review of changed bytes and dispositions. It must not automatically replace local rules, update dependency pins, or mark a review-only policy as enforced.
 
 ## Inventory tooling
 
-`bun run ratstack:adoption search <concern>` finds adoption decisions by their source names and rationale. `ratstack:adoption:check` validates the receipt and local destinations as part of pattern verification. `bun run ratstack:adoption audit /path/to/meeeeed` additionally compares the recorded revision, complete directory inventory and file hashes against a source checkout; it does not fetch or change that checkout. The grounding ledger under `.brain/data/lore` is included as claim provenance, not application authority.
+Start non-trivial implementation and review with `bun run patterns consult <concern>`. It returns local catalog decisions and matching source records together. Source links also connect matches back to applicable catalog entries. Read those entries and sources before choosing an implementation. Report the decision the evidence changed, or why the source does not apply.
 
-## Additional brain search scope
+- `bun run patterns consult "hexagonal architecture"` finds local boundary policy and original source material.
+- `bun run patterns consult <concern> --json` returns separate `patterns` and `references` arrays.
+- `bun run ratstack:adoption search <concern>` searches source paths, rationales, local destinations and indexed document terms.
+- `bun run ratstack:adoption show <source-path>` returns the source record and immutable repository link.
+- `bun run ratstack:adoption read <source-path> /path/to/meeeeed` reads source text after checking its revision and hash.
+- `bun run ratstack:adoption index /path/to/meeeeed` rebuilds the term index and adds missing tracked brain files as references. It preserves existing adoption decisions and rejects changed source identity or existing content.
+- `bun run ratstack:adoption audit /path/to/meeeeed` verifies all tracked brain files are represented and checks source hashes and indexed terms. Ignored files do not enter the inventory.
 
-The follow-up inventory inspected every top-level resource document and every area document, including the historical systems for the agent front door, learning, durability, capabilities, devtools, flags, database and auth. It also inspected the lore-graph, Git-snapshot and Layer-startup project notes. These identify useful graph traversal and export-provenance ideas, but their archived implementation descriptions are not proof of current runtime wiring. The repository-native catalog already supplies related-entry traversal; a full graph service, teaching-history store or exported-source build pipeline remains a separately scoped implementation.
+After rebuilding the index, run `bun run format agent-patterns/ratstack-inventory.json` and the source audit. Normal `patterns:check` and `bun run verify` validate records and local destinations without needing the source checkout. These checks prove retrieval and provenance constraints. They cannot prove that an agent read the source or applied its guidance correctly.
 
-Other historical project/task documents, CAFE news, Foldkit comparison artifacts, product proof datasets and dated peer-refresh reports were discovered by path but are not claimed as fully audited or adopted. No separate systems or skills directory exists inside this `.brain`; the area documents link to historical system and skill routes.
+## Architecture and adoption boundaries
+
+The `domain-boundaries` entry adapts hexagonal architecture by keeping application job contracts with their owner and supplying provider adapters at composition. Existing Next.js, React and Bun owners still govern implementation. That entry is review policy. It does not establish a repository-wide hexagonal import rule or prove provider interchangeability.
+
+Brain areas describe historical systems, and resource pages link to procedures and source evidence. All are now searchable, including project/task documents, CAFE news, Foldkit comparisons, proof datasets and peer-refresh reports. Their presence in search is not an instruction to build those systems. A full graph service, learning-history store or architecture migration needs its own concrete application requirement and behavioral verification.

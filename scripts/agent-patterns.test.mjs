@@ -75,6 +75,64 @@ test("retrieves deterministic JSON and identifies affected source decisions", (t
   assert.throws(() => main(root, ["affected", "unknown"]), /known source/u);
 });
 
+test("consult joins local decisions to body-searchable source references without changing search", (t) => {
+  const { root, entry, save } = fixture(t);
+  entry.references = ["https://ratstack.sh/lore/hexagonal-architecture"];
+  save();
+
+  const record = {
+    disposition: "reference",
+    localPaths: [],
+    path: ".brain/resources/lore/hexagonal-architecture.svx",
+    reason: "Historical context",
+    searchTerms: "boundaries crystalline",
+    sha256: "b".repeat(64),
+  };
+
+  writeFileSync(
+    path.join(root, "agent-patterns/ratstack-inventory.json"),
+    JSON.stringify({
+      items: [
+        record,
+        {
+          ...record,
+          path: ".brain/projects/research.svx",
+          searchTerms: "quasar",
+        },
+      ],
+      repository: "https://github.com/example/source",
+      revision: "c".repeat(40),
+    })
+  );
+  const joined = JSON.parse(main(root, ["consult", "crystalline", "--json"]));
+  assert.equal(joined.patterns[0].id, entry.id);
+  assert.equal(joined.references[0].disposition, "reference");
+  assert.match(joined.references[0].sourceUrl, /\/blob\/c{40}\//u);
+  const sourceOnly = JSON.parse(main(root, ["consult", "quasar", "--json"]));
+  assert.deepEqual(sourceOnly.patterns, []);
+  assert.equal(sourceOnly.references.length, 1);
+
+  const localOnly = JSON.parse(
+    main(root, ["consult", "cancellation", "--json"])
+  );
+
+  assert.equal(localOnly.patterns.length, 1);
+  assert.deepEqual(localOnly.references, []);
+  assert.deepEqual(
+    JSON.parse(main(root, ["search", "cancellation", "--json"])),
+    [entry]
+  );
+  assert.throws(
+    () => main(root, ["search", "crystalline", "--json"]),
+    /No matching patterns/u
+  );
+  assert.throws(
+    () => main(root, ["consult", "unknownterm"]),
+    /No matching patterns or source references/u
+  );
+  assert.match(main(root, ["consult", "quasar"]), /ratstack:adoption read/u);
+});
+
 test("rejects stale pins, missing owners, invalid relations and malformed records", (t) => {
   const { root, entry } = fixture(t);
 

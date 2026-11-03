@@ -104,7 +104,9 @@ Treat checking for updates separately from verifying current behavior. Compare t
 
 ## Required library source lookup
 
-Start recurring pattern work with `bun run patterns search <concern>` and read each relevant entry with `bun run patterns show <id>`. The [pattern catalog](agent-patterns/catalog.md) connects local owners, pinned upstream evidence, behavioral checks, and known gaps. Follow related entries when their concern applies; a search miss requires the source lookup below, not guessing. Keep API recipes in upstream sources and project decisions in the catalog.
+Before non-trivial implementation or review, run `bun run patterns consult <concern>`. This searches local decisions and the indexed contents of the entire Rat Stack brain together. Read relevant local entries with `bun run patterns show <id>` and inspect source records with `bun run ratstack:adoption show <source-path>`. Read the matching source through its pinned link or `bun run ratstack:adoption read <source-path> /path/to/meeeeed` before applying it. Include the consulted entry and the decision it changed in the implementation or review evidence. If nothing matches, record the miss and follow the source lookup below rather than guessing.
+
+The [pattern catalog](agent-patterns/catalog.md) connects local owners, pinned upstream evidence, behavioral checks, and known gaps. Follow related entries when their concern applies. Keep API recipes in upstream sources and project decisions in the catalog. `bun run patterns search <concern>` remains a catalog-only lookup.
 
 The [Rat Stack adoption record](agent-patterns/ratstack-adoption.md) records source coverage and exclusions. Use `bun run ratstack:adoption search <concern>` for inherited rationale and follow the applicable [engineering policies](agent-patterns/engineering-policies.md). These are project adaptations: historical snippets, source-specific infrastructure, and archived implementation claims do not override current owners or pinned APIs. Review-only policies need a concrete owner and behavioral verification before becoming implementation claims.
 

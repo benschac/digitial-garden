@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { checkSource, validateInstalled } from "./agent-sources.mjs";
+import { searchInventory } from "./ratstack-adoption.mjs";
 
 const requireValue = (condition, message) => {
   if (!condition) {
@@ -231,10 +232,16 @@ export const main = (root, args) => {
   const json = args.includes("--json");
   const [command = "list", ...values] = args.filter((arg) => arg !== "--json");
   requireValue(
-    ["list", "search", "show", "check", "check-sources", "affected"].includes(
-      command
-    ),
-    "Expected list, search, show, check, check-sources, or affected"
+    [
+      "list",
+      "search",
+      "consult",
+      "show",
+      "check",
+      "check-sources",
+      "affected",
+    ].includes(command),
+    "Expected list, search, consult, show, check, check-sources, or affected"
   );
   requireValue(
     !json || !command.startsWith("check"),
@@ -269,6 +276,54 @@ export const main = (root, args) => {
   );
 
   let result = [...entries].toSorted((a, b) => a.id.localeCompare(b.id, "en"));
+
+  if (command === "consult") {
+    const query = values.join(" ");
+    const references = searchInventory(root, query);
+
+    const urls = new Set(
+      references.flatMap((entry) => {
+        const lore = /^\.brain\/resources\/lore\/(?<slug>[^/]+)\.svx$/u.exec(
+          entry.path
+        );
+
+        return lore
+          ? [entry.sourceUrl, `https://ratstack.sh/lore/${lore.groups.slug}`]
+          : [entry.sourceUrl];
+      })
+    );
+
+    const patterns = [
+      ...new Set([
+        ...search(entries, query),
+        ...entries.filter((entry) =>
+          entry.references.some((url) => urls.has(url))
+        ),
+      ]),
+    ];
+
+    requireValue(
+      patterns.length > 0 || references.length > 0,
+      "No matching patterns or source references"
+    );
+
+    if (json) {
+      return `${JSON.stringify({ patterns, references }, null, 2)}\n`;
+    }
+
+    return [
+      "Local patterns:",
+      ...patterns.map((entry) => `  ${entry.id}: ${entry.title}`),
+      "Source references (dispositions do not establish runtime enforcement):",
+      ...references.map(
+        (entry) =>
+          `  ${entry.disposition}: ${entry.path}\n    ${entry.sourceUrl}`
+      ),
+      "Read local decisions with bun run patterns show <id>.",
+      "Read verified source text with bun run ratstack:adoption read <source-path> <source-root>.",
+      "",
+    ].join("\n");
+  }
 
   if (command === "search") {
     result = search(entries, values.join(" "));
