@@ -21,7 +21,35 @@ Clones and commit artifacts live under `$GC_CITY/.gc/dependency-updates/<bead-id
 
 Workers run frozen-lock installation, focused checks, and affected `bun run verify`. The publisher reruns relevant verification when applying a commit changes its verified tree or base. Local production builds are skipped. Vercel builds after publication, and a failed deployment does not automatically revert the commit. Existing check failures are recorded for review, not suppressed or fixed by this order.
 
-These are agent instructions, not a deterministic dependency policy or Git authorization gate. Gas City provides pool caps and atomic bead claims. Git rejects non-fast-forward pushes. Compatibility and diff-scope checks remain agent judgments. Eight preparation slots bound parallel work, not spending or completion time. No throughput or cost saving has been measured.
+The preparation script enforces declaration and direct-resolution scope, records checks and captures the commit SHA. Compatibility and necessary transitive lock changes remain agent judgments. Gas City provides pool caps and atomic bead claims. Git rejects non-fast-forward pushes. This is not a Git authorization gate. Eight preparation slots bound parallel work, not spending or completion time. No throughput or cost saving has been measured.
+
+## Prepare with one command
+
+Workers review compatibility, then invoke the registered rig's `scripts/dependency-prepare.mjs` with an absolute JSON request path:
+
+```sh
+node /path/to/rig/scripts/dependency-prepare.mjs /absolute/request.json
+```
+
+The request names one bead, one package, an exact target and all existing declarations:
+
+```json
+{
+  "city": "/absolute/path/to/city",
+  "bead": "ps-example",
+  "package": "turbo",
+  "target": "2.11.10",
+  "declarations": [
+    { "path": "package.json", "section": "devDependencies", "from": "2.11.9" }
+  ]
+}
+```
+
+The command clones GitHub main into `<city>/.gc/dependency-updates/<bead>/prepare-script/checkout`. It checks the Bun pin, declaration coverage, version eligibility, source exclusions, manifest scope and unrelated direct lock resolutions. It regenerates the lock with install scripts disabled, runs frozen installation and affected verification, then creates one commit. It never pushes or requests a production build.
+
+`prepare-script/result.json` records the request, base, commit, tree and command results. `commands.log` preserves output and timings. Repeating a successful request validates and returns the same artifact. Failed or interrupted attempts remain preserved and require review before another attempt. Existing legacy `prepare` artifacts remain supported by the publisher.
+
+Release compatibility, engines, peers and necessary transitive lock changes still require worker review. The command produces a candidate commit, not publication authorization. The publisher retains its independent checks and serialized direct-to-main landing procedure.
 
 ## Install and inspect
 
