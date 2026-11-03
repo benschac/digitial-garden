@@ -1,0 +1,8 @@
+[order]
+description = "Publish at most one compatible dependency update each day"
+formula = "update-one"
+pool = "updater"
+trigger = "cron"
+schedule = "0 9 * * *"
+tz = "America/New_York"
+enabled = true

@@ -1,0 +1,81 @@
+formula = "update-one"
+description = "Inspect, verify, and publish one compatible Bun dependency update"
+
+[requires]
+formula_compiler = ">=2.0.0"
+
+[[steps]]
+id = "update"
+title = "Publish one compatible dependency or record why no update is eligible"
+description = """
+Work only in a new temporary clone of git@github.com:benschac/digitial-garden.git.
+Fetch origin/main, create the working branch from that exact commit, and record
+the base SHA. Confirm the clone is clean and origin is the expected repository.
+Read its AGENTS.md instructions and packageManager pin. Use that Bun version.
+Do not upgrade Bun or Node as part of this order.
+
+Inspect direct dependencies and devDependencies in the root and workspaces.
+Query the registry for available versions. Check official release notes for the
+candidate range. Exact pins require an explicitly selected target version.
+Do not use an unqualified bun update, wildcards, or --latest.
+
+Eligible updates have stable current and target versions. For versions >=1.0.0,
+the target must stay within the current major. For 0.x, the target must stay
+within the current minor. A semver-compatible number is not proof of safety:
+hold documented breaking changes, uncertain compatibility, engine mismatches,
+and peer changes requiring another direct package for review. Do not downgrade.
+Skip workspace, catalog, file, link, Git, URL, tag, alias, and ambiguous ranges.
+Hold every package named in scripts/agent-sources.json for source-reference review.
+Do not update dependency overrides, peerDependencies, or optionalDependencies.
+
+Choose one eligible package. Consider the rest when an earlier candidate is
+ineligible so a held package cannot starve later packages. For each held upgrade,
+find or create one persistent review task keyed by package and target version,
+labelled dependency-review. Record the current and target versions, release-note
+links, and the reason. Reuse an existing matching task rather than creating daily
+duplicates. Never route these review tasks back to the updater automatically.
+If no candidate is eligible, record that outcome and finish without a commit.
+
+For the selected package, update its existing dependency or devDependency
+declarations to the chosen version using the pinned Bun CLI's explicit package
+version update operation. Preserve exact pins and existing range operators.
+Do not add a declaration where the package was not already declared. If Bun
+cannot express this narrowly, edit only those existing version values and run
+the pinned Bun install to regenerate the root bun.lock. Never edit lock entries
+by hand. Keep all declarations of this one package consistent where compatible.
+
+Inspect the complete diff. Only this package's existing declaration values and
+the root bun.lock may change. Transitive lock changes must belong to the selected
+package's necessary dependency closure. Reject unrelated resolution churn,
+new lockfiles, trust changes, source changes, and companion package updates.
+Do not fix unrelated failures or relax checks to make this update pass.
+
+Run bun install --frozen-lockfile, git diff --check, and focused checks appropriate
+to the changed dependency. Run TURBO_SCM_BASE=HEAD TURBO_SCM_HEAD=HEAD bun run verify
+before committing. Check command exit statuses and inspect their results.
+Do not run a local production build or verify:full for this order. The operator
+accepts Vercel build validation after publication. A failed check means no push.
+Record a review task with the failure and preserve evidence for a later attempt.
+
+Stage only the inspected manifest paths and root bun.lock. Inspect the staged
+diff and run git diff --cached --check. Commit exactly once with a message such
+as chore(deps): update package from old to new. Confirm HEAD has exactly one
+commit beyond the recorded base and contains only the approved files.
+
+Fetch origin/main again immediately before publication. If it differs from the
+recorded base, stop this attempt without rebasing or pushing. Record the race
+and let a later invocation start again from fresh main. Otherwise run a normal
+git push origin HEAD:main. Never use --force or --force-with-lease. If the server
+rejects the push, stop and record the rejection without changing branch rules.
+After pushing, fetch origin/main and verify the new commit is in its history.
+If the push response is uncertain, inspect that history before any retry.
+
+Append a result to the claimed bead with the package, old and new versions,
+release-note evidence, base SHA, commit SHA if created, checks and exit statuses,
+push result, and any review-task IDs. Distinguish local verification from a
+Vercel deployment result. Do not claim a successful build without observing it.
+Close the claimed work bead and run gc runtime drain-ack. Keep review tasks
+separate from the completed scheduled run. Remove only a clone created by this
+invocation after success or a no-op. Preserve an unpushed commit or failed-check
+clone and record its path when it is needed for review.
+"""

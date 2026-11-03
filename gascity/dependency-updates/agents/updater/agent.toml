@@ -1,0 +1,6 @@
+description = "Update one compatible dependency in an isolated checkout"
+scope = "rig"
+max_active_sessions = 1
+min_active_sessions = 0
+idle_timeout = "1h"
+nudge = "Claim your dependency-update work with gc hook --claim --json and follow its formula."
