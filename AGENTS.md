@@ -25,6 +25,7 @@ This repository uses the Effect TypeScript library. Before writing Effect code, 
 
 ## Standard libraries and reusable hooks
 
+- Use `effect/Schema` for project-owned runtime validation. Do not add Zod dependencies, imports, or skills. Adapt third-party skill examples to this convention; upstream transitive dependencies may retain Zod. This is agent guidance, not an import lint rule or test.
 - Before adding a dependency, utility, or browser lifecycle effect, check [the standard-library directory](docs/standard-libraries.md) and the owning package's exports.
 - Reuse existing hooks for abortable work, animation frames, events, media queries, and observers when their lifecycle matches the feature. Extend a shared hook compatibly when a reusable capability is missing; keep feature-specific rendering and state in the app.
 - Do not hide reactive dependencies just to use a helper. Check cancellation on restart/unmount, Strict Mode replay, async initialization, and observer readiness when refactoring effects.
