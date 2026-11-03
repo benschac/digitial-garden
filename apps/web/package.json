@@ -78,7 +78,7 @@
     "streamdown": "2.7.1",
     "tailwindcss": "4.3.3",
     "three": "^0.186.1",
-    "typegpu": "^0.12.8",
+    "typegpu": "^0.12.9",
     "use-stick-to-bottom": "1.1.6",
     "vgpu": "0.6.0",
     "xstate": "6.0.0-alpha.71"
