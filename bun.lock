@@ -6,7 +6,7 @@
       "name": "personal-site",
       "devDependencies": {
         "@effect/tsgo": "0.63.0",
-        "@oxlint/plugins": "1.90.0",
+        "@oxlint/plugins": "1.91.0",
         "oxfmt": "0.75.0",
         "oxlint": "1.90.0",
         "turbo": "2.11.10",
@@ -568,7 +568,7 @@
 
     "@oxlint/binding-win32-x64-msvc": ["@oxlint/binding-win32-x64-msvc@1.90.0", "", { "os": "win32", "cpu": "x64" }, "sha512-30JiaFEBUB9peEOcvVM8ggo88SoN/IdSr9DW505JdBji/R6dM66gKEiG65hw6qcaF2f4mO0cEJ+RwRZprmun9g=="],
 
-    "@oxlint/plugins": ["@oxlint/plugins@1.90.0", "", {}, "sha512-FT0JJDNbj9oobVWHpAzFckHY/bx1ftPjulBx4UCMXqmDUGqVWOkbKe5bj4zdEL+D5Ud7y/RfioLwSvlHBMjI4w=="],
+    "@oxlint/plugins": ["@oxlint/plugins@1.91.0", "", {}, "sha512-Fh+SOBxMu7/pbSk84WG4BN6npcxxlF4jWNQJ+S4IUNyvSVeQwOVTFQMD/Dx2EqBQ1lVeCADcJ+0rzT1BKQ9cUA=="],
 
     "@personal-site/react-hooks": ["@personal-site/react-hooks@workspace:packages/react-hooks"],
 

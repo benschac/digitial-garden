@@ -41,7 +41,7 @@
   },
   "devDependencies": {
     "@effect/tsgo": "0.63.0",
-    "@oxlint/plugins": "1.90.0",
+    "@oxlint/plugins": "1.91.0",
     "oxfmt": "0.75.0",
     "oxlint": "1.90.0",
     "turbo": "2.11.10",
