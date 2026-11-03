@@ -7,8 +7,9 @@ Use these checkouts to verify library behavior when a skill, example, or documen
 | Effect | 4.1.2, matching the web dependency | `.agent_sources/effect/packages/effect/` |
 | XState Effect | 1.0.0-alpha.10, matching the web dependency | `.agent_sources/xstate-effect/packages/xstate-effect/` |
 | XState core | 6.0.0-alpha.71, same checkout | `.agent_sources/xstate-effect/packages/core/` |
+| Gas City | v1.5.1, matching `gc version` at setup | `.agent_sources/gascity/` |
 
-The web package separately declares these exact Effect, XState core and XState Effect runtime dependencies. The source commands only maintain reference checkouts: downloading source does not install runtime dependencies or execute upstream lifecycle scripts. Root-level mirrors are outside the workspace build, typecheck, and application-test directories; Git, Oxlint, and Oxfmt ignore them. Use the workspace test scripts rather than recursively running tests from the repository root.
+The web package separately declares these exact Effect, XState core and XState Effect runtime dependencies. Gas City is an external Go CLI, so its source record has an empty `packages` list and uses its release tag and commit as identity. The source commands only maintain reference checkouts: downloading source does not install runtime dependencies or execute upstream lifecycle scripts. Root-level mirrors are outside the workspace build, typecheck, and application-test directories; Git, Oxlint, and Oxfmt ignore them. Use the workspace test scripts rather than recursively running tests from the repository root.
 
 ## Git ownership and downloaded documentation
 
@@ -20,6 +21,7 @@ The downloads include version-matched documentation:
 - XState core: `.agent_sources/xstate-effect/packages/core/README.md` and tests under that package.
 - XState Effect: `.agent_sources/xstate-effect/packages/xstate-effect/README.md` and `docs/quick-start.md`.
 - The bridge's `docs/` also includes actors, observing actors, Effect logic, schemas/actions, testing/errors, matching states, and React/atoms guides.
+- Gas City: `.agent_sources/gascity/README.md`, `docs/index.mdx`, user guides and references under `docs/`, and architecture and contributor documents under `engdocs/`.
 
 These are upstream files at the manifest's exact commits, not a separate scrape of the live documentation website.
 
@@ -34,6 +36,25 @@ bun run sources:updates
 `fetch` downloads missing mirrors and validates existing ones. `check` validates locally without fetching. Both reject mismatched source versions, commits, origins, metadata, or dirty checkouts. Each download records its source identity and retrieval date in `.agent-source.json`.
 
 `updates` queries official npm distribution tags and reports them alongside our reference versions. It does not install packages, change pins, or refresh source. Read release notes and source changes before selecting an update. To change a reference, update its manifest version, tag, and commit together, preserve or move aside the old mirror, then fetch and check again. The tool never deletes an existing checkout to refresh it.
+
+## Gas City source lookup
+
+`sources:fetch` clones `https://github.com/gastownhall/gascity.git` with `--depth 1 --branch v1.5.1` into `.agent_sources/gascity`. The manifest pins commit `4f698fe2a7eefae49e545c5e38189f1b63fb9b39`. Repeated fetches validate and reuse that checkout. The mirror includes documentation, Go implementation, tests and examples; it does not install or restart `gc`.
+
+Before changing this project's Gas City integration, run:
+
+```sh
+gc version
+bun run sources:check
+bun run patterns consult gascity
+bun run patterns show gascity-source-lookup
+```
+
+Compare `gc version` with the manifest's tag. The setup check on 2026-11-03 reported `1.5.1`. `sources:check` verifies Git and receipt identity, but does not invoke `gc` or require it in CI. A matching version string does not prove that a custom binary was built from the same commit.
+
+Read `docs/` for user-facing contracts, `engdocs/architecture/` for subsystem ownership, and the relevant Go files and colocated `*_test.go` files under `cmd/gc`, `internal`, or `pkg`. For example, search the pinned checkout with `rg -n 'order' .agent_sources/gascity/docs .agent_sources/gascity/engdocs .agent_sources/gascity/cmd/gc .agent_sources/gascity/internal` before changing order dispatch. Follow repository instructions when adapting upstream guidance.
+
+The live [documentation index](https://docs.gascity.com/llms.txt) helps discover current topics. Use the pinned checkout to establish behavior for this release. `sources:updates` checks npm packages only; assess Gas City updates through its [official releases](https://github.com/gastownhall/gascity/releases). After selecting a release, review its tag and commit, run `bun run patterns affected gascity`, and follow the mirror update procedure above. Updating a source reference does not authorize a CLI upgrade or city migration.
 
 ## XState Effect compatibility
 

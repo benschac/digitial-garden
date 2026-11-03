@@ -29,5 +29,12 @@
         "path": "packages/core/package.json"
       }
     ]
+  },
+  {
+    "name": "gascity",
+    "repository": "https://github.com/gastownhall/gascity.git",
+    "ref": "v1.5.1",
+    "commit": "4f698fe2a7eefae49e545c5e38189f1b63fb9b39",
+    "packages": []
   }
 ]

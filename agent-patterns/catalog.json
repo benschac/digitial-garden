@@ -1069,5 +1069,55 @@
       "Compiler and lint diagnostics enforce their configured checks, not every architectural recommendation."
     ],
     "related": ["process-ownership", "validated-input", "schema-evolution"]
+  },
+  {
+    "id": "gascity-source-lookup",
+    "title": "Gas City version-matched source lookup",
+    "concerns": [
+      "gascity",
+      "gas city",
+      "gc",
+      "pack",
+      "formula",
+      "order",
+      "orchestration",
+      "source mirror"
+    ],
+    "decision": "Compare gc version with the pinned Gas City tag, validate the source mirror, then read its documentation, owning Go implementation and relevant tests before changing packs or CLI integrations. The live documentation site may describe a different release.",
+    "owners": [
+      "scripts/agent-sources.json",
+      "scripts/agent-sources.mjs",
+      "docs/agent-sources.md"
+    ],
+    "sources": [
+      {
+        "name": "gascity",
+        "commit": "4f698fe2a7eefae49e545c5e38189f1b63fb9b39",
+        "paths": [
+          "README.md",
+          "AGENTS.md",
+          "docs/index.mdx",
+          "engdocs/architecture/index.md"
+        ]
+      }
+    ],
+    "references": [
+      "https://docs.gascity.com/llms.txt",
+      "https://github.com/gastownhall/gascity/releases/tag/v1.5.1"
+    ],
+    "checks": [
+      {
+        "kind": "static",
+        "path": "scripts/agent-sources.test.mjs",
+        "claim": "Existing downloader fixtures cover reuse, dirty-mirror preservation, changed pins and moved tags. Source checks verify the configured Git identity."
+      }
+    ],
+    "exceptions": [
+      "Gas City is an external Go CLI, not a web npm dependency. Its empty package list keeps source validation independent of a locally installed gc binary."
+    ],
+    "gaps": [
+      "The catalog records source navigation, not qualification of Gas City runtime behavior or this project's packs. Installed binary identity and live city behavior need separate evidence."
+    ],
+    "related": ["source-updates", "dependency-supervision"]
   }
 ]
