@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { once } from "node:events";
 import {
   chmodSync,
   mkdirSync,
@@ -14,7 +15,10 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { validateRequest } from "./dependency-prepare.mjs";
+import {
+  validateRequest,
+  verificationArguments,
+} from "./dependency-prepare.mjs";
 
 const script = fileURLToPath(
   new URL("dependency-prepare.mjs", import.meta.url)
@@ -191,7 +195,9 @@ test("prepares one scoped commit and replays without another installation or com
   assert.match(prepared.commit, /^[a-f0-9]{40}$/u);
   assert.equal(
     prepared.commands.filter(
-      (entry) => entry.command === "bun" && entry.args[0] === "run"
+      (entry) =>
+        entry.command === "flock" &&
+        entry.args.slice(-3).join(" ") === "bun run verify"
     ).length,
     1
   );
@@ -277,4 +283,85 @@ test("allows a nested transitive change while unrelated workspace resolutions re
   const lock = readJson(path.join(prepared.clone, "bun.lock"));
   assert.deepEqual(lock.packages["alpha/beta"], ["beta@1.1.0"]);
   assert.deepEqual(lock.packages.beta, ["beta@2.0.0"]);
+});
+
+test(
+  "serializes verification and releases the slot after a failed command",
+  { timeout: 5000 },
+  async (t) => {
+    const root = mkdtempSync(
+      path.join(os.tmpdir(), "dependency-verification-")
+    );
+
+    t.after(() => rmSync(root, { force: true, recursive: true }));
+    const bin = path.join(root, "bin");
+    mkdirSync(bin);
+    const events = path.join(root, "events");
+    const active = path.join(root, "active");
+    const bun = path.join(bin, "bun");
+    writeFileSync(
+      bun,
+      `#!/usr/bin/env node
+const fs = require("node:fs");
+const active = process.env.ACTIVE;
+const events = process.env.EVENTS;
+const id = process.env.PROBE_ID;
+fs.mkdirSync(active);
+fs.appendFileSync(events, id + ":start\\n");
+console.log("entered");
+setTimeout(() => {
+ fs.appendFileSync(events, id + ":end\\n");
+ fs.rmdirSync(active);
+ process.exit(id === "first" ? 7 : 0);
+}, 200);
+`
+    );
+    chmodSync(bun, 0o755);
+    const args = verificationArguments(root);
+
+    const execute = (id) => {
+      const child = spawn("flock", args, {
+        env: {
+          ...process.env,
+          ACTIVE: active,
+          EVENTS: events,
+          PATH: `${bin}:${process.env.PATH}`,
+          PROBE_ID: id,
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      const entered = once(child.stdout, "data");
+      const completed = once(child, "exit").then(([code]) => code);
+
+      return { completed, entered };
+    };
+
+    const first = execute("first");
+    await first.entered;
+    const second = execute("second");
+    assert.deepEqual(
+      await Promise.all([first.completed, second.completed]),
+      [7, 0]
+    );
+    assert.equal(
+      readFileSync(events, "utf-8"),
+      "first:start\nfirst:end\nsecond:start\nsecond:end\n"
+    );
+  }
+);
+
+test("refuses symlink and nonregular verification locks", (t) => {
+  const root = mkdtempSync(
+    path.join(os.tmpdir(), "dependency-verification-path-")
+  );
+
+  t.after(() => rmSync(root, { force: true, recursive: true }));
+  const lock = verificationArguments(root).at(3);
+  rmSync(lock);
+  symlinkSync(path.join(root, "outside"), lock);
+  assert.throws(() => verificationArguments(root));
+  rmSync(lock);
+  mkdirSync(lock);
+  assert.throws(() => verificationArguments(root));
 });

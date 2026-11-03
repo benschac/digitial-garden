@@ -1,9 +1,13 @@
 import { match as assertMatch } from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
+  closeSync,
+  constants,
   existsSync,
+  fstatSync,
   lstatSync,
   mkdirSync,
+  openSync,
   readFileSync,
   realpathSync,
   renameSync,
@@ -143,6 +147,36 @@ const regularFile = (root, relative) => {
   );
 
   return destination;
+};
+
+export const verificationArguments = (city) => {
+  const owner = directory(
+    directory(realpathSync(city), ".gc"),
+    "dependency-updates"
+  );
+
+  const lock = path.join(owner, "verify.lock");
+
+  const descriptor = openSync(
+    lock,
+    constants.O_CREAT +
+      constants.O_RDWR +
+      constants.O_NOFOLLOW +
+      constants.O_NONBLOCK,
+    0o600
+  );
+
+  try {
+    assert(
+      fstatSync(descriptor).isFile(),
+      "Verification lock must be a regular file"
+    );
+    regularFile(owner, "verify.lock");
+  } finally {
+    closeSync(descriptor);
+  }
+
+  return ["--exclusive", "--timeout", "300", lock, "bun", "run", "verify"];
 };
 
 const commandRunner = (log, commands) => {
@@ -524,7 +558,7 @@ export const prepareDependency = (input) => {
       request
     );
     run("bun", ["install", "--frozen-lockfile", "--ignore-scripts"], clone);
-    run("bun", ["run", "verify"], clone, {
+    run("flock", verificationArguments(request.city), clone, {
       TURBO_SCM_BASE: "HEAD",
       TURBO_SCM_HEAD: "HEAD",
     });
