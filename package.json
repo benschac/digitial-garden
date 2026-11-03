@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev --ui=stream",
+    "dev": "gc start \"$HOME/personal-site-city\" && turbo run dev --ui=stream",
     "build-storybook": "turbo run build-storybook",
     "lint": "turbo run lint lint:root",
     "format": "oxfmt",
