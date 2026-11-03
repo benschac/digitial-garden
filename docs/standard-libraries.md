@@ -52,11 +52,6 @@ Refs must point to mounted elements when observation starts. If initialization i
 
 ## Next.js and tooling
 
-- [`orchestrator-evidence`](../scripts/orchestrator-evidence.mjs) validates candidate identity and verification receipt bindings for the local Gas City pilot. Root tooling uses the pinned Effect Schema dependency. The pure helper rejects missing or mismatched expected identities and reads only required own data properties; it does not run checks, authenticate evidence or authorize integration. B1b binds expected attempts, exact command arguments, toolchain identity and artifact references. Trusted command policy, execution and artifact hashing remain B2 responsibilities.
-- [`orchestrator-import`](../scripts/orchestrator-import.mjs) validates revision-bound task contracts and reconciles them through native Beads commands for one coordinator. It preserves existing task evidence, resolves identities before exact dependency wiring, and rejects duplicate references or cycles. Replays reuse native IDs; it owns no scheduler, concurrent-import uniqueness, retry budget or integration authority. See the [planner contract](../orchestration/personal-site/planner.md).
-
-- [`dev.sh`](../scripts/dev.sh) retains the per-checkout `flock` lock and starts [`dev.mjs`](../scripts/dev.mjs), which owns the root development session through Execa. It starts a stopped Gas City, runs Turbo in a separate process group, and waits for cancellation before stopping a city it started. An independently running city stays running. Execa's descendant termination owns process-group cleanup without forced escalation. The small Bash bootstrap preserves existing kernel locks; the root has no Effect platform adapter.
-
 - `bun run check-types:effect` runs the web project through the pinned Effect-patched `tsrs` runner. The Effect language-service plugin is configured in `apps/web/tsconfig.json`; the existing TypeScript checks remain the default. See [checks](../README.md#checks) for compatibility findings and editor setup boundaries.
 
 - [Library source references](agent-sources.md) provides pinned, reference-only Effect, XState core, and XState Effect checkouts. `bun run sources:fetch` downloads them; `sources:check` validates them; `sources:updates` reports registry tags without upgrading dependencies.

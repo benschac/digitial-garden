@@ -11,7 +11,7 @@ bun install
 bun run dev
 ```
 
-`bun run dev` starts Gas City alongside the site. Stopping development also stops the city if this command started it; an already-running city stays running. The shared machine-wide supervisor stays running. Initialize Gas City once using the setup below before running development. Storybook is excluded from this command; run `bun run --cwd packages/ui storybook` when needed.
+`bun run dev` starts the site. Storybook is excluded from this command; run `bun run --cwd packages/ui storybook` when needed.
 
 The development server prefers [http://localhost:3000](http://localhost:3000). If that port is occupied, it checks subsequent ports until it finds a free one and prints the selected URL. It does not stop the process using the original port.
 
@@ -25,51 +25,6 @@ bun run --cwd apps/web dev --port 4000
 Both commands fall back to the next available port if `4000` is busy. CLI flags take precedence over `PORT`; do not put `PORT` in `.env.local`. This also applies to `bun run wasm:dev` and the web workspace's `dev` command. Production `next start` retains its fixed-port behavior.
 
 This handles ports occupied by other projects. Next.js still permits only one development server per checkout because they share `.next/dev`; use a separate checkout or worktree to run two copies of this project.
-
-## Gas City coding agents
-
-The supervised pilot uses the separate canonical city `.tools/gascity-beads-pilot`. Start with its [operating contract](orchestration/personal-site/operating-contract.md), [portable city template](orchestration/personal-site/city-template/README.md) and [reporting commands](orchestration/personal-site/reporting.md). The development-city setup below does not initialize or replace that pilot.
-
-[Gas City](https://github.com/gastownhall/gascity) coordinates coding agents for this repository. The setup below targets Gas City 1.5.1 and Codex CLI 0.166.0. It keeps the city in `.tools/gascity` and registers this checkout as the `personal-site` rig.
-
-Install the CLI and initialize a new local city from the repository root:
-
-```bash
-brew install gascity
-command gc init --file gascity.toml --default-provider codex --name personal-site --beads-target local --beads-transport proxied --no-start .tools/gascity
-command gc --city .tools/gascity rig add "$PWD" --name personal-site --prefix site --default-branch main
-command gc --city .tools/gascity config show --validate
-```
-
-Run initialization once per checkout. The checked-in `gascity.toml` is the setup template; Gas City maintains the local copy and stores the checkout path in `.tools/gascity/.gc/site.toml`. To update an existing city, edit its local configuration without overwriting the generated `[[rigs]]` entries.
-
-The template uses `gpt-6.1-sol` with high reasoning effort, a workspace-write sandbox, and approvals on request. It replaces the built-in permission option because Gas City's Codex preset defaults to unrestricted execution. The Beads provider requires `bd` 1.3.0 or newer and owns the local proxied Dolt service. Agent hook installation is disabled. Generated state under `.tools/`, `.gc/`, and `.beads/` stays outside Git.
-
-### Beads storage and Git
-
-The setup above uses Gas City's Beads/Dolt backend. Run `bd context` to identify its active database before changing storage settings. This checkout uses Beads 1.3.2 in `proxied-server` mode with the `site` database. Do not reinitialize it to repeat the fresh-checkout instructions.
-
-This repository ignores all of `.beads/`, including local configuration, routing, and issue data. Git commits and ordinary Git pushes therefore do not save Beads issues. Keep the Dolt database, credentials, locks, and machine-specific connection files out of Git. Commit reusable setup templates and workflow documentation separately.
-
-Beads supports Dolt-native synchronization and backups, but commands depend on the backend: `bd dolt remote list` is unsupported in this pilot's proxied-server mode. Its configured backup destination is `.tools/gascity/.dolt-backup/site`, on the same machine and also ignored by Git. That destination alone provides no off-machine recovery. The [qualification report](docs/autonomous-development-progress.md#native-backup-and-restore-result) records a successful local restore in managed-proxy mode and a failed cross-mode embedded restore. Off-machine recovery remains unconfigured. A fresh Git clone does not recover the issue database.
-
-See the pinned [Beads storage documentation](https://github.com/steveyegge/beads/blob/v1.3.2/docs/architecture/dolt.md) and [configuration reference](https://github.com/steveyegge/beads/blob/v1.3.2/docs/reference/configuration.md). JSONL exports are interchange files, not a replacement for a full database backup.
-
-Inspect routing without creating work or launching an agent:
-
-```bash
-command gc --city .tools/gascity sling personal-site/codex "Inspect the repository without changing files" --dry-run --no-formula
-```
-
-After setup, `bun run dev` starts the city and site together. To open a Codex session in another terminal:
-
-```bash
-command gc --city .tools/gascity session new personal-site/codex
-```
-
-To route a task, run `command gc --city .tools/gascity sling personal-site/codex "Your task"`. Inspect the city with `command gc --city .tools/gascity status`, and stop it with `command gc --city .tools/gascity stop`.
-
-The `command gc` form bypasses shell aliases such as Oh My Zsh's `gc` alias for Git commits. See the upstream [quickstart](https://github.com/gastownhall/gascity/blob/v1.5.1/docs/getting-started/quickstart.md) for orchestration workflows.
 
 ## Eve agent
 
