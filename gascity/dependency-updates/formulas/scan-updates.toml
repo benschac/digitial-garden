@@ -1,0 +1,74 @@
+formula = "scan-updates"
+description = "Inventory all dependency candidates and queue persistent package beads"
+
+[requires]
+formula_compiler = ">=2.0.0"
+
+[[steps]]
+id = "scan"
+title = "Queue every eligible dependency as its own persistent bead"
+description = """
+Inspect fresh origin/main in an isolated clone of
+git@github.com:benschac/digitial-garden.git. Confirm the origin and read repository
+instructions and packageManager. Do not upgrade Bun or Node or change any source.
+Inventory all direct dependencies and devDependencies across the root and
+workspaces once. Query registry versions, then choose the newest stable compatible
+candidate for each package. Exact pins need an explicit target version.
+
+Stable >=1.0.0 candidates must remain in the current major. Stable 0.x candidates
+must remain in the current minor. Check every existing declaration of that package.
+Do not downgrade, widen ranges, or update peers, optional dependencies, overrides,
+workspace/catalog/file/link/Git/URL/tag/alias dependencies, or ambiguous ranges.
+Known breaking changes, engine mismatches, coupled peer upgrades, prereleases,
+and packages in scripts/agent-sources.json require review. Prefer an eligible
+compatible candidate over a newer breaking release. If only an ineligible newer
+release exists, create or reuse its review bead without routing it to a worker.
+Never stop inventory after finding the first candidate.
+
+Use persistent task beads in the personal-site rig, never ephemeral beads.
+Each candidate has metadata dependency_package, dependency_target, and
+dependency_phase (prepare, ready, review, or landed). Its description records
+all manifest paths and old declaration values, exact target, inventory base SHA,
+registry evidence, and any known release or compatibility caveats.
+
+Before creating work, list ALL states and all rows for the package:
+
+```sh
+gc --city "$GC_CITY" --rig personal-site bd list --all --limit 0 --metadata-field dependency_package=PACKAGE --json
+```
+
+Replace PACKAGE with the actual package name.
+Read existing candidates, including completed ones, and match the exact target.
+Also inspect existing dependency-review tasks without this metadata. Reuse a
+verified exact package/target match instead of duplicating a legacy review task.
+Do not reroute in-progress work, ready publisher work, blocked review work, or
+completed work. Reuse an exact-target review or failure without automatically
+retrying it. Allow at most one active prepare or ready candidate per package.
+A held review for a different target must not block a compatible candidate.
+For example, a review of foo@3 must not prevent preparing foo@2.1. Preserve the
+held review. Never turn an exact-target failed check into a fresh daily retry.
+
+Create missing candidates using a JSON metadata file and description file:
+
+```sh
+gc --city "$GC_CITY" --rig personal-site bd create "$TITLE" --type task --labels dependency-update --metadata @candidate.json --body-file body.md --json
+```
+
+Use the returned ID. For compatible candidates, set dependency_phase=prepare
+and route the returned bead with this command:
+
+```sh
+gc --city "$GC_CITY" sling personal-site/deps.worker "$BEAD" --no-formula --no-convoy
+```
+
+Package beads are plain work, not formula wrappers.
+For review candidates, set dependency_phase=review, status blocked, and the
+dependency-review label. Do not route them to an automatic worker.
+If create succeeded but routing did not, reuse and route that same unassigned
+prepare bead on restart. Never create another bead merely because dispatch failed.
+
+Record every created, reused, held, and dispatched bead on the scan bead.
+Close the scan bead after inventory and routing, without waiting for package
+workers. Drain the scanner session. The singleton scanner and scheduler overlap
+gate avoid routine concurrent inventory; do not manually launch a second scanner.
+"""

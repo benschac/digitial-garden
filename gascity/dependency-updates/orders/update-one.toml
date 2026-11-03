@@ -1,7 +1,7 @@
 [order]
-description = "Publish at most one compatible dependency update each day"
-formula = "update-one"
-pool = "updater"
+description = "Queue every eligible dependency update each day"
+formula = "scan-updates"
+pool = "scanner"
 trigger = "cron"
 schedule = "0 9 * * *"
 tz = "America/New_York"

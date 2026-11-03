@@ -1,0 +1,7 @@
+description = "Prepare one dependency commit in an isolated clone"
+scope = "rig"
+max_active_sessions = 3
+min_active_sessions = 0
+option_defaults = { model = "gpt-6-luna", effort = "low" }
+idle_timeout = "1h"
+nudge = "Claim your dependency work with gc hook --claim --json and follow your role."

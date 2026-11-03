@@ -1,4 +1,4 @@
 [pack]
 name = "dependency-updates"
 schema = 2
-description = "Daily, one-package Bun updates published directly to main"
+description = "Daily dependency beads, parallel preparation, and atomic direct-to-main commits"
