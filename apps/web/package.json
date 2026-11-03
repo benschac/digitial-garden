@@ -74,7 +74,7 @@
     "remark-math": "^6.0.0",
     "server-only": "0.0.1",
     "shiki": "4.5.0",
-    "sql.js": "1.15.0",
+    "sql.js": "1.15.2",
     "streamdown": "2.7.0",
     "tailwindcss": "4.3.3",
     "three": "^0.186.1",
