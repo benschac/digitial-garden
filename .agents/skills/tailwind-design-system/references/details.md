@@ -229,46 +229,9 @@ export function Label({
   )
 }
 
-// Usage with React Hook Form + Zod
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-
-const schema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-})
-
-function LoginForm() {
-  const { register, handleSubmit, formState: { errors } } = useForm({
-    resolver: zodResolver(schema),
-  })
-
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          {...register('email')}
-          error={errors.email?.message}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          {...register('password')}
-          error={errors.password?.message}
-        />
-      </div>
-      <Button type="submit" className="w-full">Sign In</Button>
-    </form>
-  )
-}
 ```
+
+For form validation, reuse the project's Effect Schema owners and follow `AGENTS.md`. The input and label examples above describe styling and do not require another validation library.
 
 ### Pattern 4: Responsive Grid System
 

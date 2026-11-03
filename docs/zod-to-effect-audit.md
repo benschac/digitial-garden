@@ -128,7 +128,7 @@ Suggested verification for a separately approved dependency change: regenerate t
 ## References that are not migration targets
 
 - `apps/web/src/app/how-i-work/content.mdx:43` describes historical use of Zod. It is authored prose, not an import or active validator.
-- `skills-lock.json:172` records the installed Zod skill. `.agents/skills/zod/**` contains instructions and examples, not application dependencies. The Tailwind design-system skill's `references/details.md:232` also contains a React Hook Form/Zod example without corresponding application dependencies. Removing these references would not migrate runtime validation. Optional P3 follow-up: decide whether project guidance should point only to the existing Effect v4 convention. Align metadata through its owning skill tooling if changed; do not blindly edit vendored examples or invalidate hashes. The benefit is preventing accidental reintroduction, not install/bundle savings. Retaining them as external integration reference material is reasonable.
+- Follow-up on 2026-11-03 removed the project-local Zod skill and its lock entry, plus the Tailwind skill's Zod form example. `AGENTS.md` now directs agents to use Effect Schema and adapt third-party examples. The Zod import lint rule and its tests were removed at the user's request. This changes project guidance, not runtime validation or upstream dependencies.
 - `docs/effect-opportunities.md` is the broader Effect adoption audit. Its final implementation-status section records completed work. Deferred workflow, resource-lifetime, cache, and manual-validation suggestions in that document are not evidence of remaining Zod code and are not duplicated as migration work.
 
 ## Optional findings outside the migration scope
