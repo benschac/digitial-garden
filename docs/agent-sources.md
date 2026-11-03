@@ -4,7 +4,7 @@ Use these checkouts to verify library behavior when a skill, example, or documen
 
 | Reference | Version | Local source |
 | --- | --- | --- |
-| Effect | 4.0.5, matching the web dependency | `.agent_sources/effect/packages/effect/` |
+| Effect | 4.1.2, matching the web dependency | `.agent_sources/effect/packages/effect/` |
 | XState Effect | 1.0.0-alpha.10, matching the web dependency | `.agent_sources/xstate-effect/packages/xstate-effect/` |
 | XState core | 6.0.0-alpha.71, same checkout | `.agent_sources/xstate-effect/packages/core/` |
 
@@ -39,7 +39,7 @@ bun run sources:updates
 
 The [Stately quick-start](https://stately.ai/docs/xstate/v6/effect/quick-start) describes scoped actors and Effect-hosted work. Read the pinned bridge's README, source, and tests before implementing its examples.
 
-At setup on 2026-10-31, npm's `@xstate/effect` `alpha` tag resolved to `0.1.0-alpha.4`, while `latest` resolved to `1.0.0-alpha.10`. The quick-start's `effect@rc` installation advice therefore does not describe this project's stable Effect 4 pin. The selected bridge declares Effect `^4.0.0` and XState `^6.0.0-alpha.71` peers; Effect 4.0.5 fits that declared range. Both selected XState packages share commit `8cf3f00b41984a32ce935db117f52b628cfcd5ac`.
+At setup on 2026-10-31, npm's `@xstate/effect` `alpha` tag resolved to `0.1.0-alpha.4`, while `latest` resolved to `1.0.0-alpha.10`. The quick-start's `effect@rc` installation advice therefore does not describe this project's stable Effect 4 pin. The selected bridge declares Effect `^4.0.0` and XState `^6.0.0-alpha.71` peers; Effect 4.1.2 fits that declared range. Both selected XState packages share commit `8cf3f00b41984a32ce935db117f52b628cfcd5ac`.
 
 The pinned bridge README uses `createEffectLogic`, and its `src/index.ts` exports that API rather than the quick-start's `fromEffect`. Follow the pinned source when adapting the example.
 
@@ -53,6 +53,23 @@ These checks establish source identity and declared peer compatibility; applicat
 4. Check upstream releases separately when assessing upgrades. Never substitute upstream HEAD for the version whose behavior the application depends on.
 
 The workflow adapts rat-stack's [source-first guidance](https://ratstack.sh/AGENTS.md) and [source mirror utility](https://github.com/joelhooks/rat-stack/blob/main/scripts/vendor-agent-sources.sh).
+
+## Effect 4.1.2 qualification
+
+The source review compares `effect@4.0.5` at `7f524e25cfb49a71ac39b0f44278d08d40dda5de` with `effect@4.1.2` at `506eef143bcc1750ce58920aac1e45da7265d103`. The installed `AGENTS.md` matches upstream `LLMS.md`; these instructions and the cataloged examples are unchanged across the two tags. The review retains all ten Effect-dependent catalog decisions, exceptions, and verification gaps.
+
+| Catalog decisions | Target source behavior reviewed | Application checks |
+| --- | --- | --- |
+| `resource-ownership`, `replaceable-resources`, `process-ownership` | `Scope.ts`, `internal/effect.ts`, and `Scope.test.ts` retain acquisition finalizers and late cleanup. Parallel close avoids waiting on its own fiber. A second scope close still returns before an earlier asynchronous close finishes. | `renderer-lifecycle.test.ts`, `wet-ink-resources.test.ts`, `social-preview-lifecycle.test.ts` |
+| `actor-lifecycle` | The unchanged XState bridge owns its actor scope and awaits invoked task cleanup. Effect's scope behavior remains compatible with that owner. | `particle-lifecycle.test.ts` |
+| `runtime-boundary`, `adapters-cartridges` | `ManagedRuntime.ts` and its tests add waiting for overlapping disposal. `Layer.ts` memoizes composed builds. The database facade retains its disposal Promise and retries initialization inside its service. | `sample-db.test.ts`, `social-preview-lifecycle.test.ts` |
+| `shared-requests` | `Cache.ts` is unchanged. Its tests cover zero TTL, shared waiters, and interruption after the final waiter leaves. The injected Promise transport remains an intentional boundary. | `typography-metric-requests.test.ts` |
+| `submission-acceptance`, `typed-failures` | `internal/effect.ts` and `Effect.test.ts` preserve single callback settlement, interruption cleanup, and typed Promise rejection mapping. Defects remain distinct from recoverable failures. | `prompt-input-attachments.test.ts`, `agent-chat-submission.test.ts`, `typography-metric-requests.test.ts` |
+| `validated-input` | `Schema.ts` and schema tests retain finite-number validation, positive numeric checks, optional fields, and synchronous decoding. | `typography-metrics-schema.test.ts` |
+
+Upstream 4.1 removes `effect/Crypto` in favor of `effect/crypto/*`. The application has no imports of the removed module, so this qualification requires no API adaptation. The source mirror and package declaration move together; XState pins remain unchanged.
+
+Source inspection and application tests do not establish browser rendering, physical GPU behavior, provider delivery, process-tree behavior, or host shutdown wiring. Those catalog gaps remain explicit. Independent review and full repository verification remain required before integration.
 
 ## Pattern invalidation on upgrades
 

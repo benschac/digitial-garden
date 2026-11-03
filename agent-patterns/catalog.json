@@ -16,7 +16,7 @@
     "sources": [
       {
         "name": "effect",
-        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "commit": "506eef143bcc1750ce58920aac1e45da7265d103",
         "paths": [
           "ai-docs/src/01_effect/05_resources/10_acquire-release.ts",
           "packages/effect/src/Scope.ts",
@@ -61,7 +61,7 @@
       },
       {
         "name": "effect",
-        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "commit": "506eef143bcc1750ce58920aac1e45da7265d103",
         "paths": [
           "ai-docs/src/01_effect/05_resources/10_acquire-release.ts",
           "packages/effect/src/Scope.ts",
@@ -134,7 +134,7 @@
     "sources": [
       {
         "name": "effect",
-        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "commit": "506eef143bcc1750ce58920aac1e45da7265d103",
         "paths": [
           "packages/effect/src/Cache.ts",
           "packages/effect/test/Cache.test.ts"
@@ -172,7 +172,7 @@
     "sources": [
       {
         "name": "effect",
-        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "commit": "506eef143bcc1750ce58920aac1e45da7265d103",
         "paths": [
           "ai-docs/src/01_effect/02_schema/10_schema-basics.ts",
           "packages/effect/src/Schema.ts",
@@ -206,7 +206,7 @@
     "sources": [
       {
         "name": "effect",
-        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "commit": "506eef143bcc1750ce58920aac1e45da7265d103",
         "paths": [
           "ai-docs/src/01_effect/04_errors/10_catch-tags.ts",
           "packages/effect/src/internal/effect.ts",
@@ -255,7 +255,7 @@
     "sources": [
       {
         "name": "effect",
-        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "commit": "506eef143bcc1750ce58920aac1e45da7265d103",
         "paths": [
           "ai-docs/src/04_integration/10_managed-runtime.ts",
           "packages/effect/src/ManagedRuntime.ts",
@@ -306,7 +306,7 @@
     "sources": [
       {
         "name": "effect",
-        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "commit": "506eef143bcc1750ce58920aac1e45da7265d103",
         "paths": [
           "ai-docs/src/01_effect/03_services/20_layer-composition.ts",
           "packages/effect/src/Layer.ts",
@@ -354,7 +354,7 @@
     "sources": [
       {
         "name": "effect",
-        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "commit": "506eef143bcc1750ce58920aac1e45da7265d103",
         "paths": [
           "ai-docs/src/01_effect/05_resources/10_acquire-release.ts",
           "packages/effect/src/Scope.ts",
@@ -394,7 +394,7 @@
     "sources": [
       {
         "name": "effect",
-        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "commit": "506eef143bcc1750ce58920aac1e45da7265d103",
         "paths": [
           "ai-docs/src/01_effect/05_resources/10_acquire-release.ts",
           "packages/effect/src/Scope.ts",
@@ -435,7 +435,7 @@
     "sources": [
       {
         "name": "effect",
-        "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+        "commit": "506eef143bcc1750ce58920aac1e45da7265d103",
         "paths": [
           "ai-docs/src/01_effect/01_basics/10_creating-effects.ts",
           "packages/effect/src/internal/effect.ts",

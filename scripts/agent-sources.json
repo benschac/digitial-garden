@@ -2,12 +2,12 @@
   {
     "name": "effect",
     "repository": "https://github.com/Effect-TS/effect.git",
-    "ref": "effect@4.0.5",
-    "commit": "7f524e25cfb49a71ac39b0f44278d08d40dda5de",
+    "ref": "effect@4.1.2",
+    "commit": "506eef143bcc1750ce58920aac1e45da7265d103",
     "packages": [
       {
         "name": "effect",
-        "version": "4.0.5",
+        "version": "4.1.2",
         "path": "packages/effect/package.json"
       }
     ]
