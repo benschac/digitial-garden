@@ -87,7 +87,7 @@
         "@webgpu/types": "^0.1.74",
         "babel-plugin-react-compiler": "1.0.0",
         "typescript": "7.0.2",
-        "unplugin-typegpu": "0.12.6",
+        "unplugin-typegpu": "0.12.7",
       },
     },
     "packages/react-hooks": {
@@ -1892,7 +1892,7 @@
 
     "unplugin": ["unplugin@2.3.11", "", { "dependencies": { "@jridgewell/remapping": "^2.3.5", "acorn": "^8.15.0", "picomatch": "^4.0.3", "webpack-virtual-modules": "^0.6.2" } }, "sha512-5uKD0nqiYVzlmCRs01Fhs2BdkEgBS3SAVP6ndrBsuK42iC2+JHyxM05Rm9G8+5mkmRtzMZGY8Ct5+mliZxU/Ww=="],
 
-    "unplugin-typegpu": ["unplugin-typegpu@0.12.6", "", { "dependencies": { "@babel/parser": "^7.29.0", "@babel/traverse": "^7.29.0", "@babel/types": "^7.29.0", "ast-kit": "^2.2.0", "defu": "^6.1.4", "magic-string": "^0.30.21", "pathe": "^2.0.3", "picomatch": "^4.0.4", "tinyest": "~0.3.4", "tinyest-for-wgsl": "~0.4.3", "unplugin": "^3.0.0" }, "peerDependencies": { "typegpu": "^0.12.8" } }, "sha512-hWHthjumJHbYcbIGE2XCSJVq3YFBolEc9V05TgjmlXbef38MnNhonmzkuWAA3ENUX+MxoVOcYS2mHppfm56Nqw=="],
+    "unplugin-typegpu": ["unplugin-typegpu@0.12.7", "", { "dependencies": { "@babel/parser": "^7.29.0", "@babel/traverse": "^7.29.0", "@babel/types": "^7.29.0", "@jridgewell/remapping": "^2.3.5", "ast-kit": "^2.2.0", "defu": "^6.1.4", "magic-string": "^0.30.21", "pathe": "^2.0.3", "picomatch": "^4.0.4", "tinyest": "~0.3.4", "tinyest-for-wgsl": "~0.4.3", "unplugin": "^3.0.0" }, "peerDependencies": { "typegpu": "^0.12.9" } }, "sha512-qwR4ZkQ4DTs3wWLow+BrK+vkv+0f4lT43C4dwqJxxJWt9yzEtemMebOGA9MKc89+OoBixrPhAF4GSFoxJYFRgQ=="],
 
     "unstorage": ["unstorage@2.0.0-alpha.11", "", {}, "sha512-4rDO/NjgnkbVvWAPpxugX7YI/xVpC74NLrmAbH6I0D4hcSVq/1m5q2pSfQjP/ABs+7EsRtP/ZjyYMD9bEBgeTw=="],
 

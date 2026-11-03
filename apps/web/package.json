@@ -94,7 +94,7 @@
     "@webgpu/types": "^0.1.74",
     "babel-plugin-react-compiler": "1.0.0",
     "typescript": "7.0.2",
-    "unplugin-typegpu": "0.12.6"
+    "unplugin-typegpu": "0.12.7"
   },
   "engines": {
     "node": ">=24"
