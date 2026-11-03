@@ -46,3 +46,9 @@ storybook-static
 .beads-credential-key
 .beads/proxieddb/
 *.gate.lock*
+
+.beads/*
+!.beads/identity.toml
+.agents/skills/.gc-skill-ownership.json
+.agents/skills/core.gc-*
+.agents/skills/gc.mayor
