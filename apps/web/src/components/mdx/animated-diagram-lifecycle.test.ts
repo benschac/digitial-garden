@@ -6,10 +6,10 @@ import { FetchHttpClient } from "effect/http";
 
 import {
   loadDiagramDocument,
-  mountAnimatedDiagram,
+  createAnimatedDiagramMount,
 } from "./animated-diagram-lifecycle";
 
-const pendingDisposals = new Set();
+const pendingDisposals = new Set<() => void>();
 
 afterEach(() => {
   for (const dispose of pendingDisposals) {
@@ -30,33 +30,47 @@ const createFixture = ({
   failObserver = false,
 } = {}) => {
   const controller = new AbortController();
-  const events = [];
-  const statuses = [];
-  const players = [];
-  const buttons = [{ attributes: new Map(), title: "Play" }];
+  const events: string[] = [];
+  const statuses: string[] = [];
+  const players: Player[] = [];
+  const buttons = [{ attributes: new Map<string, string>(), title: "Play" }];
   const doc = { elements: code ? [{ type: "code" }] : [] };
-  let labelControls;
+
+  type Document = typeof doc;
+
+  let labelControls: (() => void) | undefined;
 
   const root = {
     querySelector: () => ({}),
-    querySelectorAll: (selector) =>
+    querySelectorAll: (selector: string) =>
       selector === "button[title]"
         ? buttons.map((button) => ({
             ...button,
-            setAttribute: (key, value) => button.attributes.set(key, value),
+            setAttribute: (key: string, value: string) => {
+              button.attributes.set(key, value);
+            },
           }))
-        : [{}],
+        : buttons.map((button) => ({
+            ...button,
+            setAttribute: (key: string, value: string) => {
+              button.attributes.set(key, value);
+            },
+          })),
   };
 
   class Player {
-    attributes = new Map();
+    document: Document = { elements: [] };
+    className = "";
+    figStyle = {};
+    removed = false;
+    attributes = new Map<string, string>();
     shadowRoot = root;
 
     constructor() {
       players.push(this);
     }
 
-    setAttribute(key, value) {
+    setAttribute(key: string, value: string) {
       this.attributes.set(key, value);
     }
 
@@ -64,7 +78,7 @@ const createFixture = ({
       return this.document;
     }
 
-    set doc(value) {
+    set doc(value: Document) {
       if (failDocument) {
         throw new Error("Invalid Giotto document");
       }
@@ -79,20 +93,24 @@ const createFixture = ({
   }
 
   const highlighting = {
-    getArticleCodeTokenizer: () => Promise.resolve(() => []),
+    getArticleCodeTokenizer: async () => await Promise.try(() => () => []),
     highlightDiagramCode: () => {
       events.push("start highlighting");
 
-      return () => events.push("stop highlighting");
+      return () => {
+        events.push("stop highlighting");
+      };
     },
   };
 
   const dependencies = {
-    createControlsObserver: (listener) => {
+    createControlsObserver: (listener: () => void) => {
       labelControls = listener;
 
       return {
-        disconnect: () => events.push("disconnect controls"),
+        disconnect: () => {
+          events.push("disconnect controls");
+        },
         observe: () => {
           events.push("observe controls");
 
@@ -103,19 +121,25 @@ const createFixture = ({
       };
     },
     loadDocument: () => Effect.succeed(doc),
-    loadHighlighting: () => Promise.resolve(highlighting),
-    loadPlayer: () => Promise.resolve({ GiottoPlayer: Player }),
+    loadHighlighting: async () => await Promise.try(() => highlighting),
+    loadPlayer: async () => await Promise.try(() => ({ GiottoPlayer: Player })),
   };
 
   const options = {
     autoplay: true,
     captionId: "diagram-caption",
-    container: { append: () => events.push("append player") },
-    onStatus: (status) => statuses.push(status),
+    container: {
+      append: () => {
+        events.push("append player");
+      },
+    },
+    onStatus: (status: string) => {
+      statuses.push(status);
+    },
     playerClassName: "article-player",
     signal: controller.signal,
     src: "/diagrams/example.json",
-    theme: "dark",
+    theme: "dark" as const,
   };
 
   return {
@@ -129,7 +153,7 @@ const createFixture = ({
     options,
     players,
     start() {
-      const dispose = mountAnimatedDiagram(options, dependencies);
+      const dispose = createAnimatedDiagramMount(dependencies)(options);
       pendingDisposals.add(dispose);
 
       return dispose;
@@ -144,8 +168,10 @@ test("keeps player and observers alive after setup, then disposes each exactly o
   await flush();
 
   expect(fixture.statuses.at(-1)).toBe("");
-  expect(fixture.events.toSorted()).toEqual(
-    ["append player", "observe controls", "start highlighting"].toSorted()
+  expect(fixture.events.toSorted((a, b) => a.localeCompare(b))).toEqual(
+    ["append player", "observe controls", "start highlighting"].toSorted(
+      (a, b) => a.localeCompare(b)
+    )
   );
   expect(fixture.players[0].document).toEqual(fixture.doc);
   expect(fixture.players[0].attributes.get("aria-describedby")).toBe(
@@ -158,8 +184,12 @@ test("keeps player and observers alive after setup, then disposes each exactly o
   dispose();
   await flush();
 
-  expect(fixture.events.slice(setupEventCount).toSorted()).toEqual(
-    ["stop highlighting", "disconnect controls", "remove player"].toSorted()
+  expect(
+    fixture.events.slice(setupEventCount).toSorted((a, b) => a.localeCompare(b))
+  ).toEqual(
+    ["stop highlighting", "disconnect controls", "remove player"].toSorted(
+      (a, b) => a.localeCompare(b)
+    )
   );
   fixture.buttons[0].attributes.clear();
   fixture.labelControls();
@@ -174,22 +204,34 @@ for (const phase of [
 ]) {
   test(`cancellation during ${phase} blocks late DOM and status publication`, async () => {
     const fixture = createFixture();
-    const pending = Promise.withResolvers();
+    const pending = Promise.withResolvers<undefined>();
 
     if (phase === "player import") {
       const loaded = await fixture.dependencies.loadPlayer();
-      fixture.dependencies.loadPlayer = () => pending.promise;
-      pending.value = loaded;
+      fixture.dependencies.loadPlayer = async () => {
+        await pending.promise;
+
+        return loaded;
+      };
     } else if (phase === "document") {
       fixture.dependencies.loadDocument = () =>
-        Effect.promise(() => pending.promise);
-      pending.value = fixture.doc;
+        Effect.promise(async () => {
+          await pending.promise;
+
+          return fixture.doc;
+        });
     } else if (phase === "highlight import") {
-      fixture.dependencies.loadHighlighting = () => pending.promise;
-      pending.value = fixture.highlighting;
+      fixture.dependencies.loadHighlighting = async () => {
+        await pending.promise;
+
+        return fixture.highlighting;
+      };
     } else {
-      fixture.highlighting.getArticleCodeTokenizer = () => pending.promise;
-      pending.value = () => [];
+      fixture.highlighting.getArticleCodeTokenizer = async () => {
+        await pending.promise;
+
+        return () => [];
+      };
     }
 
     const dispose = fixture.start();
@@ -200,7 +242,7 @@ for (const phase of [
     const statuses = [...fixture.statuses];
     const events = [...fixture.events];
 
-    pending.resolve(pending.value);
+    pending.resolve(undefined);
     await flush();
 
     expect(fixture.statuses).toEqual(statuses);
@@ -211,8 +253,10 @@ for (const phase of [
       expect(fixture.players).toHaveLength(0);
       expect(events).not.toContain("append player");
     } else {
-      expect(events.slice(-2).toSorted()).toEqual(
-        ["disconnect controls", "remove player"].toSorted()
+      expect(events.slice(-2).toSorted((a, b) => a.localeCompare(b))).toEqual(
+        ["disconnect controls", "remove player"].toSorted((a, b) =>
+          a.localeCompare(b)
+        )
       );
     }
   });
@@ -233,32 +277,36 @@ test("releases partial observer setup before publishing the failure fallback", a
   await flush();
   dispose();
 
-  expect(fixture.events.toSorted()).toEqual(
+  expect(fixture.events.toSorted((a, b) => a.localeCompare(b))).toEqual(
     [
       "append player",
       "observe controls",
       "disconnect controls",
       "remove player",
-    ].toSorted()
+    ].toSorted((a, b) => a.localeCompare(b))
   );
   expect(fixture.statuses.at(-1)).toMatch(/unavailable/iu);
 });
 
 test("highlighting failure retains the usable player until unmount", async () => {
   const fixture = createFixture();
-  fixture.highlighting.getArticleCodeTokenizer = () =>
-    Promise.reject(new Error("Optional highlighting unavailable"));
+  fixture.highlighting.getArticleCodeTokenizer = async () =>
+    await Promise.reject(new Error("Optional highlighting unavailable"));
   const dispose = fixture.start();
   await flush();
 
   expect(fixture.statuses.at(-1)).toBe("");
-  expect(fixture.events.toSorted()).toEqual(
-    ["append player", "observe controls"].toSorted()
+  expect(fixture.events.toSorted((a, b) => a.localeCompare(b))).toEqual(
+    ["append player", "observe controls"].toSorted((a, b) => a.localeCompare(b))
   );
   dispose();
   await flush();
-  expect(fixture.events.slice(-2).toSorted()).toEqual(
-    ["disconnect controls", "remove player"].toSorted()
+  expect(
+    fixture.events.slice(-2).toSorted((a, b) => a.localeCompare(b))
+  ).toEqual(
+    ["disconnect controls", "remove player"].toSorted((a, b) =>
+      a.localeCompare(b)
+    )
   );
 });
 
@@ -268,7 +316,9 @@ test("cancellation during highlighting acquisition still owns its returned clean
     fixture.events.push("start highlighting");
     fixture.controller.abort();
 
-    return () => fixture.events.push("stop highlighting");
+    return () => {
+      fixture.events.push("stop highlighting");
+    };
   };
 
   const dispose = fixture.start();
@@ -276,7 +326,7 @@ test("cancellation during highlighting acquisition still owns its returned clean
   dispose();
   await flush();
 
-  expect(fixture.events.toSorted()).toEqual(
+  expect(fixture.events.toSorted((a, b) => a.localeCompare(b))).toEqual(
     [
       "append player",
       "observe controls",
@@ -284,16 +334,21 @@ test("cancellation during highlighting acquisition still owns its returned clean
       "stop highlighting",
       "disconnect controls",
       "remove player",
-    ].toSorted()
+    ].toSorted((a, b) => a.localeCompare(b))
   );
   expect(fixture.statuses.at(-1)).toBe("");
 });
 
 test("Strict Mode replay lets only the current activation mount", async () => {
   const first = createFixture({ code: false });
-  const pending = Promise.withResolvers();
+
+  const pending =
+    Promise.withResolvers<
+      Awaited<ReturnType<typeof first.dependencies.loadPlayer>>
+    >();
+
   const loaded = await first.dependencies.loadPlayer();
-  first.dependencies.loadPlayer = () => pending.promise;
+  first.dependencies.loadPlayer = async () => await pending.promise;
   const disposeFirst = first.start();
   first.controller.abort();
   disposeFirst();
@@ -306,13 +361,17 @@ test("Strict Mode replay lets only the current activation mount", async () => {
 
   expect(first.players).toHaveLength(0);
   expect(first.statuses).toHaveLength(1);
-  expect(second.events.toSorted()).toEqual(
-    ["append player", "observe controls"].toSorted()
+  expect(second.events.toSorted((a, b) => a.localeCompare(b))).toEqual(
+    ["append player", "observe controls"].toSorted((a, b) => a.localeCompare(b))
   );
   disposeSecond();
   await flush();
-  expect(second.events.slice(-2).toSorted()).toEqual(
-    ["disconnect controls", "remove player"].toSorted()
+  expect(
+    second.events.slice(-2).toSorted((a, b) => a.localeCompare(b))
+  ).toEqual(
+    ["disconnect controls", "remove player"].toSorted((a, b) =>
+      a.localeCompare(b)
+    )
   );
 });
 
@@ -327,8 +386,14 @@ test("rejects paths outside the repository diagram allowlist before loading", as
   expect(fixture.statuses.at(-1)).toMatch(/unavailable/iu);
 });
 
-const loadWithFetch = (fetch, signal) =>
-  Effect.runPromiseExit(
+const loadWithFetch = async (
+  fetch: (
+    input: Parameters<typeof globalThis.fetch>[0],
+    options?: RequestInit
+  ) => Promise<Response>,
+  signal?: AbortSignal
+) =>
+  await Effect.runPromiseExit(
     loadDiagramDocument("https://example.test/diagrams/example.json").pipe(
       Effect.provideService(FetchHttpClient.Fetch, fetch)
     ),
@@ -338,8 +403,8 @@ const loadWithFetch = (fetch, signal) =>
 test("HTTP loading preserves Giotto fields", async () => {
   const document = { custom: true, elements: [], scenes: [{ title: "Scene" }] };
 
-  const success = await loadWithFetch(() =>
-    Promise.resolve(Response.json(document))
+  const success = await loadWithFetch(
+    async () => await Promise.try(() => Response.json(document))
   );
 
   expect(Exit.isSuccess(success) && success.value).toEqual(document);
@@ -349,9 +414,12 @@ for (const [name, response] of [
   ["non-2xx status", new Response("unavailable", { status: 503 })],
   ["malformed JSON", new Response("invalid JSON")],
   ["invalid document", Response.json({ elements: "invalid" })],
-]) {
+] as const) {
   test(`HTTP loading rejects ${name}`, async () => {
-    const failure = await loadWithFetch(() => Promise.resolve(response));
+    const failure = await loadWithFetch(
+      async () => await Promise.try(() => response)
+    );
+
     expect(Exit.isFailure(failure)).toBe(true);
   });
 }
@@ -359,37 +427,37 @@ for (const [name, response] of [
 for (const phase of ["fetch", "body"]) {
   test(`HTTP cancellation aborts pending ${phase}`, async () => {
     const controller = new AbortController();
-    const started = Promise.withResolvers();
-    const pending = Promise.withResolvers();
-    let requestSignal;
+    const started = Promise.withResolvers<undefined>();
+    const pendingFetch = Promise.withResolvers<Response>();
+    const pendingBody = Promise.withResolvers<ArrayBuffer>();
+    let requestSignal: AbortSignal | null | undefined;
 
-    const result = loadWithFetch((_url, options) => {
-      requestSignal = options.signal;
+    const result = loadWithFetch(async (_url, options) => {
+      requestSignal = options?.signal;
 
       if (phase === "fetch") {
-        started.resolve();
+        started.resolve(undefined);
 
-        return pending.promise;
+        return await pendingFetch.promise;
       }
 
       const response = new Response("");
-      response.arrayBuffer = () => {
-        started.resolve();
+      response.arrayBuffer = async () => {
+        started.resolve(undefined);
 
-        return pending.promise;
+        return await pendingBody.promise;
       };
 
-      return Promise.resolve(response);
+      return response;
     }, controller.signal);
 
     await started.promise;
     controller.abort();
 
     expect(Exit.isFailure(await result)).toBe(true);
-    expect(requestSignal.aborted).toBe(true);
-    pending.resolve(
-      phase === "fetch" ? Response.json({ elements: [] }) : new ArrayBuffer(0)
-    );
+    expect(requestSignal?.aborted).toBe(true);
+    pendingFetch.resolve(Response.json({ elements: [] }));
+    pendingBody.resolve(new ArrayBuffer(0));
     await flush();
   });
 }

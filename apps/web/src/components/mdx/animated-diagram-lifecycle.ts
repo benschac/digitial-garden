@@ -3,10 +3,7 @@ import { FetchHttpClient, HttpClient, HttpClientResponse } from "effect/http";
 import type { GiottoPlayer } from "giotto/player";
 
 import { articleCodeTheme } from "./article-code-theme";
-import type {
-  getArticleCodeTokenizer,
-  highlightDiagramCode,
-} from "./article-code-theme";
+import type { getArticleCodeTokenizer } from "./article-code-theme";
 
 const diagramDocumentSchema = Schema.StructWithRest(
   Schema.Struct({ elements: Schema.Array(Schema.Unknown) }),
@@ -30,10 +27,29 @@ export const loadDiagramDocument = Effect.fnUntraced(function* loadDocument(
     );
 }, Effect.provide(FetchHttpClient.layer));
 
-interface DiagramMount {
+interface DiagramRoot<Control, Svg> {
+  querySelector: (selector: "svg") => Svg | null;
+  querySelectorAll: {
+    (
+      selector: "button[title]"
+    ): Iterable<Pick<HTMLButtonElement, "title" | "setAttribute">>;
+    (selector: '[part="controls"]'): Iterable<Control>;
+  };
+}
+
+interface DiagramPlayer<Control, Svg> {
+  shadowRoot: DiagramRoot<Control, Svg> | null;
+  className: string;
+  doc: object;
+  figStyle: GiottoPlayer["figStyle"];
+  setAttribute: (name: string, value: string) => void;
+  remove: () => void;
+}
+
+interface DiagramMount<Player = GiottoPlayer> {
   autoplay: boolean;
   captionId: string;
-  container: HTMLDivElement;
+  container: { append: (player: Player) => void };
   onStatus: (status: string) => void;
   playerClassName: string;
   signal: AbortSignal;
@@ -41,30 +57,46 @@ interface DiagramMount {
   theme?: "light" | "dark";
 }
 
-interface DiagramDependencies {
-  createControlsObserver: (
-    listener: () => void
-  ) => Pick<MutationObserver, "observe" | "disconnect">;
+export interface DiagramDependencies<
+  Control = Node,
+  Svg = SVGElement,
+  Player extends DiagramPlayer<Control, Svg> = DiagramPlayer<Control, Svg>,
+> {
+  createControlsObserver: (listener: () => void) => {
+    observe: (control: Control, options: MutationObserverInit) => void;
+    disconnect: () => void;
+  };
   loadDocument: (
     src: string
-  ) => Effect.Effect<typeof diagramDocumentSchema.Type, unknown>;
+  ) => Effect.Effect<
+    typeof diagramDocumentSchema.Type,
+    Effect.Error<ReturnType<typeof loadDiagramDocument>>
+  >;
   loadHighlighting: () => Promise<{
     getArticleCodeTokenizer: typeof getArticleCodeTokenizer;
-    highlightDiagramCode: typeof highlightDiagramCode;
+    highlightDiagramCode: (
+      svg: Svg,
+      tokenize: Awaited<ReturnType<typeof getArticleCodeTokenizer>>
+    ) => () => void;
   }>;
-  loadPlayer: () => Promise<{ GiottoPlayer: typeof GiottoPlayer }>;
+  loadPlayer: () => Promise<{ GiottoPlayer: new () => Player }>;
 }
 
-const browserDependencies: DiagramDependencies = {
-  createControlsObserver: (listener) => new MutationObserver(listener),
+const browserDependencies = {
+  createControlsObserver: (listener: () => void) =>
+    new MutationObserver(listener),
   loadDocument: loadDiagramDocument,
-  loadHighlighting: () => import("./article-code-theme"),
-  loadPlayer: () => import("giotto/player"),
-};
+  loadHighlighting: async () => await import("./article-code-theme"),
+  loadPlayer: async () => await import("giotto/player"),
+} satisfies DiagramDependencies;
 
-const diagramLifetime = Effect.fnUntraced(function* runDiagramLifetime(
-  options: DiagramMount,
-  dependencies: DiagramDependencies,
+const diagramLifetime = Effect.fnUntraced(function* runDiagramLifetime<
+  Control,
+  Svg,
+  Player extends DiagramPlayer<Control, Svg>,
+>(
+  options: DiagramMount<Player>,
+  dependencies: DiagramDependencies<Control, Svg, Player>,
   isActive: () => boolean
 ) {
   const {
@@ -97,7 +129,10 @@ const diagramLifetime = Effect.fnUntraced(function* runDiagramLifetime(
 
   const element = yield* Effect.acquireRelease(
     Effect.sync(() => new module.GiottoPlayer()),
-    (player) => Effect.sync(() => player.remove())
+    (player) =>
+      Effect.sync(() => {
+        player.remove();
+      })
   );
 
   yield* Effect.sync(() => {
@@ -134,9 +169,7 @@ const diagramLifetime = Effect.fnUntraced(function* runDiagramLifetime(
       return;
     }
 
-    for (const button of root?.querySelectorAll<HTMLButtonElement>(
-      "button[title]"
-    ) ?? []) {
+    for (const button of root?.querySelectorAll("button[title]") ?? []) {
       button.setAttribute("aria-label", button.title);
     }
   };
@@ -146,7 +179,10 @@ const diagramLifetime = Effect.fnUntraced(function* runDiagramLifetime(
   if (root) {
     const observer = yield* Effect.acquireRelease(
       Effect.sync(() => dependencies.createControlsObserver(labelControls)),
-      (resource) => Effect.sync(() => resource.disconnect())
+      (resource) =>
+        Effect.sync(() => {
+          resource.disconnect();
+        })
     );
 
     yield* Effect.sync(() => {
@@ -170,52 +206,61 @@ const diagramLifetime = Effect.fnUntraced(function* runDiagramLifetime(
       const tokenize = yield* Effect.tryPromise(getArticleCodeTokenizer);
 
       yield* Effect.acquireRelease(
-        Effect.sync(() => {
+        Effect.sync((): ReturnType<typeof highlightDiagramCode> | undefined => {
           if (!isActive()) {
-            return;
+            return undefined;
           }
 
           const svg = root?.querySelector("svg");
 
-          return svg ? highlightDiagramCode(svg, tokenize) : undefined;
+          return svg === null || svg === undefined
+            ? undefined
+            : highlightDiagramCode(svg, tokenize);
         }),
         (stopHighlighting) => Effect.sync(() => stopHighlighting?.())
       );
     }).pipe(
-      Effect.catchCause((cause) =>
-        Cause.hasInterrupts(cause) ? Effect.failCause(cause) : Effect.void
+      Effect.catchCauseIf(
+        (cause) => !Cause.hasInterrupts(cause),
+        () => Effect.void
       )
     );
   }
 
-  yield* Effect.never;
+  return yield* Effect.never;
 });
+
+export const createAnimatedDiagramMount =
+  <Control, Svg, Player extends DiagramPlayer<Control, Svg>>(
+    dependencies: DiagramDependencies<Control, Svg, Player>
+  ) =>
+  (options: DiagramMount<Player>) => {
+    let disposed = false;
+    const isActive = () => !disposed && !options.signal.aborted;
+
+    const fiber = Effect.runFork(
+      diagramLifetime(options, dependencies, isActive).pipe(
+        Effect.scoped,
+        Effect.catchCause((cause) =>
+          Effect.sync(() => {
+            if (isActive() && !Cause.hasInterrupts(cause)) {
+              options.onStatus(
+                "Animation unavailable. Read the description below."
+              );
+            }
+          })
+        )
+      ),
+      { signal: options.signal }
+    );
+
+    return () => {
+      disposed = true;
+      fiber.interruptUnsafe();
+    };
+  };
 
 export const mountAnimatedDiagram = (
   options: DiagramMount,
-  dependencies: DiagramDependencies = browserDependencies
-) => {
-  let disposed = false;
-  const isActive = () => !disposed && !options.signal.aborted;
-
-  const fiber = Effect.runFork(
-    diagramLifetime(options, dependencies, isActive).pipe(
-      Effect.scoped,
-      Effect.catchCause((cause) =>
-        Effect.sync(() => {
-          if (isActive() && !Cause.hasInterrupts(cause)) {
-            options.onStatus(
-              "Animation unavailable. Read the description below."
-            );
-          }
-        })
-      )
-    ),
-    { signal: options.signal }
-  );
-
-  return () => {
-    disposed = true;
-    fiber.interruptUnsafe();
-  };
-};
+  dependencies = browserDependencies
+) => createAnimatedDiagramMount(dependencies)(options);

@@ -2,6 +2,7 @@
 
 import { useAbortController, useMediaQuery } from "@personal-site/react-hooks";
 import { cn } from "@personal-site/ui/lib/utils";
+import type { EffectCallback } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { mountAnimatedDiagram } from "./animated-diagram-lifecycle";
@@ -38,7 +39,7 @@ export const AnimatedDiagram = ({
 
   // src/theme changes must restart initialization; useAbortableEffect deliberately
   // does not track callback dependencies. This shared controller cancels each run.
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     const container = host.current;
 
     if (!container || reducedMotion !== false) {
@@ -74,9 +75,9 @@ export const AnimatedDiagram = ({
     >
       <div className={styles.title}>{title}</div>
       <div ref={host} />
-      {reducedMotion || status ? (
+      {reducedMotion === true || Boolean(status) ? (
         <output className={cn(styles.status, "block")}>
-          {reducedMotion
+          {reducedMotion === true
             ? "Static description shown because reduced motion is enabled."
             : status}
         </output>

@@ -54,10 +54,10 @@ const initializeArticleCodeTokenizer = async (): Promise<Tokenize> => {
   }
 };
 
-export const getArticleCodeTokenizer = (): Promise<Tokenize> => {
+export const getArticleCodeTokenizer = async (): Promise<Tokenize> => {
   tokenizer ??= initializeArticleCodeTokenizer();
 
-  return tokenizer;
+  return await tokenizer;
 };
 
 /** Giotto redraws its SVG each frame; observe only top-level replacements. */
@@ -71,7 +71,7 @@ export const highlightDiagramCode = (svg: SVGElement, tokenize: Tokenize) => {
 
       if (!fragment) {
         fragment = document.createDocumentFragment();
-        const prefix = source.match(/^[▶ ]+\d+\s+/u)?.[0] ?? "";
+        const prefix = /^[▶ ]+\d+\s+/u.exec(source)?.[0] ?? "";
 
         if (prefix) {
           const number = document.createElementNS(svg.namespaceURI, "tspan");
@@ -100,5 +100,7 @@ export const highlightDiagramCode = (svg: SVGElement, tokenize: Tokenize) => {
   const observer = new MutationObserver(highlight);
   observer.observe(svg, { childList: true });
 
-  return () => observer.disconnect();
+  return () => {
+    observer.disconnect();
+  };
 };
