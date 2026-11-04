@@ -44,10 +44,14 @@ export const createWetInkTextureSlot = <T>(
         const previous = current;
 
         if (!closed && previous) {
-          Result.try(() => restore(previous.value));
+          Result.try(() => {
+            restore(previous.value);
+          });
         }
 
-        Result.try(() => candidateOwner.close());
+        Result.try(() => {
+          candidateOwner.close();
+        });
         throw error;
       }
 
@@ -72,9 +76,16 @@ export const withWetInkResources = async <T extends object>(
     const renderer = await create(owner);
     signal.throwIfAborted();
 
-    return { ...renderer, destroy: () => owner.close() };
+    return {
+      ...renderer,
+      destroy: () => {
+        owner.close();
+      },
+    };
   } catch (error) {
-    Result.try(() => owner.close());
+    Result.try(() => {
+      owner.close();
+    });
 
     if (signal.aborted) {
       return null;

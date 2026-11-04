@@ -9,8 +9,8 @@ import {
   useWindowEvent,
 } from "@personal-site/react-hooks";
 import { useMotionValueEvent, useSpring } from "motion/react";
+import type { EffectCallback, PointerEvent } from "react";
 import { useEffect, useRef, useState } from "react";
-import type { PointerEvent } from "react";
 
 import type { createWetInkRenderer } from "./wet-ink-renderer";
 
@@ -20,7 +20,7 @@ const interactionQuery =
 const spring = { bounce: 0, duration: 0.3 };
 export const inkFadeOutMs = 500;
 
-const loadWetInkRenderer = () => import("./wet-ink-renderer");
+const loadWetInkRenderer = async () => await import("./wet-ink-renderer");
 
 export const useWetInk = <T extends HTMLSpanElement>(
   fadeOutMs = inkFadeOutMs
@@ -119,11 +119,11 @@ export const useWetInk = <T extends HTMLSpanElement>(
     interactionEnabled
   );
 
-  useAbortableEffect((signal) => {
+  useAbortableEffect((signal): ReturnType<EffectCallback> => {
     const element = ink.current;
     const target = canvas.current;
 
-    if (!element || !target || !navigator.gpu) {
+    if (!element || !target || navigator.gpu == null) {
       return;
     }
 
@@ -155,7 +155,7 @@ export const useWetInk = <T extends HTMLSpanElement>(
       }
     };
 
-    initialize();
+    void initialize();
 
     return () => {
       cancelFrame();
@@ -164,7 +164,7 @@ export const useWetInk = <T extends HTMLSpanElement>(
     };
   }, interactionEnabled);
 
-  const moveInk = (event: PointerEvent<Element>) => {
+  const moveInk = (event: PointerEvent) => {
     if (event.pointerType !== "mouse" || !enabled.current) {
       return;
     }
@@ -181,7 +181,10 @@ export const useWetInk = <T extends HTMLSpanElement>(
     const paintedY = event.clientY - bounds.top;
 
     if (
-      !ink.current?.dataset.inkActive &&
+      !(
+        ink.current?.dataset.inkActive != null &&
+        ink.current?.dataset.inkActive !== ""
+      ) &&
       performance.now() - lastExit.current > fadeOutMs
     ) {
       lightX.jump(nextX);

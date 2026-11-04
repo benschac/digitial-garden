@@ -15,18 +15,20 @@ interface TextMask {
   fontSize: number;
 }
 
-export const createWetInkRenderer = (
+export const createWetInkRenderer = async (
   canvas: HTMLCanvasElement,
   text: HTMLSpanElement,
   signal: AbortSignal
 ) =>
-  withWetInkResources(signal, async (owner) => {
+  await withWetInkResources(signal, async (owner) => {
     await document.fonts.ready;
     signal.throwIfAborted();
 
     const gpu = await owner.acquirePromise(
-      () => init(),
-      (resource) => resource.dispose()
+      async () => await init(),
+      (resource) => {
+        resource.dispose();
+      }
     );
 
     const drawingSurface = owner.acquire(
@@ -36,7 +38,9 @@ export const createWetInkRenderer = (
           autoResize: false,
           size: [1, 1],
         }),
-      (resource) => resource.dispose()
+      (resource) => {
+        resource.dispose();
+      }
     );
 
     const shader = owner.acquire(
@@ -48,15 +52,17 @@ export const createWetInkRenderer = (
             linear: sampler(gpu, { magFilter: "linear", minFilter: "linear" }),
           },
         }),
-      (resource) => resource.dispose()
+      (resource) => {
+        resource.dispose();
+      }
     );
 
     await shader.compile(drawingSurface);
     signal.throwIfAborted();
 
-    const texture = createWetInkTextureSlot<TextMask>(owner, (resource) =>
-      resource.texture.destroy()
-    );
+    const texture = createWetInkTextureSlot<TextMask>(owner, (resource) => {
+      resource.texture.destroy();
+    });
 
     const bind = (resource: TextMask) => {
       drawingSurface.resize([resource.texture.width, resource.texture.height]);
@@ -169,9 +175,9 @@ export const createWetInkRenderer = (
     return {
       render(x: number, y: number, strength: number) {
         shader.set({ light: { position: [x, y], strength } });
-        frame(gpu, (current) =>
-          current.pass({ clear: [0, 0, 0, 0], target: drawingSurface }, shader)
-        );
+        frame(gpu, (current) => {
+          current.pass({ clear: [0, 0, 0, 0], target: drawingSurface }, shader);
+        });
       },
       resize,
     };

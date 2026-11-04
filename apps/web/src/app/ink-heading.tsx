@@ -5,12 +5,13 @@ import { inkGrainTexture } from "./ink-grain";
 
 import styles from "./ink-heading.module.css";
 
+const inkStyle: CSSProperties & Record<`--${string}`, string> = {
+  "--ink-grain": `url("${inkGrainTexture}")`,
+};
+
 export const InkHeading = ({ className }: { className?: string }) => (
   <h1 className={cn("relative", className)}>
-    <span
-      className={styles.flatInk}
-      style={{ "--ink-grain": `url("${inkGrainTexture}")` } as CSSProperties}
-    >
+    <span className={styles.flatInk} style={inkStyle}>
       Benjamin Schachter
     </span>
   </h1>

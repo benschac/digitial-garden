@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
 
 import { createRendererScope } from "./experiments/wasm-canvas/renderer-lifecycle";
 import {
@@ -12,10 +13,10 @@ describe("wet ink initialization ownership", () => {
     controller.abort();
     let started = false;
 
-    const renderer = await withWetInkResources(controller.signal, () => {
+    const renderer = await withWetInkResources(controller.signal, async () => {
       started = true;
 
-      return Promise.resolve({});
+      return await Promise.resolve({});
     });
 
     expect(renderer).toBeNull();
@@ -25,7 +26,7 @@ describe("wet ink initialization ownership", () => {
   test("a font failure prevents GPU acquisition", async () => {
     const failure = new Error("Fonts unavailable");
     const acquired: string[] = [];
-    await expect(
+    await assert.rejects(
       withWetInkResources(new AbortController().signal, async (owner) => {
         await Promise.reject(failure);
         owner.acquire(
@@ -34,15 +35,16 @@ describe("wet ink initialization ownership", () => {
         );
 
         return {};
-      })
-    ).rejects.toBe(failure);
+      }),
+      (error) => error === failure
+    );
     expect(acquired).toEqual([]);
   });
 
   for (const stage of ["gpu", "surface", "shader", "compile", "resize"]) {
     test(`releases earlier allocations when ${stage} fails`, async () => {
       const released: string[] = [];
-      await expect(
+      await assert.rejects(
         withWetInkResources(new AbortController().signal, async (owner) => {
           for (const allocation of ["gpu", "surface", "shader"]) {
             owner.acquire(
@@ -53,7 +55,9 @@ describe("wet ink initialization ownership", () => {
 
                 return allocation;
               },
-              (resource) => released.push(resource)
+              (resource) => {
+                released.push(resource);
+              }
             );
           }
 
@@ -61,9 +65,9 @@ describe("wet ink initialization ownership", () => {
             await Promise.reject(new Error("compile failed"));
           }
 
-          const texture = createWetInkTextureSlot<string>(owner, (resource) =>
-            released.push(resource)
-          );
+          const texture = createWetInkTextureSlot<string>(owner, (resource) => {
+            released.push(resource);
+          });
 
           texture.replace(
             () => "texture",
@@ -74,8 +78,10 @@ describe("wet ink initialization ownership", () => {
           );
 
           return {};
-        })
-      ).rejects.toThrow(`${stage} failed`);
+        }),
+        (error) =>
+          error instanceof Error && error.message.includes(`${stage} failed`)
+      );
       const acquired = ["gpu", "surface", "shader", "texture"];
       const count = stage === "compile" ? 3 : acquired.indexOf(stage);
       expect(released).toEqual(
@@ -89,17 +95,19 @@ describe("wet ink initialization ownership", () => {
 
     const renderer = await withWetInkResources(
       new AbortController().signal,
-      (owner) => {
+      async (owner) => {
         for (const resource of ["gpu", "surface", "shader"]) {
           owner.acquire(
             () => resource,
-            (value) => released.push(value)
+            (value) => {
+              released.push(value);
+            }
           );
         }
 
-        const texture = createWetInkTextureSlot<string>(owner, (value) =>
-          released.push(value)
-        );
+        const texture = createWetInkTextureSlot<string>(owner, (value) => {
+          released.push(value);
+        });
 
         texture.replace(
           () => "texture",
@@ -107,7 +115,7 @@ describe("wet ink initialization ownership", () => {
           () => {}
         );
 
-        return Promise.resolve({ render: () => "drawn" });
+        return await Promise.resolve({ render: () => "drawn" });
       }
     );
 
@@ -129,12 +137,14 @@ describe("wet ink initialization ownership", () => {
       controller.signal,
       async (owner) => {
         await owner.acquirePromise(
-          () => {
+          async () => {
             started.resolve(undefined);
 
-            return gpu.promise;
+            return await gpu.promise;
           },
-          (resource) => released.push(resource)
+          (resource) => {
+            released.push(resource);
+          }
         );
         surfaceStarted = true;
 
@@ -163,7 +173,9 @@ describe("wet ink initialization ownership", () => {
         for (const resource of ["gpu", "surface", "shader"]) {
           owner.acquire(
             () => resource,
-            (value) => released.push(value)
+            (value) => {
+              released.push(value);
+            }
           );
         }
 
@@ -186,8 +198,8 @@ describe("wet ink initialization ownership", () => {
   test("releases all resources when one finalizer throws and preserves setup failure", async () => {
     const released: string[] = [];
     const failure = new Error("Initial resize failed");
-    await expect(
-      withWetInkResources(new AbortController().signal, (owner) => {
+    await assert.rejects(
+      withWetInkResources(new AbortController().signal, async (owner) => {
         for (const resource of ["gpu", "surface", "shader"]) {
           owner.acquire(
             () => resource,
@@ -201,9 +213,10 @@ describe("wet ink initialization ownership", () => {
           );
         }
 
-        return Promise.reject(failure);
-      })
-    ).rejects.toBe(failure);
+        return await Promise.reject(failure);
+      }),
+      (error) => error === failure
+    );
     expect(released).toEqual(["shader", "surface", "gpu"]);
   });
 });
@@ -213,13 +226,13 @@ describe("wet ink texture replacement", () => {
     const owner = createRendererScope();
     const released: string[] = [];
 
-    const texture = createWetInkTextureSlot<string>(owner, (value) =>
-      released.push(value)
-    );
+    const texture = createWetInkTextureSlot<string>(owner, (value) => {
+      released.push(value);
+    });
 
     let prepared = false;
 
-    expect(() =>
+    expect(() => {
       texture.replace(
         () => {
           owner.close();
@@ -230,8 +243,8 @@ describe("wet ink texture replacement", () => {
           prepared = true;
         },
         () => {}
-      )
-    ).toThrow("Wet ink resources are closed.");
+      );
+    }).toThrow("Wet ink resources are closed.");
     expect(prepared).toBe(false);
     expect(released).toEqual(["candidate"]);
     owner.close();
@@ -257,7 +270,7 @@ describe("wet ink texture replacement", () => {
     );
     const failure = new Error("Preparation failed");
 
-    expect(() =>
+    expect(() => {
       texture.replace(
         () => "candidate",
         () => {
@@ -266,8 +279,8 @@ describe("wet ink texture replacement", () => {
         () => {
           throw new Error("Rollback failed");
         }
-      )
-    ).toThrow(failure);
+      );
+    }).toThrow(failure);
     expect(released).toEqual(["candidate"]);
     owner.close();
     expect(released).toEqual(["candidate", "previous"]);
@@ -277,13 +290,13 @@ describe("wet ink texture replacement", () => {
     const owner = createRendererScope();
     const released: string[] = [];
 
-    const texture = createWetInkTextureSlot<string>(owner, (value) =>
-      released.push(value)
-    );
+    const texture = createWetInkTextureSlot<string>(owner, (value) => {
+      released.push(value);
+    });
 
     let restored = false;
 
-    expect(() =>
+    expect(() => {
       texture.replace(
         () => "initial",
         () => {
@@ -292,8 +305,8 @@ describe("wet ink texture replacement", () => {
         () => {
           restored = true;
         }
-      )
-    ).toThrow("Initial binding failed");
+      );
+    }).toThrow("Initial binding failed");
     expect(released).toEqual(["initial"]);
     expect(restored).toBe(false);
     owner.close();
@@ -305,9 +318,9 @@ describe("wet ink texture replacement", () => {
       const owner = createRendererScope();
       const released: string[] = [];
 
-      const texture = createWetInkTextureSlot<string>(owner, (value) =>
-        released.push(value)
-      );
+      const texture = createWetInkTextureSlot<string>(owner, (value) => {
+        released.push(value);
+      });
 
       let bound = "none";
       let size = "none";
@@ -318,7 +331,7 @@ describe("wet ink texture replacement", () => {
       };
 
       texture.replace(() => "previous", bind, bind);
-      expect(() =>
+      expect(() => {
         texture.replace(
           () => "candidate",
           (value) => {
@@ -336,8 +349,8 @@ describe("wet ink texture replacement", () => {
             throw new Error("bind failed");
           },
           bind
-        )
-      ).toThrow(`${stage} failed`);
+        );
+      }).toThrow(`${stage} failed`);
       expect(bound).toBe("previous");
       expect(size).toBe("previous");
       expect(released).toEqual(["candidate"]);
@@ -350,14 +363,16 @@ describe("wet ink texture replacement", () => {
     const owner = createRendererScope();
     const released: number[] = [];
 
-    const texture = createWetInkTextureSlot<number>(owner, (value) =>
-      released.push(value)
-    );
+    const texture = createWetInkTextureSlot<number>(owner, (value) => {
+      released.push(value);
+    });
 
     for (let index = 0; index < 20; index += 1) {
       texture.replace(
         () => index,
-        () => expect(released).not.toContain(index - 1),
+        () => {
+          expect(released).not.toContain(index - 1);
+        },
         () => {}
       );
       expect(released).toEqual(
@@ -374,9 +389,9 @@ describe("wet ink texture replacement", () => {
     const owner = createRendererScope();
     const released: string[] = [];
 
-    const texture = createWetInkTextureSlot<string>(owner, (value) =>
-      released.push(value)
-    );
+    const texture = createWetInkTextureSlot<string>(owner, (value) => {
+      released.push(value);
+    });
 
     texture.replace(
       () => "previous",
@@ -384,7 +399,7 @@ describe("wet ink texture replacement", () => {
       () => {}
     );
     const failure = new Error("Binding failed");
-    expect(() =>
+    expect(() => {
       texture.replace(
         () => "candidate",
         () => {
@@ -393,8 +408,8 @@ describe("wet ink texture replacement", () => {
         () => {
           throw new Error("Rollback failed");
         }
-      )
-    ).toThrow(failure);
+      );
+    }).toThrow(failure);
     expect(released).toEqual(["candidate"]);
     owner.close();
     expect(released).toEqual(["candidate", "previous"]);
@@ -417,13 +432,13 @@ describe("wet ink texture replacement", () => {
       () => {},
       () => {}
     );
-    expect(() =>
+    expect(() => {
       texture.replace(
         () => "candidate",
         () => {},
         () => {}
-      )
-    ).toThrow("Retirement failed");
+      );
+    }).toThrow("Retirement failed");
     expect(released).toEqual(["previous"]);
     owner.close();
     owner.close();
@@ -435,7 +450,7 @@ describe("wet ink texture replacement", () => {
     const texture = createWetInkTextureSlot<number>(owner, () => {});
     owner.close();
     let allocated = false;
-    expect(() =>
+    expect(() => {
       texture.replace(
         () => {
           allocated = true;
@@ -444,8 +459,8 @@ describe("wet ink texture replacement", () => {
         },
         () => {},
         () => {}
-      )
-    ).toThrow("Wet ink resources are closed.");
+      );
+    }).toThrow("Wet ink resources are closed.");
     expect(allocated).toBe(false);
   });
 
@@ -453,17 +468,19 @@ describe("wet ink texture replacement", () => {
     const owner = createRendererScope();
     const released: string[] = [];
 
-    const texture = createWetInkTextureSlot<string>(owner, (value) =>
-      released.push(value)
-    );
+    const texture = createWetInkTextureSlot<string>(owner, (value) => {
+      released.push(value);
+    });
 
-    expect(() =>
+    expect(() => {
       texture.replace(
         () => "candidate",
-        () => owner.close(),
+        () => {
+          owner.close();
+        },
         () => {}
-      )
-    ).toThrow("Wet ink resources are closed.");
+      );
+    }).toThrow("Wet ink resources are closed.");
     expect(released).toEqual(["candidate"]);
     owner.close();
     expect(released).toEqual(["candidate"]);
