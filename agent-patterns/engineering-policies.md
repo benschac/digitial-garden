@@ -60,7 +60,7 @@ Sources: [http-responses-need-validation](https://ratstack.sh/lore/http-response
 
 ## Preflight and resolve source content at build time
 
-For future external source snippets, pin source identity, preflight independent requests before emitting assets, tokenize full source before selecting excerpt lines, and derive rendered views from one source model. Preserve the current content pipeline until a change has a concrete owner and behavior test; do not introduce request-time source fetching.
+Source-backed blog fences use tracked, full-file snapshots captured from an exact Git commit. The content build validates snapshot identity and selections before the MDX compiler cache, highlights the full file before selecting excerpt lines, and emits the original source permalink. See [source snippet authoring](../docs/source-snippets.md) for the supported syntax and capture command. Keep snapshot inputs in content cache keys; do not introduce request-time source fetching. Additional rendered views should consume the same resolved source model.
 
 Sources: [build-time-work-stays-out-of-requests](https://ratstack.sh/lore/build-time-work-stays-out-of-requests), [code-snippets](https://ratstack.sh/lore/code-snippets), [one-snippet-model-two-renderers](https://ratstack.sh/lore/one-snippet-model-two-renderers), [tokenize-before-slicing](https://ratstack.sh/lore/tokenize-before-slicing), [engine-neutral-tokens-keep-adapters-replaceable](https://ratstack.sh/lore/engine-neutral-tokens-keep-adapters-replaceable), [accumulate-independent-errors](https://ratstack.sh/lore/accumulate-independent-errors).
 

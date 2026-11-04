@@ -12,6 +12,7 @@ import remarkMath from "remark-math";
 
 import { postDocumentSchema, postMetadataParseOptions } from "./schema";
 import { assertLocalImageExists, validatePostRegistry } from "./source";
+import { prepareSourceSnippets } from "./source-snippets";
 import { validateTrustedMdx } from "./validate-mdx";
 
 export const createPostsCollection = (
@@ -41,14 +42,30 @@ export const createPostsCollection = (
         path.join(rootDirectory, "public")
       );
 
-      const mdx = await compileMDX(context, document, {
-        rehypePlugins: [
-          rehypeSlug,
-          rehypeKatex,
-          [rehypeShiki, { theme: "github-dark-dimmed" }],
-        ],
-        remarkPlugins: [remarkGfm, remarkMath],
-      });
+      const snippets = await prepareSourceSnippets(
+        content,
+        path.join(rootDirectory, "content/snippets"),
+        _meta.fileName
+      );
+
+      const mdx = await compileMDX(
+        context,
+        { ...document, content: snippets.content },
+        {
+          rehypePlugins: [
+            rehypeSlug,
+            rehypeKatex,
+            [
+              rehypeShiki,
+              {
+                theme: "github-dark-dimmed",
+                transformers: [snippets.transformer],
+              },
+            ],
+          ],
+          remarkPlugins: [remarkGfm, remarkMath],
+        }
+      );
 
       return { ...metadata, mdx, sourceFile: _meta.fileName };
     },

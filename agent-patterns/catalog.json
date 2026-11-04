@@ -841,9 +841,25 @@
       "diagnostics",
       "provenance"
     ],
-    "decision": "For future external source snippets, pin source identity, preflight independent requests before emitting assets, tokenize full source before selecting excerpt lines, and derive rendered views from one source model. Preserve the current content pipeline until a change has a concrete owner and behavior test; do not introduce request-time source fetching.",
-    "owners": ["agent-patterns/engineering-policies.md"],
-    "sources": [],
+    "decision": "Capture full files from explicit Git commits into tracked snapshots. Validate snapshot identity and source selections before the MDX compiler cache, include resolved source in cache inputs, highlight the full source before selecting excerpt lines, and render immutable source links. Builds resolve snippets offline without reference mirrors.",
+    "owners": [
+      "apps/web/src/lib/content/source-snippets.ts",
+      "apps/web/src/lib/content/collection.ts",
+      "apps/web/scripts/capture-snippet.ts",
+      "docs/source-snippets.md"
+    ],
+    "sources": [
+      {
+        "name": "effect",
+        "commit": "506eef143bcc1750ce58920aac1e45da7265d103",
+        "paths": [
+          "ai-docs/src/01_effect/02_schema/10_schema-basics.ts",
+          "packages/effect/SCHEMA.md",
+          "packages/effect/src/Schema.ts",
+          "packages/effect/test/schema/Schema.test.ts"
+        ]
+      }
+    ],
     "references": [
       "https://ratstack.sh/lore/build-time-work-stays-out-of-requests",
       "https://ratstack.sh/lore/code-snippets",
@@ -854,16 +870,18 @@
     ],
     "checks": [
       {
-        "kind": "static",
-        "path": "agent-patterns/engineering-policies.md",
-        "claim": "Review policy only; catalog validation checks its link, not application behavior."
+        "kind": "behavior",
+        "path": "apps/web/src/lib/content/source-snippets.test.ts",
+        "claim": "Verifies selected source text, immutable links, whole-file lexical context, invalid source rejection, and source-dependent compilation."
       }
     ],
     "exceptions": [
-      "Apply within existing Next.js, React and Bun ownership; no automatic migration or dependency addition."
+      "Tracked snapshots replace build-time Git object lookup so shallow CI checkouts and deployments need no network or ignored source mirrors.",
+      "Simple filesystem operations and the existing Promise-based MDX integration retain their owners; snapshot data is decoded with Effect Schema."
     ],
     "gaps": [
-      "No universal runtime enforcement or new library API evidence is claimed. Complete the source lookup and behavior verification for the concrete implementation."
+      "Snapshot blob identity detects content corruption but does not independently authenticate the repository and commit association; capture and review establish provenance.",
+      "Multiple ranges, explicit line highlights, drift reports, snippet typechecking, and an agent Markdown renderer are not implemented."
     ],
     "related": ["validated-input", "source-updates", "adapters-cartridges"]
   },

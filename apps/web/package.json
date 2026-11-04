@@ -5,6 +5,7 @@
   "scripts": {
     "build": "next build",
     "content:validate": "content-collections build",
+    "snippets:capture": "bun scripts/capture-snippet.ts",
     "social:render": "bun scripts/render-social-preview.tsx",
     "dev": "node scripts/dev.mjs",
     "eve:info": "eve info",
