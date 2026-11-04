@@ -11,6 +11,19 @@ Use these checkouts to verify library behavior when a skill, example, or documen
 
 The web package separately declares these exact Effect, XState core and XState Effect runtime dependencies. Gas City is an external Go CLI, so its source record has an empty `packages` list and uses its release tag and commit as identity. The source commands only maintain reference checkouts: downloading source does not install runtime dependencies or execute upstream lifecycle scripts. Root-level mirrors are outside the workspace build, typecheck, and application-test directories; Git, Oxlint, and Oxfmt ignore them. Use the workspace test scripts rather than recursively running tests from the repository root.
 
+## Hosted Rat Stack MCP
+
+The hosted server at `https://ratstack.sh/mcp` provides current reference search, document reads, and relationship traversal. It needs no API key or local Rat Stack CLI. Configure it once in Codex:
+
+```sh
+codex mcp add rat-stack --url https://ratstack.sh/mcp
+codex mcp get rat-stack
+```
+
+Check for an existing enabled entry before adding it. In a session where its tools are loaded, call `search` with the concrete concern, then `read` with a returned resource ID. Use `neighbors` or `backlinks` when related principles affect the decision. Configuration alone does not prove connectivity; verify an actual search and read in the host.
+
+Live documents can describe newer code than this project's pins. Continue to use `bun run patterns consult <concern>` for adopted decisions and the indexed brain, then verify APIs against installed packages and checked source mirrors. The hosted server is agent tooling, not a site runtime dependency. Reference lookup does not authorize tools that submit information or change external state.
+
 ## Git ownership and downloaded documentation
 
 Commit the source manifest, downloader, tests, package scripts, ignore rules, and project guidance. Do not commit `.agent_sources/`: it is a reproducible local cache containing upstream Git repositories. A fresh checkout populates it with `bun run sources:fetch`. No submodule or runtime dependency is required.

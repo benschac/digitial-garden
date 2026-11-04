@@ -81,6 +81,8 @@ Use [rat-stack](https://ratstack.sh/llms.txt) as an engineering reference for th
 
 Search by the concrete task, read the matching pages and owning source, and identify which principle changes the implementation or verification. If the reference is unavailable, report that limitation; do not invent its rules. Index pages alone are not implementation guidance.
 
+When the hosted `rat-stack` MCP is available, use its `search` and `read` tools for current guidance and its graph tools for related principles. Follow [MCP setup](docs/agent-sources.md#hosted-rat-stack-mcp) on a new machine. Hosted results complement the pinned brain index and version-matched library sources; they do not replace source verification or authorize upstream tools that submit data.
+
 Apply these principles through the existing project boundaries:
 
 - Use Effect for typed failures, dependencies, cancellation, concurrency, and resource ownership where those concerns justify it. Reuse the owners in [the standard-library directory](docs/standard-libraries.md). React retains UI state and component lifecycle; simple rendering and pure calculations need no Effect wrapper.
