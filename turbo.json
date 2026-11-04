@@ -103,7 +103,7 @@
         "!.pi/**",
         "!.roo/**",
         "!.windsurf/**",
-        "apps/web/scripts/dev-port.mjs",
+        "apps/web/scripts/dev-port.ts",
         "apps/web/scripts/dev.mjs"
       ]
     },
@@ -138,7 +138,7 @@
         "oxlint.config.mts",
         "oxfmt.config.mts",
         "tools/oxlint/**",
-        "apps/web/scripts/dev-port.mjs",
+        "apps/web/scripts/dev-port.ts",
         "apps/web/scripts/dev.mjs",
         "apps/web/package.json",
         "packages/*/package.json",

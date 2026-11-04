@@ -45,4 +45,6 @@ const withMDX = createMDX({
   },
 });
 
-export default withEve(() => withContentCollections(withMDX(nextConfig)));
+export default withEve(
+  async () => await withContentCollections(withMDX(nextConfig))
+);

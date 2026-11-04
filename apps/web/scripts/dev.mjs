@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 
-import { devOptions, findAvailablePort } from "./dev-port.mjs";
+import { devOptions, findAvailablePort } from "./dev-port.ts";
 
 const require = createRequire(import.meta.url);
 const args = process.argv.slice(2);
@@ -34,8 +34,14 @@ try {
     { stdio: "inherit" }
   );
 
-  const interrupt = () => child.kill("SIGINT");
-  const terminate = () => child.kill("SIGTERM");
+  const interrupt = () => {
+    child.kill("SIGINT");
+  };
+
+  const terminate = () => {
+    child.kill("SIGTERM");
+  };
+
   process.on("SIGINT", interrupt);
   process.on("SIGTERM", terminate);
   child.once("error", (error) => {

@@ -7,10 +7,7 @@ import { setImmediate } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import {
-  devOptions,
-  findAvailablePort,
-} from "../apps/web/scripts/dev-port.mjs";
+import { devOptions, findAvailablePort } from "../apps/web/scripts/dev-port.ts";
 
 const occupy = async (t, port = 0, host = "0.0.0.0") => {
   const server = createServer();
