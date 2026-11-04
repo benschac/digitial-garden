@@ -2,13 +2,15 @@
 
 This pack maintains only existing tracked `.agents/skills/<name>/` directories and their existing `skills-lock.json` entries in `benschac/digitial-garden`. Global skills and plugin caches are outside its scope. The registered checkout stays untouched. A published commit updates repository history. It does not synchronize an existing checkout or prove deployment acceptance.
 
+The tracked `editorial` and `motion` skills have no lock entries and remain manually maintained outside this pack. Adding either to automatic updates requires verified source provenance and a matching installed content hash. Missing lock entries are not installation requests.
+
 The daily order runs at 09:00 America/New_York. One scanner inventories all tracked candidates against fresh remote main. Eight preparation slots work in isolated clones. Two independent reviewer slots examine immutable commits. One publisher lands one skill at a time above fresh main. Each commit changes one skill directory and only its existing lock entry. Source revisions are full Git object IDs and content hashes use the Skills CLI algorithm.
 
 The order is enabled for this city. Before importing into another running city, add the disabled city override shown below. Do not run it manually as a preview. `gc order run` dispatches real work and can lead to commits and pushes.
 
 ## Import and activate
 
-Keep the existing dependency pack and its publisher suspension unchanged. This pack does not lift any Node dependency commit or publication hold.
+Keep the existing dependency pack under its [current operator authorization](../dependency-updates/SUPERVISION.md#current-operator-authorization). This pack does not lift any candidate-specific Node dependency commit or publication hold.
 
 1. Run `gc lint gascity/skill-updates`, the focused `scripts/skill-update.test.mjs` checks, and the repository's affected `bun run verify`. Before importing, add this native city override.
 

@@ -13,12 +13,6 @@
       "skillPath": "skills/animation-vocabulary/SKILL.md",
       "computedHash": "0058036865ecbb864fd0c4132efcc62425355d6e99c7e6ef6a936742d62a5dea"
     },
-    "apple-design": {
-      "source": "emilkowalski/skill",
-      "sourceType": "github",
-      "skillPath": "skills/apple-design/SKILL.md",
-      "computedHash": "0190417d092a0df447b000154e39733ea6d97efad6d3bec8a6ce3845aeb88914"
-    },
     "baseline-ui": {
       "source": "ibelick/ui-skills",
       "sourceType": "github",
@@ -85,12 +79,6 @@
       "skillPath": "skills/improve-animations/SKILL.md",
       "computedHash": "f6652a3bb94950baa33c684cc0966c838eb65cf22ebb5769a4f51ea205c254fe"
     },
-    "nestjs-best-practices": {
-      "source": "kadajett/agent-nestjs-skills",
-      "sourceType": "github",
-      "skillPath": "skills/nestjs-best-practices/SKILL.md",
-      "computedHash": "58f8a630637be3acce1f118c747d68160346ada8a43d76cb52a5b4c4edaa2d37"
-    },
     "pick-ui-library": {
       "source": "emilkowalski/skill",
       "sourceType": "github",
@@ -102,12 +90,6 @@
       "sourceType": "github",
       "skillPath": "skills/prototype/SKILL.md",
       "computedHash": "77be567d8c946608fdd15e61b62ab383cdf289a194dce2479828b7eda860d3ba"
-    },
-    "review-animations": {
-      "source": "emilkowalski/skill",
-      "sourceType": "github",
-      "skillPath": "skills/review-animations/SKILL.md",
-      "computedHash": "b4e5f0f4fe3e2743c85bf7354108f48a0b9d502cb20ef5c4a9c195da91f93736"
     },
     "rust-best-practices": {
       "source": "apollographql/skills",

@@ -39,6 +39,7 @@ storybook-static
 .tools/
 
 .agent_sources/
+/worktrees/
 
 # Beads / Dolt files (added by bd init)
 .dolt/
