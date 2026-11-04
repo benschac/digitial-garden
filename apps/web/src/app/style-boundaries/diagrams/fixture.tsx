@@ -15,14 +15,26 @@ export const DiagramFixture = () => {
       <div className="flex flex-wrap gap-4">
         <button
           type="button"
-          onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+          onClick={() => {
+            setTheme(theme === "light" ? "dark" : "light");
+          }}
         >
           Switch to {theme === "light" ? "dark" : "light"}
         </button>
-        <button type="button" onClick={() => setMissing(!missing)}>
+        <button
+          type="button"
+          onClick={() => {
+            setMissing(!missing);
+          }}
+        >
           {missing ? "Load diagram" : "Test missing file"}
         </button>
-        <button type="button" onClick={() => setMounted(!mounted)}>
+        <button
+          type="button"
+          onClick={() => {
+            setMounted(!mounted);
+          }}
+        >
           {mounted ? "Unmount player" : "Mount player"}
         </button>
       </div>

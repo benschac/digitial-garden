@@ -116,7 +116,7 @@ export const StyleBoundaryFixture = () => {
 
       const [reference] = groups;
 
-      if (!reference) {
+      if (reference == null) {
         return;
       }
 

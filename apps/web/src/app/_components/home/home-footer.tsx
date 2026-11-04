@@ -14,6 +14,12 @@ import styles from "./home-footer.module.css";
 
 export const HomeFooter = () => {
   const impressionId = useId();
+
+  const impressionStyle: CSSProperties & Record<`--${string}`, string> = {
+    "--ink-grain": `url("${inkGrainTexture}")`,
+    "--name-letterpress-filter": `url(#${impressionId})`,
+  };
+
   const { ink, canvas, pointerHandlers } = useWetInk<HTMLSpanElement>(900);
 
   return (
@@ -35,12 +41,7 @@ export const HomeFooter = () => {
             <span
               ref={ink}
               className={cn(inkStyles.ink, styles.lettering, styles.impression)}
-              style={
-                {
-                  "--ink-grain": `url("${inkGrainTexture}")`,
-                  "--name-letterpress-filter": `url(#${impressionId})`,
-                } as CSSProperties
-              }
+              style={impressionStyle}
             >
               @benschac
               <canvas

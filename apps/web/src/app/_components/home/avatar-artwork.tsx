@@ -12,14 +12,20 @@ const FeatureEntrance = ({
   children: ReactNode;
   delay: number;
   animate?: boolean;
-}) => (
-  <g
-    className={animate ? styles.featureEntrance : undefined}
-    style={{ "--avatar-enter-delay": `${delay}ms` } as CSSProperties}
-  >
-    {children}
-  </g>
-);
+}) => {
+  const entranceStyle: CSSProperties & Record<`--${string}`, string> = {
+    "--avatar-enter-delay": `${delay}ms`,
+  };
+
+  return (
+    <g
+      className={animate ? styles.featureEntrance : undefined}
+      style={entranceStyle}
+    >
+      {children}
+    </g>
+  );
+};
 
 // Geometry from public/images/avatar-pieces/avatar-layered.svg.
 export const AvatarArtwork = ({

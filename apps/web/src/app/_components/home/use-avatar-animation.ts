@@ -7,12 +7,15 @@ import {
 } from "@personal-site/react-hooks";
 import { spring } from "motion";
 import { animate } from "motion/mini";
+import type { EffectCallback } from "react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 const subscribeToVisibility = (listener: () => void) => {
   document.addEventListener("visibilitychange", listener);
 
-  return () => document.removeEventListener("visibilitychange", listener);
+  return () => {
+    document.removeEventListener("visibilitychange", listener);
+  };
 };
 
 export const useAvatarAnimation = () => {
@@ -56,9 +59,10 @@ export const useAvatarAnimation = () => {
           part,
           {
             // Native CSS translate preserves the footer's resting transform.
-            translate: eye
-              ? `${x * 5}px ${y * 3}px`
-              : `${x * 1.5}px ${-Math.abs(x) * 1.5 + y}px`,
+            translate:
+              eye === true
+                ? `${x * 5}px ${y * 3}px`
+                : `${x * 1.5}px ${-Math.abs(x) * 1.5 + y}px`,
           },
           { bounce: 0.2, duration: 0.5, type: spring }
         )
@@ -101,7 +105,7 @@ export const useAvatarAnimation = () => {
 
   // The browser's animation API keeps blink scale separate from group tracking.
   // A cancellable timeout gives blinks natural pauses rather than a fixed loop.
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     if (!enabled) {
       return;
     }
@@ -146,7 +150,7 @@ export const useAvatarAnimation = () => {
     };
   }, [enabled]);
 
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     if (!enabled || !finePointer) {
       return;
     }

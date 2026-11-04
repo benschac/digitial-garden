@@ -29,7 +29,9 @@ const readSoundPreference = () => {
 const subscribeToSoundPreference = (listener: () => void) => {
   window.addEventListener("storage", listener);
 
-  return () => window.removeEventListener("storage", listener);
+  return () => {
+    window.removeEventListener("storage", listener);
+  };
 };
 
 export const InteractionSounds = () => {
@@ -106,7 +108,9 @@ export const InteractionSounds = () => {
         aria-label="Interaction sounds"
         aria-pressed={enabledPreference}
         disabled={pending}
-        onClick={toggleSound}
+        onClick={() => {
+          void toggleSound();
+        }}
         className={cn(
           "inline-flex min-h-11 min-w-11 items-center px-3 py-2",
           "rounded border border-current bg-paper text-sm text-ink",

@@ -65,7 +65,9 @@ export const NavigationHighlight = ({
           return;
         }
 
-        const link = (event.target as Element).closest("a");
+        const link =
+          event.target instanceof Element ? event.target.closest("a") : null;
+
         const row = rowRef.current;
 
         if (!link || !row || link === hoveredLink.current) {

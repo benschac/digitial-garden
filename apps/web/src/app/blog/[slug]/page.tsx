@@ -44,9 +44,10 @@ export const generateMetadata = async ({
 
   const canonical = post.canonicalUrl ?? `/blog/${post.slug}`;
 
-  const images = post.image
-    ? [{ alt: post.imageAlt ?? post.title, url: post.image }]
-    : undefined;
+  const images =
+    post.image === undefined || post.image === ""
+      ? undefined
+      : [{ alt: post.imageAlt ?? post.title, url: post.image }];
 
   return {
     alternates: { canonical },
@@ -85,6 +86,7 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
   }
 
   const { Content } = post;
+  const hasUpdatedAt = Boolean(post.updatedAt);
   const hasParticleHeader = post.slug === "rust-wasm-webgpu-particles";
   const hasSvgHeader = post.slug === "animated-blog-post-background";
   const hasLandscapeHeader = post.slug === "build-snap-to-post";
@@ -143,7 +145,7 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
                     ? "Draft · Dev only · "
                     : "Published "}
                   <time dateTime={post.publishedAt}>{post.publishedAt}</time>
-                  {post.updatedAt ? (
+                  {hasUpdatedAt ? (
                     <>
                       {" "}
                       · Updated{" "}
@@ -199,7 +201,7 @@ const BlogPostPage = async ({ params }: BlogPostPageProps) => {
               >
                 {post.status === "draft" ? "Draft · Dev only · " : "Published "}
                 <time dateTime={post.publishedAt}>{post.publishedAt}</time>
-                {post.updatedAt ? (
+                {hasUpdatedAt ? (
                   <>
                     {" · Updated "}
                     <time dateTime={post.updatedAt}>{post.updatedAt}</time>

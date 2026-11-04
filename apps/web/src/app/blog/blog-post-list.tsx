@@ -27,7 +27,9 @@ export const BlogPostList = ({ posts }: { posts: readonly PostSummary[] }) => {
             id="blog-search"
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.currentTarget.value)}
+            onChange={(event) => {
+              setQuery(event.currentTarget.value);
+            }}
             aria-controls="posts"
             className={styles.searchInput}
             placeholder="Search titles and summaries"

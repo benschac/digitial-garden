@@ -124,7 +124,9 @@ export const PaperValley = ({ children }: { children: ReactNode }) => {
     requestRender();
   });
   useWindowEvent("blur", resetPointer);
-  useDocumentEvent("visibilitychange", () => setHidden(document.hidden));
+  useDocumentEvent("visibilitychange", () => {
+    setHidden(document.hidden);
+  });
   useEffect(() => {
     if (!running || !fine) {
       pointer.current = { targetX: 0, targetY: 0, time: 0, x: 0, y: 0 };
@@ -145,7 +147,11 @@ export const PaperValley = ({ children }: { children: ReactNode }) => {
 
     const decodeLayers = async () => {
       try {
-        await Promise.all(images.current.map((image) => image?.decode()));
+        await Promise.all(
+          images.current.map(async (image) => {
+            await image?.decode();
+          })
+        );
 
         if (!cancelled) {
           setReady(true);
@@ -157,7 +163,7 @@ export const PaperValley = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    decodeLayers();
+    void decodeLayers();
 
     return () => {
       cancelled = true;
@@ -225,7 +231,9 @@ export const PaperValley = ({ children }: { children: ReactNode }) => {
               width={2528}
               height={1696}
               alt=""
-              onError={() => setFailed(true)}
+              onError={() => {
+                setFailed(true);
+              }}
             />
           ))}
         </div>

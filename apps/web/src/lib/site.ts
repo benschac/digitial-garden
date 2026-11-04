@@ -6,7 +6,9 @@ export const getSiteUrl = (): URL => {
 
   const configuredUrl =
     process.env.SITE_URL ??
-    (vercelHost ? `https://${vercelHost}` : fallbackSiteUrl);
+    (vercelHost !== undefined && vercelHost !== ""
+      ? `https://${vercelHost}`
+      : fallbackSiteUrl);
 
   return new URL(configuredUrl);
 };
