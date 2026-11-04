@@ -1,6 +1,6 @@
 # TSRS lint evaluation
 
-Research date: 2026-11-04. Recommendation: try TSRS as the backend for added type-aware linting while retaining the existing Oxlint rules. The owner welcomes experimentation and some tooling churn on this personal site; experimental status alone is not a reason to defer a useful trial. The optional `bun run lint:typed` integration is now implemented; default lint and verification retain their existing scope.
+Research date: 2026-11-04. Recommendation: try TSRS as the backend for added type-aware linting while retaining the existing Oxlint rules. The owner welcomes experimentation and some tooling churn on this personal site; experimental status alone is not a reason to defer a useful trial. `bun run lint:typed` now runs in normal verification. The policy and fresh diagnostic review are recorded below; the initial trial counts are historical.
 
 ## What the announcement means
 
@@ -50,6 +50,27 @@ Before the upgrade, the installed manifest and lockfile both resolved `@effect/t
 
 `oxlint.typed.config.mts` spreads the base configuration to preserve relative JavaScript plugin resolution, overrides, and rules, then extends Effect's public recommended preset. Nesting the entire base config under `extends` was rejected by Oxlint because its JavaScript plugin paths are relative. Existing Ultracite typed rules activate automatically in type-aware mode.
 
-The first completed trial exited 1 with 1,097 diagnostics, including Effect diagnostics and many previously dormant Ultracite rules. These are untriaged findings, not 1,097 confirmed defects. JavaScript test files also produced error-type diagnostics, so their project/type context needs review. No suppressions or automatic fixes were applied. The new command remains outside default verification until findings are triaged.
+The first completed trial exited 1 with 1,097 diagnostics, including Effect diagnostics and many previously dormant Ultracite rules. These are untriaged findings, not 1,097 confirmed defects. JavaScript test files also produced error-type diagnostics, so their project/type context needs review. No suppressions or automatic fixes were applied. At that stage, the command remained outside default verification pending triage.
 
 Implementation evidence: installed 0.67.1 README, preset exports and types, plus the pinned upstream proxy resolver and tests linked above. The source-backed backend selection and real execution establish wiring; no local performance or diagnostic parity claim is made.
+
+## Lint policy and verification integration
+
+A fresh `bun run lint:typed` on 2026-11-04 exited successfully with zero errors and five `effecttsgo/unstable-api-usage` warnings across 226 files. The initial 1,097 diagnostics do not describe this checkout. The fresh run demonstrated no correctness defects or missing TypeScript project context requiring application rewrites.
+
+All five warnings concern Effect HTTP APIs in `animated-diagram-lifecycle.ts` and its tests. Effect 4.1.2 marks those APIs unstable, but its HTTP-client guide recommends this transport and schema-decoding approach. The application tests cover status failures, malformed JSON, schema failures, and cancellation. Retain the APIs and visible warnings; instability is a compatibility risk, not evidence of incorrect behavior.
+
+The Promise policy is explicit:
+
+- Disable `require-await` and keep `typescript/require-await` disabled. An async API may perform synchronous work while preserving Promise returns and converting throws into rejections.
+- Keep `typescript/promise-function-async`. It continues to enforce a consistent async boundary for Promise-returning functions, with the existing narrow method exceptions preserved.
+- Set `typescript/return-await` to `error-handling-correctness-only`. Require awaiting where omission would bypass error handling, while allowing either form elsewhere.
+- Retain `no-floating-promises`, `no-misused-promises`, `await-thenable`, unsafe-operation checks, and recommended Effect diagnostics.
+
+The content helpers and inspected async test doubles no longer need nested `Promise.try` calls. Publication filtering, MDX construction, and thrown errors are unchanged. Removing the redundant Promise adoption also removes its extra microtask delay.
+
+`lint:typed` delegates to Turbo's root `lint:typed:root` task. That task depends on `@personal-site/web#typegen`, so normal verification shares generated route and content prerequisites. Its inputs cover application, shared-package and Gas City code, TypeScript project configuration, both lint configurations, custom plugins, manifests, the lockfile, and ignore policy. Generated directories are excluded from direct inputs and restored through the prerequisite's cached outputs. Compiler diagnostics remain owned by the existing typecheck tasks.
+
+`scripts/typed-lint.test.mjs` runs the actual configured linter against accepted async APIs and rejected Promise/Effect misuse. `scripts/verification.test.mjs` checks affected selection, generation order, shared-source invalidation, and cached generation restoration. These fixtures protect against disabling typed enforcement or reintroducing contradictory async rules.
+
+Source consultation used the `behavioral-verification` pattern and [Rat Stack lint-rule limits](https://ratstack.sh/resources/lint-rule-limits). Their concrete effect was to test rejection behavior and task selection rather than infer enforcement from a successful command. Installed Ultracite 8.1.1 owns the inherited Promise rules; Oxlint 1.90.0's configuration schema defines the selected return-await mode. No dependency upgrade or diagnostic parity claim is part of this cleanup.

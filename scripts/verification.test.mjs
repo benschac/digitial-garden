@@ -26,6 +26,7 @@ const rootScripts = JSON.parse(
 const checks = [
   "lint",
   "lint:root",
+  "lint:typed:root",
   "format:check",
   "format:root",
   "test:tools",
@@ -94,6 +95,7 @@ if (process.argv[3] === "typegen") {
   }
 
   write("oxlint.config.mts", "export default {};\n");
+  write("oxlint.typed.config.mts", "export default {};\n");
   write("oxfmt.config.mts", "export default {};\n");
   write("tools/oxlint/anti-slop/index.ts", "export const plugin = 1;\n");
   write("README.md", "Baseline\n");
@@ -192,6 +194,7 @@ test("shared source selects consumer checks, while Storybook assets do not rebui
   assert.ok(tasks.includes("@personal-site/web#check-types"));
   assert.ok(tasks.includes("@personal-site/web#test"));
   assert.ok(!tasks.includes("@personal-site/web#lint"));
+  assert.ok(tasks.includes("//#lint:typed:root"));
   assert.ok(!tasks.some((task) => task.endsWith("#build")));
   write("packages/ui/src/index.ts", "export const value = 1;\n");
   write("packages/ui/src/stories/assets/demo.png", "export default {};\n");
@@ -242,6 +245,7 @@ test("authored content selects generation and its application consumers", (t) =>
   assert.ok(tasks.includes("@personal-site/web#test"));
   assert.ok(tasks.includes("@personal-site/web#check-types"));
   assert.ok(tasks.includes("@personal-site/web#build"));
+  assert.ok(tasks.includes("//#lint:typed:root"));
 });
 
 test("content generation is shared and unchanged successful tasks hit cache", (t) => {
@@ -251,6 +255,10 @@ test("content generation is shared and unchanged successful tasks hit cache", (t
   const log = path.join(cwd, ".turbo/probes.log");
   const first = readFileSync(log, "utf-8");
   assert.equal(first.split("apps/web#typegen").length - 1, 1);
+  assert.equal(first.split("root#lint:typed:root").length - 1, 1);
+  assert.ok(
+    first.indexOf("apps/web#typegen") < first.indexOf("root#lint:typed:root")
+  );
   assert.ok(!first.includes("#build\n"));
   rmSync(path.join(cwd, "apps/web/.content-collections"), { recursive: true });
   run([...checks, "--affected"]);
@@ -269,6 +277,7 @@ test("content generation is shared and unchanged successful tasks hit cache", (t
   assert.equal(updated.split("apps/web#typegen").length - 1, 1);
   assert.equal(updated.split("apps/web#check-types").length - 1, 2);
   assert.equal(updated.split("apps/web#test\n").length - 1, 2);
+  assert.equal(updated.split("root#lint:typed:root").length - 1, 2);
 });
 
 test("standalone typechecks and tests use affected selection with explicit full alternatives", (t) => {
@@ -302,12 +311,31 @@ test("application source checks select the consumer and catalog links", (t) => {
   assert.ok(
     tasks.every(
       (task) =>
-        task.startsWith("@personal-site/web#") || task === "//#patterns:check"
+        task.startsWith("@personal-site/web#") ||
+        task === "//#patterns:check" ||
+        task === "//#lint:typed:root"
     )
   );
   assert.deepEqual(plan("typegen"), []);
   assert.ok(!tasks.includes("@personal-site/web#test:content"));
 });
+
+for (const file of [
+  "oxlint.typed.config.mts",
+  "packages/ui/tsconfig.json",
+  "packages/react-hooks/src/index.ts",
+  "packages/ui/.storybook/preview.tsx",
+  "gascity/tsconfig.json",
+]) {
+  test(`typed lint is invalidated by ${file}`, (t) => {
+    const { plan, write } = fixture(t);
+    write(
+      file,
+      file.endsWith(".json") ? '{"compilerOptions":{}}\n' : "export {};\n"
+    );
+    assert.ok(plan(...checks).includes("//#lint:typed:root"));
+  });
+}
 
 test("styles and public assets do not select syntax-only lint", (t) => {
   const { plan, write } = fixture(t);

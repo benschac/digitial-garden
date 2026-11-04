@@ -146,7 +146,8 @@
         "bun.lock",
         "apps/*/turbo.json",
         "packages/*/turbo.json",
-        "agent-patterns/**"
+        "agent-patterns/**",
+        "oxlint.typed.config.mts"
       ]
     },
     "test:content": {},
@@ -177,6 +178,23 @@
         "gascity/tsconfig.json",
         "package.json",
         "bun.lock"
+      ]
+    },
+    "//#lint:typed:root": {
+      "dependsOn": ["@personal-site/web#typegen"],
+      "inputs": [
+        "apps/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,json}",
+        "packages/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,json}",
+        "gascity/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,json}",
+        "!**/node_modules/**",
+        "!apps/web/.next/**",
+        "!apps/web/.content-collections/**",
+        "oxlint.config.mts",
+        "oxlint.typed.config.mts",
+        "tools/oxlint/**",
+        "package.json",
+        "bun.lock",
+        ".gitignore"
       ]
     }
   },

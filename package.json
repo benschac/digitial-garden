@@ -25,13 +25,13 @@
     "wasm:watch": "turbo run wasm:watch --filter=@personal-site/web",
     "lint:fix": "oxlint --fix",
     "test:tools": "node --test scripts/*.test.mjs",
-    "verify": "turbo run lint lint:root format:check format:root test:tools patterns:check check-types:root check-types test:content test --affected --output-logs=errors-only",
+    "verify": "turbo run lint lint:root lint:typed:root format:check format:root test:tools patterns:check check-types:root check-types test:content test --affected --output-logs=errors-only",
     "sources:fetch": "node scripts/agent-sources.mjs fetch",
     "sources:check": "node scripts/agent-sources.mjs check",
     "sources:updates": "node scripts/agent-sources.mjs updates",
     "lint:root": "oxlint . --ignore-pattern 'apps/**' --ignore-pattern 'packages/**'",
     "format:root": "oxfmt --check . '!apps/**' '!packages/**'",
-    "verify:all": "turbo run lint lint:root format:check format:root test:tools patterns:check check-types:root check-types test:content test --concurrency=4 --output-logs=errors-only",
+    "verify:all": "turbo run lint lint:root lint:typed:root format:check format:root test:tools patterns:check check-types:root check-types test:content test --concurrency=4 --output-logs=errors-only",
     "verify:full": "bun run verify:all && turbo run build --concurrency=1 --output-logs=errors-only",
     "patterns": "node scripts/agent-patterns.mjs",
     "patterns:check": "node scripts/agent-patterns.mjs check && node scripts/ratstack-adoption.mjs check",
@@ -39,7 +39,8 @@
     "ratstack:adoption": "node scripts/ratstack-adoption.mjs",
     "ratstack:adoption:check": "node scripts/ratstack-adoption.mjs check",
     "check-types:root": "effect-tsgo tsc@7.0.2 --project gascity/tsconfig.json --noEmit --incremental false",
-    "lint:typed": "bun run --cwd apps/web typegen && effect-tsgo --tsrs-lint=0.21.0-ts7.1.0-beta oxlint --type-aware --config oxlint.typed.config.mts apps packages gascity"
+    "lint:typed": "turbo run lint:typed:root",
+    "lint:typed:root": "effect-tsgo --tsrs-lint=0.21.0-ts7.1.0-beta oxlint --type-aware --config oxlint.typed.config.mts apps packages gascity"
   },
   "devDependencies": {
     "@effect/platform-bun": "4.1.2",
