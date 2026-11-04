@@ -17,9 +17,11 @@ import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
 import type { UIMessage } from "ai";
+import { Array } from "effect";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
+import type { ComponentProps, HTMLAttributes, ReactNode } from "react";
 import {
+  isValidElement,
   createContext,
   memo,
   useCallback,
@@ -96,11 +98,13 @@ export const MessageAction = ({
   const button = (
     <Button size={size} type="button" variant={variant} {...props}>
       {children}
-      <span className="sr-only">{label || tooltip}</span>
+      <span className="sr-only">
+        {label !== undefined && label !== "" ? label : tooltip}
+      </span>
     </Button>
   );
 
-  if (tooltip) {
+  if (tooltip !== undefined && tooltip !== "") {
     return (
       <TooltipProvider>
         <Tooltip>
@@ -121,8 +125,8 @@ interface MessageBranchContextType {
   totalBranches: number;
   goToPrevious: () => void;
   goToNext: () => void;
-  branches: ReactElement[];
-  setBranches: (branches: ReactElement[]) => void;
+  branches: ReactNode[];
+  setBranches: (branches: ReactNode[]) => void;
 }
 
 const MessageBranchContext = createContext<MessageBranchContextType | null>(
@@ -153,7 +157,7 @@ export const MessageBranch = ({
   ...props
 }: MessageBranchProps) => {
   const [currentBranch, setCurrentBranch] = useState(defaultBranch);
-  const [branches, setBranches] = useState<ReactElement[]>([]);
+  const [branches, setBranches] = useState<ReactNode[]>([]);
 
   const handleBranchChange = useCallback(
     (newBranch: number) => {
@@ -207,10 +211,7 @@ export const MessageBranchContent = ({
 }: MessageBranchContentProps) => {
   const { currentBranch, setBranches, branches } = useMessageBranch();
 
-  const childrenArray = useMemo(
-    () => (Array.isArray(children) ? children : [children]),
-    [children]
-  );
+  const childrenArray = useMemo(() => Array.ensure(children), [children]);
 
   // Use useEffect to update branches when they change
   useEffect(() => {
@@ -225,7 +226,7 @@ export const MessageBranchContent = ({
         "grid gap-2 overflow-hidden [&>div]:pb-0",
         index === currentBranch ? "block" : "hidden"
       )}
-      key={branch.key}
+      key={isValidElement(branch) ? branch.key : undefined}
       {...props}
     >
       {branch}

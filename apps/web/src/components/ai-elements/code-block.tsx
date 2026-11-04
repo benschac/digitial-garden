@@ -15,7 +15,7 @@ import {
 import { cn } from "@personal-site/ui/lib/utils";
 import { play } from "cuelume";
 import { CheckIcon, CopyIcon } from "lucide-react";
-import type { ComponentProps, CSSProperties, HTMLAttributes } from "react";
+import type { ComponentProps, HTMLAttributes } from "react";
 import {
   createContext,
   memo,
@@ -33,13 +33,13 @@ import type { TokenizedCode } from "./code-block-highlighting";
 
 // Shiki uses bitflags for font styles: 1=italic, 2=bold, 4=underline
 const isItalic = (fontStyle: number | undefined) =>
-  fontStyle && Math.floor(fontStyle) % 2 !== 0;
+  Boolean(fontStyle) && Math.floor(fontStyle ?? 0) % 2 !== 0;
 
 const isBold = (fontStyle: number | undefined) =>
-  fontStyle && Math.floor(fontStyle / 2) % 2 !== 0;
+  Boolean(fontStyle) && Math.floor((fontStyle ?? 0) / 2) % 2 !== 0;
 
 const isUnderline = (fontStyle: number | undefined) =>
-  fontStyle && Math.floor(fontStyle / 4) % 2 !== 0;
+  Boolean(fontStyle) && Math.floor((fontStyle ?? 0) / 4) % 2 !== 0;
 
 // Transform tokens to include pre-computed keys to avoid noArrayIndexKey lint
 interface KeyedToken {
@@ -65,16 +65,14 @@ const addKeysToTokens = (lines: ThemedToken[][]): KeyedLine[] =>
 const TokenSpan = ({ token }: { token: ThemedToken }) => (
   <span
     className="dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)]"
-    style={
-      {
-        backgroundColor: token.bgColor,
-        color: token.color,
-        fontStyle: isItalic(token.fontStyle) ? "italic" : undefined,
-        fontWeight: isBold(token.fontStyle) ? "bold" : undefined,
-        textDecoration: isUnderline(token.fontStyle) ? "underline" : undefined,
-        ...token.htmlStyle,
-      } as CSSProperties
-    }
+    style={{
+      backgroundColor: token.bgColor,
+      color: token.color,
+      fontStyle: isItalic(token.fontStyle) ? "italic" : undefined,
+      fontWeight: isBold(token.fontStyle) ? "bold" : undefined,
+      textDecoration: isUnderline(token.fontStyle) ? "underline" : undefined,
+      ...token.htmlStyle,
+    }}
   >
     {token.content}
   </span>
@@ -376,7 +374,10 @@ export const CodeBlockCopyButton = ({
   const { code } = useContext(CodeBlockContext);
 
   const copyToClipboard = useCallback(async () => {
-    if (!globalThis.window || !navigator?.clipboard?.writeText) {
+    if (
+      globalThis.window === undefined ||
+      navigator.clipboard?.writeText === undefined
+    ) {
       onError?.(new Error("Clipboard API not available"));
 
       return;
@@ -388,13 +389,12 @@ export const CodeBlockCopyButton = ({
         play("success", { emphasis: "subtle" });
         setIsCopied(true);
         onCopy?.();
-        timeoutRef.current = window.setTimeout(
-          () => setIsCopied(false),
-          timeout
-        );
+        timeoutRef.current = window.setTimeout(() => {
+          setIsCopied(false);
+        }, timeout);
       }
     } catch (error) {
-      onError?.(error as Error);
+      onError?.(error instanceof Error ? error : new Error(String(error)));
     }
   }, [code, onCopy, onError, timeout, isCopied]);
 
@@ -410,7 +410,9 @@ export const CodeBlockCopyButton = ({
   return (
     <Button
       className={cn("shrink-0", className)}
-      onClick={copyToClipboard}
+      onClick={() => {
+        void copyToClipboard();
+      }}
       pressFeedback
       size="icon"
       variant="ghost"

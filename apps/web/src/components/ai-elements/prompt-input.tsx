@@ -54,8 +54,8 @@ import type {
   ChangeEventHandler,
   ClipboardEventHandler,
   ComponentProps,
-  FormEvent,
-  FormEventHandler,
+  SubmitEvent,
+  EffectCallback,
   HTMLAttributes,
   KeyboardEventHandler,
   PropsWithChildren,
@@ -85,7 +85,10 @@ import type {
 // ============================================================================
 
 const captureScreenshot = async (): Promise<File | null> => {
-  if (!globalThis.navigator || !navigator.mediaDevices?.getDisplayMedia) {
+  if (
+    globalThis.navigator === undefined ||
+    navigator.mediaDevices?.getDisplayMedia === undefined
+  ) {
     return null;
   }
 
@@ -256,7 +259,10 @@ export const PromptInputProvider = ({
 }: PromptInputProviderProps) => {
   // ----- textInput state
   const [textInput, setTextInput] = useState(initialTextInput);
-  const clearInput = useCallback(() => setTextInput(""), []);
+
+  const clearInput = useCallback(() => {
+    setTextInput("");
+  }, []);
 
   // ----- attachments state (global when wrapped)
   const [attachmentFiles, setAttachmentFiles] = useState<
@@ -289,7 +295,7 @@ export const PromptInputProvider = ({
     setAttachmentFiles((prev) => {
       const found = prev.find((f) => f.id === id);
 
-      if (found?.url) {
+      if (found && found.url !== "") {
         URL.revokeObjectURL(found.url);
       }
 
@@ -312,7 +318,7 @@ export const PromptInputProvider = ({
   // Keep a ref to attachments for cleanup on unmount (avoids stale closure)
   const attachmentsRef = useRef(attachmentFiles);
 
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     attachmentsRef.current = attachmentFiles;
   }, [attachmentFiles]);
 
@@ -457,10 +463,12 @@ export const PromptInputActionAddScreenshot = ({
 }: PromptInputActionAddScreenshotProps) => {
   const attachments = usePromptInputAttachments();
 
-  const handleSelect = useCallback<
-    NonNullable<ComponentProps<typeof DropdownMenuItem>["onClick"]>
-  >(
-    async (event) => {
+  const handleSelect = useCallback(
+    async (
+      event: Parameters<
+        NonNullable<ComponentProps<typeof DropdownMenuItem>["onClick"]>
+      >[0]
+    ) => {
       onClick?.(event);
 
       if (event.defaultPrevented) {
@@ -488,7 +496,12 @@ export const PromptInputActionAddScreenshot = ({
   );
 
   return (
-    <DropdownMenuItem {...props} onClick={handleSelect}>
+    <DropdownMenuItem
+      {...props}
+      onClick={(event) => {
+        void handleSelect(event);
+      }}
+    >
       <Monitor className="mr-2 size-4" />
       {label}
     </DropdownMenuItem>
@@ -527,7 +540,7 @@ export type PromptInputProps = Omit<
   onSubmit: PromptInputSubmissionHandler<
     [
       message: PromptInputMessage,
-      event: FormEvent<HTMLFormElement>,
+      event: SubmitEvent<HTMLFormElement>,
       context: PromptInputSubmissionContext,
     ]
   >;
@@ -589,7 +602,7 @@ export const PromptInput = ({
   // Keep a ref to files for cleanup on unmount (avoids stale closure)
   const filesRef = useRef(files);
 
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     filesRef.current = files;
   }, [files]);
 
@@ -599,7 +612,7 @@ export const PromptInput = ({
 
   const matchesAccept = useCallback(
     (f: File) => {
-      if (!accept || accept.trim() === "") {
+      if (accept === undefined || accept.trim() === "") {
         return true;
       }
 
@@ -637,7 +650,9 @@ export const PromptInput = ({
       }
 
       const withinSize = (f: File) =>
-        maxFileSize ? f.size <= maxFileSize : true;
+        maxFileSize !== undefined && maxFileSize !== 0
+          ? f.size <= maxFileSize
+          : true;
 
       const sized = accepted.filter(withinSize);
 
@@ -684,19 +699,17 @@ export const PromptInput = ({
     [matchesAccept, maxFiles, maxFileSize, onError]
   );
 
-  const removeLocal = useCallback(
-    (id: string) =>
-      setItems((prev) => {
-        const found = prev.find((file) => file.id === id);
+  const removeLocal = useCallback((id: string) => {
+    setItems((prev) => {
+      const found = prev.find((file) => file.id === id);
 
-        if (found?.url) {
-          URL.revokeObjectURL(found.url);
-        }
+      if (found && found.url !== "") {
+        URL.revokeObjectURL(found.url);
+      }
 
-        return prev.filter((file) => file.id !== id);
-      }),
-    []
-  );
+      return prev.filter((file) => file.id !== id);
+    });
+  }, []);
 
   // Wrapper that validates files before calling provider's add
   const addWithProviderValidation = useCallback(
@@ -714,7 +727,9 @@ export const PromptInput = ({
       }
 
       const withinSize = (f: File) =>
-        maxFileSize ? f.size <= maxFileSize : true;
+        maxFileSize !== undefined && maxFileSize !== 0
+          ? f.size <= maxFileSize
+          : true;
 
       const sized = accepted.filter(withinSize);
 
@@ -751,26 +766,25 @@ export const PromptInput = ({
     [matchesAccept, maxFileSize, maxFiles, onError, files.length, controller]
   );
 
-  const clearAttachments = useCallback(
-    () =>
-      usingProvider
-        ? controller?.attachments.clear()
-        : setItems((prev) => {
-            for (const file of prev) {
-              if (file.url) {
-                URL.revokeObjectURL(file.url);
-              }
-            }
+  const clearAttachments = useCallback(() => {
+    if (usingProvider) {
+      controller?.attachments.clear();
+    } else {
+      setItems((prev) => {
+        for (const file of prev) {
+          if (file.url) {
+            URL.revokeObjectURL(file.url);
+          }
+        }
 
-            return [];
-          }),
-    [usingProvider, controller]
-  );
+        return [];
+      });
+    }
+  }, [usingProvider, controller]);
 
-  const clearReferencedSources = useCallback(
-    () => setReferencedSources([]),
-    []
-  );
+  const clearReferencedSources = useCallback(() => {
+    setReferencedSources([]);
+  }, []);
 
   const add = usingProvider ? addWithProviderValidation : addLocal;
   const remove = usingProvider ? controller.attachments.remove : removeLocal;
@@ -785,7 +799,7 @@ export const PromptInput = ({
   }, [clearAttachments, clearReferencedSources]);
 
   // Let provider know about our hidden file input so external menus can call openFileDialog()
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     if (!usingProvider) {
       return;
     }
@@ -795,33 +809,33 @@ export const PromptInput = ({
 
   // Note: File input cannot be programmatically set for security reasons
   // The syncHiddenInput prop is no longer functional
-  useEffect(() => {
-    if (syncHiddenInput && inputRef.current && files.length === 0) {
+  useEffect((): ReturnType<EffectCallback> => {
+    if (syncHiddenInput === true && inputRef.current && files.length === 0) {
       inputRef.current.value = "";
     }
   }, [files, syncHiddenInput]);
 
   // Attach drop handlers on nearest form and document (opt-in)
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     const form = formRef.current;
 
     if (!form) {
       return;
     }
 
-    if (globalDrop) {
+    if (globalDrop === true) {
       // when global drop is on, let the document-level handler own drops
       return;
     }
 
     const onDragOver = (e: DragEvent) => {
-      if (e.dataTransfer?.types?.includes("Files")) {
+      if (e.dataTransfer?.types.includes("Files") === true) {
         e.preventDefault();
       }
     };
 
     const onDrop = (e: DragEvent) => {
-      if (e.dataTransfer?.types?.includes("Files")) {
+      if (e.dataTransfer?.types.includes("Files") === true) {
         e.preventDefault();
       }
 
@@ -839,19 +853,19 @@ export const PromptInput = ({
     };
   }, [add, globalDrop]);
 
-  useEffect(() => {
-    if (!globalDrop) {
+  useEffect((): ReturnType<EffectCallback> => {
+    if (globalDrop !== true) {
       return;
     }
 
     const onDragOver = (e: DragEvent) => {
-      if (e.dataTransfer?.types?.includes("Files")) {
+      if (e.dataTransfer?.types.includes("Files") === true) {
         e.preventDefault();
       }
     };
 
     const onDrop = (e: DragEvent) => {
-      if (e.dataTransfer?.types?.includes("Files")) {
+      if (e.dataTransfer?.types.includes("Files") === true) {
         e.preventDefault();
       }
 
@@ -924,8 +938,8 @@ export const PromptInput = ({
     [referencedSources, clearReferencedSources]
   );
 
-  const handleSubmit: FormEventHandler<HTMLFormElement> = useCallback(
-    async (event) => {
+  const handleSubmit = useCallback(
+    async (event: SubmitEvent<HTMLFormElement>) => {
       event.preventDefault();
 
       const form = event.currentTarget;
@@ -958,7 +972,8 @@ export const PromptInput = ({
             form.reset();
           }
         },
-        send: (message, context) => onSubmit(message, event, context),
+        send: async (message, context) =>
+          await onSubmit(message, event, context),
       });
     },
     [
@@ -996,7 +1011,9 @@ export const PromptInput = ({
       />
       <form
         className="w-full"
-        onSubmit={handleSubmit}
+        onSubmit={(event) => {
+          void handleSubmit(event);
+        }}
         ref={formRef}
         {...props}
         target={props.target}
@@ -1078,11 +1095,11 @@ export const PromptInputTextarea = ({
         // Check if the submit button is disabled before submitting
         const { form } = e.currentTarget;
 
-        const submitButton = form?.querySelector(
+        const submitButton = form?.querySelector<HTMLButtonElement>(
           'button[type="submit"]'
-        ) as HTMLButtonElement | null;
+        );
 
-        if (submitButton?.disabled) {
+        if (submitButton?.disabled === true) {
           return;
         }
 
@@ -1110,7 +1127,7 @@ export const PromptInputTextarea = ({
     (event) => {
       const items = event.clipboardData?.items;
 
-      if (!items) {
+      if (items === undefined) {
         return;
       }
 
@@ -1134,8 +1151,13 @@ export const PromptInputTextarea = ({
     [attachments]
   );
 
-  const handleCompositionEnd = useCallback(() => setIsComposing(false), []);
-  const handleCompositionStart = useCallback(() => setIsComposing(true), []);
+  const handleCompositionEnd = useCallback(() => {
+    setIsComposing(false);
+  }, []);
+
+  const handleCompositionStart = useCallback(() => {
+    setIsComposing(true);
+  }, []);
 
   const controlledProps = controller
     ? {
@@ -1248,7 +1270,7 @@ export const PromptInputButton = ({
     />
   );
 
-  if (!tooltip) {
+  if (tooltip === undefined || tooltip === "") {
     return button;
   }
 
@@ -1264,7 +1286,7 @@ export const PromptInputButton = ({
       <TooltipTrigger render={button} />
       <TooltipContent side={side}>
         {tooltipContent}
-        {shortcut && (
+        {Boolean(shortcut) && (
           <span className="ml-2 text-muted-foreground">{shortcut}</span>
         )}
       </TooltipContent>

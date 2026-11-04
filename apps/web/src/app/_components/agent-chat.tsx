@@ -17,7 +17,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 
 import {
   Conversation,
@@ -117,7 +117,9 @@ const ChatHeader = ({
         <Button
           aria-label="Start a new chat"
           className="pointer-events-auto fixed top-3 right-6 pr-4"
-          onClick={() => window.location.assign("/s")}
+          onClick={() => {
+            window.location.assign("/s");
+          }}
           size="sm"
           type="button"
           variant="ghost"
@@ -277,7 +279,13 @@ export const AgentChat = ({
       }
     },
   });
-  useEffect(() => submission.mount(() => setResuming(false)), [submission]);
+  useEffect(
+    () =>
+      submission.mount(() => {
+        setResuming(false);
+      }),
+    [submission]
+  );
 
   const agent = {
     ...snapshot,
@@ -317,15 +325,15 @@ export const AgentChat = ({
     }
   };
 
-  const handleSubmit = (
+  const handleSubmit = async (
     message: PromptInputMessage,
-    _event: FormEvent<HTMLFormElement>,
+    _event: SubmitEvent<HTMLFormElement>,
     context: PromptInputSubmissionContext
   ): Promise<PromptInputSubmissionOutcome> => {
     const text = message.text.trim();
 
     if ((text.length === 0 && message.files.length === 0) || isResuming) {
-      return Promise.resolve({ status: "cancelled" });
+      return await Promise.resolve({ status: "cancelled" });
     }
 
     setSubmissionError(undefined);
@@ -337,7 +345,7 @@ export const AgentChat = ({
     };
 
     if (message.files.length === 0) {
-      return submission.send(text, options);
+      return await submission.send(text, options);
     }
 
     const parts: UserContent = [];
@@ -355,27 +363,33 @@ export const AgentChat = ({
       });
     }
 
-    return submission.send(parts, options);
+    return await submission.send(parts, options);
   };
 
   const composer = (
     <PromptInput
       onSubmit={handleSubmit}
-      onError={(error) => setSubmissionError(error.message)}
-      onReset={() => setHasInputText(false)}
+      onError={(error) => {
+        setSubmissionError(error.message);
+      }}
+      onReset={() => {
+        setHasInputText(false);
+      }}
     >
       <PromptInputTextarea
         disabled={isResuming}
-        onChange={(event) =>
-          setHasInputText(event.currentTarget.value.trim().length > 0)
-        }
+        onChange={(event) => {
+          setHasInputText(event.currentTarget.value.trim().length > 0);
+        }}
         placeholder="Send a message…"
       />
       <ComposerAction
         hasInputText={hasInputText}
         isBusy={isBusy}
         isResuming={isResuming}
-        onCancel={requestCancellation}
+        onCancel={() => {
+          void requestCancellation();
+        }}
       />
     </PromptInput>
   );
@@ -414,16 +428,18 @@ export const AgentChat = ({
                   }
                   key={message.id}
                   message={message}
-                  onInputResponses={(inputResponses) => {
+                  onInputResponses={async (inputResponses) => {
                     setCancellationError(undefined);
 
-                    return store.send({ inputResponses });
+                    await store.send({ inputResponses });
                   }}
                 />
               )
             )}
             {showPendingThinking ? <PendingThinking /> : null}
-            {errorMessage ? <ErrorMessage message={errorMessage} /> : null}
+            {errorMessage != null && errorMessage !== "" ? (
+              <ErrorMessage message={errorMessage} />
+            ) : null}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>

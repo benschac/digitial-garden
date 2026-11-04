@@ -1,15 +1,21 @@
 import type { FileUIPart } from "ai";
 import { Predicate, Effect, Schema } from "effect";
 
-export class PromptInputAttachmentError extends Schema.TaggedError<PromptInputAttachmentError>()(
-  "PromptInputAttachmentError",
-  { cause: Schema.Defect(), message: Schema.String }
-) {}
+export class PromptInputAttachmentError extends Schema.TaggedError<
+  PromptInputAttachmentError,
+  { readonly brand: unique symbol }
+>()("PromptInputAttachmentError", {
+  cause: Schema.Defect(),
+  message: Schema.String,
+}) {}
 
-export class PromptInputSendError extends Schema.TaggedError<PromptInputSendError>()(
-  "PromptInputSendError",
-  { cause: Schema.Defect(), message: Schema.String }
-) {}
+export class PromptInputSendError extends Schema.TaggedError<
+  PromptInputSendError,
+  { readonly brand: unique symbol }
+>()("PromptInputSendError", {
+  cause: Schema.Defect(),
+  message: Schema.String,
+}) {}
 
 export interface PromptInputAttachmentReader {
   readonly result: string | ArrayBuffer | null;
@@ -34,7 +40,7 @@ export interface PromptInputAttachmentBrowser {
 
 const browser: PromptInputAttachmentBrowser = {
   createFileReader: () => new FileReader(),
-  fetch: (url, signal) => fetch(url, { signal }),
+  fetch: async (url, signal) => await fetch(url, { signal }),
 };
 
 export const readPromptInputAttachment = (
@@ -58,7 +64,7 @@ export const readPromptInputAttachment = (
           )
         );
 
-        return;
+        return Effect.void;
       }
 
       const listeners = new Map<"load" | "error" | "abort", () => void>();

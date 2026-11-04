@@ -10,7 +10,7 @@ import { cn } from "@personal-site/ui/lib/utils";
 import type { DynamicToolUIPart, ToolUIPart } from "ai";
 import { Option, Predicate, Schema } from "effect";
 import { ChevronRightIcon, TerminalIcon, WrenchIcon } from "lucide-react";
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps } from "react";
 import { isValidElement } from "react";
 
 import { CodeBlock } from "./code-block";
@@ -118,8 +118,8 @@ const decodeToolRecord = Schema.decodeUnknownOption(
   Schema.Record(Schema.String, Schema.Unknown)
 );
 
-const getRecordValue = <Value,>(
-  value: Value,
+const getRecordValue = (
+  value: ToolPart["output"],
   key: string
 ): string | number | undefined => {
   const record = decodeToolRecord(value);
@@ -151,9 +151,10 @@ export const BashToolContent = ({
   const stderr = getRecordValue(output, "stderr") ?? errorText ?? "";
   const exitCode = getRecordValue(output, "exitCode");
 
-  const hasResult = Boolean(
-    stdout || stderr || (Predicate.isNumber(exitCode) && exitCode !== 0)
-  );
+  const hasResult =
+    Boolean(stdout) ||
+    Boolean(stderr) ||
+    (Predicate.isNumber(exitCode) && exitCode !== 0);
 
   return (
     <div className={cn("space-y-2", className)} {...props}>
@@ -181,10 +182,10 @@ export const BashToolContent = ({
             >
               Output
             </Typography>
-            {stdout ? (
+            {stdout !== undefined && stdout !== "" && stdout !== 0 ? (
               <span className="block">{String(stdout).trimEnd()}</span>
             ) : null}
-            {stderr ? (
+            {stderr !== undefined && stderr !== "" && stderr !== 0 ? (
               <span className="block text-destructive">
                 {String(stderr).trimEnd()}
               </span>
@@ -238,11 +239,20 @@ export const ToolOutput = ({
   errorText,
   ...props
 }: ToolOutputProps) => {
-  if (!(output || errorText)) {
+  if (!(Boolean(output) || Boolean(errorText))) {
     return null;
   }
 
-  let Output = <div>{output as ReactNode}</div>;
+  let Output = (
+    <div>
+      {isValidElement(output) ||
+      Predicate.isNumber(output) ||
+      Predicate.isBigInt(output) ||
+      Predicate.isBoolean(output)
+        ? output
+        : null}
+    </div>
+  );
 
   if (Predicate.isObjectOrArray(output) && !isValidElement(output)) {
     Output = (
@@ -268,7 +278,7 @@ export const ToolOutput = ({
       variant="uiCaption"
       className={cn(
         "overflow-x-auto rounded-md [&_table]:w-full",
-        errorText
+        errorText !== undefined && errorText !== ""
           ? "bg-destructive/10 text-destructive"
           : "bg-muted/50 text-foreground",
         className
@@ -280,9 +290,9 @@ export const ToolOutput = ({
         variant="microLabel"
         className="block px-3 pt-3 text-muted-foreground"
       >
-        {errorText ? "Error" : "Result"}
+        {errorText !== undefined && errorText !== "" ? "Error" : "Result"}
       </Typography>
-      {errorText && <div className="px-3 pt-2 pb-3">{errorText}</div>}
+      {Boolean(errorText) && <div className="px-3 pt-2 pb-3">{errorText}</div>}
       {Output}
     </Typography>
   );

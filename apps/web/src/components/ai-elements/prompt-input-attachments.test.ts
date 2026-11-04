@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 import type { FileUIPart } from "ai";
 import { Effect } from "effect";
@@ -75,7 +76,7 @@ const browserWith = (
   reader: AttachmentReader
 ): PromptInputAttachmentBrowser => ({
   createFileReader: () => reader,
-  fetch: () => Promise.try(() => new Response("attachment")),
+  fetch: async () => await Promise.try(() => new Response("attachment")),
 });
 
 const waitFor = async (
@@ -92,11 +93,11 @@ const waitFor = async (
 
   await Bun.sleep(1);
 
-  return waitFor(predicate, attempt + 1);
+  await waitFor(predicate, attempt + 1);
 };
 
 const readerAt = (readers: AttachmentReader[], index: number) => {
-  const reader = readers[index];
+  const reader = readers.at(index);
 
   if (!reader) {
     throw new Error(`Missing reader ${index}`);
@@ -118,7 +119,7 @@ describe("readPromptInputAttachment", () => {
       }
     );
 
-    await expect(result).rejects.toThrow();
+    await rejects(result);
     expect(reader.reads).toBe(0);
     expect(reader.listeners.size).toBe(0);
   });
@@ -136,7 +137,7 @@ describe("readPromptInputAttachment", () => {
 
     await waitFor(() => reader.reads === 1);
     controller.abort();
-    await expect(result).rejects.toThrow();
+    await rejects(result);
     expect(reader.aborts).toBe(1);
     expect(reader.listeners.size).toBe(0);
     reader.succeed();
@@ -223,8 +224,8 @@ describe("convertPromptInputAttachments", () => {
     const result = Effect.runPromise(
       convertPromptInputAttachments([file()], {
         ...browserWith(new AttachmentReader()),
-        fetch: () =>
-          Promise.try(() => {
+        fetch: async () =>
+          await Promise.try(() => {
             fetches += 1;
 
             return new Response("attachment");
@@ -233,7 +234,7 @@ describe("convertPromptInputAttachments", () => {
       { signal: controller.signal }
     );
 
-    await expect(result).rejects.toThrow();
+    await rejects(result);
     expect(fetches).toBe(0);
   });
 
@@ -249,17 +250,17 @@ describe("convertPromptInputAttachments", () => {
       const result = Effect.runPromise(
         convertPromptInputAttachments([file()], {
           ...browserWith(reader),
-          fetch: (_url, signal) => {
+          fetch: async (_url, signal) => {
             requested.resolve(signal);
 
             if (phase === "response") {
-              return response.promise;
+              return await response.promise;
             }
 
             const value = new Response("attachment");
-            value.blob = () => body.promise;
+            value.blob = async () => await body.promise;
 
-            return Promise.resolve(value);
+            return value;
           },
         }),
         { signal: controller.signal }
@@ -268,7 +269,7 @@ describe("convertPromptInputAttachments", () => {
       const signal = await requested.promise;
       await Bun.sleep(0);
       controller.abort();
-      await expect(result).rejects.toThrow();
+      await rejects(result);
       expect(signal.aborted).toBe(true);
       response.resolve(new Response("late"));
       body.resolve(new Blob(["late"]));
@@ -286,8 +287,8 @@ describe("convertPromptInputAttachments", () => {
         Effect.flip(
           convertPromptInputAttachments([file()], {
             ...browserWith(reader),
-            fetch: () =>
-              Promise.try(() => {
+            fetch: async () =>
+              await Promise.try(() => {
                 if (phase === "network") {
                   throw new Error("Offline");
                 }
@@ -297,8 +298,8 @@ describe("convertPromptInputAttachments", () => {
                 });
 
                 if (phase === "body") {
-                  response.blob = () =>
-                    Promise.try(() => {
+                  response.blob = async () =>
+                    await Promise.try(() => {
                       throw new Error("Bad body");
                     });
                 }
@@ -332,8 +333,8 @@ describe("convertPromptInputAttachments", () => {
 
           return reader;
         },
-        fetch: () =>
-          Promise.try(() => {
+        fetch: async () =>
+          await Promise.try(() => {
             fetches += 1;
 
             return new Response("attachment");
@@ -381,7 +382,8 @@ describe("convertPromptInputAttachments", () => {
 
               return reader;
             },
-            fetch: () => Promise.try(() => new Response("attachment")),
+            fetch: async () =>
+              await Promise.try(() => new Response("attachment")),
           }
         )
       )
@@ -457,7 +459,7 @@ describe("createPromptInputAttachmentSubmission", () => {
       const submit = createPromptInputAttachmentSubmission();
       await submit({
         ...fixture.options,
-        send: () => {
+        send: (): void | Promise<void> => {
           if (failure === "throw") {
             throw new Error("Send failed");
           }
@@ -481,8 +483,8 @@ describe("createPromptInputAttachmentSubmission", () => {
 
     const result = submit({
       ...fixture.options,
-      send: (message) =>
-        Promise.try(() => {
+      send: async (message) =>
+        await Promise.try(() => {
           fixture.sent.push(message);
           throw new Error("Send failed");
         }),
@@ -506,10 +508,10 @@ describe("createPromptInputAttachmentSubmission", () => {
 
     const options = {
       ...fixture.options,
-      send: (message: typeof fixture.snapshot) => {
+      send: async (message: typeof fixture.snapshot) => {
         fixture.sent.push(message);
 
-        return send.promise;
+        await send.promise;
       },
     };
 
@@ -566,10 +568,10 @@ describe("createPromptInputAttachmentSubmission", () => {
           onSuccess: () => {
             cleared.push(text);
           },
-          send: (message: { text: string; files: FileUIPart[] }) => {
+          send: async (message: { text: string; files: FileUIPart[] }) => {
             sent.push(message);
 
-            return send;
+            await send;
           },
         };
       };
@@ -635,10 +637,10 @@ describe("createPromptInputAttachmentSubmission", () => {
 
       const result = submit({
         ...fixture.options,
-        send: () => {
+        send: async () => {
           sending = true;
 
-          return send.promise;
+          await send.promise;
         },
       });
 
@@ -688,10 +690,10 @@ describe("createPromptInputAttachmentSubmission", () => {
 
     const oldOperation = submit({
       ...first.options,
-      send: () => {
+      send: async () => {
         sending = true;
 
-        return firstSend.promise;
+        await firstSend.promise;
       },
     });
 
@@ -700,10 +702,10 @@ describe("createPromptInputAttachmentSubmission", () => {
 
     const newOperation = submit({
       ...second.options,
-      send: (message) => {
+      send: async (message) => {
         second.sent.push(message);
 
-        return secondSend.promise;
+        await secondSend.promise;
       },
     });
 

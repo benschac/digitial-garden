@@ -22,8 +22,8 @@ class HighlightRequest extends Data.Class<{
   language: BundledLanguage;
 }> {}
 
-const initializeHighlighter: InitializeHighlighter = (language) =>
-  createHighlighter({
+const initializeHighlighter: InitializeHighlighter = async (language) =>
+  await createHighlighter({
     langs: [language],
     themes: ["github-light", "github-dark"],
   });
@@ -39,7 +39,7 @@ export const createCodeHighlighting = (
   const highlighters = Effect.runSync(
     Cache.makeWith(
       (language: BundledLanguage) =>
-        Effect.tryPromise(() => initialize(language)),
+        Effect.tryPromise(async () => await initialize(language)),
       {
         capacity: Infinity,
         timeToLive: (exit) => (Exit.isSuccess(exit) ? Infinity : 0),
@@ -81,10 +81,10 @@ export const createCodeHighlighting = (
       )
     );
 
-  const highlight = (code: string, language: BundledLanguage) =>
-    Effect.runPromise(
+  const highlight = async (code: string, language: BundledLanguage) =>
+    await Effect.runPromise(
       Cache.get(tokens, new HighlightRequest({ code, language })).pipe(
-        Effect.catch(() => Effect.succeed(null))
+        Effect.orElseSucceed(() => null)
       )
     );
 

@@ -113,13 +113,13 @@ const AttachmentPart = ({ part }: { readonly part: EveFilePart }) => {
           <span className="block truncate text-muted-foreground">{detail}</span>
         ) : null}
       </span>
-      {part.url ? (
+      {part.url != null && part.url !== "" ? (
         <ExternalLinkIcon className="size-4 shrink-0 text-muted-foreground" />
       ) : null}
     </Typography>
   );
 
-  return part.url ? (
+  return part.url != null && part.url !== "" ? (
     <a href={part.url} rel="noreferrer" target="_blank">
       {body}
     </a>
@@ -251,7 +251,9 @@ const AuthorizationPrompt = ({
               {instructions}
             </Typography>
           ) : null}
-          {part.state === "required" && part.authorization?.userCode ? (
+          {part.state === "required" &&
+          part.authorization?.userCode != null &&
+          part.authorization?.userCode !== "" ? (
             <Typography
               as="div"
               variant="uiBody"
@@ -267,7 +269,9 @@ const AuthorizationPrompt = ({
               </Typography>
             </Typography>
           ) : null}
-          {part.state === "required" && part.authorization?.url ? (
+          {part.state === "required" &&
+          part.authorization?.url != null &&
+          part.authorization?.url !== "" ? (
             <Button
               size="sm"
               nativeButton={false}
@@ -307,11 +311,14 @@ const QuestionRequest = ({
   const acceptsFreeform = inputRequest.allowFreeform === true || !hasOptions;
 
   const [questionValue, setQuestionValue] = useState<QuestionValue>({
-    selectedValues: inputResponse?.optionId ? [inputResponse.optionId] : [],
+    selectedValues:
+      inputResponse?.optionId != null && inputResponse?.optionId !== ""
+        ? [inputResponse.optionId]
+        : [],
     text: inputResponse?.text ?? "",
   });
 
-  const submitOption = (optionId: string) => {
+  const submitOption = (optionId: string): void | Promise<void> => {
     setQuestionValue((value) => ({ ...value, selectedValues: [optionId] }));
 
     return onInputResponses([
@@ -322,7 +329,10 @@ const QuestionRequest = ({
     ]);
   };
 
-  const submitResponse = ({ selectedValues, text }: QuestionResponse) =>
+  const submitResponse = ({
+    selectedValues,
+    text,
+  }: QuestionResponse): void | Promise<void> =>
     onInputResponses([
       {
         optionId: selectedValues[0],
@@ -348,7 +358,9 @@ const QuestionRequest = ({
             <QuestionOption
               className="justify-start px-3 py-2 text-left"
               key={option.id}
-              onClick={() => submitOption(option.id)}
+              onClick={() => {
+                void submitOption(option.id);
+              }}
               value={option.id}
             >
               <span className="min-w-0 flex-1">
@@ -359,7 +371,7 @@ const QuestionRequest = ({
                 >
                   {option.label}
                 </Typography>
-                {option.description ? (
+                {option.description != null && option.description !== "" ? (
                   <Typography
                     as="span"
                     variant="uiBodyTight"
@@ -451,11 +463,11 @@ const InputRequestActions = ({
             <Button
               disabled={!canRespond}
               key={option.id}
-              onClick={() =>
-                onInputResponses([
+              onClick={() => {
+                void onInputResponses([
                   { optionId: option.id, requestId: inputRequest.requestId },
-                ])
-              }
+                ]);
+              }}
               size="sm"
               type="button"
               variant={option.style === "danger" ? "destructive" : "default"}
@@ -578,8 +590,15 @@ const partKey = (part: EveMessagePart, index: number): string => {
       return part.toolCallId;
     }
 
-    default: {
+    case "file":
+    case "reasoning":
+    case "step-start":
+    case "text": {
       return `${part.type}:${index}`;
+    }
+
+    default: {
+      throw new Error("Unsupported message part");
     }
   }
 };

@@ -6,7 +6,7 @@ import { cn } from "@personal-site/ui/lib/utils";
 import type { UIMessage } from "ai";
 import { Predicate } from "effect";
 import { ArrowDownIcon, DownloadIcon } from "lucide-react";
-import type { ComponentProps } from "react";
+import type { ComponentProps, EffectCallback } from "react";
 import {
   useCallback,
   useEffect,
@@ -34,7 +34,7 @@ const ConversationScrollRestoration = ({
   const { scrollRef, scrollToBottom, state } = useStickToBottomContext();
   const restoredKeyRef = useRef<string | undefined>(undefined);
 
-  useLayoutEffect(() => {
+  useLayoutEffect((): ReturnType<EffectCallback> => {
     const scrollElement = scrollRef.current;
 
     if (scrollElement === null) {
@@ -51,7 +51,7 @@ const ConversationScrollRestoration = ({
         });
       } else {
         scrollElement.scrollTop = scrollElement.scrollHeight;
-        scrollToBottom({ animation: "instant", ignoreEscapes: true });
+        void scrollToBottom({ animation: "instant", ignoreEscapes: true });
       }
 
       restoredKeyRef.current = storageKey;
@@ -152,7 +152,7 @@ export const ConversationTopFade = ({
   const { contentRef, scrollRef } = useStickToBottomContext();
   const [isVisible, setIsVisible] = useState(false);
 
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     const scrollElement = scrollRef.current;
 
     if (scrollElement === null) {
@@ -218,7 +218,7 @@ export const ConversationEmptyState = ({
   >
     {children ?? (
       <>
-        {icon && <div className="text-muted-foreground">{icon}</div>}
+        {Boolean(icon) && <div className="text-muted-foreground">{icon}</div>}
         <div className="space-y-1">
           <Typography as="h3" variant="uiLabel">
             {title}
@@ -256,7 +256,7 @@ export const ConversationScrollButton = ({
   );
 
   const handleScrollToBottom = useCallback(() => {
-    scrollToBottom();
+    void scrollToBottom();
   }, [scrollToBottom]);
 
   return (

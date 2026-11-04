@@ -10,7 +10,7 @@ import { cn } from "@personal-site/ui/lib/utils";
 import type {
   ChangeEvent,
   ComponentProps,
-  FormEvent,
+  SubmitEvent,
   HTMLAttributes,
   KeyboardEvent,
   ReactNode,
@@ -64,7 +64,7 @@ export type QuestionProps = Omit<
   disabled?: boolean;
   onSubmit?: (
     response: QuestionResponse,
-    event: FormEvent<HTMLFormElement>
+    event: SubmitEvent<HTMLFormElement>
   ) => void | Promise<void>;
   onValueChange?: (value: QuestionValue) => void;
   selectionMode?: SelectionMode;
@@ -149,7 +149,7 @@ export const Question = ({
   );
 
   const handleSubmit = useCallback(
-    async (event: FormEvent<HTMLFormElement>) => {
+    async (event: SubmitEvent<HTMLFormElement>) => {
       event.preventDefault();
 
       if (disabled) {
@@ -177,7 +177,9 @@ export const Question = ({
     <QuestionContext.Provider value={contextValue}>
       <form
         className={cn("space-y-3 rounded-xl border bg-card p-4", className)}
-        onSubmit={handleSubmit}
+        onSubmit={(event) => {
+          void handleSubmit(event);
+        }}
         {...props}
         target={props.target}
         rel={`noopener noreferrer ${props.rel ?? ""}`}
@@ -376,7 +378,7 @@ export const QuestionSubmit = ({
         typographyVariants({ variant: "inputCompact" }),
         className
       )}
-      disabled={question.disabled || disabled || !hasResponse}
+      disabled={question.disabled || disabled === true || !hasResponse}
       size={size}
       type="submit"
       {...props}

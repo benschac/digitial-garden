@@ -151,7 +151,7 @@ const ChainOfThoughtStepImplementation = ({
     </div>
     <div className="flex-1 space-y-2 overflow-hidden">
       <div>{label}</div>
-      {description && (
+      {Boolean(description) && (
         <Typography
           as="div"
           variant="uiCaption"
@@ -250,7 +250,7 @@ const ChainOfThoughtImageImplementation = ({
     <div className="relative flex max-h-[22rem] items-center justify-center overflow-hidden rounded-lg bg-muted p-3">
       {children}
     </div>
-    {caption && (
+    {Boolean(caption) && (
       <Typography as="p" variant="uiCaption" className="text-muted-foreground">
         {caption}
       </Typography>

@@ -49,13 +49,13 @@ export const createAgentChatSubmission = (
     signal?.addEventListener("abort", cancel, { once: true });
 
     try {
-      if (signal?.aborted) {
+      if (signal?.aborted === true) {
         cancel();
       }
 
       const response = await dispatch();
       operation?.settle(
-        signal?.aborted || operation.signal?.aborted
+        signal?.aborted === true || operation.signal?.aborted === true
           ? { status: "cancelled" }
           : { status: "accepted" }
       );
@@ -63,7 +63,7 @@ export const createAgentChatSubmission = (
       return response;
     } catch (error) {
       operation?.settle(
-        signal?.aborted || operation.signal?.aborted
+        signal?.aborted === true || operation.signal?.aborted === true
           ? { status: "cancelled" }
           : {
               message:
@@ -86,9 +86,11 @@ export const createAgentChatSubmission = (
 
     observedSessions.add(session);
     const send = session.send.bind(session);
-    session.send = (message, sendOptions) =>
-      observe(sendOptions?.headers, sendOptions?.signal, () =>
-        send(message, sendOptions)
+    session.send = async (message, sendOptions) =>
+      await observe(
+        sendOptions?.headers,
+        sendOptions?.signal,
+        async () => await send(message, sendOptions)
       );
 
     return session;
@@ -108,7 +110,11 @@ export const createAgentChatSubmission = (
   ) {
     const result =
       "message" in input
-        ? await observe(input.headers, input.signal, () => createSession(input))
+        ? await observe(
+            input.headers,
+            input.signal,
+            async () => await createSession(input)
+          )
         : await createSession(input);
 
     observeSession(result.session);
@@ -130,7 +136,7 @@ export const createAgentChatSubmission = (
     reducer: conversationReducer,
   });
 
-  const send = (
+  const send = async (
     message: string | UserContent,
     sendOptions: SendTurnOptions = {}
   ): Promise<PromptInputSubmissionOutcome> => {
@@ -139,12 +145,13 @@ export const createAgentChatSubmission = (
     const controller = new AbortController();
     const listeners = new AbortController();
 
-    return Effect.runPromise(
+    return await Effect.runPromise(
       Effect.callback<PromptInputSubmissionOutcome>((resume) => {
-        const settle = (outcome: PromptInputSubmissionOutcome) =>
+        const settle = (outcome: PromptInputSubmissionOutcome) => {
           resume(Effect.succeed(outcome));
+        };
 
-        if (signal?.aborted) {
+        if (signal?.aborted === true) {
           controller.abort(signal.reason);
           settle({ status: "cancelled" });
 

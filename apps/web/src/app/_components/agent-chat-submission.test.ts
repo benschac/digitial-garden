@@ -16,18 +16,20 @@ afterEach(() => {
   }
 });
 
-const waitFor = (predicate: () => boolean, attempts = 100): Promise<void> => {
+const waitFor = async (
+  predicate: () => boolean,
+  attempts = 100
+): Promise<void> => {
   if (predicate()) {
-    return Promise.resolve();
+    return;
   }
 
   if (attempts === 0) {
-    return Promise.reject(
-      new Error("Expected local Eve operation did not finish.")
-    );
+    throw new Error("Expected local Eve operation did not finish.");
   }
 
-  return Bun.sleep(1).then(() => waitFor(predicate, attempts - 1));
+  await Bun.sleep(1);
+  await waitFor(predicate, attempts - 1);
 };
 
 const transport = (initialEvents: MessageStreamEvent[] = []) => {
@@ -40,7 +42,7 @@ const transport = (initialEvents: MessageStreamEvent[] = []) => {
 
   const fetch = spyOn(globalThis, "fetch").mockImplementation(
     Object.assign(
-      (...args: Parameters<typeof globalThis.fetch>) => {
+      async (...args: Parameters<typeof globalThis.fetch>) => {
         const [input, init] = args;
         const url = input instanceof Request ? input.url : String(input);
 
@@ -57,13 +59,15 @@ const transport = (initialEvents: MessageStreamEvent[] = []) => {
 
               init?.signal?.addEventListener(
                 "abort",
-                () => controller.error(init.signal?.reason),
+                () => {
+                  controller.error(init.signal?.reason);
+                },
                 { once: true }
               );
             },
           });
 
-          return Promise.resolve(
+          return await Promise.resolve(
             new Response(body, {
               headers: {
                 "x-eve-stream-tail-index": String(initialEvents.length - 1),
@@ -80,18 +84,20 @@ const transport = (initialEvents: MessageStreamEvent[] = []) => {
         const response = Promise.withResolvers<Response>();
         posts.push({ init, response });
 
-        return response.promise;
+        return await response.promise;
       },
       { preconnect: globalThis.fetch.preconnect }
     )
   );
 
-  cleanups.push(() => fetch.mockRestore());
+  cleanups.push(() => {
+    fetch.mockRestore();
+  });
 
   const postAt = (index: number) => {
     const post = posts[index];
 
-    if (!post) {
+    if (post == null) {
       throw new Error(`Missing local request ${index}`);
     }
 
@@ -99,12 +105,14 @@ const transport = (initialEvents: MessageStreamEvent[] = []) => {
   };
 
   return {
-    accept: (index: number, deliveryId = `delivery-${index}`) =>
+    accept: (index: number, deliveryId = `delivery-${index}`) => {
       postAt(index).response.resolve(
         Response.json({ deliveryId, sessionId: "local-session" })
-      ),
-    fail: (index: number) =>
-      postAt(index).response.reject(new Error("controlled transport failure")),
+      );
+    },
+    fail: (index: number) => {
+      postAt(index).response.reject(new Error("controlled transport failure"));
+    },
     posts,
     push: (...events: MessageStreamEvent[]) => {
       const bytes = new TextEncoder().encode(
@@ -123,7 +131,9 @@ const createSubmission = (
   options: Parameters<typeof createAgentChatSubmission>[0] = {}
 ) => {
   const submission = createAgentChatSubmission(options);
-  cleanups.push(() => submission.store.reset());
+  cleanups.push(() => {
+    submission.store.reset();
+  });
 
   return submission;
 };
@@ -150,21 +160,24 @@ const draft = (
   const controller = new AbortController();
   const submit = createPromptInputAttachmentSubmission();
 
-  const run = (turnPolicy?: "steer") =>
-    submit({
+  const run = async (turnPolicy?: "steer") => {
+    await submit({
       createController: () => controller,
       isCurrent: () =>
         state.text === snapshot.text && state.files === snapshot.files,
       message: snapshot,
-      onError: (error) => errors.push(error.message),
+      onError: (error) => {
+        errors.push(error.message);
+      },
       onSuccess: () => {
         clears += 1;
         state.text = "";
         state.files = [];
       },
-      send: (message, context) =>
-        submission.send(message.text, { ...context, turnPolicy }),
+      send: async (message, context) =>
+        await submission.send(message.text, { ...context, turnPolicy }),
     });
+  };
 
   return { clears: () => clears, controller, errors, run, snapshot, state };
 };
@@ -365,7 +378,9 @@ describe("agent chat submission acceptance", () => {
   test("resolved send without an observed dispatch is unconfirmed", async () => {
     const submission = createSubmission();
     const send = spyOn(submission.store, "send").mockResolvedValue(undefined);
-    cleanups.push(() => send.mockRestore());
+    cleanups.push(() => {
+      send.mockRestore();
+    });
     const outcome = await submission.send("draft");
     expect(outcome.status).toBe("unconfirmed");
   });
@@ -410,9 +425,15 @@ describe("agent chat submission acceptance", () => {
       const removeRegistration = spyOn(WeakMap.prototype, "delete");
       const dispatch = spyOn(submission.store, "send");
       cleanups.push(
-        () => listen.mockRestore(),
-        () => removeRegistration.mockRestore(),
-        () => dispatch.mockRestore()
+        () => {
+          listen.mockRestore();
+        },
+        () => {
+          removeRegistration.mockRestore();
+        },
+        () => {
+          dispatch.mockRestore();
+        }
       );
       const operation = submission.send("draft", { signal: controller.signal });
       await waitFor(() => local.posts.length === 1);
@@ -433,11 +454,13 @@ describe("agent chat submission acceptance", () => {
 
       const outcome = await operation;
       expect(outcome.status).toBe(status);
-      expect(listenerOptions).toEqual(
-        expect.objectContaining({
-          signal: expect.objectContaining({ aborted: true }),
-        })
-      );
+      expect(
+        listenerOptions !== undefined &&
+          listenerOptions !== true &&
+          listenerOptions !== false
+          ? listenerOptions.signal?.aborted
+          : undefined
+      ).toBe(true);
       expect(
         removeRegistration.mock.calls.some(([key]) => key === headers)
       ).toBe(true);
@@ -472,8 +495,12 @@ describe("agent chat submission acceptance", () => {
     const sessions: string[] = [];
     const finished: string[] = [];
     submission.store.setCallbacks({
-      onEvent: (event) => observed.push(event.meta.id),
-      onFinish: (snapshot) => finished.push(snapshot.status),
+      onEvent: (event) => {
+        observed.push(event.meta.id);
+      },
+      onFinish: (snapshot) => {
+        finished.push(snapshot.status);
+      },
       onSessionChange: (session) => {
         if (session) {
           sessions.push(session.sessionId);
@@ -488,7 +515,9 @@ describe("agent chat submission acceptance", () => {
 
     cleanups.push(unsubscribe);
     const resume = spyOn(submission.store, "resume");
-    cleanups.push(() => resume.mockRestore());
+    cleanups.push(() => {
+      resume.mockRestore();
+    });
     let staleResumes = 0;
     let currentResumes = 0;
 

@@ -46,16 +46,17 @@ describe("chat highlighting", () => {
     const tokenizer = fixture();
     let attempts = 0;
 
-    const service = createCodeHighlighting(() =>
-      Promise.try(() => {
-        attempts += 1;
+    const service = createCodeHighlighting(
+      async () =>
+        await Promise.try(() => {
+          attempts += 1;
 
-        if (attempts === 1) {
-          throw new Error("load failed");
-        }
+          if (attempts === 1) {
+            throw new Error("load failed");
+          }
 
-        return tokenizer;
-      })
+          return tokenizer;
+        })
     );
 
     expect(await service.highlight("const value = 1", "typescript")).toBeNull();
@@ -68,7 +69,11 @@ describe("chat highlighting", () => {
 
   test("uses the entire source and language as the cache key", async () => {
     const tokenizer = fixture();
-    const service = createCodeHighlighting(() => Promise.try(() => tokenizer));
+
+    const service = createCodeHighlighting(
+      async () => await Promise.try(() => tokenizer)
+    );
+
     const prefix = " ".repeat(100);
     const suffix = " ".repeat(100);
     const a = `${prefix}first${suffix}`;
@@ -97,7 +102,7 @@ describe("chat highlighting", () => {
     const tokenizer = fixture();
 
     const service = createCodeHighlighting(
-      () => Promise.try(() => tokenizer),
+      async () => await Promise.try(() => tokenizer),
       2
     );
 
@@ -124,7 +129,9 @@ describe("chat highlighting", () => {
     const removed = mock(() => {});
     const received = Promise.withResolvers<undefined>();
     const unsubscribe = service.subscribe("value", "typescript", removed);
-    service.subscribe("value", "typescript", () => received.resolve(undefined));
+    service.subscribe("value", "typescript", () => {
+      received.resolve(undefined);
+    });
     unsubscribe();
     unsubscribe();
     gate.resolve(undefined);
@@ -136,11 +143,12 @@ describe("chat highlighting", () => {
   test("retains light and dark themes and text fallback for unloaded languages", async () => {
     const tokenizer = fixture();
 
-    const service = createCodeHighlighting(() =>
-      Promise.try(() => ({
-        ...tokenizer,
-        getLoadedLanguages: () => [],
-      }))
+    const service = createCodeHighlighting(
+      async () =>
+        await Promise.try(() => ({
+          ...tokenizer,
+          getLoadedLanguages: () => [],
+        }))
     );
 
     await service.highlight("plain <code>", "typescript");

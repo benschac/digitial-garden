@@ -90,9 +90,9 @@ const ReasoningImplementation = ({
     if (isStreaming) {
       hasEverStreamedRef.current = true;
 
-      if (startTimeRef.current === null) {
-        startTimeRef.current = Date.now();
-      }
+      const startedAt = startTimeRef.current;
+
+      startTimeRef.current = startedAt ?? Date.now();
     } else if (startTimeRef.current !== null) {
       setDuration(Math.ceil((Date.now() - startTimeRef.current) / MS_IN_S));
       startTimeRef.current = null;
