@@ -4,4 +4,6 @@ PATH=/Users/benjaminschachter/.bun/bin:/Users/benjaminschachter/.local/bin:/opt/
 export PATH
 pack=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 repo=$(CDPATH= cd -- "$pack/../.." && pwd)
-exec node "$repo/scripts/skill-update.mjs" check published
+. "$pack/assets/checks/archive.sh"
+skill_archive_begin published
+node "$repo/scripts/skill-update.mjs" check published

@@ -5,6 +5,8 @@ export PATH
 case "$1" in prepared|integrated) stage=$1 ;; *) exit 1 ;; esac
 pack=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 repo=$(CDPATH= cd -- "$pack/../.." && pwd)
+. "$pack/assets/checks/archive.sh"
+skill_archive_begin "$stage"
 result=$(node "$repo/scripts/skill-update.mjs" check "$stage")
 checkout=$(printf '%s' "$result" | jq -er '.checkout')
 base=$(printf '%s' "$result" | jq -er '.base')
@@ -16,6 +18,6 @@ flock --exclusive --timeout 300 "$GC_CITY/.gc/dependency-updates/verify.lock" sh
   cd -- "$1"
   bun install --frozen-lockfile --ignore-scripts
   TURBO_SCM_BASE="$2" TURBO_SCM_HEAD=HEAD bun run verify
-' sh "$checkout" "$base" >> "$GC_ARTIFACT_DIR/qualification.log" 2>&1
+' sh "$checkout" "$base" > "$skill_archive/qualification.log" 2>&1
 node "$repo/scripts/skill-update.mjs" qualify "$stage" "$result"
 printf '%s\n' "$result"

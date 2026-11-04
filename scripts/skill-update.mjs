@@ -2,7 +2,10 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   existsSync,
+  copyFileSync,
+  constants,
   lstatSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
   realpathSync,
@@ -10,8 +13,10 @@ import {
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
+
+import * as Schema from "effect/Schema";
 
 const ensure = (condition, message) => {
   if (!condition) {
@@ -23,6 +28,12 @@ const json = (file) => JSON.parse(readFileSync(file, "utf-8"));
 const revision = /^[a-f0-9]{40}$/u;
 const digest = /^[a-f0-9]{64}$/u;
 const identity = /^[a-z0-9]+-[a-z0-9]+$/u;
+const nativeIdentity = Schema.String.check(Schema.isPattern(identity));
+
+const integrationIdentity = Schema.Struct({
+  candidate: nativeIdentity,
+  commit: Schema.String.check(Schema.isPattern(revision)),
+});
 
 const safePath = (value) =>
   Boolean(value) &&
@@ -297,14 +308,99 @@ const recordsFrom = (value) => {
   return [value];
 };
 
-export const resolveContext = (env, readBead) => {
+const checkedDirectory = (root, location, create = false) => {
+  ensure(
+    path.isAbsolute(root) && path.isAbsolute(location),
+    "Expected absolute path"
+  );
+  const relative = path.relative(root, location);
+  ensure(
+    relative !== ".." &&
+      !relative.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relative),
+    "Archive path escapes owner"
+  );
+  let current = root;
+
+  for (const component of ["", ...relative.split(path.sep).filter(Boolean)]) {
+    current = component ? path.join(current, component) : current;
+
+    if (create && !existsSync(current)) {
+      try {
+        mkdirSync(current, { mode: 0o700 });
+      } catch (error) {
+        if (error.code !== "EEXIST") {
+          throw error;
+        }
+      }
+    }
+
+    const stat = lstatSync(current);
+    ensure(
+      stat.isDirectory() &&
+        !stat.isSymbolicLink() &&
+        stat.uid === process.getuid(),
+      "Unsafe archive directory owner or symlink"
+    );
+  }
+
+  return location;
+};
+
+const checkedFile = (directory, file) => {
+  checkedDirectory(directory, path.dirname(file));
+  const stat = lstatSync(file);
+  ensure(
+    stat.isFile() &&
+      !stat.isSymbolicLink() &&
+      stat.nlink === 1 &&
+      stat.uid === process.getuid(),
+    "Unsafe evidence file"
+  );
+
+  return file;
+};
+
+export const resolveNativeContext = (env, readBead) => {
   ensure(
     env.GC_CITY && env.GC_BEAD_ID && env.GC_ARTIFACT_DIR,
     "Missing native check context"
   );
-  const subject = readBead(env.GC_BEAD_ID);
-  const root = readBead(subject.metadata?.["gc.root_bead_id"]);
-  const convoy = readBead(root.metadata?.["gc.input_convoy_id"]);
+  ensure(path.isAbsolute(env.GC_CITY), "Expected absolute city path");
+
+  const read = (id) => {
+    ensure(Schema.is(nativeIdentity)(id), "Invalid native bead identity");
+    const bead = readBead(id);
+    ensure(bead.id === id, "Native bead read identity mismatch");
+
+    return bead;
+  };
+
+  const subject = read(env.GC_BEAD_ID);
+  const root = read(subject.metadata?.["gc.root_bead_id"]);
+  const convoy = read(root.metadata?.["gc.input_convoy_id"]);
+  ensure(
+    ["in_progress", "closed"].includes(subject.status),
+    "Native subject is not claimed"
+  );
+  ensure(
+    !env.GC_ROOT_BEAD_ID || env.GC_ROOT_BEAD_ID === root.id,
+    "Native root environment mismatch"
+  );
+  ensure(
+    root.metadata?.["gc.kind"] === "workflow" &&
+      root.metadata?.["gc.formula_name"] === "update-skill",
+    "Unexpected skill workflow root"
+  );
+  ensure(
+    ["open", "in_progress"].includes(root.status),
+    "Skill workflow is terminal"
+  );
+  ensure(
+    subject.assignee?.trim() &&
+      subject.metadata?.["gc.session_id"] === subject.assignee,
+    "Native subject ownership mismatch"
+  );
   ensure(
     convoy.metadata?.["gc.synthetic_kind"] === "drain-unit-convoy",
     "Expected native drain unit"
@@ -322,13 +418,371 @@ export const resolveContext = (env, readBead) => {
     );
   }
 
-  const anchor = readBead(candidate);
+  const anchor = read(candidate);
+  const molecule = path.join(env.GC_CITY, ".gc", "molecules", root.id);
+  const artifactDirectory = path.join(molecule, "artifacts", subject.id);
+  ensure(
+    env.GC_ARTIFACT_DIR === artifactDirectory &&
+      (!env.GC_MOLECULE_DIR || env.GC_MOLECULE_DIR === molecule),
+    "Native artifact path mismatch"
+  );
+  checkedDirectory(env.GC_CITY, artifactDirectory);
   const directory = path.join(env.GC_CITY, ".gc", "skill-updates", candidate);
-  contained(path.join(env.GC_CITY, ".gc", "skill-updates"), directory);
-  const pointer = json(path.join(env.GC_ARTIFACT_DIR, "result.json"));
+  checkedDirectory(env.GC_CITY, directory);
+
+  return {
+    anchor,
+    artifactDirectory,
+    candidate,
+    convoy,
+    directory,
+    root,
+    subject,
+  };
+};
+
+export const resolveContext = (env, readBead) => {
+  const context = resolveNativeContext(env, readBead);
+
+  const pointer = json(
+    checkedFile(
+      context.artifactDirectory,
+      path.join(context.artifactDirectory, "result.json")
+    )
+  );
+
+  const { candidate } = context;
   ensure(pointer.candidate === candidate, "Outcome pointer candidate mismatch");
 
-  return { anchor, candidate, directory, pointer, subject };
+  return { ...context, pointer };
+};
+
+const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+
+const integrationArchiveIdentity = (context) => {
+  try {
+    const receipt = json(
+      checkedFile(
+        context.directory,
+        path.join(context.directory, "integrated.json")
+      )
+    );
+
+    return Schema.is(integrationIdentity)(receipt) &&
+      receipt.candidate === context.candidate
+      ? receipt.commit
+      : "preflight";
+  } catch (error) {
+    if (error.code === "ENOENT" || error instanceof SyntaxError) {
+      return "preflight";
+    }
+
+    throw error;
+  }
+};
+
+const archiveContext = (stage, env, readBead) => {
+  const context = resolveNativeContext(env, readBead);
+
+  const steps = {
+    integrated: ["publish"],
+    prepared: ["prepare"],
+    published: ["publish", "accept"],
+    reviewed: ["review"],
+  };
+
+  ensure(
+    steps[stage]?.includes(
+      context.subject.metadata?.["gc.ralph_step_id"] ??
+        context.subject.metadata?.["gc.step_id"]
+    ),
+    "Check stage does not match native subject"
+  );
+  const requestFile = path.join(context.directory, "request.json");
+  let requestHash = null;
+
+  try {
+    lstatSync(requestFile);
+    requestHash = sha256(
+      readFileSync(checkedFile(context.directory, requestFile))
+    );
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  const repo = fileURLToPath(new URL("..", import.meta.url));
+
+  const policy = Object.fromEntries(
+    [
+      "scripts/skill-update.mjs",
+      ...[
+        "archive",
+        "prepared",
+        "qualify",
+        "reviewed",
+        "integrated",
+        "published",
+      ].map((name) => `gascity/skill-updates/assets/checks/${name}.sh`),
+    ].map((name) => [name, sha256(readFileSync(path.join(repo, name)))])
+  );
+
+  const record = {
+    assignee: context.subject.assignee,
+    candidate: context.candidate,
+    integration:
+      stage === "integrated" ? integrationArchiveIdentity(context) : null,
+    iteration: context.subject.metadata?.["gc.iteration"] ?? "1",
+    policy,
+    requestHash,
+    root: context.root.id,
+    schema: "skill-check-evidence.v1",
+    stage,
+    subject: context.subject.id,
+  };
+
+  ensure(
+    !env.GC_ITERATION || env.GC_ITERATION === record.iteration,
+    "Native iteration mismatch"
+  );
+
+  const archive = path.join(
+    context.directory,
+    "attempts",
+    context.root.id,
+    context.subject.id,
+    "checks",
+    stage,
+    ...(record.integration ? [record.integration] : [])
+  );
+
+  return { ...context, archive, record };
+};
+
+const archiveReceiptNames = [
+  "request.json",
+  "prepared.json",
+  "qualified-prepared.json",
+  "reviewed.json",
+  "integrated.json",
+  "qualified-integrated.json",
+  "published.json",
+];
+
+const archiveNativeNames = ["result.json", "failure.json"];
+
+const snapshotCheckEvidence = (context, phase) => {
+  const snapshot = checkedDirectory(
+    context.archive,
+    path.join(context.archive, phase),
+    true
+  );
+
+  const missing = [];
+
+  for (const [namespace, directory, names] of [
+    ["receipts", context.directory, archiveReceiptNames],
+    ["native", context.artifactDirectory, archiveNativeNames],
+  ]) {
+    const target = checkedDirectory(
+      snapshot,
+      path.join(snapshot, namespace),
+      true
+    );
+
+    for (const name of names) {
+      const source = path.join(directory, name);
+      let stat;
+
+      try {
+        stat = lstatSync(source);
+      } catch (error) {
+        if (error.code !== "ENOENT") {
+          throw error;
+        }
+
+        missing.push(`${namespace}/${name}`);
+        continue;
+      }
+
+      ensure(stat.isFile() && !stat.isSymbolicLink(), "Unsafe evidence file");
+      copyFileSync(
+        checkedFile(directory, source),
+        path.join(target, name),
+        constants.COPYFILE_EXCL
+      );
+    }
+  }
+
+  return missing;
+};
+
+export const beginCheckArchive = (stage, env, readBead) => {
+  const context = archiveContext(stage, env, readBead);
+  checkedDirectory(context.directory, path.dirname(context.archive), true);
+  mkdirSync(context.archive, { mode: 0o700 });
+  writeFileSync(
+    path.join(context.archive, "started.json"),
+    `${JSON.stringify({ ...context.record, complete: false })}\n`,
+    { flag: "wx", mode: 0o600 }
+  );
+
+  for (const [name, value] of Object.entries({
+    candidate: context.anchor,
+    convoy: context.convoy,
+    root: context.root,
+    subject: context.subject,
+  })) {
+    writeFileSync(
+      path.join(context.archive, `${name}.json`),
+      `${JSON.stringify(value)}\n`,
+      { flag: "wx", mode: 0o600 }
+    );
+  }
+
+  snapshotCheckEvidence(context, "before");
+
+  const requestSnapshot = path.join(
+    context.archive,
+    "before/receipts/request.json"
+  );
+
+  ensure(
+    (existsSync(requestSnapshot)
+      ? sha256(readFileSync(requestSnapshot))
+      : null) === context.record.requestHash,
+    "Request changed during archive establishment"
+  );
+
+  return context.archive;
+};
+
+export const finishCheckArchive = (stage, exitCode, env, readBead) => {
+  ensure(
+    Number.isInteger(exitCode) && exitCode >= 0 && exitCode <= 255,
+    "Invalid raw check exit code"
+  );
+  const context = archiveContext(stage, env, readBead);
+  checkedDirectory(context.directory, context.archive);
+
+  const started = json(
+    checkedFile(context.archive, path.join(context.archive, "started.json"))
+  );
+
+  ensure(
+    isDeepStrictEqual(started, { ...context.record, complete: false }),
+    "Archive identity changed during check"
+  );
+  ensure(
+    isDeepStrictEqual(
+      json(
+        checkedFile(context.archive, path.join(context.archive, "exit.json"))
+      ),
+      { exitCode }
+    ),
+    "Raw check exit mismatch"
+  );
+  const missing = snapshotCheckEvidence(context, "after");
+
+  const rawLogs = ["stdout.log", "stderr.log", "qualification.log"].filter(
+    (name) => existsSync(path.join(context.archive, name))
+  );
+
+  ensure(
+    rawLogs.includes("stdout.log") && rawLogs.includes("stderr.log"),
+    "Missing raw check output"
+  );
+
+  const sealed = checkedDirectory(
+    context.archive,
+    path.join(context.archive, "sealed"),
+    true
+  );
+
+  for (const name of rawLogs) {
+    const bytes = readFileSync(
+      checkedFile(context.archive, path.join(context.archive, name))
+    );
+
+    writeFileSync(path.join(sealed, name), bytes, {
+      flag: "wx",
+      mode: 0o600,
+    });
+  }
+
+  const allowed = new Set([
+    "started.json",
+    "exit.json",
+    "subject.json",
+    "root.json",
+    "convoy.json",
+    "candidate.json",
+    ...rawLogs.flatMap((name) => [name, `sealed/${name}`]),
+    ...["before", "after"].flatMap((phase) => [
+      ...archiveReceiptNames.map((name) => `${phase}/receipts/${name}`),
+      ...archiveNativeNames.map((name) => `${phase}/native/${name}`),
+    ]),
+  ]);
+
+  const hashes = {};
+
+  for (const entry of readdirSync(context.archive, {
+    recursive: true,
+    withFileTypes: true,
+  })) {
+    const file = path.join(entry.parentPath, entry.name);
+
+    if (entry.isDirectory()) {
+      checkedDirectory(context.archive, file);
+      ensure(
+        [
+          "before",
+          "after",
+          "before/receipts",
+          "before/native",
+          "after/receipts",
+          "after/native",
+          "sealed",
+        ].includes(path.relative(context.archive, file)),
+        "Unknown archive directory"
+      );
+      continue;
+    }
+
+    const relative = path.relative(context.archive, file);
+    ensure(allowed.has(relative), "Unknown archive evidence");
+    const evidence = checkedFile(context.archive, file);
+
+    if (rawLogs.includes(relative)) {
+      continue;
+    }
+
+    hashes[relative] = sha256(readFileSync(evidence));
+  }
+
+  ensure(
+    hashes["sealed/stdout.log"] && hashes["sealed/stderr.log"],
+    "Missing sealed check output"
+  );
+
+  const manifest = {
+    ...context.record,
+    complete: true,
+    completionScope: "captured-snapshots",
+    exitCode,
+    hashes,
+    missing,
+    rawLogs: { paths: rawLogs, sealed: false },
+  };
+
+  writeFileSync(
+    path.join(context.archive, "manifest.json"),
+    `${JSON.stringify(manifest)}\n`,
+    { flag: "wx", mode: 0o600 }
+  );
+
+  return manifest;
 };
 
 const validateReview = (review, request, prepared, tree) => {
@@ -559,7 +1013,10 @@ export const main = (args, env = process.env) => {
   }
 
   ensure(
-    (args[0] === "check" && args.length === 2) ||
+    (args[0] === "archive" &&
+      ["begin", "finish"].includes(args[1]) &&
+      args.length === (args[1] === "begin" ? 3 : 4)) ||
+      (args[0] === "check" && args.length === 2) ||
       (args[0] === "qualify" &&
         args.length === 3 &&
         ["prepared", "integrated"].includes(args[1])),
@@ -598,6 +1055,14 @@ export const main = (args, env = process.env) => {
 
     return rows[0];
   };
+
+  if (args[0] === "archive") {
+    return args[1] === "begin"
+      ? beginCheckArchive(args[2], env, readBead)
+      : JSON.stringify(
+          finishCheckArchive(args[2], Number(args[3]), env, readBead)
+        );
+  }
 
   const context = resolveContext(env, readBead);
   const result = checkStage(args[1], context);
