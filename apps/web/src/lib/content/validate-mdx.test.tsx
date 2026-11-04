@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { doesNotReject, rejects } from "node:assert/strict";
 
 import { evaluate } from "@mdx-js/mdx";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -34,8 +35,9 @@ for (const source of [
   'export const value = "executed"',
 ]) {
   test(`rejects executable MDX: ${source}`, async () => {
-    await expect(validateTrustedMdx(source, "unsafe.mdx")).rejects.toThrow(
-      "MDX imports, exports, and arbitrary JavaScript expressions are disabled"
+    await rejects(
+      validateTrustedMdx(source, "unsafe.mdx"),
+      /MDX imports, exports, and arbitrary JavaScript expressions are disabled/u
     );
   });
 }
@@ -46,19 +48,21 @@ for (const source of [
   '<Callout onClick={() => globalThis.alert("executed")} />',
 ]) {
   test(`retains literal-property restrictions: ${source}`, async () => {
-    await expect(
-      validateTrustedMdx(source, "unsafe-props.mdx")
-    ).rejects.toThrow("may only use literal string properties");
+    await rejects(
+      validateTrustedMdx(source, "unsafe-props.mdx"),
+      /may only use literal string properties/u
+    );
   });
 }
 
 test("rejects comments used as property expressions during parsing", async () => {
-  await expect(
+  await rejects(
     validateTrustedMdx(
       "<Callout title={/* Editorial note */} />",
       "unsafe-props.mdx"
-    )
-  ).rejects.toThrow("Unexpected empty expression");
+    ),
+    /Unexpected empty expression/u
+  );
 });
 
 for (const name of [
@@ -69,19 +73,19 @@ for (const name of [
   "MermaidDiagram",
 ]) {
   test(`accepts allowlisted ${name} with literal properties`, async () => {
-    await expect(
+    await doesNotReject(
       validateTrustedMdx(`<${name} title="Literal" />`, "allowed.mdx")
-    ).resolves.toBeUndefined();
+    );
   });
 }
 
 test("accepts nested content, boolean properties and editorial comments", async () => {
-  await expect(
+  await doesNotReject(
     validateTrustedMdx(
       "<Callout compact>\n\n## Heading\n\nText {/* Note */} <ComingSoon />\n\n</Callout>",
       "nested.mdx"
     )
-  ).resolves.toBeUndefined();
+  );
 });
 
 for (const source of [
@@ -92,9 +96,10 @@ for (const source of [
   "<Callout>\n\n> # Nested heading\n\n</Callout>",
 ]) {
   test(`reports the tree path for nested restricted content: ${source}`, async () => {
-    await expect(
-      validateTrustedMdx(source, "nested-unsafe.mdx")
-    ).rejects.toThrow(/children[\s\S]*children/u);
+    await rejects(
+      validateTrustedMdx(source, "nested-unsafe.mdx"),
+      /children[\s\S]*children/u
+    );
   });
 }
 
@@ -105,16 +110,18 @@ for (const source of [
   "<Callout>\n\n<Unknown />\n\n</Callout>",
 ]) {
   test(`rejects non-allowlisted elements: ${source}`, async () => {
-    await expect(validateTrustedMdx(source, "unsafe.mdx")).rejects.toThrow(
-      "is not allowlisted"
+    await rejects(
+      validateTrustedMdx(source, "unsafe.mdx"),
+      /is not allowlisted/u
     );
   });
 }
 
 for (const source of ["# Heading", "> # Nested heading"]) {
   test(`rejects body h1: ${source}`, async () => {
-    await expect(validateTrustedMdx(source, "heading.mdx")).rejects.toThrow(
-      "Post bodies cannot contain an h1"
+    await rejects(
+      validateTrustedMdx(source, "heading.mdx"),
+      /Post bodies cannot contain an h1/u
     );
   });
 }

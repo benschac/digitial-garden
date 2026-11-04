@@ -169,7 +169,8 @@ const parseFence = (node: MarkdownNode, depth: number) => {
   const language = node.lang;
 
   if (
-    !language ||
+    language == null ||
+    language === "" ||
     (!Object.hasOwn(bundledLanguages, language) &&
       language !== "text" &&
       language !== "txt")
@@ -271,7 +272,9 @@ export const prepareSourceSnippets = async (
     }
 
     await Promise.all(
-      (node.children ?? []).map((child) => visit(child, depth + 1))
+      (node.children ?? []).map(async (child) => {
+        await visit(child, depth + 1);
+      })
     );
   };
 

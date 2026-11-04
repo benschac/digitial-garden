@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -21,9 +22,9 @@ const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
   await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { force: true, recursive: true }))
+    temporaryDirectories.splice(0).map(async (directory) => {
+      await rm(directory, { force: true, recursive: true });
+    })
   );
 });
 
@@ -38,10 +39,10 @@ const createFixture = async () => {
   return { contentDirectory, publicDirectory };
 };
 
-const loadPostRegistry = (paths: {
+const loadPostRegistry = async (paths: {
   contentDirectory: string;
   publicDirectory: string;
-}) => buildPostRegistry(paths, temporaryDirectories);
+}) => await buildPostRegistry(paths, temporaryDirectories);
 
 const postSource = ({
   publishedAt = "2026-08-20",
@@ -221,7 +222,7 @@ describe("file-based post registry", () => {
         path.join(paths.contentDirectory, "invalid.md"),
         postSource({ slug: "invalid" }).replace("\n---\n", `\n${fields}\n---\n`)
       );
-      await expect(loadPostRegistry(paths)).rejects.toThrow(error);
+      await rejects(loadPostRegistry(paths), error);
     }
   );
 
@@ -253,7 +254,7 @@ const answer = 42;
     const posts = await loadPostRegistry(paths);
     const [post] = posts;
 
-    if (!post) {
+    if (posts.length === 0) {
       throw new Error("Expected a compiled fixture post");
     }
 
@@ -340,9 +341,7 @@ const answer = 42;
       ),
     ]);
 
-    await expect(loadPostRegistry(paths)).rejects.toThrow(
-      "Duplicate post slug"
-    );
+    await rejects(loadPostRegistry(paths), /Duplicate post slug/u);
   });
 
   test("rejects missing local images", async () => {
@@ -358,7 +357,7 @@ const answer = 42;
       source
     );
 
-    await expect(loadPostRegistry(paths)).rejects.toThrow("does not exist");
+    await rejects(loadPostRegistry(paths), /does not exist/u);
   });
 
   test("rejects missing required metadata", async () => {
@@ -374,7 +373,7 @@ const answer = 42;
       source
     );
 
-    await expect(loadPostRegistry(paths)).rejects.toThrow("title");
+    await rejects(loadPostRegistry(paths), /title/u);
   });
 
   test("rejects arbitrary MDX imports", async () => {
@@ -384,8 +383,9 @@ const answer = 42;
       `${postSource({ slug: "unsafe" })}\nimport Widget from "./widget"\n\n<Widget />`
     );
 
-    await expect(loadPostRegistry(paths)).rejects.toThrow(
-      "imports, exports, and arbitrary JavaScript expressions are disabled"
+    await rejects(
+      loadPostRegistry(paths),
+      /imports, exports, and arbitrary JavaScript expressions are disabled/u
     );
   });
 
@@ -396,8 +396,9 @@ const answer = 42;
       `${postSource({ slug: "unsafe-component" })}\n<UntrustedWidget />`
     );
 
-    await expect(loadPostRegistry(paths)).rejects.toThrow(
-      'MDX component "UntrustedWidget" is not allowlisted'
+    await rejects(
+      loadPostRegistry(paths),
+      /MDX component "UntrustedWidget" is not allowlisted/u
     );
   });
 

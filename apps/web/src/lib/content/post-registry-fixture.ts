@@ -69,7 +69,11 @@ export default { content: [createPostsCollection(${JSON.stringify(root)}, ${JSON
     ".content-collections/generated/index.js"
   );
 
-  const { allPosts } = await import(pathToFileURL(generatedPath).href);
+  const imported: unknown = await import(pathToFileURL(generatedPath).href);
+
+  const { allPosts } = Schema.decodeUnknownSync(
+    Schema.Struct({ allPosts: Schema.Unknown })
+  )(imported);
 
   return sortPostsNewestFirst(parsePostRecords(allPosts));
 };

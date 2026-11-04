@@ -17,16 +17,18 @@ import {
 
 const getRegistry = () => sortPostsNewestFirst(allPosts);
 
-export const getAllPosts = (): Promise<PostSummary[]> =>
-  Promise.try(() => getRegistry().map(asSummary));
+export const getAllPosts = async (): Promise<PostSummary[]> =>
+  await Promise.try(() => getRegistry().map(asSummary));
 
-export const getPublishedPosts = (): Promise<PostSummary[]> =>
-  Promise.try(() => getPublishedPostSummaries(getRegistry()));
+export const getPublishedPosts = async (): Promise<PostSummary[]> =>
+  await Promise.try(() => getPublishedPostSummaries(getRegistry()));
 
-export const getBlogPosts = (): Promise<PostSummary[]> =>
-  Promise.try(() => getBlogPostSummaries(getRegistry(), process.env.NODE_ENV));
+export const getBlogPosts = async (): Promise<PostSummary[]> =>
+  await Promise.try(() =>
+    getBlogPostSummaries(getRegistry(), process.env.NODE_ENV)
+  );
 
-export const getPostBySlug = (
+export const getPostBySlug = async (
   slug: string
 ): Promise<
   | (PostSummary & {
@@ -34,27 +36,31 @@ export const getPostBySlug = (
     })
   | undefined
 > =>
-  Promise.try(() => {
+  await Promise.try(() => {
     const posts = getRegistry();
     const post = posts.find((candidate) => candidate.slug === slug);
 
-    if (!post || !getBlogPostSummaries([post], process.env.NODE_ENV).length) {
-      return;
+    let result:
+      | (PostSummary & { Content: ComponentType<Record<string, never>> })
+      | undefined;
+
+    if (post && getBlogPostSummaries([post], process.env.NODE_ENV).length > 0) {
+      const code = post.mdx;
+
+      const Content = () =>
+        createElement(MDXContent, {
+          code,
+          components: useMDXComponents(),
+        });
+
+      result = { ...asSummary(post), Content };
     }
 
-    const code = post.mdx;
-
-    const Content = () =>
-      createElement(MDXContent, {
-        code,
-        components: useMDXComponents(),
-      });
-
-    return { ...asSummary(post), Content };
+    return result;
   });
 
-export const getPostsByTag = (tag: string): Promise<PostSummary[]> =>
-  Promise.try(() => getPostSummariesByTag(getRegistry(), tag));
+export const getPostsByTag = async (tag: string): Promise<PostSummary[]> =>
+  await Promise.try(() => getPostSummariesByTag(getRegistry(), tag));
 
 export const getAllPostSlugs = async (): Promise<string[]> => {
   const posts = await getBlogPosts();

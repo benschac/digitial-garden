@@ -8,34 +8,34 @@ import { loadPostRegistry } from "./post-registry-fixture";
 
 const temporaryDirectories: string[] = [];
 
-afterEach(() =>
-  Effect.runPromise(
+afterEach(async () => {
+  await Effect.runPromise(
     Effect.forEach(
       temporaryDirectories.splice(0),
       (directory) =>
-        Effect.promise(() => rm(directory, { force: true, recursive: true })),
+        Effect.promise(async () => {
+          await rm(directory, { force: true, recursive: true });
+        }),
       { concurrency: "unbounded", discard: true }
     )
-  )
-);
+  );
+});
 
-test(
-  "validates the repository posts",
-  () =>
-    Effect.runPromise(
-      Effect.gen(function* validateRepositoryPosts() {
-        const posts = yield* Effect.promise(() =>
-          loadPostRegistry(
+test("validates the repository posts", async () => {
+  await Effect.runPromise(
+    Effect.gen(function* validateRepositoryPosts() {
+      const posts = yield* Effect.promise(
+        async () =>
+          await loadPostRegistry(
             {
               contentDirectory: path.join(process.cwd(), "content", "posts"),
               publicDirectory: path.join(process.cwd(), "public"),
             },
             temporaryDirectories
           )
-        );
+      );
 
-        expect(posts.length).toBeGreaterThan(0);
-      })
-    ),
-  15_000
-);
+      expect(posts.length).toBeGreaterThan(0);
+    })
+  );
+}, 15_000);

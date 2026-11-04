@@ -60,14 +60,21 @@ const metadataChecks = Schema.makeFilter<typeof metadataSchema.Type>(
   (metadata) => {
     const issues: Schema.FilterIssue[] = [];
 
-    if (metadata.image && !metadata.imageAlt) {
+    if (
+      metadata.image !== undefined &&
+      metadata.image !== "" &&
+      (metadata.imageAlt === undefined || metadata.imageAlt === "")
+    ) {
       issues.push({
         issue: "imageAlt is required when image is present",
         path: ["imageAlt"],
       });
     }
 
-    if (metadata.order !== undefined && !metadata.series) {
+    if (
+      metadata.order !== undefined &&
+      (metadata.series === undefined || metadata.series === "")
+    ) {
       issues.push({
         issue: "series is required when order is present",
         path: ["series"],

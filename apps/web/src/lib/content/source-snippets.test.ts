@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import {
   mkdtemp,
   mkdir,
@@ -67,9 +68,9 @@ const render = async (content: string, directory: string) => {
 
 afterEach(async () => {
   await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { force: true, recursive: true }))
+    temporaryDirectories.splice(0).map(async (directory) => {
+      await rm(directory, { force: true, recursive: true });
+    })
   );
 });
 
@@ -138,9 +139,10 @@ for (const meta of [
 ]) {
   test(`rejects invalid reference ${meta}`, async () => {
     const { directory } = await fixture();
-    await expect(
-      prepareSourceSnippets(`\`\`\`ts ${meta}\n\`\`\``, directory, "bad.mdx")
-    ).rejects.toThrow("bad.mdx:1:");
+    await rejects(
+      prepareSourceSnippets(`\`\`\`ts ${meta}\n\`\`\``, directory, "bad.mdx"),
+      /bad\.mdx:1:/u
+    );
   });
 }
 
@@ -154,11 +156,12 @@ test("rejects body text, nested references and unsupported languages", async () 
       "```unsupported-language source=example lines=2-3\n```",
       "```source=example lines=2-3\n```",
       "```constructor source=example lines=2-3\n```",
-    ].map((content) =>
-      expect(
-        prepareSourceSnippets(content, directory, "bad.mdx")
-      ).rejects.toThrow("bad.mdx:1:")
-    )
+    ].map(async (content) => {
+      await rejects(
+        prepareSourceSnippets(content, directory, "bad.mdx"),
+        /bad\.mdx:1:/u
+      );
+    })
   );
 });
 
@@ -171,8 +174,8 @@ test("reports independent failures together before compilation", async () => {
     "bad.mdx"
   );
 
-  await expect(result).rejects.toThrow("bad.mdx:1:");
-  await expect(result).rejects.toThrow("bad.mdx:4:");
+  await rejects(result, /bad\.mdx:1:/u);
+  await rejects(result, /bad\.mdx:4:/u);
 });
 
 test("rejects corrupt provenance and symlink snapshots", async () => {
@@ -192,18 +195,20 @@ test("rejects corrupt provenance and symlink snapshots", async () => {
         path.join(isolated.directory, "example.json"),
         JSON.stringify(invalid)
       );
-      await expect(
-        prepareSourceSnippets(reference, isolated.directory, "bad.mdx")
-      ).rejects.toThrow("bad.mdx:1:");
+      await rejects(
+        prepareSourceSnippets(reference, isolated.directory, "bad.mdx"),
+        /bad\.mdx:1:/u
+      );
     })
   );
 
   const outside = await fixture();
   await rm(file);
   await symlink(path.join(outside.directory, "example.json"), file);
-  await expect(
-    prepareSourceSnippets(reference, directory, "bad.mdx")
-  ).rejects.toThrow("regular file inside");
+  await rejects(
+    prepareSourceSnippets(reference, directory, "bad.mdx"),
+    /regular file inside/u
+  );
 });
 
 test("captures the pinned Git blob despite dirty source and refuses to overwrite", async () => {
@@ -211,8 +216,8 @@ test("captures the pinned Git blob despite dirty source and refuses to overwrite
   const localRepository = path.join(directory, "repo");
   await mkdir(localRepository);
 
-  const git = (...args: string[]) =>
-    execa("git", args, { cwd: localRepository });
+  const git = async (...args: string[]) =>
+    await execa("git", args, { cwd: localRepository });
 
   await git("init", "--quiet");
   await git("remote", "add", "origin", repository);
@@ -252,13 +257,14 @@ test("captures the pinned Git blob despite dirty source and refuses to overwrite
     path: "example.ts",
     repository,
   });
-  await expect(captureSnippet(input, directory)).rejects.toThrow("EEXIST");
-  await expect(
+  await rejects(captureSnippet(input, directory), /EEXIST/u);
+  await rejects(
     captureSnippet(
       { ...input, repository: "https://github.com/wrong/source" },
       directory
-    )
-  ).rejects.toThrow("does not match origin");
+    ),
+    /does not match origin/u
+  );
 });
 
 test("renders the checked-in class-names example", async () => {
@@ -319,10 +325,16 @@ export default { content: [createPostsCollection(${JSON.stringify(root)}, ${JSON
   );
   const builder = await createBuilder(config);
   const errors: string[] = [];
-  builder.on("_error", (event) => errors.push(event.error.message));
-  await builder.build().catch((error) => {
-    throw new Error(errors.join("\n"), { cause: error });
+  builder.on("_error", (event) => {
+    errors.push(event.error.message);
   });
+
+  try {
+    await builder.build();
+  } catch (error) {
+    throw new Error(errors.join("\n"), { cause: error });
+  }
+
   expect(errors).toEqual([]);
 
   const generated = path.join(
@@ -346,6 +358,6 @@ export default { content: [createPostsCollection(${JSON.stringify(root)}, ${JSON
   expect(await readFile(generated, "utf-8")).toContain(updated.commit);
   expect(await readFile(generated, "utf-8")).toContain("updated comment");
   await rm(snapshotPath);
-  await expect(builder.build()).rejects.toThrow("Invalid blog posts");
+  await rejects(builder.build(), /Invalid blog posts/u);
   expect(errors.join("\n")).toContain("example.mdx:1:");
 });

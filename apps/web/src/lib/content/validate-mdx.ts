@@ -32,7 +32,7 @@ const mdxNodeFields = {
       ),
     })
   ),
-  depth: Schema.optional(Schema.Number),
+  depth: Schema.optional(Schema.Finite),
   name: Schema.optional(Schema.NullOr(Schema.String)),
   type: Schema.String,
 };
@@ -66,6 +66,8 @@ const mdxNodeSchema = Schema.Struct({
           if (expression.type === "mdxjsEsm" || !isEmptyProgram) {
             return "MDX imports, exports, and arbitrary JavaScript expressions are disabled.";
           }
+
+          return true;
         }
       ),
       Match.whenOr(
@@ -81,6 +83,8 @@ const mdxNodeSchema = Schema.Struct({
               return `MDX component "${element.name}" may only use literal string properties.`;
             }
           }
+
+          return true;
         }
       ),
       Match.orElse(() => true)

@@ -19,7 +19,7 @@ export const assertLocalImageExists = async (
   fileName: string,
   publicDirectory: string
 ): Promise<void> => {
-  if (!image || /^https?:\/\//u.test(image)) {
+  if (image === undefined || image === "" || /^https?:\/\//u.test(image)) {
     return;
   }
 
@@ -58,7 +58,7 @@ export const validatePostRegistry = (posts: readonly PostRecord[]): void => {
   for (const post of posts) {
     const existingOwner = slugOwners.get(post.slug);
 
-    if (existingOwner) {
+    if (existingOwner !== undefined) {
       throw new Error(
         `Duplicate post slug "${post.slug}" in ${existingOwner} and ${post.sourceFile}`
       );
