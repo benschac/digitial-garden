@@ -1043,7 +1043,7 @@
       "schema",
       "diagnostics"
     ],
-    "decision": "Run wake reconciliation as an Effect at the Bun CLI boundary. Effect owns command completion and temporary receipt cleanup; preserve the inherited flock descriptor and raw JSON snapshot identity. Validate external data with Effect Schema. Gas City uses the pinned Effect-aware compiler.",
+    "decision": "Run wake reconciliation as an Effect at the Bun CLI boundary. Effect owns command completion and temporary receipt cleanup; keep the inherited flock descriptor in the helper and out of child processes. Preserve raw JSON snapshot identity and validate external data with Effect Schema. Gas City uses the pinned Effect-aware compiler.",
     "owners": [
       "gascity/dependency-updates/assets/scripts/supervise-wake.ts",
       "gascity/dependency-updates/assets/scripts/supervise-wake.sh",
@@ -1074,11 +1074,11 @@
       {
         "kind": "behavior",
         "path": "scripts/dependency-supervision.test.mjs",
-        "claim": "Exercises actual helper processes with fixture gc commands for wake decisions, snapshot compatibility, exact exit statuses, graceful cancellation, lock retention and receipt cleanup."
+        "claim": "Exercises actual helper processes with fixture gc commands for wake decisions, snapshot compatibility, exact exit statuses, graceful cancellation, lock retention during active work, lock release despite detached descendants and receipt cleanup."
       }
     ],
     "exceptions": [
-      "Execa preserves inherited fd9 for the flock contract; effect/process stream descriptors do not replace that contract. Simple filesystem operations remain native adapters.",
+      "Execa remains the existing subprocess adapter; Effect finalizers wait for active commands while the helper owns fd9. Child processes receive only standard streams so detached Gas City pollers cannot retain the lock. Simple filesystem operations remain native adapters.",
       "jq preserves raw snapshot numbers and canonical hashes. BunRuntime.runMain is the only explicitly allowed unstable API in the Gas City compiler config.",
       "The throw-new-error lint rule is disabled for this file because it misidentifies the required Schema.TaggedError factory call as an Error instance construction."
     ],

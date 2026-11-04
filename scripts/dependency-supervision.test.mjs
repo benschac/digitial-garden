@@ -65,6 +65,19 @@ if (args.includes('list')) {
 } else if (args.includes('session') && args.includes('nudge')) {
   fs.appendFileSync(file('calls.jsonl'), JSON.stringify(args) + '\\n');
   if (mode === 'nudge-failure') process.exit(2);
+  if (mode === 'detached') {
+    const stdio = Array(10).fill('ignore');
+    try {
+      const descriptor = fs.fstatSync(9);
+      const lock = fs.statSync(file('.gc/dependency-updates/supervision/wake.lock'));
+      if (descriptor.dev === lock.dev && descriptor.ino === lock.ino) stdio[9] = 9;
+    } catch (error) {
+      if (error.code !== 'EBADF') throw error;
+    }
+    const child = require('node:child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 30000)'], { detached: true, stdio });
+    fs.writeFileSync(file('detached-pid'), String(child.pid));
+    child.unref();
+  }
   if (mode === 'hold' || mode === 'linger') {
     fs.writeFileSync(file('active-pid'), String(process.pid));
     process.on('SIGUSR1', () => process.exit(0));
@@ -395,6 +408,36 @@ test("malformed or partial queue and nudge results fail visibly", (t) => {
   assert.notEqual(f.run().status, 0);
   assert.equal(f.count(), 0);
 });
+
+test(
+  "a detached nudge descendant cannot retain the completed helper's lock",
+  { timeout: 5000 },
+  (t) => {
+    const f = fixture(t);
+    writeJson(f.beads, [held]);
+    pass(f.run("detached"));
+
+    const pid = Number(
+      readFileSync(path.join(f.root, "detached-pid"), "utf-8")
+    );
+
+    t.after(() => {
+      try {
+        process.kill(pid, "SIGTERM");
+      } catch (error) {
+        if (error.code !== "ESRCH") {
+          throw error;
+        }
+      }
+    });
+    process.kill(pid, 0);
+    pass(spawnSync("bash", [script, "--snapshot"], f.options()));
+    writeJson(f.beads, [{ ...held, status: "in_progress" }]);
+    pass(f.run());
+    assert.equal(f.count(), 2);
+    assert.equal(readJson(f.state).snapshot[0].status, "in_progress");
+  }
+);
 
 test(
   "concurrent event and catch-up helpers share one notification lock",

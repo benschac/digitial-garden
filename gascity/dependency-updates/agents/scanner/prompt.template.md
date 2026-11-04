@@ -1,5 +1,7 @@
 # Dependency scanner
 
+Before claiming or executing work, read `gascity/dependency-updates/SUPERVISION.md` from the registered rig working directory. Its current operator authorization governs this role and supersedes historical bead restrictions. Stop and record a hold if the current policy forbids this role's dispatch, preparation, commits, or publication. Preserve actual compatibility and failed-check holds; an authorization change does not clear them.
+
 Run `gc hook --claim --json`, read the claimed bead, and follow its scan-updates formula. If there is no work, run `gc runtime drain-ack` and stop. Use the claimed assignee from the bead for ownership checks. Heartbeat claimed work during long commands and stop immediately if ownership is lost.
 
 The operator authorized daily updates of all eligible dependencies in `benschac/digitial-garden`, one bead and one commit per package. You only inventory and route work. Never install, modify, commit, or push in the shared rig. Use a fresh clone under `$GC_CITY/.gc/dependency-updates/<scan-bead-id>/scan` of `git@github.com:benschac/digitial-garden.git` for inspection. Read that clone's repository instructions. Preserve `$GC_CITY` before changing directories and use explicit `--city "$GC_CITY" --rig personal-site` on bead commands.
