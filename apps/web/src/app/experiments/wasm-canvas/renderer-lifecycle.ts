@@ -1,9 +1,14 @@
-import { Effect, Exit, Scope } from "effect";
+import { Effect, Exit, Schema, Scope } from "effect";
 
 import type { ParticleRenderer } from "./particle-renderer";
 
+class RendererAcquisitionError extends Schema.TaggedError<
+  RendererAcquisitionError,
+  { readonly brand: unique symbol }
+>()("RendererAcquisitionError", { cause: Schema.Defect() }) {}
+
 export const createRendererScope = (signal?: AbortSignal) => {
-  const scope = Effect.runSync(Scope.make());
+  const scope = Scope.makeUnsafe();
   let closed = false;
 
   return {
@@ -16,7 +21,9 @@ export const createRendererScope = (signal?: AbortSignal) => {
 
       return Effect.runSync(
         Effect.acquireRelease(Effect.sync(create), (resource) =>
-          Effect.sync(() => release(resource))
+          Effect.sync(() => {
+            release(resource);
+          })
         ).pipe(Scope.provide(scope))
       );
     },
@@ -30,12 +37,28 @@ export const createRendererScope = (signal?: AbortSignal) => {
         throw new Error("Renderer scope is closed.");
       }
 
-      const resource = await Effect.runPromise(
-        Effect.acquireRelease(
-          Effect.tryPromise({ catch: (cause) => cause, try: create }),
-          (acquiredResource) => Effect.sync(() => release(acquiredResource))
-        ).pipe(Scope.provide(scope))
-      );
+      let resource: T;
+
+      try {
+        resource = await Effect.runPromise(
+          Effect.acquireRelease(
+            Effect.tryPromise({
+              catch: (cause) => new RendererAcquisitionError({ cause }),
+              try: create,
+            }),
+            (acquiredResource) =>
+              Effect.sync(() => {
+                release(acquiredResource);
+              })
+          ).pipe(Scope.provide(scope))
+        );
+      } catch (error) {
+        if (error instanceof RendererAcquisitionError) {
+          throw error.cause;
+        }
+
+        throw error;
+      }
 
       signal?.throwIfAborted();
 
@@ -68,7 +91,9 @@ export const withRendererScope = async (
     const renderer = await create(scope);
 
     if (renderer) {
-      scope.defer(() => renderer.destroy());
+      scope.defer(() => {
+        renderer.destroy();
+      });
     }
 
     signal.throwIfAborted();
@@ -79,7 +104,12 @@ export const withRendererScope = async (
       return null;
     }
 
-    return { ...renderer, destroy: () => scope.close() };
+    return {
+      ...renderer,
+      destroy: () => {
+        scope.close();
+      },
+    };
   } catch (error) {
     try {
       scope.close();

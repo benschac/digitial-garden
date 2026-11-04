@@ -445,9 +445,9 @@ export const PerlinNoiseExperiment = () => {
             className={styles.controlInput}
             max="16"
             min="1"
-            onChange={(event) =>
-              setFrequency(Number(event.currentTarget.value))
-            }
+            onChange={(event) => {
+              setFrequency(Number(event.currentTarget.value));
+            }}
             step="0.25"
             type="range"
             value={frequency}
@@ -460,7 +460,9 @@ export const PerlinNoiseExperiment = () => {
             className={styles.controlInput}
             max="32"
             min="-32"
-            onChange={(event) => setOffsetX(Number(event.currentTarget.value))}
+            onChange={(event) => {
+              setOffsetX(Number(event.currentTarget.value));
+            }}
             step="0.25"
             type="range"
             value={offsetX}
@@ -473,7 +475,9 @@ export const PerlinNoiseExperiment = () => {
             className={styles.controlInput}
             max="32"
             min="-32"
-            onChange={(event) => setOffsetY(Number(event.currentTarget.value))}
+            onChange={(event) => {
+              setOffsetY(Number(event.currentTarget.value));
+            }}
             step="0.25"
             type="range"
             value={offsetY}

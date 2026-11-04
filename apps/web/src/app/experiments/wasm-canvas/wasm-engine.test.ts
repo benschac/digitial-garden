@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
+import assert from "node:assert/strict";
 
 import { Effect } from "effect";
 
@@ -11,8 +12,8 @@ import {
   ParticleEngineInstantiateError,
 } from "./wasm-engine";
 
-const wasmBytes = () =>
-  Bun.file(
+const wasmBytes = async () =>
+  await Bun.file(
     new URL("../../../../public/wasm/particle-engine.wasm", import.meta.url)
   ).arrayBuffer();
 
@@ -70,14 +71,16 @@ describe("particle engine loading", () => {
           Object.entries(exports).filter(([key]) => key !== name)
         );
 
-        await expect(
-          Effect.runPromise(decodeParticleEngineExports(missing))
-        ).rejects.toBeInstanceOf(ParticleEngineAbiError);
-        await expect(
+        await assert.rejects(
+          Effect.runPromise(decodeParticleEngineExports(missing)),
+          ParticleEngineAbiError
+        );
+        await assert.rejects(
           Effect.runPromise(
             decodeParticleEngineExports({ ...exports, [name]: 123 })
-          )
-        ).rejects.toBeInstanceOf(ParticleEngineAbiError);
+          ),
+          ParticleEngineAbiError
+        );
       })
     );
   });
@@ -86,31 +89,24 @@ describe("particle engine loading", () => {
     const { signal } = new AbortController();
     const request = spyOn(globalThis, "fetch");
     request.mockRejectedValueOnce(new Error("offline"));
-    await expect(loadParticleEngine(signal)).rejects.toBeInstanceOf(
-      ParticleEngineFetchError
-    );
+    await assert.rejects(loadParticleEngine(signal), ParticleEngineFetchError);
     request.mockResolvedValueOnce(new Response(null, { status: 503 }));
-    await expect(loadParticleEngine(signal)).rejects.toBeInstanceOf(
-      ParticleEngineFetchError
-    );
+    await assert.rejects(loadParticleEngine(signal), ParticleEngineFetchError);
     const response = new Response();
     spyOn(response, "arrayBuffer").mockRejectedValueOnce(
       new Error("body failed")
     );
     request.mockResolvedValueOnce(response);
-    await expect(loadParticleEngine(signal)).rejects.toBeInstanceOf(
-      ParticleEngineBodyError
-    );
+    await assert.rejects(loadParticleEngine(signal), ParticleEngineBodyError);
     request.mockResolvedValueOnce(new Response("invalid wasm"));
-    await expect(loadParticleEngine(signal)).rejects.toBeInstanceOf(
+    await assert.rejects(
+      loadParticleEngine(signal),
       ParticleEngineInstantiateError
     );
     request.mockResolvedValueOnce(
       new Response(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]))
     );
-    await expect(loadParticleEngine(signal)).rejects.toBeInstanceOf(
-      ParticleEngineAbiError
-    );
+    await assert.rejects(loadParticleEngine(signal), ParticleEngineAbiError);
   });
 
   test("preserves the original abort reason before fetching", async () => {
@@ -118,7 +114,10 @@ describe("particle engine loading", () => {
     const controller = new AbortController();
     const reason = new DOMException("cancelled", "AbortError");
     controller.abort(reason);
-    await expect(loadParticleEngine(controller.signal)).rejects.toBe(reason);
+    await assert.rejects(
+      loadParticleEngine(controller.signal),
+      (error) => error === reason
+    );
     expect(request).not.toHaveBeenCalled();
   });
 
@@ -127,14 +126,17 @@ describe("particle engine loading", () => {
     const reason = new DOMException("cancelled", "AbortError");
     const bytes = await wasmBytes();
     const response = new Response();
-    spyOn(response, "arrayBuffer").mockImplementation(() => {
+    spyOn(response, "arrayBuffer").mockImplementation(async () => {
       controller.abort(reason);
 
-      return Promise.resolve(bytes);
+      return await Promise.resolve(bytes);
     });
     spyOn(globalThis, "fetch").mockResolvedValueOnce(response);
     const instantiate = spyOn(WebAssembly, "instantiate");
-    await expect(loadParticleEngine(controller.signal)).rejects.toBe(reason);
+    await assert.rejects(
+      loadParticleEngine(controller.signal),
+      (error) => error === reason
+    );
     expect(instantiate).not.toHaveBeenCalled();
   });
 });

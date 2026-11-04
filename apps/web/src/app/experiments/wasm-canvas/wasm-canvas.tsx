@@ -5,6 +5,7 @@ import {
   useAnimationFrame,
   useMediaQuery,
 } from "@personal-site/react-hooks";
+import type { EffectCallback } from "react";
 import { useRef, useState } from "react";
 
 import { typographyVariants } from "@/components/page-typography";
@@ -45,7 +46,7 @@ export const WasmCanvas = () => {
   const { cancelFrame, requestFrame } = useAnimationFrame((milliseconds) => {
     const renderer = lifecycleRef.current;
 
-    if (!renderer?.canAnimate()) {
+    if (renderer?.canAnimate() !== true) {
       return false;
     }
 
@@ -90,7 +91,7 @@ export const WasmCanvas = () => {
     lifecycleRef.current?.setEligibility({ reducedMotion: matches });
   });
 
-  useAbortableEffect((signal) => {
+  useAbortableEffect((signal): ReturnType<EffectCallback> => {
     const canvas = canvasRef.current;
 
     if (!canvas) {
@@ -162,8 +163,8 @@ export const WasmCanvas = () => {
             ? "Rust/WASM control + WebGPU compute online"
             : "Rust/WASM fallback online";
       },
-      createFallback: (rendererSignal) =>
-        createWasmParticleRenderer(
+      createFallback: async (rendererSignal) =>
+        await createWasmParticleRenderer(
           canvas,
           rendererSignal,
           densityRef.current,
@@ -171,8 +172,8 @@ export const WasmCanvas = () => {
           canvasSize.height,
           canvasSize.pixelRatio
         ),
-      createGpu: (rendererSignal, lost) =>
-        createWebGpuParticleRenderer(
+      createGpu: async (rendererSignal, lost) =>
+        await createWebGpuParticleRenderer(
           canvas,
           rendererSignal,
           densityRef.current,
@@ -194,11 +195,12 @@ export const WasmCanvas = () => {
           cancelFrame();
         }
       },
-      onGpuFailure: (error) =>
+      onGpuFailure: (error) => {
         console.warn(
           "WebGPU initialization failed; using WASM fallback.",
           error
-        ),
+        );
+      },
       onState: (state, detail) => {
         if (state === "ready") {
           setStatus(readyStatus);
@@ -285,9 +287,9 @@ export const WasmCanvas = () => {
             className={styles.controlInput}
             max={particleLimit}
             min={particleLimit > 2400 ? GPU_PARTICLE_MINIMUM : 200}
-            onChange={(event) =>
-              updateDensity(Number(event.currentTarget.value))
-            }
+            onChange={(event) => {
+              updateDensity(Number(event.currentTarget.value));
+            }}
             step={particleLimit > 2400 ? GPU_PARTICLE_STEP : 50}
             type="range"
             value={density}
@@ -302,9 +304,9 @@ export const WasmCanvas = () => {
             className={styles.controlInput}
             max="1.8"
             min="-1.2"
-            onChange={(event) =>
-              updateIntensity(Number(event.currentTarget.value))
-            }
+            onChange={(event) => {
+              updateIntensity(Number(event.currentTarget.value));
+            }}
             step="0.05"
             type="range"
             value={intensity}
@@ -317,7 +319,9 @@ export const WasmCanvas = () => {
             className={styles.controlInput}
             max="8"
             min="0.5"
-            onChange={(event) => updateSpeed(Number(event.currentTarget.value))}
+            onChange={(event) => {
+              updateSpeed(Number(event.currentTarget.value));
+            }}
             step="0.1"
             type="range"
             value={speed}

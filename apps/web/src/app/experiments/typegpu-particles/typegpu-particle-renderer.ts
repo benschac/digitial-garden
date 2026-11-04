@@ -53,7 +53,7 @@ const assertShaderCompiled = async (
   shaderModule: GPUShaderModule,
   label: string
 ) => {
-  if (!shaderModule.getCompilationInfo) {
+  if (shaderModule.getCompilationInfo == null) {
     return;
   }
 
@@ -74,7 +74,7 @@ const assertShaderCompiled = async (
   throw new Error(`${label} failed to compile:\n${details}`);
 };
 
-export const createTypeGpuParticleRenderer = (
+export const createTypeGpuParticleRenderer = async (
   canvas: HTMLCanvasElement,
   signal: AbortSignal,
   initialParticleCount: number,
@@ -83,7 +83,7 @@ export const createTypeGpuParticleRenderer = (
   initialPixelRatio: number,
   onDeviceLost: (message: string) => void
 ): Promise<ParticleRenderer | null> =>
-  withRendererScope(signal, async (scope) => {
+  await withRendererScope(signal, async (scope) => {
     const gpu = getGpuApi();
 
     if (!gpu) {
@@ -110,22 +110,26 @@ export const createTypeGpuParticleRenderer = (
       : PORTABLE_GPU_PARTICLE_COUNT;
 
     const device = await scope.acquirePromise(
-      () =>
-        adapter.requestDevice({
+      async () =>
+        await adapter.requestDevice({
           requiredLimits: supportsExtendedParticleBuffer
             ? {
                 maxStorageBufferBindingSize: TARGET_PARTICLE_BUFFER_SIZE,
               }
             : undefined,
         }),
-      (acquiredDevice) => acquiredDevice.destroy()
+      (acquiredDevice) => {
+        acquiredDevice.destroy();
+      }
     );
 
     signal.throwIfAborted();
 
     const root = scope.acquire(
       () => tgpu.initFromDevice({ device }),
-      (acquiredRoot) => acquiredRoot.destroy()
+      (acquiredRoot) => {
+        acquiredRoot.destroy();
+      }
     );
 
     const engine = await loadParticleEngine(signal);
@@ -175,7 +179,9 @@ export const createTypeGpuParticleRenderer = (
               size: particleCount * PARTICLE_STRIDE,
               usage: BUFFER_USAGE_STORAGE,
             }),
-          (buffer) => buffer.destroy()
+          (buffer) => {
+            buffer.destroy();
+          }
         );
 
         const chunkUniformBuffer = scope.acquire(
@@ -185,7 +191,9 @@ export const createTypeGpuParticleRenderer = (
               size: CHUNK_UNIFORM_SIZE,
               usage: BUFFER_USAGE_UNIFORM | BUFFER_USAGE_COPY_DST,
             }),
-          (buffer) => buffer.destroy()
+          (buffer) => {
+            buffer.destroy();
+          }
         );
 
         device.queue.writeBuffer(
@@ -210,7 +218,9 @@ export const createTypeGpuParticleRenderer = (
           size: UNIFORM_SIZE,
           usage: BUFFER_USAGE_UNIFORM | BUFFER_USAGE_COPY_DST,
         }),
-      (buffer) => buffer.destroy()
+      (buffer) => {
+        buffer.destroy();
+      }
     );
 
     const computeModule = device.createShaderModule({
@@ -367,7 +377,9 @@ export const createTypeGpuParticleRenderer = (
       return null;
     }
 
-    scope.defer(() => context.unconfigure?.());
+    scope.defer(() => {
+      context.unconfigure?.();
+    });
     context.configure({ alphaMode: "opaque", device, format: canvasFormat });
 
     let commandAddress = -1;

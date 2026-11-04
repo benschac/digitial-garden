@@ -31,8 +31,8 @@ const Noise3DLoading = () => (
  * static page bundle and avoids attempting to create WebGL state on the server.
  */
 export const PerlinNoise3DExperiment = dynamic(
-  () =>
-    import("./perlin-noise-3d-experiment").then(
+  async () =>
+    await import("./perlin-noise-3d-experiment").then(
       (module) => module.PerlinNoise3DExperiment
     ),
   { loading: Noise3DLoading, ssr: false }

@@ -306,7 +306,7 @@ const assertShaderCompiled = async (
   shaderModule: GPUShaderModule,
   label: string
 ) => {
-  if (!shaderModule.getCompilationInfo) {
+  if (shaderModule.getCompilationInfo == null) {
     return;
   }
 
@@ -327,7 +327,7 @@ const assertShaderCompiled = async (
   throw new Error(`${label} failed to compile:\n${details}`);
 };
 
-export const createWebGpuParticleRenderer = (
+export const createWebGpuParticleRenderer = async (
   canvas: HTMLCanvasElement,
   signal: AbortSignal,
   initialParticleCount: number,
@@ -336,7 +336,7 @@ export const createWebGpuParticleRenderer = (
   initialPixelRatio: number,
   onDeviceLost: (message: string) => void
 ): Promise<ParticleRenderer | null> =>
-  withRendererScope(signal, async (scope) => {
+  await withRendererScope(signal, async (scope) => {
     const gpu = getGpuApi();
 
     if (!gpu) {
@@ -352,8 +352,10 @@ export const createWebGpuParticleRenderer = (
     }
 
     const device = await scope.acquirePromise(
-      () => adapter.requestDevice(),
-      (acquiredDevice) => acquiredDevice.destroy()
+      async () => await adapter.requestDevice(),
+      (acquiredDevice) => {
+        acquiredDevice.destroy();
+      }
     );
 
     signal.throwIfAborted();
@@ -387,7 +389,9 @@ export const createWebGpuParticleRenderer = (
           size: maxParticleCount * PARTICLE_STRIDE,
           usage: BUFFER_USAGE_STORAGE,
         }),
-      (buffer) => buffer.destroy()
+      (buffer) => {
+        buffer.destroy();
+      }
     );
 
     const uniformBuffer = scope.acquire(
@@ -397,7 +401,9 @@ export const createWebGpuParticleRenderer = (
           size: UNIFORM_SIZE,
           usage: BUFFER_USAGE_UNIFORM | BUFFER_USAGE_COPY_DST,
         }),
-      (buffer) => buffer.destroy()
+      (buffer) => {
+        buffer.destroy();
+      }
     );
 
     const computeModule = device.createShaderModule({
@@ -542,7 +548,9 @@ export const createWebGpuParticleRenderer = (
       return null;
     }
 
-    scope.defer(() => context.unconfigure?.());
+    scope.defer(() => {
+      context.unconfigure?.();
+    });
     context.configure({ alphaMode: "opaque", device, format: canvasFormat });
 
     let commandAddress = -1;

@@ -4,10 +4,15 @@ import {
   setupEffect,
   waitFor,
 } from "@xstate/effect";
-import { Effect, Exit, Scope } from "effect";
+import { Effect, Exit, Schema, Scope } from "effect";
 
 import { initializeParticleRenderer } from "./particle-initialization";
 import type { ParticleFrame, ParticleRenderer } from "./particle-renderer";
+
+class ParticleLifecycleError extends Schema.TaggedError<
+  ParticleLifecycleError,
+  { readonly brand: unique symbol }
+>()("ParticleLifecycleError", { cause: Schema.Defect() }) {}
 
 export type ParticleAvailability =
   | "initializing"
@@ -46,7 +51,7 @@ interface Options {
 }
 
 export const createParticleLifecycle = (options: Options) => {
-  const scope = Effect.runSync(Scope.make());
+  const scope = Scope.makeUnsafe();
   const cancellation = new AbortController();
 
   if (options.signal.aborted) {
@@ -103,17 +108,17 @@ export const createParticleLifecycle = (options: Options) => {
 
   const initialize = createEffectLogic(
     Effect.tryPromise({
-      catch: (error) =>
-        error instanceof Error
-          ? error
-          : new Error("Particle initialization failed.", { cause: error }),
+      catch: (cause) => new ParticleLifecycleError({ cause }),
       try: async () => {
         const acquired = await initializeParticleRenderer({
-          configure: (candidate) =>
-            options.configure(candidate, cancellation.signal),
+          configure: (candidate) => {
+            options.configure(candidate, cancellation.signal);
+          },
           createFallback: options.createFallback,
-          createGpu: (signal) => options.createGpu(signal, lost),
-          onFallback: () => dispatch({ type: "FALLBACK" }),
+          createGpu: async (signal) => await options.createGpu(signal, lost),
+          onFallback: () => {
+            dispatch({ type: "FALLBACK" });
+          },
           onGpuFailure: options.onGpuFailure,
           signal: cancellation.signal,
         });
@@ -132,7 +137,12 @@ export const createParticleLifecycle = (options: Options) => {
       ),
       Effect.tapError((cause) =>
         Effect.sync(() => {
-          failure = cause;
+          failure =
+            cause.cause instanceof Error
+              ? cause.cause
+              : new Error("Particle initialization failed.", {
+                  cause: cause.cause,
+                });
         })
       )
     )
@@ -214,7 +224,9 @@ export const createParticleLifecycle = (options: Options) => {
     };
 
     actor.subscribe(observe);
-    dispatch = (event) => actor.send(event);
+    dispatch = (event) => {
+      actor.send(event);
+    };
 
     for (const event of pending) {
       dispatch(event);
@@ -241,21 +253,27 @@ export const createParticleLifecycle = (options: Options) => {
     }
   };
 
-  const dispose = () => {
+  const dispose = async () => {
     if (closing) {
-      return closing;
+      await closing;
+
+      return;
     }
 
     cancellation.abort();
     release();
     options.onAnimationChange(false);
-    options.signal.removeEventListener("abort", dispose);
+    options.signal.removeEventListener("abort", onAbort);
     closing = stop();
 
-    return closing;
+    await closing;
   };
 
-  options.signal.addEventListener("abort", dispose, { once: true });
+  function onAbort() {
+    void dispose();
+  }
+
+  options.signal.addEventListener("abort", onAbort, { once: true });
 
   if (options.signal.aborted) {
     void dispose();

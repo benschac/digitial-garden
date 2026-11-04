@@ -42,6 +42,8 @@ export default defineConfig({
         "**/apps/web/agent/lib/sample-db.ts",
         "**/apps/web/scripts/watch-wasm-lifecycle.ts",
         "**/apps/web/src/app/experiments/wasm-canvas/particle-initialization.ts",
+        "**/apps/web/src/app/experiments/wasm-canvas/particle-lifecycle.ts",
+        "**/apps/web/src/app/experiments/wasm-canvas/renderer-lifecycle.ts",
         "**/apps/web/src/app/experiments/wasm-canvas/wasm-engine.ts",
         "**/apps/web/src/components/ai-elements/prompt-input-attachments.ts",
         "**/gascity/dependency-updates/assets/scripts/supervise-wake.ts",
@@ -118,7 +120,10 @@ export default defineConfig({
       rules: { "react/exhaustive-effect-dependencies": "off" },
     },
     {
-      files: ["**/apps/web/src/app/_components/agent-chat-submission.ts"],
+      files: [
+        "**/apps/web/src/app/_components/agent-chat-submission.ts",
+        "**/apps/web/src/app/experiments/wasm-canvas/particle-lifecycle.ts",
+      ],
       rules: {
         "func-style": ["error", "declaration", { allowArrowFunctions: true }],
       },

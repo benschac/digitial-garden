@@ -2,6 +2,7 @@
 
 import { cn } from "@personal-site/ui/lib/utils";
 import { CanvasSpace, Group, Pt } from "pts";
+import type { EffectCallback } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { Typography } from "@/components/page-typography";
@@ -280,7 +281,7 @@ const evaluateOperation = (
     }
 
     default: {
-      throw new Error(`Unsupported vector operation: ${operation}`);
+      throw new Error(`Unsupported vector operation: ${String(operation)}`);
     }
   }
 };
@@ -444,7 +445,7 @@ export const VectorPlayground = () => {
     visualRef.current = { first, operation, result, second };
   }, [first, operation, result, second]);
 
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     const canvas = canvasRef.current;
 
     if (!canvas) {
@@ -593,7 +594,9 @@ export const VectorPlayground = () => {
             className={styles.methodButton}
             aria-current={operation === item.id ? "true" : undefined}
             key={item.id}
-            onClick={() => chooseOperation(item.id)}
+            onClick={() => {
+              chooseOperation(item.id);
+            }}
             type="button"
           >
             <strong className={styles.methodName}>{item.label}</strong>
@@ -630,9 +633,9 @@ export const VectorPlayground = () => {
               className={styles.activeInput}
               max={operationMeta.parameter.max}
               min={operationMeta.parameter.min}
-              onChange={(event) =>
-                setParameter(Number(event.currentTarget.value))
-              }
+              onChange={(event) => {
+                setParameter(Number(event.currentTarget.value));
+              }}
               step={operationMeta.parameter.step}
               type="range"
               value={parameter}
@@ -646,7 +649,9 @@ export const VectorPlayground = () => {
         {operation.startsWith("random") ? (
           <button
             className={styles.actionButton}
-            onClick={() => chooseOperation(operation)}
+            onClick={() => {
+              chooseOperation(operation);
+            }}
             type="button"
           >
             Generate again
@@ -679,7 +684,8 @@ export const VectorPlayground = () => {
               );
 
               draggingRef.current =
-                operationMeta.usesSecond && secondDistance < firstDistance
+                operationMeta.usesSecond === true &&
+                secondDistance < firstDistance
                   ? "second"
                   : "first";
               event.currentTarget.setPointerCapture(event.pointerId);
@@ -699,7 +705,7 @@ export const VectorPlayground = () => {
 
         <div className={styles.readout} aria-live="polite">
           <VectorCard color="yellow" label="u" vector={first} />
-          {operationMeta.usesSecond ? (
+          {operationMeta.usesSecond === true ? (
             <VectorCard color="blue" label="v" vector={second} />
           ) : null}
           <ResultCard method={operationMeta.label} result={result} />
@@ -708,7 +714,7 @@ export const VectorPlayground = () => {
 
       <div className={styles.keyboardControls}>
         <VectorControls label="Vector u" setVector={setFirst} vector={first} />
-        {operationMeta.usesSecond ? (
+        {operationMeta.usesSecond === true ? (
           <VectorControls
             label="Vector v"
             setVector={setSecond}

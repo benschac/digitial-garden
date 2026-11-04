@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
 
 import type { ParticleRenderer } from "./particle-renderer";
 import { createRendererScope, withRendererScope } from "./renderer-lifecycle";
@@ -21,7 +22,9 @@ describe("renderer lifecycle", () => {
 
     scope.acquire(
       () => "device",
-      (resource) => released.push(resource)
+      (resource) => {
+        released.push(resource);
+      }
     );
     expect(() =>
       scope.acquire(
@@ -39,24 +42,29 @@ describe("renderer lifecycle", () => {
   test("releases earlier resources when an asynchronous shader step rejects", async () => {
     const released: string[] = [];
 
-    await expect(
+    await assert.rejects(
       withRendererScope(new AbortController().signal, async (activeScope) => {
         activeScope.acquire(
           () => "device",
-          (resource) => released.push(resource)
+          (resource) => {
+            released.push(resource);
+          }
         );
         activeScope.acquire(
           () => "buffer",
-          (resource) => released.push(resource)
+          (resource) => {
+            released.push(resource);
+          }
         );
         await activeScope.acquirePromise(
-          () => Promise.reject(new Error("Shader compilation failed")),
+          async () =>
+            await Promise.reject(new Error("Shader compilation failed")),
           () => {}
         );
 
         return null;
       })
-    ).rejects.toThrow();
+    );
 
     expect(released).toEqual(["buffer", "device"]);
   });
@@ -66,13 +74,15 @@ describe("renderer lifecycle", () => {
 
     const renderer = await withRendererScope(
       new AbortController().signal,
-      (scope) => {
+      async (scope) => {
         scope.acquire(
           () => "device",
-          (resource) => released.push(resource)
+          (resource) => {
+            released.push(resource);
+          }
         );
 
-        return Promise.resolve(null);
+        return await Promise.resolve(null);
       }
     );
 
@@ -83,12 +93,14 @@ describe("renderer lifecycle", () => {
   test("keeps the renderer alive until destroy and releases it exactly once", async () => {
     let destroyCount = 0;
 
-    const renderer = await withRendererScope(new AbortController().signal, () =>
-      Promise.resolve(
-        makeRenderer(() => {
-          destroyCount += 1;
-        })
-      )
+    const renderer = await withRendererScope(
+      new AbortController().signal,
+      async () =>
+        await Promise.resolve(
+          makeRenderer(() => {
+            destroyCount += 1;
+          })
+        )
     );
 
     expect(renderer).not.toBeNull();
@@ -101,8 +113,8 @@ describe("renderer lifecycle", () => {
   test("preserves the initialization error when resource cleanup also throws", async () => {
     const initializationError = new Error("Shader setup failed");
 
-    await expect(
-      withRendererScope(new AbortController().signal, (scope) => {
+    await assert.rejects(
+      withRendererScope(new AbortController().signal, async (scope) => {
         scope.acquire(
           () => "device",
           () => {
@@ -110,9 +122,10 @@ describe("renderer lifecycle", () => {
           }
         );
 
-        return Promise.reject(initializationError);
-      })
-    ).rejects.toBe(initializationError);
+        return await Promise.reject(initializationError);
+      }),
+      (error) => error === initializationError
+    );
   });
 
   test("disposes a resource that resolves after the owning initialization is aborted", async () => {
@@ -127,15 +140,19 @@ describe("renderer lifecycle", () => {
       controller.signal,
       async (scope) => {
         await scope.acquirePromise(
-          () => {
+          async () => {
             started.resolve(undefined);
 
-            return resource.promise;
+            return await resource.promise;
           },
-          (value) => released.push(value)
+          (value) => {
+            released.push(value);
+          }
         );
 
-        return makeRenderer(() => (rendererDestroyCount += 1));
+        return makeRenderer(() => {
+          rendererDestroyCount += 1;
+        });
       }
     );
 
@@ -143,7 +160,7 @@ describe("renderer lifecycle", () => {
     controller.abort(reason);
     resource.resolve("late-device");
 
-    await expect(initialization).rejects.toBe(reason);
+    await assert.rejects(initialization, (error) => error === reason);
     expect(released).toEqual(["late-device"]);
     expect(rendererDestroyCount).toBe(0);
   });

@@ -10,6 +10,7 @@ import {
   useWindowEvent,
 } from "@personal-site/react-hooks";
 import { cn } from "@personal-site/ui/lib/utils";
+import type { EffectCallback } from "react";
 import { useId, useRef, useState } from "react";
 
 import { frameDeltaSeconds } from "./animation-timing";
@@ -64,7 +65,7 @@ export const ParticleHeaderBackground = ({
   const { cancelFrame, requestFrame } = useAnimationFrame((milliseconds) => {
     const renderer = lifecycleRef.current;
 
-    if (!renderer?.canAnimate()) {
+    if (renderer?.canAnimate() !== true) {
       return false;
     }
 
@@ -192,7 +193,7 @@ export const ParticleHeaderBackground = ({
     }
   };
 
-  useAbortableEffect((signal) => {
+  useAbortableEffect((signal): ReturnType<EffectCallback> => {
     const canvas = canvasRef.current;
 
     if (!canvas) {
@@ -214,8 +215,8 @@ export const ParticleHeaderBackground = ({
         setDensity(actualDensity);
         setParticleLimit(renderer.maxParticleCount);
       },
-      createFallback: (rendererSignal) =>
-        createWasmParticleRenderer(
+      createFallback: async (rendererSignal) =>
+        await createWasmParticleRenderer(
           canvas,
           rendererSignal,
           HEADER_PARTICLE_COUNT,
@@ -223,8 +224,8 @@ export const ParticleHeaderBackground = ({
           canvasSize.height,
           canvasSize.pixelRatio
         ),
-      createGpu: (rendererSignal, lost) =>
-        createWebGpuParticleRenderer(
+      createGpu: async (rendererSignal, lost) =>
+        await createWebGpuParticleRenderer(
           canvas,
           rendererSignal,
           HEADER_PARTICLE_COUNT,
@@ -246,11 +247,12 @@ export const ParticleHeaderBackground = ({
           cancelFrame();
         }
       },
-      onGpuFailure: (error) =>
+      onGpuFailure: (error) => {
         console.warn(
           "WebGPU header initialization failed; using WASM fallback.",
           error
-        ),
+        );
+      },
       onState: (state, detail) => {
         if (state === "ready") {
           setControlStatus("ready");
@@ -331,9 +333,9 @@ export const ParticleHeaderBackground = ({
             id={particleInputId}
             max={particleLimit}
             min={particleLimit > 2400 ? GPU_PARTICLE_MINIMUM : 200}
-            onChange={(event) =>
-              updateDensity(Number(event.currentTarget.value))
-            }
+            onChange={(event) => {
+              updateDensity(Number(event.currentTarget.value));
+            }}
             step={particleLimit > 2400 ? GPU_PARTICLE_STEP : 50}
             type="range"
             value={density}
@@ -350,9 +352,9 @@ export const ParticleHeaderBackground = ({
             id={gravityInputId}
             max="1.8"
             min="-1.2"
-            onChange={(event) =>
-              updateGravity(Number(event.currentTarget.value))
-            }
+            onChange={(event) => {
+              updateGravity(Number(event.currentTarget.value));
+            }}
             step="0.05"
             type="range"
             value={gravity}
@@ -369,7 +371,9 @@ export const ParticleHeaderBackground = ({
             id={speedInputId}
             max="8"
             min="0.5"
-            onChange={(event) => updateSpeed(Number(event.currentTarget.value))}
+            onChange={(event) => {
+              updateSpeed(Number(event.currentTarget.value));
+            }}
             step="0.1"
             type="range"
             value={speed}

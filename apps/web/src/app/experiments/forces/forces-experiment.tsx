@@ -1,5 +1,6 @@
 "use client";
 
+import type { EffectCallback } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -262,7 +263,9 @@ const RangeControl = ({
       className={styles.controlInput}
       max={max}
       min={min}
-      onChange={(event) => onChange(Number(event.currentTarget.value))}
+      onChange={(event) => {
+        onChange(Number(event.currentTarget.value));
+      }}
       step={step}
       type="range"
       value={value}
@@ -292,7 +295,7 @@ export const ForcesExperiment = () => {
     pausedRef.current = paused;
   }, [paused]);
 
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     const canvas = canvasRef.current;
 
     if (!canvas) {
@@ -471,12 +474,14 @@ export const ForcesExperiment = () => {
       </div>
 
       <div aria-label="Newton's laws" className={styles.tabs} role="tablist">
-        {(Object.keys(LAW_LABELS) as Law[]).map((item, index) => (
+        {(["first", "second", "third"] as const).map((item, index) => (
           <button
             className={styles.tab}
             aria-selected={law === item}
             key={item}
-            onClick={() => chooseLaw(item)}
+            onClick={() => {
+              chooseLaw(item);
+            }}
             role="tab"
             type="button"
           >
@@ -518,7 +523,9 @@ export const ForcesExperiment = () => {
               label="Initial velocity"
               max={4}
               min={0.5}
-              onChange={(value) => setSpeed(value)}
+              onChange={(value) => {
+                setSpeed(value);
+              }}
               step={0.5}
               unit="m/s"
               value={speed}
@@ -580,7 +587,9 @@ export const ForcesExperiment = () => {
                   variant: "experimentForcesPrimaryButton",
                 })}
                 disabled={pushed}
-                onClick={() => setPushed(true)}
+                onClick={() => {
+                  setPushed(true);
+                }}
                 type="button"
               >
                 {pushed ? "Impulse applied" : "Push apart"}
@@ -591,7 +600,9 @@ export const ForcesExperiment = () => {
           <div className={styles.actions}>
             <button
               className={styles.actionButton}
-              onClick={() => setPaused((value) => !value)}
+              onClick={() => {
+                setPaused((value) => !value);
+              }}
               type="button"
             >
               {paused ? "Resume" : "Pause"}

@@ -307,7 +307,9 @@ const NoiseSlider = ({
       ref={inputRef}
       max={max}
       min={min}
-      onChange={(event) => onChange(Number(event.currentTarget.value))}
+      onChange={(event) => {
+        onChange(Number(event.currentTarget.value));
+      }}
       step={step}
       type="range"
       value={value}

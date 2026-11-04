@@ -8,13 +8,14 @@ import type { ParticleRenderer } from "./particle-renderer";
 
 const deferred = <T>() => Promise.withResolvers<T>();
 
-const until = (predicate: () => boolean) =>
-  Effect.runPromise(
+const until = async (predicate: () => boolean) => {
+  await Effect.runPromise(
     Effect.sleep(1).pipe(
       Effect.repeat({ while: () => !predicate() }),
       Effect.timeout(1000)
     )
   );
+};
 
 const fixture = (
   overrides: Partial<Parameters<typeof createParticleLifecycle>[0]> = {}
@@ -49,15 +50,15 @@ const fixture = (
       acquired.resize(10, 10, 1);
       acquired.setParticleCount(10);
     },
-    createFallback: () => {
+    createFallback: async () => {
       calls.fallback += 1;
 
-      return Promise.resolve(renderer);
+      return await Promise.resolve(renderer);
     },
-    createGpu: (_signal, lost) => {
+    createGpu: async (_signal, lost) => {
       lose = lost;
 
-      return Promise.resolve(renderer);
+      return await Promise.resolve(renderer);
     },
     onAnimationChange: (animate) => {
       animations.push(animate);
@@ -135,10 +136,10 @@ describe("particle lifecycle", () => {
     let lost: ((message: string) => void) | undefined;
 
     const f = fixture({
-      createGpu: (_signal, onLost) => {
+      createGpu: async (_signal, onLost) => {
         lost = onLost;
 
-        return pending.promise;
+        return await pending.promise;
       },
     });
 
@@ -159,8 +160,8 @@ describe("particle lifecycle", () => {
     const fallback = deferred<ParticleRenderer>();
 
     const f = fixture({
-      createFallback: () => fallback.promise,
-      createGpu: () => Promise.resolve(null),
+      createFallback: async () => await fallback.promise,
+      createGpu: async () => await Promise.resolve(null),
     });
 
     await until(() => f.controller.availability === "fallback");
@@ -190,10 +191,10 @@ describe("particle lifecycle", () => {
     let started = false;
 
     const first = fixture({
-      createGpu: () => {
+      createGpu: async () => {
         started = true;
 
-        return pending.promise;
+        return await pending.promise;
       },
       signal: abort.signal,
     });
@@ -239,10 +240,10 @@ describe("particle lifecycle", () => {
     let started = false;
 
     const f = fixture({
-      createGpu: () => {
+      createGpu: async () => {
         started = true;
 
-        return Promise.resolve(null);
+        return await Promise.resolve(null);
       },
       signal: abort.signal,
     });
@@ -263,10 +264,10 @@ describe("particle lifecycle", () => {
         signal.throwIfAborted();
         renderer.setParticleCount(10);
       },
-      createGpu: (_signal, onLost) => {
+      createGpu: async (_signal, onLost) => {
         lose = onLost;
 
-        return pending.promise;
+        return await pending.promise;
       },
     });
 
@@ -285,8 +286,8 @@ describe("particle lifecycle", () => {
     const details: (Error | string | undefined)[] = [];
 
     const f = fixture({
-      createFallback: () => Promise.reject(failure),
-      createGpu: () => Promise.resolve(null),
+      createFallback: async () => await Promise.reject(failure),
+      createGpu: async () => await Promise.resolve(null),
       onState: (state, detail) => {
         if (state === "failed") {
           details.push(detail);
@@ -305,8 +306,13 @@ describe("particle lifecycle", () => {
     const details: (Error | string | undefined)[] = [];
 
     const f = fixture({
-      createFallback: () => Promise.reject(cause),
-      createGpu: () => Promise.resolve(null),
+      createFallback: async () => {
+        const rejected = Promise.withResolvers<never>();
+        rejected.reject(cause);
+
+        return await rejected.promise;
+      },
+      createGpu: async () => await Promise.resolve(null),
       onState: (state, detail) => {
         if (state === "failed") {
           details.push(detail);

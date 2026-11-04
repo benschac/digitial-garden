@@ -2,19 +2,19 @@ import { Effect, Schema } from "effect";
 
 import type { ParticleRenderer } from "./particle-renderer";
 
-class GpuInitializationError extends Schema.TaggedError<GpuInitializationError>()(
-  "GpuInitializationError",
-  { cause: Schema.Defect() }
-) {}
+class GpuInitializationError extends Schema.TaggedError<
+  GpuInitializationError,
+  { readonly brand: unique symbol }
+>()("GpuInitializationError", { cause: Schema.Defect() }) {}
 
-class RendererInitializationError extends Schema.TaggedError<RendererInitializationError>()(
-  "RendererInitializationError",
-  { cause: Schema.Defect() }
-) {}
+class RendererInitializationError extends Schema.TaggedError<
+  RendererInitializationError,
+  { readonly brand: unique symbol }
+>()("RendererInitializationError", { cause: Schema.Defect() }) {}
 
-export const isRendererAbort = <Failure>(error: Failure, signal: AbortSignal) =>
+export const isRendererAbort = (cause: unknown, signal: AbortSignal) =>
   signal.aborted ||
-  (error instanceof DOMException && error.name === "AbortError");
+  (cause instanceof DOMException && cause.name === "AbortError");
 
 export const initializeParticleRenderer = async ({
   signal,
@@ -27,7 +27,7 @@ export const initializeParticleRenderer = async ({
   signal: AbortSignal;
   createGpu: (signal: AbortSignal) => Promise<ParticleRenderer | null>;
   createFallback: (signal: AbortSignal) => Promise<ParticleRenderer>;
-  onGpuFailure: <Failure>(error: Failure) => void;
+  onGpuFailure: (cause: unknown) => void;
   onFallback?: () => void;
   configure?: (renderer: ParticleRenderer) => void;
 }): Promise<ParticleRenderer> => {
@@ -42,24 +42,27 @@ export const initializeParticleRenderer = async ({
 
   signal.throwIfAborted();
 
-  const initializedRenderer = await Effect.runPromise(
-    Effect.tryPromise({
-      catch: (cause) => new GpuInitializationError({ cause }),
-      try: () => createGpu(signal).then(accept),
-    }).pipe(
-      Effect.catchTag("GpuInitializationError", (error) =>
-        isRendererAbort(error.cause, signal)
-          ? Effect.fail(error)
-          : Effect.sync(() => {
-              onGpuFailure(error.cause);
+  let initializedRenderer: ParticleRenderer;
 
-              return null;
-            })
-      ),
-      Effect.flatMap((renderer) =>
-        renderer
-          ? Effect.succeed(renderer)
-          : Effect.tryPromise({
+  try {
+    initializedRenderer = await Effect.runPromise(
+      Effect.tryPromise({
+        catch: (cause) => new GpuInitializationError({ cause }),
+        try: async () => await createGpu(signal).then(accept),
+      }).pipe(
+        Effect.catchTag("GpuInitializationError", (error) =>
+          isRendererAbort(error.cause, signal)
+            ? Effect.fail(error)
+            : Effect.sync(() => {
+                onGpuFailure(error.cause);
+
+                return null;
+              })
+        ),
+        Effect.filterOrElse(
+          (renderer) => renderer !== null,
+          () =>
+            Effect.tryPromise({
               catch: (cause) => new RendererInitializationError({ cause }),
               try: async () => {
                 signal.throwIfAborted();
@@ -70,9 +73,10 @@ export const initializeParticleRenderer = async ({
                 return fallback;
               },
             })
+        )
       )
-    )
-  ).catch((error) => {
+    );
+  } catch (error) {
     if (
       error instanceof GpuInitializationError ||
       error instanceof RendererInitializationError
@@ -81,7 +85,7 @@ export const initializeParticleRenderer = async ({
     }
 
     throw error;
-  });
+  }
 
   try {
     signal.throwIfAborted();
