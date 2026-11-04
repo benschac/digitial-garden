@@ -331,6 +331,7 @@ export default defineConfig({
       },
     ],
     "react/no-array-index-key": "error",
+    "require-await": "off",
     "typescript/ban-ts-comment": [
       "error",
       {
@@ -365,5 +366,7 @@ export default defineConfig({
       },
     ],
     "typescript/prefer-optional-chain": "warn",
+    "typescript/require-await": "off",
+    "typescript/return-await": ["error", "error-handling-correctness-only"],
   },
 });
