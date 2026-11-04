@@ -1772,6 +1772,182 @@ test("second real-base landing preserves first bytes and requires exact qualific
   });
 });
 
+test("singleton native aliases bind exact durable sessions and claims", async (t) => {
+  const singletonFixture = () => {
+    const f = nativeFixture(t, "integrated");
+    const step = f.rows["ps-subject"];
+    step.assignee = "personal-site/skills.publisher";
+    step.started_at = "2026-11-04T21:26:38Z";
+    step.closed_at = "2026-11-04T21:35:59Z";
+    Object.assign(step.metadata, {
+      "gc.claimed_at": "2026-11-04T21:26:39Z",
+      "gc.routed_to": "personal-site/skills.publisher",
+      "gc.run_target": "skills.publisher",
+      "gc.session_id": "psc-wisp-worker",
+      "gc.session_name": "skills__publisher-psc-wisp-worker",
+    });
+
+    const session = {
+      id: "psc-wisp-worker",
+      issue_type: "session",
+      metadata: {
+        alias: "personal-site/skills.publisher",
+        canonical_instance_name: "personal-site/skills.publisher",
+        session_name: "skills__publisher-psc-wisp-worker",
+        state: "drained",
+        template: "personal-site/skills.publisher",
+      },
+      status: "closed",
+    };
+
+    f.rows[session.id] = session;
+
+    return { ...f, session, step };
+  };
+
+  await t.test(
+    "closed native alias retains durable executor after drain",
+    () => {
+      const f = singletonFixture();
+      const context = resolveContext(f.env, f.read);
+      assert.equal(context.executor, "psc-wisp-worker");
+      assert.deepEqual(context.ownerIdentities, [
+        "psc-wisp-worker",
+        "skills__publisher-psc-wisp-worker",
+      ]);
+    }
+  );
+
+  await t.test(
+    "live singleton requires its exact session claim and lease",
+    () => {
+      const f = singletonFixture();
+      f.step.status = "in_progress";
+      delete f.step.closed_at;
+      f.step.lease_expires_at = "2999-01-01T00:00:00Z";
+      f.session.status = "open";
+      f.session.metadata.state = "active";
+      f.session.metadata.current_claim_bead_id = f.step.id;
+      assert.equal(resolveContext(f.env, f.read).executor, "psc-wisp-worker");
+    }
+  );
+
+  await t.test(
+    "CLI reads alias executor from city and work from rig store",
+    () => {
+      const f = singletonFixture();
+      const invocation = nativeShell(f, 'printf "singleton check\\n"');
+      invocation.args[1] = invocation.args[1].replace(
+        "skill_archive_begin reviewed",
+        "skill_archive_begin integrated"
+      );
+      const bin = path.join(f.city, "bin", "gc");
+      writeFileSync(
+        bin,
+        '#!/usr/bin/env node\nconst fs = require("node:fs"); const id = process.argv.at(-2); if ((id === "psc-wisp-worker") === process.argv.includes("--rig")) process.exit(1); console.log(JSON.stringify([JSON.parse(fs.readFileSync(process.env.SKILL_TEST_BEADS))[id]]));\n',
+        { mode: 0o700 }
+      );
+      const result = spawnSync("/bin/sh", invocation.args, invocation.options);
+      assert.equal(result.status, 0, result.stderr);
+
+      const manifest = JSON.parse(
+        readFileSync(
+          path.join(
+            f.directory,
+            "attempts/ps-root/ps-subject/checks/integrated/preflight/manifest.json"
+          )
+        )
+      );
+
+      assert.equal(manifest.executorSessionId, "psc-wisp-worker");
+      rmSync(f.env.GC_MOLECULE_DIR, { recursive: true });
+      assert.equal(
+        readFileSync(
+          path.join(
+            f.directory,
+            "attempts/ps-root/ps-subject/checks/integrated/preflight/stdout.log"
+          ),
+          "utf-8"
+        ),
+        "singleton check\n"
+      );
+    }
+  );
+
+  const mutations = {
+    "foreign live claim": (f) => {
+      f.step.status = "in_progress";
+      f.step.lease_expires_at = "2999-01-01T00:00:00Z";
+      f.session.status = "open";
+      f.session.metadata.state = "active";
+      f.session.metadata.current_claim_bead_id = "ps-other";
+    },
+    "foreign rig": (f) => {
+      f.session.metadata.alias = "foreign/skills.publisher";
+    },
+    "legacy pooled session": (f) => {
+      f.session.metadata.pool_slot = "2";
+    },
+    "missing claim": (f) => {
+      delete f.step.metadata["gc.claimed_at"];
+    },
+    "missing lease": (f) => {
+      f.step.status = "in_progress";
+    },
+    "missing session": (f) => {
+      delete f.rows["psc-wisp-worker"];
+    },
+    "missing start": (f) => {
+      delete f.step.started_at;
+    },
+    "not session": (f) => {
+      f.session.issue_type = "task";
+    },
+    "pooled session": (f) => {
+      f.session.metadata.canonical_pool_slot = "2";
+    },
+    "stale lease": (f) => {
+      f.step.status = "in_progress";
+      f.step.lease_expires_at = "2000-01-01T00:00:00Z";
+    },
+    "wrong assignee": (f) => {
+      f.step.assignee = "personal-site/skills.reviewer";
+    },
+    "wrong canonical instance": (f) => {
+      f.session.metadata.canonical_instance_name =
+        "personal-site/skills.publisher-2";
+    },
+    "wrong durable session": (f) => {
+      f.session.id = "psc-other";
+    },
+    "wrong role": (f) => {
+      f.step.metadata["gc.ralph_step_id"] = "review";
+    },
+    "wrong route": (f) => {
+      f.step.metadata["gc.routed_to"] = "personal-site/skills.worker";
+    },
+    "wrong session name": (f) => {
+      f.session.metadata.session_name = "skills__publisher-psc-other";
+    },
+    "wrong target": (f) => {
+      f.step.metadata["gc.run_target"] = "skills.worker";
+    },
+    "wrong template": (f) => {
+      f.session.metadata.template = "personal-site/skills.worker";
+    },
+  };
+
+  await Promise.all(
+    Object.entries(mutations).map(([name, mutate]) =>
+      t.test(`rejects ${name}`, () => {
+        const f = singletonFixture();
+        mutate(f);
+        assert.throws(() => resolveContext(f.env, f.read));
+      })
+    )
+  );
+});
+
 test("canonical native names normalize independently from durable session IDs", (t) => {
   const f = recoveryFixture(t);
   f.rows["ps-subject"].assignee = "gc__worker-psc-worker";
@@ -1829,6 +2005,78 @@ test("review cannot evade independence through original or adopter canonical ali
       () => selectReceipt("reviewed", 0, "absent", context),
       /cannot independently review/u
     );
+  }
+});
+
+test("singleton actor preserves durable receipt identity and reviewer independence", (t) => {
+  for (const reviewer of ["psc-original", "psc-worker", "psc-reviewer"]) {
+    const f = preparedRecovery(t);
+    switchSubject(f, "ps-singletonreview", "review", reviewer);
+    const step = f.rows["ps-singletonreview"];
+
+    const name = {
+      "psc-original": "gc__original-psc-original",
+      "psc-reviewer": "gc__role-psc-reviewer",
+      "psc-worker": "gc__worker-psc-worker",
+    }[reviewer];
+
+    step.assignee = "personal-site/skills.reviewer";
+    step.started_at = "2026-11-04T21:26:38Z";
+    step.lease_expires_at = "2999-01-01T00:00:00Z";
+    Object.assign(step.metadata, {
+      "gc.claimed_at": "2026-11-04T21:26:39Z",
+      "gc.routed_to": step.assignee,
+      "gc.run_target": "skills.reviewer",
+      "gc.session_name": name,
+    });
+    f.rows[reviewer] = {
+      id: reviewer,
+      issue_type: "session",
+      metadata: {
+        alias: step.assignee,
+        canonical_instance_name: step.assignee,
+        current_claim_bead_id: step.id,
+        session_name: name,
+        state: "active",
+        template: step.assignee,
+      },
+      status: "open",
+    };
+    f.env.BEADS_ACTOR = step.assignee;
+    f.env.GC_SESSION_NAME = name;
+    const context = resolveWriteContext(f.env, f.read, () => step.id);
+    recordStage(
+      "reviewed",
+      0,
+      {
+        candidate: f.request.candidate,
+        commit: f.commit,
+        evidence: ["Synthetic singleton independence"],
+        reviewer,
+        tree: f.tree,
+        verdict: "pass",
+      },
+      context
+    );
+
+    if (reviewer === "psc-reviewer") {
+      selectReceipt("reviewed", 0, "absent", context);
+      assert.equal(
+        checkStage("reviewed", resolveContext(f.env, f.read)).commit,
+        f.commit
+      );
+      assert.equal(
+        JSON.parse(
+          readFileSync(path.join(context.receiptDirectory, "reviewed.json"))
+        ).reviewer,
+        reviewer
+      );
+    } else {
+      assert.throws(
+        () => selectReceipt("reviewed", 0, "absent", context),
+        /Independent review evidence missing|cannot independently review/u
+      );
+    }
   }
 });
 

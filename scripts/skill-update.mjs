@@ -367,7 +367,60 @@ const checkedFile = (directory, file) => {
   return file;
 };
 
-const executorIdentity = (step) => {
+const singletonExecutorSession = (step, id, name, readBead) => {
+  const metadata = step.metadata ?? {};
+  const role = metadata["gc.ralph_step_id"] ?? metadata["gc.step_id"];
+
+  const target = {
+    accept: "skills.publisher",
+    prepare: "skills.worker",
+    publish: "skills.publisher",
+    review: "skills.reviewer",
+  }[role];
+
+  const alias = `personal-site/${target}`;
+  ensure(
+    target &&
+      step.assignee === alias &&
+      metadata["gc.routed_to"] === alias &&
+      metadata["gc.run_target"] === target &&
+      Number.isFinite(Date.parse(step.started_at)) &&
+      Number.isFinite(Date.parse(metadata["gc.claimed_at"])),
+    "Native subject ownership mismatch"
+  );
+  const session = readBead(id, "city");
+  const sessionMetadata = session?.metadata ?? {};
+  ensure(
+    session?.id === id &&
+      session?.issue_type === "session" &&
+      sessionMetadata.session_name === name &&
+      sessionMetadata.alias === alias &&
+      sessionMetadata.template === alias &&
+      sessionMetadata.canonical_instance_name === alias &&
+      !sessionMetadata.canonical_pool_slot &&
+      !sessionMetadata.pool_slot,
+    "Native singleton executor binding mismatch"
+  );
+
+  return session;
+};
+
+const validateSingletonClaim = (step, session) => {
+  ensure(
+    (step.status === "closed" &&
+      Number.isFinite(Date.parse(step.closed_at)) &&
+      Date.parse(step.closed_at) >=
+        Date.parse(step.metadata["gc.claimed_at"])) ||
+      (step.status === "in_progress" &&
+        session.status === "open" &&
+        session.metadata.state === "active" &&
+        session.metadata.current_claim_bead_id === step.id &&
+        Date.parse(step.lease_expires_at) > Date.now()),
+    "Native singleton claim is stale or absent"
+  );
+};
+
+const executorIdentity = (step, readBead) => {
   const id = step.metadata?.["gc.session_id"];
   const name = step.metadata?.["gc.session_name"];
   ensure(
@@ -379,11 +432,16 @@ const executorIdentity = (step) => {
       name.trim().length > 0,
     "Native durable executor identity missing"
   );
-  ensure(
-    (step.status === "closed" && !step.assignee) ||
-      [id, name].includes(step.assignee),
-    "Native subject ownership mismatch"
-  );
+
+  if (
+    !(
+      (step.status === "closed" && !step.assignee) ||
+      [id, name].includes(step.assignee)
+    )
+  ) {
+    const session = singletonExecutorSession(step, id, name, readBead);
+    validateSingletonClaim(step, session);
+  }
 
   return { id, name };
 };
@@ -423,7 +481,7 @@ export const resolveNativeContext = (env, readBead) => {
     ["open", "in_progress"].includes(root.status),
     "Skill workflow is terminal"
   );
-  const owner = executorIdentity(subject);
+  const owner = executorIdentity(subject, readBead);
   const executor = owner.id;
   const sessionName = owner.name;
   ensure(
@@ -635,7 +693,9 @@ export const resolveWriteContext = (env, readBead, readClaim) => {
         env.GC_SESSION_ID === fresh.executor &&
         (!env.GC_SESSION_NAME ||
           env.GC_SESSION_NAME === fresh.subject.metadata["gc.session_name"]) &&
-        (!env.BEADS_ACTOR || fresh.ownerIdentities.includes(env.BEADS_ACTOR)) &&
+        (!env.BEADS_ACTOR ||
+          fresh.ownerIdentities.includes(env.BEADS_ACTOR) ||
+          env.BEADS_ACTOR === fresh.subject.assignee) &&
         fresh.subject.id === context.subject.id &&
         fresh.executor === context.executor &&
         fresh.authorizationHash === context.authorizationHash,
@@ -742,7 +802,7 @@ const preparationIdentities = (context) => {
     originalRole === "prepare",
     "Original identity is not a preparation step"
   );
-  const originalIdentity = executorIdentity(original);
+  const originalIdentity = executorIdentity(original, context.readBead);
   ensure(
     [originalIdentity.id, originalIdentity.name].includes(
       context.authorization.originalPreparer
@@ -760,7 +820,7 @@ const preparationIdentities = (context) => {
     adopted.metadata?.["gc.ralph_step_id"] ?? adopted.metadata?.["gc.step_id"];
 
   ensure(adoptedRole === "prepare", "Adopter is not the native preparer");
-  const adopterIdentity = executorIdentity(adopted);
+  const adopterIdentity = executorIdentity(adopted, context.readBead);
   ensure(
     [adopterIdentity.id, adopterIdentity.name].includes(
       context.authorization.adopter
@@ -1778,7 +1838,7 @@ const validateStagePrerequisites = (
         preparationIdentities(context);
 
       const actor = context.readBead(review.step);
-      const reviewer = executorIdentity(actor);
+      const reviewer = executorIdentity(actor, context.readBead);
       validateIdentityMappings([originalIdentity, adopterIdentity, reviewer]);
       ensure(
         reviewer.id !== adopterIdentity.id &&
@@ -2383,7 +2443,7 @@ export const main = (args, env = process.env) => {
     "Invalid skill-update command"
   );
 
-  const readBead = (id) => {
+  const readBead = (id, store = "rig") => {
     ensure(id && !id.startsWith("-"), "Missing native bead identity");
 
     const result = spawnSync(
@@ -2391,8 +2451,7 @@ export const main = (args, env = process.env) => {
       [
         "--city",
         env.GC_CITY,
-        "--rig",
-        "personal-site",
+        ...(store === "city" ? [] : ["--rig", "personal-site"]),
         "bd",
         "show",
         id,
