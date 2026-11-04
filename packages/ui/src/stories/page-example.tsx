@@ -15,9 +15,15 @@ export const Page: React.FC = () => {
     <article>
       <Header
         user={user}
-        onLogin={() => setUser({ name: "Jane Doe" })}
-        onLogout={() => setUser(undefined)}
-        onCreateAccount={() => setUser({ name: "Jane Doe" })}
+        onLogin={() => {
+          setUser({ name: "Jane Doe" });
+        }}
+        onLogout={() => {
+          setUser(undefined);
+        }}
+        onCreateAccount={() => {
+          setUser({ name: "Jane Doe" });
+        }}
       />
 
       <section className="storybook-page">

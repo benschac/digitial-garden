@@ -4,11 +4,20 @@ import "./preview.css";
 
 const preview: Preview = {
   decorators: [
-    (Story, context) => (
-      <div data-ui-theme={context.globals.theme} className="p-6 font-sans">
-        <Story />
-      </div>
-    ),
+    (Story, context) => {
+      const configuredTheme: unknown = context.globals.theme;
+      let theme = "system";
+
+      if (configuredTheme === "dark" || configuredTheme === "light") {
+        theme = configuredTheme;
+      }
+
+      return (
+        <div data-ui-theme={theme} className="p-6 font-sans">
+          <Story />
+        </div>
+      );
+    },
   ],
   globalTypes: {
     theme: {

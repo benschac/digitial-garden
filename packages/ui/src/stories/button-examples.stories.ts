@@ -6,7 +6,7 @@ import { Button } from "./button-example";
 // More on how to set up stories at: https://storybook.js.org/docs/writing-stories#default-export
 const meta = {
   argTypes: { backgroundColor: { control: "color" } },
-  args: { onClick: fn() },
+  args: { onClick: fn<() => void>() },
   component: Button,
   parameters: { layout: "centered" },
   tags: ["autodocs"],

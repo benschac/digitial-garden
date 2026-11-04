@@ -90,17 +90,14 @@ export const CallerOverrides: Story = {
   ),
 };
 
+const fontRoleStyles: CSSProperties & Record<`--${string}`, string> = {
+  "--font-editorial-display": "Palatino, serif",
+  "--font-editorial-reading": "Georgia, serif",
+};
+
 export const FontRoles: Story = {
   render: () => (
-    <div
-      className="grid gap-4"
-      style={
-        {
-          "--font-editorial-display": "Palatino, serif",
-          "--font-editorial-reading": "Georgia, serif",
-        } as CSSProperties
-      }
-    >
+    <div className="grid gap-4" style={fontRoleStyles}>
       <Heading variant="feature">Fonts come from the consumer</Heading>
       <Text>
         The same components follow the active editorial font variables.

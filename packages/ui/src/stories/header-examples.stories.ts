@@ -5,9 +5,9 @@ import { Header } from "./header-example";
 
 const meta = {
   args: {
-    onCreateAccount: fn(),
-    onLogin: fn(),
-    onLogout: fn(),
+    onCreateAccount: fn<() => void>(),
+    onLogin: fn<() => void>(),
+    onLogout: fn<() => void>(),
   },
   component: Header,
   parameters: { layout: "fullscreen" },

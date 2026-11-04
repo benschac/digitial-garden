@@ -70,14 +70,16 @@ const Button = ({
       className={buttonVariants({ className, pressFeedback, size, variant })}
       {...props}
       data-pointer-pressed={
-        pressFeedback && pointerPressed && !props.disabled ? "" : undefined
+        pressFeedback && pointerPressed && props.disabled !== true
+          ? ""
+          : undefined
       }
       onPointerDown={(event) => {
         onPointerDown?.(event);
 
         if (
           pressFeedback &&
-          !props.disabled &&
+          props.disabled !== true &&
           !event.defaultPrevented &&
           event.isPrimary &&
           event.button === 0
