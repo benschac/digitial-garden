@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import type { EffectCallback, RefObject } from "react";
 import { useEffect, useEffectEvent } from "react";
 
 /**
@@ -54,10 +54,12 @@ export const useDocumentEvent = <K extends keyof DocumentEventMap>(
 ): void => {
   const onEvent = useEffectEvent(listener);
 
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     document.addEventListener(type, onEvent);
 
-    return () => document.removeEventListener(type, onEvent);
+    return () => {
+      document.removeEventListener(type, onEvent);
+    };
   }, [type]);
 };
 
@@ -77,10 +79,12 @@ export const useWindowEvent = <K extends keyof WindowEventMap>(
 ): void => {
   const onEvent = useEffectEvent(listener);
 
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     window.addEventListener(type, onEvent, options);
 
-    return () => window.removeEventListener(type, onEvent, options);
+    return () => {
+      window.removeEventListener(type, onEvent, options);
+    };
   }, [options, type]);
 };
 
@@ -99,7 +103,7 @@ export const useMediaQuery = (
 ): void => {
   const onChange = useEffectEvent(listener);
 
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     const mediaQuery = window.matchMedia(query);
 
     const handleChange = (event: MediaQueryListEvent) => {
@@ -109,7 +113,9 @@ export const useMediaQuery = (
     onChange(mediaQuery.matches);
     mediaQuery.addEventListener("change", handleChange);
 
-    return () => mediaQuery.removeEventListener("change", handleChange);
+    return () => {
+      mediaQuery.removeEventListener("change", handleChange);
+    };
   }, [query]);
 };
 
@@ -130,7 +136,7 @@ export const useResizeObserver = <TElement extends Element>(
 ): void => {
   const onResize = useEffectEvent(listener);
 
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     const element = elementRef.current;
 
     if (!enabled || !element) {
@@ -141,7 +147,9 @@ export const useResizeObserver = <TElement extends Element>(
     observer.observe(element);
     onResize();
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+    };
   }, [elementRef, enabled]);
 };
 
@@ -160,7 +168,7 @@ export const useIntersectionObserver = <TElement extends Element>(
 ): void => {
   const onIntersection = useEffectEvent(listener);
 
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     const element = elementRef.current;
 
     if (!element) {
@@ -170,13 +178,15 @@ export const useIntersectionObserver = <TElement extends Element>(
     const observer = new IntersectionObserver((entries) => {
       const [entry] = entries;
 
-      if (entry) {
+      if (entries.length > 0) {
         onIntersection(entry.isIntersecting);
       }
     });
 
     observer.observe(element);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+    };
   }, [elementRef]);
 };

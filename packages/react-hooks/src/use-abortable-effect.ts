@@ -30,7 +30,7 @@ export const useAbortableEffect = (effect: AbortableEffect, enabled = true) => {
   const createController = useAbortController();
   const onEffect = useEffectEvent(effect);
 
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     if (!enabled) {
       return;
     }
