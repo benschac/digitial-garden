@@ -93,7 +93,7 @@ const createFixture = ({
   }
 
   const highlighting = {
-    getArticleCodeTokenizer: async () => await Promise.try(() => () => []),
+    getArticleCodeTokenizer: async () => () => [],
     highlightDiagramCode: () => {
       events.push("start highlighting");
 
@@ -121,8 +121,8 @@ const createFixture = ({
       };
     },
     loadDocument: () => Effect.succeed(doc),
-    loadHighlighting: async () => await Promise.try(() => highlighting),
-    loadPlayer: async () => await Promise.try(() => ({ GiottoPlayer: Player })),
+    loadHighlighting: async () => highlighting,
+    loadPlayer: async () => ({ GiottoPlayer: Player }),
   };
 
   const options = {
@@ -403,9 +403,7 @@ const loadWithFetch = async (
 test("HTTP loading preserves Giotto fields", async () => {
   const document = { custom: true, elements: [], scenes: [{ title: "Scene" }] };
 
-  const success = await loadWithFetch(
-    async () => await Promise.try(() => Response.json(document))
-  );
+  const success = await loadWithFetch(async () => Response.json(document));
 
   expect(Exit.isSuccess(success) && success.value).toEqual(document);
 });
@@ -416,9 +414,7 @@ for (const [name, response] of [
   ["invalid document", Response.json({ elements: "invalid" })],
 ] as const) {
   test(`HTTP loading rejects ${name}`, async () => {
-    const failure = await loadWithFetch(
-      async () => await Promise.try(() => response)
-    );
+    const failure = await loadWithFetch(async () => response);
 
     expect(Exit.isFailure(failure)).toBe(true);
   });
