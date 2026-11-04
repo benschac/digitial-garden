@@ -3,10 +3,10 @@ import type { Layer } from "effect";
 
 import { SampleDb, sampleDbLive } from "./sample-db-service";
 
-export class SampleDbDisposedError extends Schema.TaggedError<SampleDbDisposedError>()(
-  "SampleDbDisposedError",
-  {}
-) {}
+export class SampleDbDisposedError extends Schema.TaggedError<
+  SampleDbDisposedError,
+  { readonly brand: unique symbol }
+>()("SampleDbDisposedError", {}) {}
 
 export const createSampleDb = (layer: Layer.Layer<SampleDb> = sampleDbLive) => {
   const runtime = ManagedRuntime.make(layer);
@@ -18,12 +18,12 @@ export const createSampleDb = (layer: Layer.Layer<SampleDb> = sampleDbLive) => {
 
       return disposal;
     },
-    runReadOnlySql(sql: string) {
+    async runReadOnlySql(sql: string) {
       if (disposal) {
-        return Promise.reject(new SampleDbDisposedError());
+        throw new SampleDbDisposedError();
       }
 
-      return runtime.runPromise(
+      return await runtime.runPromise(
         SampleDb.pipe(Effect.flatMap((database) => database.query(sql)))
       );
     },
@@ -32,5 +32,5 @@ export const createSampleDb = (layer: Layer.Layer<SampleDb> = sampleDbLive) => {
 
 const sampleDb = createSampleDb();
 
-export const { runReadOnlySql } = sampleDb;
-export const disposeSampleDb = sampleDb.dispose;
+export const runReadOnlySql = sampleDb.runReadOnlySql.bind(sampleDb);
+export const disposeSampleDb = sampleDb.dispose.bind(sampleDb);

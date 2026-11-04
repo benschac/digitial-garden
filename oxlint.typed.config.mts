@@ -6,4 +6,16 @@ import base from "./oxlint.config.mts";
 export default defineConfig({
   ...base,
   extends: [...base.extends, recommended],
+  overrides: [
+    ...base.overrides,
+    {
+      files: ["**/apps/web/agent/lib/sample-db.ts"],
+      rules: {
+        "typescript/promise-function-async": [
+          "error",
+          { checkMethodDeclarations: false },
+        ],
+      },
+    },
+  ],
 });

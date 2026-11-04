@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 import { Effect, Layer } from "effect";
 import initSqlJs from "sql.js";
@@ -53,10 +54,10 @@ const createDriver = (
     };
   }
 
-  const initialize = () => {
+  const initialize = async () => {
     calls.loads += 1;
 
-    return Promise.resolve({ Database });
+    return await Promise.resolve({ Database });
   };
 
   return { Database, calls, initialize };
@@ -76,9 +77,11 @@ describe("sample-db", () => {
     }
 
     await disposeSampleDb();
-    await expect(runReadOnlySql("SELECT 1")).rejects.toBeInstanceOf(
-      SampleDbDisposedError
-    );
+    await rejects(runReadOnlySql("SELECT 1"), (error) => {
+      expect(error).toBeInstanceOf(SampleDbDisposedError);
+
+      return true;
+    });
   });
 
   test("executes real sql.js with the existing seed, output, and persistent mutations", async () => {
@@ -114,11 +117,16 @@ describe("sample-db", () => {
       expect(
         await database.runReadOnlySql("SELECT id FROM customers WHERE id = -1")
       ).toEqual({ columns: [], rows: [] });
-      await expect(
+      await rejects(
         database.runReadOnlySql(
           "UPDATE orders SET amount_cents = amount_cents + 1 WHERE id = 1; SELECT missing FROM orders"
-        )
-      ).rejects.toBeInstanceOf(SampleDbQueryError);
+        ),
+        (error) => {
+          expect(error).toBeInstanceOf(SampleDbQueryError);
+
+          return true;
+        }
+      );
       expect(
         await database.runReadOnlySql(
           "SELECT amount_cents FROM orders WHERE id = 1"
@@ -128,9 +136,11 @@ describe("sample-db", () => {
       await database.dispose();
     }
 
-    await expect(database.runReadOnlySql("SELECT 1")).rejects.toBeInstanceOf(
-      SampleDbDisposedError
-    );
+    await rejects(database.runReadOnlySql("SELECT 1"), (error) => {
+      expect(error).toBeInstanceOf(SampleDbDisposedError);
+
+      return true;
+    });
   });
 
   test("retries real initialization only on a later request after failure", async () => {
@@ -138,21 +148,25 @@ describe("sample-db", () => {
     const failure = new Error("module unavailable");
 
     const database = createSampleDb(
-      makeSampleDbLayer(() => {
+      makeSampleDbLayer(async () => {
         attempts += 1;
 
         if (attempts === 1) {
           throw failure;
         }
 
-        return initSqlJs();
+        return await initSqlJs();
       })
     );
 
     try {
-      await expect(database.runReadOnlySql("SELECT 1")).rejects.toMatchObject(
-        new SampleDbInitializationError({ cause: failure })
-      );
+      await rejects(database.runReadOnlySql("SELECT 1"), (error) => {
+        expect(error).toMatchObject(
+          new SampleDbInitializationError({ cause: failure })
+        );
+
+        return true;
+      });
       expect(attempts).toBe(1);
       expect(
         await database.runReadOnlySql("SELECT COUNT(*) AS count FROM orders")
@@ -177,13 +191,14 @@ describe("sample-db", () => {
         started.resolve(undefined);
         await ready.promise;
 
-        return driver.initialize();
+        return await driver.initialize();
       })
     );
 
     try {
-      const pending = Array.from({ length: 10 }, () =>
-        database.runReadOnlySql("SELECT 42")
+      const pending = Array.from(
+        { length: 10 },
+        async () => await database.runReadOnlySql("SELECT 42")
       );
 
       await started.promise;
@@ -227,7 +242,7 @@ describe("sample-db", () => {
           throw failure;
         }
 
-        return driver.initialize();
+        return await driver.initialize();
       })
     );
 
@@ -265,13 +280,17 @@ describe("sample-db", () => {
     const { Database } = driver;
 
     const database = createSampleDb(
-      makeSampleDbLayer(() => Promise.resolve({ Database }))
+      makeSampleDbLayer(async () => await Promise.resolve({ Database }))
     );
 
     try {
-      await expect(database.runReadOnlySql("SELECT 1")).rejects.toMatchObject(
-        new SampleDbInitializationError({ cause: failure })
-      );
+      await rejects(database.runReadOnlySql("SELECT 1"), (error) => {
+        expect(error).toMatchObject(
+          new SampleDbInitializationError({ cause: failure })
+        );
+
+        return true;
+      });
       expect(driver.calls).toEqual({
         closes: 1,
         creates: 1,
@@ -302,13 +321,15 @@ describe("sample-db", () => {
     const { Database } = driver;
 
     const database = createSampleDb(
-      makeSampleDbLayer(() => Promise.resolve({ Database }))
+      makeSampleDbLayer(async () => await Promise.resolve({ Database }))
     );
 
     try {
-      await expect(database.runReadOnlySql("SELECT 1")).rejects.toBeInstanceOf(
-        SampleDbInitializationError
-      );
+      await rejects(database.runReadOnlySql("SELECT 1"), (error) => {
+        expect(error).toBeInstanceOf(SampleDbInitializationError);
+
+        return true;
+      });
       expect(driver.calls.closes).toBe(0);
       await database.runReadOnlySql("SELECT 1");
       expect(driver.calls.creates).toBe(2);
@@ -325,13 +346,15 @@ describe("sample-db", () => {
     const { Database } = driver;
 
     const database = createSampleDb(
-      makeSampleDbLayer(() => Promise.resolve({ Database }))
+      makeSampleDbLayer(async () => await Promise.resolve({ Database }))
     );
 
     try {
-      await expect(database.runReadOnlySql("invalid")).rejects.toMatchObject(
-        new SampleDbQueryError({ cause: failure })
-      );
+      await rejects(database.runReadOnlySql("invalid"), (error) => {
+        expect(error).toMatchObject(new SampleDbQueryError({ cause: failure }));
+
+        return true;
+      });
       expect(driver.calls.queries).toBe(1);
       await database.runReadOnlySql("SELECT 42");
       expect(driver.calls).toEqual({
@@ -352,9 +375,11 @@ describe("sample-db", () => {
     await database.runReadOnlySql("SELECT 42");
     const disposal = database.dispose();
     expect(database.dispose()).toBe(disposal);
-    await expect(database.runReadOnlySql("SELECT 42")).rejects.toBeInstanceOf(
-      SampleDbDisposedError
-    );
+    await rejects(database.runReadOnlySql("SELECT 42"), (error) => {
+      expect(error).toBeInstanceOf(SampleDbDisposedError);
+
+      return true;
+    });
     await disposal;
     await database.dispose();
     expect(driver.calls).toEqual({
@@ -370,9 +395,11 @@ describe("sample-db", () => {
     const driver = createDriver();
     const database = createSampleDb(makeSampleDbLayer(driver.initialize));
     await database.dispose();
-    await expect(database.runReadOnlySql("SELECT 42")).rejects.toBeInstanceOf(
-      SampleDbDisposedError
-    );
+    await rejects(database.runReadOnlySql("SELECT 42"), (error) => {
+      expect(error).toBeInstanceOf(SampleDbDisposedError);
+
+      return true;
+    });
     expect(driver.calls).toEqual({
       closes: 0,
       creates: 0,
@@ -388,10 +415,10 @@ describe("sample-db", () => {
     const ready = Promise.withResolvers<{ Database: typeof driver.Database }>();
 
     const database = createSampleDb(
-      makeSampleDbLayer(() => {
+      makeSampleDbLayer(async () => {
         started.resolve(undefined);
 
-        return ready.promise;
+        return await ready.promise;
       })
     );
 
@@ -408,9 +435,11 @@ describe("sample-db", () => {
       { status: "rejected" },
       { status: "rejected" },
     ]);
-    await expect(database.runReadOnlySql("SELECT 3")).rejects.toBeInstanceOf(
-      SampleDbDisposedError
-    );
+    await rejects(database.runReadOnlySql("SELECT 3"), (error) => {
+      expect(error).toBeInstanceOf(SampleDbDisposedError);
+
+      return true;
+    });
     expect(driver.calls).toEqual({
       closes: 0,
       creates: 0,

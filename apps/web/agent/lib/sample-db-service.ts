@@ -27,15 +27,15 @@ export type InitializeSampleDb = () => Promise<{
   Database: new () => SampleDbConnection;
 }>;
 
-export class SampleDbInitializationError extends Schema.TaggedError<SampleDbInitializationError>()(
-  "SampleDbInitializationError",
-  { cause: Schema.Defect() }
-) {}
+export class SampleDbInitializationError extends Schema.TaggedError<
+  SampleDbInitializationError,
+  { readonly brand: unique symbol }
+>()("SampleDbInitializationError", { cause: Schema.Defect() }) {}
 
-export class SampleDbQueryError extends Schema.TaggedError<SampleDbQueryError>()(
-  "SampleDbQueryError",
-  { cause: Schema.Defect() }
-) {}
+export class SampleDbQueryError extends Schema.TaggedError<
+  SampleDbQueryError,
+  { readonly brand: unique symbol }
+>()("SampleDbQueryError", { cause: Schema.Defect() }) {}
 
 export class SampleDb extends Context.Service<
   SampleDb,
@@ -70,12 +70,17 @@ export const makeSampleDbLayer = (initialize: InitializeSampleDb = initSqlJs) =>
                 catch: (cause) => new SampleDbInitializationError({ cause }),
                 try: () => new SQL.Database(),
               }),
-              (acquired) => Effect.sync(() => acquired.close())
+              (acquired) =>
+                Effect.sync(() => {
+                  acquired.close();
+                })
             );
 
             yield* Effect.try({
               catch: (cause) => new SampleDbInitializationError({ cause }),
-              try: () => connection.run(SEED),
+              try: () => {
+                connection.run(SEED);
+              },
             });
 
             return connection;
@@ -97,9 +102,9 @@ export const makeSampleDbLayer = (initialize: InitializeSampleDb = initSqlJs) =>
           try: (): SampleDbResult => {
             const [result] = connection.exec(sql);
 
-            return result
-              ? { columns: result.columns, rows: result.values }
-              : { columns: [], rows: [] };
+            return result === undefined
+              ? { columns: [], rows: [] }
+              : { columns: result.columns, rows: result.values };
           },
         });
       });
