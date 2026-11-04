@@ -94,8 +94,8 @@ const selectDependencies = (beads: typeof queueSchema.Type) =>
   beads
     .map((entry) => ({
       ...entry,
-      labels: entry.labels || [],
-      metadata: entry.metadata || {},
+      labels: entry.labels === false ? [] : (entry.labels ?? []),
+      metadata: entry.metadata === false ? {} : (entry.metadata ?? {}),
     }))
     .filter((entry) => {
       const dependencyPackage = entry.metadata.dependency_package;
@@ -147,8 +147,8 @@ const command = Effect.fn("supervision.command")(
     Effect.acquireUseRelease(
       Effect.try({
         catch: (cause) => new WakeOperationError({ cause, operation: program }),
-        try: () =>
-          execa(program, args, {
+        try: () => ({
+          child: execa(program, args, {
             cleanup: false,
             forceKillAfterDelay: false,
             input,
@@ -165,14 +165,17 @@ const command = Effect.fn("supervision.command")(
               9,
             ],
           }),
+        }),
       }),
-      (child) =>
-        attempt(program, () => child).pipe(
+      ({ child }) =>
+        attempt(program, async () => await child).pipe(
           Effect.map((result) => result.stdout)
         ),
-      (child) =>
+      ({ child }) =>
         Effect.sync(() => child.kill()).pipe(
-          Effect.andThen(Effect.exit(attempt(program, () => child))),
+          Effect.andThen(
+            Effect.exit(attempt(program, async () => await child))
+          ),
           Effect.asVoid
         )
     )
@@ -248,8 +251,9 @@ const reconcileWake = Effect.fn("supervision.reconcileWake")(
 
     const now = Math.floor(DateTime.toEpochMillis(yield* DateTime.now) / 1000);
 
-    const stateExists = yield* attempt("inspect wake state", () =>
-      stat(stateFile)
+    const stateExists = yield* attempt(
+      "inspect wake state",
+      async () => await stat(stateFile)
     ).pipe(
       Effect.map((information) => information.isFile()),
       Effect.catchIf(
@@ -262,7 +266,10 @@ const reconcileWake = Effect.fn("supervision.reconcileWake")(
     );
 
     const previousText = stateExists
-      ? yield* attempt("read wake state", () => readFile(stateFile, "utf-8"))
+      ? yield* attempt(
+          "read wake state",
+          async () => await readFile(stateFile, "utf-8")
+        )
       : '{"sent_at":0,"snapshot":[]}';
 
     const previous = yield* decodeJson(stateSchema, previousText);
@@ -303,8 +310,10 @@ const reconcileWake = Effect.fn("supervision.reconcileWake")(
 
       if (
         acknowledgements.length === 1 &&
-        (acknowledgements[0]?.metadata || {}).dependency_supervision_ack ===
-          snapshotId
+        (acknowledgements[0]?.metadata === false
+          ? undefined
+          : acknowledgements[0]?.metadata
+        )?.dependency_supervision_ack === snapshotId
       ) {
         return;
       }
@@ -352,32 +361,39 @@ const reconcileWake = Effect.fn("supervision.reconcileWake")(
     const temporaryFile = path.join(stateDirectory, `wake.${randomUUID()}`);
 
     yield* Effect.acquireUseRelease(
-      attempt("create temporary wake receipt", () =>
-        open(temporaryFile, "wx", 0o600)
+      attempt(
+        "create temporary wake receipt",
+        async () => await open(temporaryFile, "wx", 0o600)
       ),
       (handle) =>
-        attempt("write wake receipt", () =>
-          handle.writeFile(
+        attempt("write wake receipt", async () => {
+          await handle.writeFile(
             `{"snapshot":${canonical},"snapshot_id":${JSON.stringify(snapshotId)},"sent_at":${JSON.stringify(now)},"receipt":${receiptText}}\n`
-          )
-        ).pipe(
-          Effect.andThen(attempt("close wake receipt", () => handle.close())),
+          );
+        }).pipe(
           Effect.andThen(
-            attempt("publish wake receipt", () =>
-              rename(temporaryFile, stateFile)
-            )
+            attempt("close wake receipt", async () => {
+              await handle.close();
+            })
+          ),
+          Effect.andThen(
+            attempt("publish wake receipt", async () => {
+              await rename(temporaryFile, stateFile);
+            })
           ),
           Effect.uninterruptible
         ),
       (handle) =>
         Effect.gen(function* releaseReceipt() {
           const closed = yield* Effect.exit(
-            attempt("close wake receipt", () => handle.close())
+            attempt("close wake receipt", async () => {
+              await handle.close();
+            })
           );
 
-          yield* attempt("remove temporary wake receipt", () =>
-            rm(temporaryFile, { force: true })
-          );
+          yield* attempt("remove temporary wake receipt", async () => {
+            await rm(temporaryFile, { force: true });
+          });
           yield* closed;
         })
     );
