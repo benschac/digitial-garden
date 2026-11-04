@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 import { execa } from "execa";
 
@@ -51,7 +52,7 @@ describe("native preview adapters", () => {
     }
   );
 
-  test.each(["{", "null", '{"id":"bad"}', '{"id":1}', "{}"])(
+  test.each(["{", "null", '{"id":"bad"}', '{"id":1}', '{"id":1e400}', "{}"])(
     "malformed protocol %s cannot strand requests",
     async (message) => {
       const socket = new Socket();
@@ -64,7 +65,13 @@ describe("native preview adapters", () => {
       );
 
       socket.message(message);
-      await expect(request).rejects.toThrow();
+      await rejects(request, (error) => {
+        expect(() => {
+          throw error;
+        }).toThrow();
+
+        return true;
+      });
       connection.close();
     }
   );
@@ -89,21 +96,40 @@ describe("native preview adapters", () => {
     const connection = createPreviewConnection(socket);
     const ready = connection.ready(new AbortController().signal);
     socket.dispatchEvent(new Event("close"));
-    await expect(ready).rejects.toThrow("closed");
+    await rejects(ready, (error) => {
+      expect(() => {
+        throw error;
+      }).toThrow("closed");
+
+      return true;
+    });
     connection.close();
     const other = new Socket();
     const active = createPreviewConnection(other);
     const controller = new AbortController();
     const request = active.command("waiting", {}, controller.signal);
     controller.abort();
-    await expect(request).rejects.toThrow("interrupted");
+    await rejects(request, (error) => {
+      expect(() => {
+        throw error;
+      }).toThrow("interrupted");
+
+      return true;
+    });
     other.send = () => {
       throw new Error("send failure");
     };
 
-    await expect(
-      active.command("send", {}, new AbortController().signal)
-    ).rejects.toThrow("send failed");
+    await rejects(
+      active.command("send", {}, new AbortController().signal),
+      (error) => {
+        expect(() => {
+          throw error;
+        }).toThrow("send failed");
+
+        return true;
+      }
+    );
     active.close();
   });
 

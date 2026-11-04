@@ -51,7 +51,7 @@ export const spawnPreviewProcess = (
 
 const responseSchema = Schema.Struct({
   error: Schema.optionalKey(Schema.Unknown),
-  id: Schema.optionalKey(Schema.Number),
+  id: Schema.optionalKey(Schema.Finite),
   method: Schema.optionalKey(Schema.String),
   result: Schema.optionalKey(previewCommandResultSchema),
 });
@@ -102,8 +102,13 @@ export const createPreviewConnection = (
     opening.clear();
   };
 
-  const onClose = () => fail(new Error("Chromium socket closed."));
-  const onError = () => fail(new Error("Chromium socket failed."));
+  const onClose = () => {
+    fail(new Error("Chromium socket closed."));
+  };
+
+  const onError = () => {
+    fail(new Error("Chromium socket failed."));
+  };
 
   const onMessage = (event: Event) => {
     try {
@@ -161,26 +166,26 @@ export const createPreviewConnection = (
       connection.removeEventListener("message", onMessage);
       connection.close();
     },
-    command(method, params, signal) {
+    async command(method, params, signal) {
       if (failure) {
-        return Promise.reject(failure);
+        throw failure;
       }
 
       if (signal.aborted) {
-        return Promise.reject(new Error("Chromium command interrupted."));
+        throw new Error("Chromium command interrupted.");
       }
 
       nextId += 1;
       const id = nextId;
       const request = Promise.withResolvers<CommandResult>();
 
-      const abort = () =>
+      const abort = () => {
         request.reject(new Error("Chromium command interrupted."));
+      };
 
-      const timer = setTimeout(
-        () => request.reject(new Error(`Chromium timed out: ${method}`)),
-        30_000
-      );
+      const timer = setTimeout(() => {
+        request.reject(new Error(`Chromium timed out: ${method}`));
+      }, 30_000);
 
       pending.set(id, request);
       signal.addEventListener("abort", abort, { once: true });
@@ -193,38 +198,39 @@ export const createPreviewConnection = (
         );
       }
 
-      return request.promise.finally(() => {
+      return await request.promise.finally(() => {
         clearTimeout(timer);
         pending.delete(id);
         signal.removeEventListener("abort", abort);
       });
     },
-    ready(signal) {
+    async ready(signal) {
       if (failure) {
-        return Promise.reject(failure);
+        throw failure;
       }
 
       if (signal.aborted) {
-        return Promise.reject(new Error("Chromium connection interrupted."));
+        throw new Error("Chromium connection interrupted.");
       }
 
       if (connection.readyState === WebSocket.OPEN) {
-        return Promise.resolve();
+        return;
       }
 
       if (connection.readyState !== WebSocket.CONNECTING) {
-        return Promise.reject(new Error("Chromium socket closed."));
+        throw new Error("Chromium socket closed.");
       }
 
       const waiter = Promise.withResolvers<undefined>();
 
-      const abort = () =>
+      const abort = () => {
         waiter.reject(new Error("Chromium connection interrupted."));
+      };
 
       opening.add(waiter);
       signal.addEventListener("abort", abort, { once: true });
 
-      return waiter.promise.finally(() => {
+      await waiter.promise.finally(() => {
         opening.delete(waiter);
         signal.removeEventListener("abort", abort);
       });
@@ -256,7 +262,7 @@ const previewPort = async (
     throw new Error("Chromium did not start. Check CHROMIUM_PATH.");
   }
 
-  return previewPort(temporary, signal, attempt + 1);
+  return await previewPort(temporary, signal, attempt + 1);
 };
 
 export const previewTarget = async (

@@ -9,7 +9,10 @@ export default defineConfig({
   overrides: [
     ...base.overrides,
     {
-      files: ["**/apps/web/agent/lib/sample-db.ts"],
+      files: [
+        "**/apps/web/agent/lib/sample-db.ts",
+        "**/apps/web/scripts/social-preview-native.ts",
+      ],
       rules: {
         "typescript/promise-function-async": [
           "error",

@@ -52,7 +52,10 @@ svg { display: block; width: 100%; height: 100%; }
 <h1>Benjamin<br>Schachter</h1></main></html>`;
 
 const controller = new AbortController();
-const stop = () => controller.abort();
+
+const stop = () => {
+  controller.abort();
+};
 
 process.on("SIGINT", stop);
 
@@ -78,16 +81,20 @@ try {
           ["-y", "-loglevel", "error", ...args],
           true
         ),
-      font: () =>
-        readFile(path.join(app, "src/app/fonts/bonbance-bold-condensed.woff2")),
+      font: async () =>
+        await readFile(
+          path.join(app, "src/app/fonts/bonbance-bold-condensed.woff2")
+        ),
       html: createHtml,
       mkdir: async () => {
         await mkdir(output, { recursive: true });
       },
       output,
-      remove: (temporary) => rm(temporary, { force: true, recursive: true }),
+      remove: async (temporary) => {
+        await rm(temporary, { force: true, recursive: true });
+      },
       target: previewTarget,
-      temporary: () => mkdtemp(path.join(tmpdir(), "home-social-")),
+      temporary: async () => await mkdtemp(path.join(tmpdir(), "home-social-")),
       write: writeFile,
     }),
     { signal: controller.signal }

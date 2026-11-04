@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 import { Effect } from "effect";
 
@@ -19,10 +20,10 @@ const fixture = () => {
       code === undefined
         ? Promise.withResolvers<never>().promise
         : Promise.resolve({ code, signal: null }),
-    stop: () => {
+    stop: async () => {
       events.push(`${name} stop`);
 
-      return Promise.resolve();
+      await Promise.resolve();
     },
   });
 
@@ -32,37 +33,41 @@ const fixture = () => {
       close: () => {
         events.push("socket close");
       },
-      command: (method, params) => {
+      command: async (method, params) => {
         commands.push({ method, params });
 
         if (method === "Page.captureScreenshot") {
-          return Promise.resolve({ data: "cG5n" });
+          return await Promise.resolve({ data: "cG5n" });
         }
 
-        return Promise.resolve({ result: { value: true } });
+        return await Promise.resolve({ result: { value: true } });
       },
-      ready: () => Promise.resolve(),
+      ready: async () => {
+        await Promise.resolve();
+      },
     }),
     encoder: (args) => {
       encoders.push(args);
 
       return process("encoder", 0);
     },
-    font: () => Promise.resolve(Buffer.from("font")),
+    font: async () => await Promise.resolve(Buffer.from("font")),
     html: () => "document",
-    mkdir: () => Promise.resolve(),
+    mkdir: async () => {
+      await Promise.resolve();
+    },
     output: "/injected/output",
-    remove: () => {
+    remove: async () => {
       events.push("remove");
 
-      return Promise.resolve();
+      await Promise.resolve();
     },
-    target: () => Promise.resolve("ws://injected"),
-    temporary: () => Promise.resolve("/injected/temporary"),
-    write: (path) => {
+    target: async () => await Promise.resolve("ws://injected"),
+    temporary: async () => await Promise.resolve("/injected/temporary"),
+    write: async (path) => {
       frames.push(path);
 
-      return Promise.resolve();
+      await Promise.resolve();
     },
   };
 
@@ -125,11 +130,21 @@ describe("social preview ownership", () => {
 
   test("missing font releases temporary directory before any process starts", async () => {
     const f = fixture();
-    f.dependencies.font = () => Promise.reject(new Error("missing font"));
+    f.dependencies.font = async () => {
+      await Promise.resolve();
+      throw new Error("missing font");
+    };
 
-    await expect(
-      Effect.runPromise(renderSocialPreview(f.dependencies))
-    ).rejects.toThrow("Social preview");
+    await rejects(
+      Effect.runPromise(renderSocialPreview(f.dependencies)),
+      (error) => {
+        expect(() => {
+          throw error;
+        }).toThrow("Social preview");
+
+        return true;
+      }
+    );
     expect(f.events).toEqual(["remove"]);
   });
 
@@ -145,10 +160,18 @@ describe("social preview ownership", () => {
         return f.process("browser", 1);
       };
 
-      f.dependencies.target = () => Promise.withResolvers<never>().promise;
-      await expect(
-        Effect.runPromise(renderSocialPreview(f.dependencies))
-      ).rejects.toThrow("Social preview");
+      f.dependencies.target = async () =>
+        await Promise.withResolvers<never>().promise;
+      await rejects(
+        Effect.runPromise(renderSocialPreview(f.dependencies)),
+        (error) => {
+          expect(() => {
+            throw error;
+          }).toThrow("Social preview");
+
+          return true;
+        }
+      );
       expect(f.events).toEqual(
         missing ? ["remove"] : ["browser stop", "remove"]
       );
@@ -165,21 +188,33 @@ describe("social preview ownership", () => {
           close: () => {
             f.events.push("socket close");
           },
-          command: (method) =>
-            Promise.resolve(
+          command: async (method) =>
+            await Promise.resolve(
               method === "Page.captureScreenshot"
                 ? {}
                 : { result: { value: true } }
             ),
-          ready: () => Promise.resolve(),
+          ready: async () => {
+            await Promise.resolve();
+          },
         });
       } else {
-        f.dependencies.write = () => Promise.reject(new Error("write failed"));
+        f.dependencies.write = async () => {
+          await Promise.resolve();
+          throw new Error("write failed");
+        };
       }
 
-      await expect(
-        Effect.runPromise(renderSocialPreview(f.dependencies))
-      ).rejects.toThrow("Social preview");
+      await rejects(
+        Effect.runPromise(renderSocialPreview(f.dependencies)),
+        (error) => {
+          expect(() => {
+            throw error;
+          }).toThrow("Social preview");
+
+          return true;
+        }
+      );
       expect(f.events).toEqual(["socket close", "browser stop", "remove"]);
       expect(f.encoders).toHaveLength(0);
     }
@@ -197,9 +232,16 @@ describe("social preview ownership", () => {
         return f.process("encoder", 1);
       };
 
-      await expect(
-        Effect.runPromise(renderSocialPreview(f.dependencies))
-      ).rejects.toThrow("Social preview");
+      await rejects(
+        Effect.runPromise(renderSocialPreview(f.dependencies)),
+        (error) => {
+          expect(() => {
+            throw error;
+          }).toThrow("Social preview");
+
+          return true;
+        }
+      );
       expect(f.events).toEqual(
         missing
           ? ["socket close", "browser stop", "remove"]
@@ -212,16 +254,25 @@ describe("social preview ownership", () => {
     const f = fixture();
     const controller = new AbortController();
     f.dependencies.encoder = () => {
-      queueMicrotask(() => controller.abort());
+      queueMicrotask(() => {
+        controller.abort();
+      });
 
       return f.process("encoder");
     };
 
-    await expect(
+    await rejects(
       Effect.runPromise(renderSocialPreview(f.dependencies), {
         signal: controller.signal,
-      })
-    ).rejects.toThrow();
+      }),
+      (error) => {
+        expect(() => {
+          throw error;
+        }).toThrow();
+
+        return true;
+      }
+    );
     expect(f.events).toEqual([
       "socket close",
       "encoder stop",
@@ -240,11 +291,18 @@ describe("social preview ownership", () => {
       return "/injected/late";
     };
 
-    await expect(
+    await rejects(
       Effect.runPromise(renderSocialPreview(f.dependencies), {
         signal: controller.signal,
-      })
-    ).rejects.toThrow();
+      }),
+      (error) => {
+        expect(() => {
+          throw error;
+        }).toThrow();
+
+        return true;
+      }
+    );
     expect(f.events).toEqual(["remove"]);
   });
 });

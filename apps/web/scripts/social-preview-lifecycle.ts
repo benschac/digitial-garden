@@ -99,7 +99,9 @@ const release = (stage: string, action: () => Promise<void>) =>
 
 const ownProcess = (stage: string, start: () => PreviewProcess) =>
   Effect.acquireRelease(sync(stage, start), (child) =>
-    release(`${stage} cleanup`, () => child.stop())
+    release(`${stage} cleanup`, async () => {
+      await child.stop();
+    })
   );
 
 export const renderSocialPreview = Effect.fn("renderSocialPreview")(
@@ -109,14 +111,21 @@ export const renderSocialPreview = Effect.fn("renderSocialPreview")(
     yield* Effect.scoped(
       Effect.gen(function* exportResources() {
         const temporary = yield* Effect.acquireRelease(
-          attempt("temporary directory", () => dependencies.temporary()),
+          attempt(
+            "temporary directory",
+            async () => await dependencies.temporary()
+          ),
           (temporaryPath) =>
-            release("temporary cleanup", () =>
-              dependencies.remove(temporaryPath)
-            )
+            release("temporary cleanup", async () => {
+              await dependencies.remove(temporaryPath);
+            })
         );
 
-        const font = yield* attempt("font", () => dependencies.font());
+        const font = yield* attempt(
+          "font",
+          async () => await dependencies.font()
+        );
+
         const html = yield* sync("document", () => dependencies.html(font));
 
         const browser = yield* ownProcess("browser", () =>
@@ -132,24 +141,30 @@ export const renderSocialPreview = Effect.fn("renderSocialPreview")(
         });
 
         const capture = Effect.gen(function* capture() {
-          const url = yield* attempt("debugging target", (signal) =>
-            dependencies.target(temporary, signal)
+          const url = yield* attempt(
+            "debugging target",
+            async (signal) => await dependencies.target(temporary, signal)
           );
 
           const connection = yield* Effect.acquireRelease(
             sync("socket", () => dependencies.connect(url)),
             (socket) =>
-              sync("socket cleanup", () => socket.close()).pipe(Effect.orDie)
+              sync("socket cleanup", () => {
+                socket.close();
+              }).pipe(Effect.orDie)
           );
 
-          yield* attempt("socket open", (signal) => connection.ready(signal));
+          yield* attempt("socket open", async (signal) => {
+            await connection.ready(signal);
+          });
 
           const command = (
             method: string,
             params: PreviewCommandParameters = {}
           ) =>
-            attempt(method, (signal) =>
-              connection.command(method, params, signal)
+            attempt(
+              method,
+              async (signal) => await connection.command(method, params, signal)
             );
 
           yield* command("Emulation.setDeviceMetricsOverride", {
@@ -168,9 +183,9 @@ export const renderSocialPreview = Effect.fn("renderSocialPreview")(
           yield* sync("document readiness", () =>
             Schema.decodeUnknownSync(documentSchema)(document)
           );
-          yield* attempt("output directory", () => dependencies.mkdir()).pipe(
-            Effect.uninterruptible
-          );
+          yield* attempt("output directory", async () => {
+            await dependencies.mkdir();
+          }).pipe(Effect.uninterruptible);
 
           for (let frame = 0; frame < fps * seconds; frame += 1) {
             yield* command("Runtime.evaluate", {
@@ -185,12 +200,12 @@ export const renderSocialPreview = Effect.fn("renderSocialPreview")(
               Schema.decodeUnknownSync(screenshotSchema)(result)
             );
 
-            yield* attempt("frame write", () =>
-              dependencies.write(
+            yield* attempt("frame write", async () => {
+              await dependencies.write(
                 path.join(temporary, `${String(frame).padStart(4, "0")}.png`),
                 Buffer.from(screenshot.data, "base64")
-              )
-            ).pipe(Effect.uninterruptible);
+              );
+            }).pipe(Effect.uninterruptible);
           }
         }).pipe(Effect.scoped);
 
@@ -229,7 +244,10 @@ export const renderSocialPreview = Effect.fn("renderSocialPreview")(
                 dependencies.encoder(args)
               );
 
-              const exit = yield* attempt("encoder exit", () => encoder.exited);
+              const exit = yield* attempt(
+                "encoder exit",
+                async () => await encoder.exited
+              );
 
               if (exit.error || exit.code !== 0) {
                 return yield* new PreviewError({
@@ -239,6 +257,8 @@ export const renderSocialPreview = Effect.fn("renderSocialPreview")(
                   stage: "encoder exit",
                 });
               }
+
+              return yield* Effect.undefined;
             })
           );
         }
