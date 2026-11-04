@@ -39,6 +39,7 @@ This repository uses the Effect TypeScript library. Before writing Effect code, 
 
 ## Scripts, processes, and platform services
 
+- In Effect-owned workflows, Effect's semantic diagnostics take precedence over conflicting generic Promise style rules. Map external failures into typed errors at the adapter and recover with Effect operators. Native Promise rejection handling belongs only at declared integration boundaries; a permitted parameter name is not permission to move recovery into domain code.
 - Prefer Effect for script orchestration, typed failures, dependencies, concurrency, cancellation, and resource ownership. Before adding a custom platform adapter, evaluate the installed Effect APIs through the [source lookup workflow](agent-patterns/README.md).
 - In Effect-owned workflows, prefer `effect/process`, `effect/FileSystem`, and `effect/Path` when they remove custom coordination. Use a platform implementation compatible with the installed Effect version, such as `@effect/platform-node` for Node.js; v3 `@effect/platform` examples require adaptation for this repository's v4 APIs.
 - Use Execa for Promise-based subprocess adapters when it reduces lifecycle code and preserves the caller's contract. Keep Effect scopes responsible for cleanup in existing integrations; verify stdio, exit status, signals, cancellation, and shutdown policy before replacing a process owner.

@@ -201,7 +201,10 @@
     "decision": "Retain failure stage and cause in the owning adapter; recover only the failures the application can handle. Use the installed tagged-error conventions.",
     "owners": [
       "apps/web/src/app/typography-metric-requests.ts",
-      "apps/web/scripts/social-preview-lifecycle.ts"
+      "apps/web/scripts/social-preview-lifecycle.ts",
+      "apps/web/src/components/ai-elements/code-block-highlighting.ts",
+      "apps/web/src/components/mdx/animated-diagram-lifecycle.ts",
+      "oxlint.typed.config.mts"
     ],
     "sources": [
       {
@@ -226,6 +229,16 @@
         "kind": "behavior",
         "path": "apps/web/src/app/typography-metric-requests.test.ts",
         "claim": "Exercises request failures through the application owner."
+      },
+      {
+        "kind": "lint",
+        "path": "scripts/typed-lint.test.mjs",
+        "claim": "Rejects untyped Effect error mappers, native recovery inside generators, nested execution, and accidental Promise success values; accepts typed conversion and data-first Effect.catch."
+      },
+      {
+        "kind": "behavior",
+        "path": "apps/web/src/components/ai-elements/code-block-highlighting.test.ts",
+        "claim": "Exercises rejected initialization and synchronous tokenization failure, fallback and retry after typed error conversion."
       }
     ],
     "exceptions": [
@@ -273,15 +286,17 @@
       {
         "kind": "lint",
         "path": "scripts/pattern-boundaries.test.mjs",
-        "claim": "Exercises import restrictions for ManagedRuntime and execution imports in apps/**/*-service.ts, while permitting integration facades."
+        "claim": "Exercises service execution/import restrictions and Promise recovery restrictions, allowing declared boundaries but rejecting recovery inside recognized Effect callbacks."
       }
     ],
     "exceptions": [
-      "The default database facade intentionally owns module-lifetime state."
+      "The default database facade intentionally owns module-lifetime state.",
+      "Native Promise recovery is permitted in the five named UI/native boundary files in oxlint.config.mts and test harnesses, outside recognized Effect callbacks."
     ],
     "gaps": [
       "Host shutdown wiring is not established by facade tests; SQL authorization is a separate concern.",
-      "Destructured or reassigned aliases, variable property names, indirect wrappers and filenames outside apps/**/*-service.ts remain review-only."
+      "Service runner restrictions outside apps/**/*-service.ts, assigned Effect aliases, dynamic property names and cross-file helpers remain review-only.",
+      "Promise recovery checks classify static member syntax rather than receiver types; non-Effect APIs named catch need an explicit boundary decision. Native await/try-catch outside recognized Effect generators remains a review concern."
     ],
     "related": ["adapters-cartridges", "resource-ownership"]
   },

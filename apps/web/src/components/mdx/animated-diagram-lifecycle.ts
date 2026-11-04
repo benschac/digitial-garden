@@ -5,6 +5,14 @@ import type { GiottoPlayer } from "giotto/player";
 import { articleCodeTheme } from "./article-code-theme";
 import type { getArticleCodeTokenizer } from "./article-code-theme";
 
+class DiagramInitializationError extends Schema.TaggedError<
+  DiagramInitializationError,
+  { readonly brand: unique symbol }
+>()("DiagramInitializationError", {
+  cause: Schema.Defect(),
+  operation: Schema.Literals(["source", "player", "highlighting", "tokenizer"]),
+}) {}
+
 const diagramDocumentSchema = Schema.StructWithRest(
   Schema.Struct({ elements: Schema.Array(Schema.Unknown) }),
   [Schema.Record(Schema.String, Schema.Unknown)]
@@ -113,15 +121,23 @@ const diagramLifetime = Effect.fnUntraced(function* runDiagramLifetime<
     options.signal.throwIfAborted();
     onStatus("Loading interactive diagram…");
   });
-  yield* Effect.try(() => {
-    if (!/^\/diagrams\/[a-z0-9-]+\.json$/u.test(src)) {
-      throw new Error("Use a repository-owned /diagrams/name.json file.");
-    }
+  yield* Effect.try({
+    catch: (cause) =>
+      new DiagramInitializationError({ cause, operation: "source" }),
+    try: () => {
+      if (!/^\/diagrams\/[a-z0-9-]+\.json$/u.test(src)) {
+        throw new Error("Use a repository-owned /diagrams/name.json file.");
+      }
+    },
   });
 
   const [module, doc] = yield* Effect.all(
     [
-      Effect.tryPromise(dependencies.loadPlayer),
+      Effect.tryPromise({
+        catch: (cause) =>
+          new DiagramInitializationError({ cause, operation: "player" }),
+        try: dependencies.loadPlayer,
+      }),
       dependencies.loadDocument(src),
     ],
     { concurrency: "unbounded" }
@@ -201,9 +217,20 @@ const diagramLifetime = Effect.fnUntraced(function* runDiagramLifetime<
   if (JSON.stringify(doc).includes('"type":"code"')) {
     yield* Effect.gen(function* highlightCode() {
       const { getArticleCodeTokenizer, highlightDiagramCode } =
-        yield* Effect.tryPromise(dependencies.loadHighlighting);
+        yield* Effect.tryPromise({
+          catch: (cause) =>
+            new DiagramInitializationError({
+              cause,
+              operation: "highlighting",
+            }),
+          try: dependencies.loadHighlighting,
+        });
 
-      const tokenize = yield* Effect.tryPromise(getArticleCodeTokenizer);
+      const tokenize = yield* Effect.tryPromise({
+        catch: (cause) =>
+          new DiagramInitializationError({ cause, operation: "tokenizer" }),
+        try: getArticleCodeTokenizer,
+      });
 
       yield* Effect.acquireRelease(
         Effect.sync((): ReturnType<typeof highlightDiagramCode> | undefined => {

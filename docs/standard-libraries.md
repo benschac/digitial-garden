@@ -57,6 +57,7 @@ Refs must point to mounted elements when observation starts. If initialization i
 - `bun run check-types:root` checks Gas City scripts with the Effect-patched TypeScript 7.0.2 runner from pinned `@effect/tsgo`. Effect warnings and errors fail the command, and `verify` includes it.
 
 - `bun run lint:typed` uses Effect-patched TSRS through Oxlint for type-aware and recommended Effect diagnostics. It preserves the base lint configuration and runs in `verify`, `verify:all`, and `verify:full` through the root Turbo task, after shared route/content generation. The backend remains experimental; see [the evaluation and lint policy](tsrs-lint-research.md).
+- Effect error-channel diagnostics are blocking. Native Promise recovery is restricted to declared boundaries; see [the enforced ownership policy](lint-rule-interactions.md#effect-error-ownership).
 - `bun run check-types:effect` runs the web project through the pinned Effect-patched `tsrs` runner. The Effect language-service plugin is configured in `apps/web/tsconfig.json`; the existing TypeScript checks remain the default. See [checks](../README.md#checks) for compatibility findings and editor setup boundaries.
 
 - [Library source references](agent-sources.md) provides pinned, reference-only Effect, XState core, and XState Effect checkouts. `bun run sources:fetch` downloads them; `sources:check` validates them; `sources:updates` reports registry tags without upgrading dependencies.

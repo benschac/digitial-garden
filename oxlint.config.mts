@@ -38,6 +38,43 @@ export default defineConfig({
   overrides: [
     {
       files: [
+        "**/apps/**/*-service.ts",
+        "**/apps/**/*-lifecycle.ts",
+        "**/apps/web/agent/lib/sample-db.ts",
+        "**/apps/web/scripts/watch-wasm.ts",
+        "**/apps/web/scripts/render-social-preview.tsx",
+        "**/apps/web/src/app/typography-metric-requests.ts",
+        "**/apps/web/src/app/experiments/wasm-canvas/particle-initialization.ts",
+        "**/apps/web/src/app/experiments/wasm-canvas/wasm-engine.ts",
+        "**/apps/web/src/components/ai-elements/code-block-highlighting.ts",
+        "**/apps/web/src/components/ai-elements/prompt-input-attachments.ts",
+        "**/apps/web/src/components/mdx/animated-diagram-lifecycle.test.ts",
+        "**/gascity/dependency-updates/assets/scripts/supervise-wake.ts",
+      ],
+      rules: { "promise/valid-params": "off" },
+    },
+    {
+      files: ["**/apps/**/*", "**/packages/**/*", "**/gascity/**/*"],
+      rules: { "project-patterns/promise-recovery": "error" },
+    },
+    {
+      files: [
+        "**/apps/web/scripts/dev-port.ts",
+        "**/apps/web/scripts/social-preview-native.ts",
+        "**/apps/web/src/app/_components/agent-chat-submission.ts",
+        "**/apps/web/src/app/article-content-overlay.tsx",
+        "**/apps/web/src/app/typography-inspector.tsx",
+        "**/*.test.*",
+      ],
+      rules: {
+        "project-patterns/promise-recovery": [
+          "error",
+          { allowOutsideEffect: true },
+        ],
+      },
+    },
+    {
+      files: [
         "**/apps/web/agent/lib/sample-db-service.ts",
         "**/apps/web/agent/lib/sample-db.ts",
         "**/apps/web/scripts/watch-wasm-lifecycle.ts",
@@ -46,6 +83,8 @@ export default defineConfig({
         "**/apps/web/src/app/experiments/wasm-canvas/renderer-lifecycle.ts",
         "**/apps/web/src/app/experiments/wasm-canvas/wasm-engine.ts",
         "**/apps/web/src/components/ai-elements/prompt-input-attachments.ts",
+        "**/apps/web/src/components/ai-elements/code-block-highlighting.ts",
+        "**/apps/web/src/components/mdx/animated-diagram-lifecycle.ts",
         "**/gascity/dependency-updates/assets/scripts/supervise-wake.ts",
       ],
       rules: { "unicorn/throw-new-error": "off" },
@@ -58,6 +97,7 @@ export default defineConfig({
       files: [
         "**/apps/web/src/app/experiments/wasm-canvas/particle-initialization.ts",
         "**/apps/web/src/components/ai-elements/prompt-input-attachments.ts",
+        "**/apps/web/src/components/ai-elements/code-block-highlighting.ts",
       ],
       rules: { "max-classes-per-file": ["error", 2] },
     },
@@ -341,6 +381,7 @@ export default defineConfig({
         "ts-nocheck": true,
       },
     ],
+    "typescript/no-non-null-assertion": "error",
     "typescript/no-unused-vars": [
       "error",
       {
@@ -365,8 +406,10 @@ export default defineConfig({
         variables: true,
       },
     ],
+    "typescript/non-nullable-type-assertion-style": "off",
     "typescript/prefer-optional-chain": "warn",
     "typescript/require-await": "off",
     "typescript/return-await": ["error", "error-handling-correctness-only"],
+    "unicorn/catch-error-name": ["error", { ignore: ["^cause$"] }],
   },
 });

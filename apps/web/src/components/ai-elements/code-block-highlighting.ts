@@ -1,4 +1,4 @@
-import { Cache, Data, Effect, Exit, Option } from "effect";
+import { Cache, Data, Effect, Exit, Option, Schema } from "effect";
 import { createHighlighter } from "shiki";
 import type { BundledLanguage, ThemedToken } from "shiki";
 
@@ -16,6 +16,14 @@ type ChatHighlighter = Pick<
 type InitializeHighlighter = (
   language: BundledLanguage
 ) => Promise<ChatHighlighter>;
+
+class CodeHighlightingError extends Schema.TaggedError<
+  CodeHighlightingError,
+  { readonly brand: unique symbol }
+>()("CodeHighlightingError", {
+  cause: Schema.Defect(),
+  operation: Schema.Literals(["initialize", "tokenize"]),
+}) {}
 
 class HighlightRequest extends Data.Class<{
   code: string;
@@ -39,7 +47,11 @@ export const createCodeHighlighting = (
   const highlighters = Effect.runSync(
     Cache.makeWith(
       (language: BundledLanguage) =>
-        Effect.tryPromise(async () => await initialize(language)),
+        Effect.tryPromise({
+          catch: (cause) =>
+            new CodeHighlightingError({ cause, operation: "initialize" }),
+          try: async () => await initialize(language),
+        }),
       {
         capacity: Infinity,
         timeToLive: (exit) => (Exit.isSuccess(exit) ? Infinity : 0),
@@ -52,19 +64,23 @@ export const createCodeHighlighting = (
       Effect.fnUntraced(function* tokens({ code, language }: HighlightRequest) {
         const highlighter = yield* Cache.get(highlighters, language);
 
-        return yield* Effect.try(() => {
-          const result = highlighter.codeToTokens(code, {
-            lang: highlighter.getLoadedLanguages().includes(language)
-              ? language
-              : "text",
-            themes: { dark: "github-dark", light: "github-light" },
-          });
+        return yield* Effect.try({
+          catch: (cause) =>
+            new CodeHighlightingError({ cause, operation: "tokenize" }),
+          try: () => {
+            const result = highlighter.codeToTokens(code, {
+              lang: highlighter.getLoadedLanguages().includes(language)
+                ? language
+                : "text",
+              themes: { dark: "github-dark", light: "github-light" },
+            });
 
-          return {
-            bg: result.bg ?? "transparent",
-            fg: result.fg ?? "inherit",
-            tokens: result.tokens,
-          };
+            return {
+              bg: result.bg ?? "transparent",
+              fg: result.fg ?? "inherit",
+              tokens: result.tokens,
+            };
+          },
         });
       }),
       {

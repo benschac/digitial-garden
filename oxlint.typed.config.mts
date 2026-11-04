@@ -25,4 +25,14 @@ export default defineConfig({
       },
     },
   ],
+  rules: {
+    ...base.rules,
+    "effecttsgo/effect-try-without-catch": "error",
+    "effecttsgo/global-error-in-effect-catch": "error",
+    "effecttsgo/lazy-promise-in-effect-sync": "error",
+    "effecttsgo/promise-in-effect-success": "error",
+    "effecttsgo/run-effect-inside-effect": "error",
+    "effecttsgo/try-catch-in-effect-gen": "error",
+    "effecttsgo/unknown-in-effect-catch": "error",
+  },
 });

@@ -64,6 +64,23 @@ describe("chat highlighting", () => {
     expect(attempts).toBe(2);
   });
 
+  test("retries after tokenization throws instead of retaining failure", async () => {
+    const tokenizer = fixture();
+    tokenizer.codeToTokens.mockImplementationOnce(() => {
+      throw new Error("tokenization failed");
+    });
+    const initialize = mock(async () => tokenizer);
+    const service = createCodeHighlighting(initialize);
+
+    expect(await service.highlight("const value = 1", "typescript")).toBeNull();
+    expect(service.getCached("const value = 1", "typescript")).toBeNull();
+    expect(
+      await service.highlight("const value = 1", "typescript")
+    ).not.toBeNull();
+    expect(initialize).toHaveBeenCalledTimes(1);
+    expect(tokenizer.codeToTokens).toHaveBeenCalledTimes(2);
+  });
+
   test("uses the entire source and language as the cache key", async () => {
     const tokenizer = fixture();
 
