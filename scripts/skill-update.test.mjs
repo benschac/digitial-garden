@@ -1818,18 +1818,25 @@ test("singleton native aliases bind exact durable sessions and claims", async (t
     }
   );
 
-  await t.test(
-    "live singleton requires its exact session claim and lease",
-    () => {
-      const f = singletonFixture();
-      f.step.status = "in_progress";
-      delete f.step.closed_at;
-      f.step.lease_expires_at = "2999-01-01T00:00:00Z";
-      f.session.status = "open";
-      f.session.metadata.state = "active";
-      f.session.metadata.current_claim_bead_id = f.step.id;
-      assert.equal(resolveContext(f.env, f.read).executor, "psc-wisp-worker");
-    }
+  await Promise.all(
+    ["active", "awake"].map((state) =>
+      t.test(
+        `live ${state} singleton requires its exact session claim and lease`,
+        () => {
+          const f = singletonFixture();
+          f.step.status = "in_progress";
+          delete f.step.closed_at;
+          f.step.lease_expires_at = "2999-01-01T00:00:00Z";
+          f.session.status = "open";
+          f.session.metadata.state = state;
+          f.session.metadata.current_claim_bead_id = f.step.id;
+          assert.equal(
+            resolveContext(f.env, f.read).executor,
+            "psc-wisp-worker"
+          );
+        }
+      )
+    )
   );
 
   await t.test(

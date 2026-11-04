@@ -413,7 +413,7 @@ const validateSingletonClaim = (step, session) => {
         Date.parse(step.metadata["gc.claimed_at"])) ||
       (step.status === "in_progress" &&
         session.status === "open" &&
-        session.metadata.state === "active" &&
+        ["active", "awake"].includes(session.metadata.state) &&
         session.metadata.current_claim_bead_id === step.id &&
         Date.parse(step.lease_expires_at) > Date.now()),
     "Native singleton claim is stale or absent"
