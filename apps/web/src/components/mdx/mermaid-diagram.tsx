@@ -1,6 +1,7 @@
 "use client";
 
 import { useAbortController } from "@personal-site/react-hooks";
+import type { EffectCallback } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import styles from "./mermaid-diagram.module.css";
@@ -11,7 +12,7 @@ interface MermaidDiagramProps {
   description: string;
 }
 
-const loadPele = () => import("pele");
+const loadPele = async () => await import("pele");
 
 export const MermaidDiagram = ({
   source,
@@ -23,7 +24,7 @@ export const MermaidDiagram = ({
   const createController = useAbortController();
   const [status, setStatus] = useState("Loading diagram…");
 
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     const container = host.current;
 
     if (!container) {
@@ -59,7 +60,9 @@ export const MermaidDiagram = ({
           },
         });
 
-        destroy = () => diagram.destroy();
+        destroy = () => {
+          diagram.destroy();
+        };
 
         if (controller.signal.aborted) {
           destroy();

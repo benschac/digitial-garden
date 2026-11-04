@@ -82,7 +82,9 @@ const EffectWalkthroughPlayer = ({ kind }: { kind: EffectWalkthroughKind }) => {
 
     void initializeHighlighting();
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+    };
   }, [source, createController]);
   const stepCount = walkthrough.steps.length;
 
@@ -112,7 +114,7 @@ const EffectWalkthroughPlayer = ({ kind }: { kind: EffectWalkthroughKind }) => {
     const actor = actorRef.current;
     const active = actor?.getSnapshot();
 
-    if (!actor || !active?.matches("playing")) {
+    if (!actor || active?.matches("playing") !== true) {
       return false;
     }
 
@@ -267,7 +269,9 @@ const EffectWalkthroughPlayer = ({ kind }: { kind: EffectWalkthroughKind }) => {
             key={item.label}
             className={styles.step}
             aria-pressed={step === index}
-            onClick={(event) => selectStep(index, event.detail === 0)}
+            onClick={(event) => {
+              selectStep(index, event.detail === 0);
+            }}
           >
             <span className={styles.stepNumber}>{index + 1}</span>
             {item.label}
@@ -289,7 +293,9 @@ const EffectWalkthroughPlayer = ({ kind }: { kind: EffectWalkthroughKind }) => {
               className={styles.control}
               aria-label="Previous code step"
               disabled={step === 0}
-              onClick={(event) => selectStep(step - 1, event.detail === 0)}
+              onClick={(event) => {
+                selectStep(step - 1, event.detail === 0);
+              }}
             >
               <ArrowLeft size={16} aria-hidden="true" />
             </button>
@@ -305,7 +311,10 @@ const EffectWalkthroughPlayer = ({ kind }: { kind: EffectWalkthroughKind }) => {
 
                     actorRef.current?.send({ type: "PLAY" });
 
-                    if (actorRef.current?.getSnapshot().matches("playing")) {
+                    if (
+                      actorRef.current?.getSnapshot().matches("playing") ===
+                      true
+                    ) {
                       requestFrame();
                     }
                   }
@@ -326,7 +335,9 @@ const EffectWalkthroughPlayer = ({ kind }: { kind: EffectWalkthroughKind }) => {
               className={styles.control}
               aria-label="Next code step"
               disabled={last}
-              onClick={(event) => selectStep(step + 1, event.detail === 0)}
+              onClick={(event) => {
+                selectStep(step + 1, event.detail === 0);
+              }}
             >
               <ArrowRight size={16} aria-hidden="true" />
             </button>

@@ -61,7 +61,9 @@ export const MdxImage = ({
         title={title}
         width={1200}
       />
-      {title ? <Typography as="figcaption">{title}</Typography> : null}
+      {title !== undefined && title !== "" ? (
+        <Typography as="figcaption">{title}</Typography>
+      ) : null}
     </figure>
   );
 };
@@ -115,7 +117,7 @@ export const MdxTable = ({
       )
     : [];
 
-  const labeledChildren = Children.map(children, (part) => {
+  const labeledChildren = Children.map(children, (part): ReactNode => {
     if (
       !isValidElement<{ children?: ReactNode }>(part) ||
       part.type !== "tbody"
@@ -126,7 +128,7 @@ export const MdxTable = ({
     return cloneElement(
       part,
       {},
-      Children.map(part.props.children, (row) => {
+      Children.map(part.props.children, (row): ReactNode => {
         if (!isValidElement<{ children?: ReactNode }>(row)) {
           return row;
         }
@@ -134,7 +136,7 @@ export const MdxTable = ({
         return cloneElement(
           row,
           {},
-          Children.map(row.props.children, (cell, index) =>
+          Children.map(row.props.children, (cell, index): ReactNode =>
             isValidElement<
               ComponentPropsWithoutRef<"td"> & { "data-column-label"?: string }
             >(cell) && labels[index]

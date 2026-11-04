@@ -51,7 +51,7 @@ test("compiles the ER figure with multiline source and renders its tables", asyn
     .map((match) => match[0])
     .find((snippet) => snippet.includes('source="erDiagram'));
 
-  if (!figure) {
+  if (figure === undefined) {
     throw new Error("Missing ER figure");
   }
 

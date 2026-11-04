@@ -1,3 +1,4 @@
+import type { AnyTransitionConfigFunction } from "xstate";
 import { createMachine, types } from "xstate";
 
 export const effectWalkthroughPlayback = createMachine({
@@ -26,7 +27,7 @@ export const effectWalkthroughPlayback = createMachine({
       context: { generation: context.generation + 1 },
       target: ".paused",
     }),
-    SELECT: ({ context, event }) => {
+    SELECT: ({ context, event }): ReturnType<AnyTransitionConfigFunction> => {
       if (
         !Number.isInteger(event.step) ||
         event.step < 0 ||
@@ -54,7 +55,7 @@ export const effectWalkthroughPlayback = createMachine({
   states: {
     completed: {
       on: {
-        PLAY: ({ context }) => {
+        PLAY: ({ context }): ReturnType<AnyTransitionConfigFunction> => {
           if (context.reducedMotion) {
             return;
           }
@@ -68,7 +69,7 @@ export const effectWalkthroughPlayback = createMachine({
     },
     paused: {
       on: {
-        PLAY: ({ context }) => {
+        PLAY: ({ context }): ReturnType<AnyTransitionConfigFunction> => {
           if (context.reducedMotion) {
             return;
           }
@@ -85,7 +86,10 @@ export const effectWalkthroughPlayback = createMachine({
     },
     playing: {
       on: {
-        INTERVAL: ({ context, event }) => {
+        INTERVAL: ({
+          context,
+          event,
+        }): ReturnType<AnyTransitionConfigFunction> => {
           if (event.generation !== context.generation) {
             return;
           }
