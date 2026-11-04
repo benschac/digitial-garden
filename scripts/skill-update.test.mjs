@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { once } from "node:events";
 import {
   mkdtempSync,
+  renameSync,
   mkdirSync,
   writeFileSync,
   rmSync,
@@ -25,6 +26,16 @@ import {
   checkStage,
   beginCheckArchive,
   finishCheckArchive,
+  resolveContext,
+  resolveReceiptContext,
+  resolveWriteContext,
+  adoptPreparation,
+  selectReceipt,
+  writeImmutable,
+  qualificationDecision,
+  recordStage,
+  qualifyResult,
+  reuseQualification,
 } from "./skill-update.mjs";
 
 const nativeFixture = (t, stage = "reviewed") => {
@@ -90,6 +101,7 @@ const nativeFixture = (t, stage = "reviewed") => {
       id: "ps-subject",
       metadata: {
         "gc.iteration": "1",
+        "gc.outcome": "pass",
         "gc.ralph_step_id": {
           integrated: "publish",
           prepared: "prepare",
@@ -98,6 +110,7 @@ const nativeFixture = (t, stage = "reviewed") => {
         }[stage],
         "gc.root_bead_id": "ps-root",
         "gc.session_id": "psc-worker",
+        "gc.session_name": "gc__worker-psc-worker",
       },
       status: "closed",
     },
@@ -858,4 +871,1085 @@ test("remote source identity must match even when content hash is unchanged", (t
       /Remote lock identity/u
     );
   }
+});
+
+const bytesHash = (bytes) => createHash("sha256").update(bytes).digest("hex");
+
+const recoveryFixture = (t, nested = false) => {
+  const n = nativeFixture(t, "prepared");
+  const f = fixture(t);
+  const checkout = path.join(n.directory, "checkout");
+  const sourceCheckout = path.join(n.directory, "source");
+  renameSync(f.checkout, checkout);
+  renameSync(f.sourceCheckout, sourceCheckout);
+  git(
+    checkout,
+    "remote",
+    "add",
+    "origin",
+    "https://github.com/benschac/digitial-garden.git"
+  );
+  const request = { ...f.request, candidate: "ps-candidate" };
+  save(path.join(n.directory, "request.json"), request);
+  const preparedPath = nested ? "prepare/prepared.json" : "prepared.json";
+
+  if (nested) {
+    rmSync(path.join(n.directory, "prepared.json"));
+    mkdirSync(path.join(n.directory, "prepare"));
+  }
+
+  const prepared = {
+    base: f.base,
+    candidate: request.candidate,
+    checkout,
+    commit: f.commit,
+    preparer: "psc-original",
+    sourceCheckout,
+  };
+
+  save(path.join(n.directory, preparedPath), prepared);
+
+  const tree = git(checkout, "rev-parse", "HEAD^{tree}");
+
+  const authorization = {
+    adopter: "psc-worker",
+    base: f.base,
+    candidate: request.candidate,
+    commit: f.commit,
+    landingHistory: [],
+    lineageComplete: true,
+    originalPreparer: "psc-original",
+    originalStep: { path: "original-step.json", sha256: "f".repeat(64) },
+    prepared: {
+      path: preparedPath,
+      sha256: bytesHash(readFileSync(path.join(n.directory, preparedPath))),
+    },
+    qualification: { mode: "required" },
+    repair: "ps-repair",
+    requestHash: bytesHash(
+      readFileSync(path.join(n.directory, "request.json"))
+    ),
+    root: "ps-root",
+    schema: 2,
+    step: "ps-subject",
+    tree,
+  };
+
+  save(path.join(n.directory, "original-step.json"), {
+    assignee: "",
+    id: "ps-oldprepare",
+    metadata: {
+      "gc.outcome": "pass",
+      "gc.ralph_step_id": "prepare",
+      "gc.root_bead_id": "ps-oldroot",
+      "gc.session_id": "psc-original",
+      "gc.session_name": "gc__original-psc-original",
+    },
+    status: "closed",
+  });
+  authorization.originalStep.sha256 = bytesHash(
+    readFileSync(path.join(n.directory, "original-step.json"))
+  );
+  mkdirSync(path.join(n.directory, "authorizations"));
+
+  const authorize = () => {
+    const file = path.join(n.directory, "authorizations/ps-root.json");
+    save(file, authorization);
+    const hash = bytesHash(readFileSync(file));
+    n.rows["ps-root"].metadata.skill_receipt_schema = "2";
+    n.rows["ps-root"].metadata.skill_recovery_repair_bead = "ps-repair";
+    n.rows["ps-root"].metadata.skill_recovery_authorization_sha256 = hash;
+    n.rows["ps-repair"] = {
+      id: "ps-repair",
+      metadata: { "skill_recovery_authorization.ps-root.sha256": hash },
+    };
+  };
+
+  n.rows["ps-subject"].status = "in_progress";
+  n.rows["ps-subject"].metadata["gc.session_name"] = "gc__worker-psc-worker";
+  n.rows["ps-root"].metadata["gc.drain_control_id"] = "ps-drain";
+  n.rows["ps-convoy"].metadata["gc.drain_control_id"] = "ps-drain";
+  n.rows["ps-candidate"].metadata = {
+    "gc.exclusive_drain_reservation": "ps-drain",
+    ...Object.fromEntries(
+      Object.entries({
+        skill_current_hash: "currentHash",
+        skill_name: "skill",
+        skill_path: "skillPath",
+        skill_scan_base: "scanBase",
+        skill_source: "source",
+        skill_target_hash: "targetHash",
+        skill_target_revision: "targetRevision",
+      }).map(([key, field]) => [key, request[field]])
+    ),
+  };
+  n.rows["ps-drain"] = {
+    id: "ps-drain",
+    metadata: {
+      "gc.drain_manifest.v1": JSON.stringify({
+        rows: [
+          {
+            item_root_id: "ps-root",
+            member_id: request.candidate,
+            unit_convoy_id: "ps-convoy",
+          },
+        ],
+        version: 1,
+      }),
+    },
+    status: "in_progress",
+  };
+  n.env.GC_SESSION_ID = "psc-worker";
+  n.env.GC_SESSION_NAME = "gc__worker-psc-worker";
+  n.env.BEADS_ACTOR = "psc-worker";
+  rmSync(path.join(n.artifacts, "result.json"));
+  authorize();
+  const context = () => resolveWriteContext(n.env, n.read, () => "ps-subject");
+
+  return {
+    ...n,
+    ...f,
+    authorization,
+    authorize,
+    checkout,
+    context,
+    directory: n.directory,
+    prepared,
+    preparedPath,
+    request,
+    sourceCheckout,
+    tree,
+  };
+};
+
+test("schema-2 adoption preserves exact retained identity and isolates root receipts", (t) => {
+  const f = recoveryFixture(t);
+  const original = readFileSync(path.join(f.directory, f.preparedPath));
+  const request = readFileSync(path.join(f.directory, "request.json"));
+  const context = f.context();
+  const envelope = adoptPreparation(context);
+  assert.equal(envelope.originalPreparer, "psc-original");
+  assert.equal(envelope.adopter, "psc-worker");
+  assert.deepEqual(adoptPreparation(f.context()), envelope);
+  const pointer = selectReceipt("prepared", 0, "absent", f.context());
+  assert.equal(pointer.root, "ps-root");
+  assert.equal(
+    checkStage("prepared", resolveContext(f.env, f.read)).commit,
+    f.commit
+  );
+  assert.deepEqual(
+    readFileSync(path.join(f.directory, f.preparedPath)),
+    original
+  );
+  assert.deepEqual(
+    readFileSync(path.join(f.directory, "request.json")),
+    request
+  );
+  f.rows["ps-subject"].status = "closed";
+  f.rows["ps-subject"].assignee = "";
+  assert.doesNotThrow(() =>
+    checkStage("prepared", resolveContext(f.env, f.read))
+  );
+  assert.throws(() => f.context(), /live claim/u);
+});
+
+test("native authorization rejects stale claims, foreign reservations and schema fallback", (t) => {
+  const f = recoveryFixture(t);
+  assert.throws(
+    () => resolveWriteContext(f.env, f.read, () => "ps-foreign"),
+    /live claim/u
+  );
+  assert.throws(
+    () =>
+      resolveWriteContext(
+        { ...f.env, GC_SESSION_ID: "psc-foreign" },
+        f.read,
+        () => "ps-subject"
+      ),
+    /live claim/u
+  );
+  delete f.rows["ps-repair"].metadata[
+    "skill_recovery_authorization.ps-root.sha256"
+  ];
+  assert.throws(() => f.context(), /explicit repair/u);
+  f.authorize();
+  f.rows["ps-candidate"].metadata["gc.exclusive_drain_reservation"] =
+    "ps-foreign";
+  assert.throws(() => f.context(), /reservation/u);
+  f.rows["ps-candidate"].metadata["gc.exclusive_drain_reservation"] =
+    "ps-drain";
+  f.rows["ps-drain"].metadata["gc.drain_manifest.v1"] = JSON.stringify({
+    rows: [],
+    version: 1,
+  });
+  assert.throws(() => f.context(), /manifest/u);
+  f.rows["ps-root"].metadata.skill_receipt_schema = "3";
+  assert.throws(() => resolveReceiptContext(f.env, f.read), /schema-2/u);
+  delete f.rows["ps-root"].metadata.skill_receipt_schema;
+  assert.throws(() => resolveReceiptContext(f.env, f.read), /Contradictory/u);
+});
+
+test("adoption rejects source, request, original preparer and dirty-tree substitutions", (t) => {
+  const f = recoveryFixture(t);
+  const original = readFileSync(path.join(f.directory, f.preparedPath));
+  f.prepared.preparer = "psc-worker";
+  save(path.join(f.directory, f.preparedPath), f.prepared);
+  assert.throws(() => adoptPreparation(f.context()), /digest/u);
+  writeFileSync(path.join(f.directory, f.preparedPath), original);
+  writeFileSync(path.join(f.checkout, "unexpected"), "dirty");
+  assert.throws(() => adoptPreparation(f.context()), /Dirty/u);
+  rmSync(path.join(f.checkout, "unexpected"));
+  git(
+    f.sourceCheckout,
+    "remote",
+    "set-url",
+    "origin",
+    "https://github.com/foreign/source.git"
+  );
+  assert.throws(() => adoptPreparation(f.context()), /origin/u);
+  git(
+    f.sourceCheckout,
+    "remote",
+    "set-url",
+    "origin",
+    "https://github.com/owner/repo.git"
+  );
+  const request = readFileSync(path.join(f.directory, "request.json"));
+  save(path.join(f.directory, "request.json"), {
+    ...f.request,
+    scanBase: "a".repeat(40),
+  });
+  assert.throws(() => f.context(), /request/u);
+  writeFileSync(path.join(f.directory, "request.json"), request);
+  f.authorization.prepared.path = "../escape.json";
+  f.authorize();
+  assert.throws(() => adoptPreparation(f.context()), /Unsafe/u);
+  assert.deepEqual(
+    readFileSync(path.join(f.directory, f.preparedPath)),
+    original
+  );
+});
+
+test("incomplete adoption remains a hold and immutable writes never replace conflicts", async (t) => {
+  const f = recoveryFixture(t);
+  adoptPreparation(f.context());
+  const root = path.join(f.directory, "attempts/ps-root");
+  rmSync(path.join(root, "manifest.json"));
+  assert.throws(() => adoptPreparation(f.context()), /Incomplete/u);
+  const output = path.join(f.city, "immutable");
+  mkdirSync(output);
+  writeImmutable(output, "receipt.json", "first");
+  assert.doesNotThrow(() => writeImmutable(output, "receipt.json", "first"));
+  assert.throws(
+    () => writeImmutable(output, "receipt.json", "second"),
+    /Conflicting/u
+  );
+  assert.equal(
+    readFileSync(path.join(output, "receipt.json"), "utf-8"),
+    "first"
+  );
+
+  const modulePath = fileURLToPath(
+    new URL("skill-update.mjs", import.meta.url)
+  );
+
+  const run = async (value) => {
+    const child = spawn(
+      process.execPath,
+      [
+        "--input-type=module",
+        "-e",
+        `import {writeImmutable} from ${JSON.stringify(modulePath)};writeImmutable(process.argv[1], 'racing.json', process.argv[2]);`,
+        output,
+        value,
+      ],
+      { stdio: "ignore" }
+    );
+
+    const [code] = await once(child, "exit");
+
+    return code;
+  };
+
+  const codes = await Promise.all([run("one"), run("two")]);
+  assert.equal(codes.filter((code) => code === 0).length, 1);
+  assert.ok(
+    ["one", "two"].includes(
+      readFileSync(path.join(output, "racing.json"), "utf-8")
+    )
+  );
+});
+
+test("qualification is strict for existing legacy evidence and exact for approved reuse", (t) => {
+  const f = recoveryFixture(t);
+
+  const qualification = {
+    base: f.base,
+    candidate: f.request.candidate,
+    commit: f.commit,
+    tree: f.tree,
+  };
+
+  save(path.join(f.directory, "qualified-prepared.json"), qualification);
+  writeFileSync(
+    path.join(f.directory, "legacy.log"),
+    "historical successful execution\n"
+  );
+  adoptPreparation(f.context());
+  selectReceipt("prepared", 0, "absent", f.context());
+  assert.throws(
+    () => qualificationDecision("prepared", resolveContext(f.env, f.read)),
+    /provenance/u
+  );
+
+  const snapshot = readFileSync(
+    path.join(f.directory, "qualified-prepared.json")
+  );
+
+  f.authorization.qualification = {
+    log: {
+      path: "legacy.log",
+      sha256: bytesHash(readFileSync(path.join(f.directory, "legacy.log"))),
+    },
+    mode: "reused",
+    policy: "a".repeat(64),
+    receipt: { path: "qualified-prepared.json", sha256: bytesHash(snapshot) },
+    trustedOrigin: "explicitly reviewed synthetic wrapper invocation",
+  };
+  f.authorize();
+  assert.throws(
+    () => qualificationDecision("prepared", resolveContext(f.env, f.read)),
+    /binding/u
+  );
+  assert.deepEqual(
+    readFileSync(path.join(f.directory, "qualified-prepared.json")),
+    snapshot
+  );
+});
+
+const approveReuse = (f) => {
+  save(path.join(f.directory, "qualified-prepared.json"), {
+    base: f.base,
+    candidate: f.request.candidate,
+    commit: f.commit,
+    tree: f.tree,
+  });
+  writeFileSync(
+    path.join(f.directory, "legacy.log"),
+    "synthetic original qualification output\n"
+  );
+  f.authorization.qualification = {
+    log: {
+      path: "legacy.log",
+      sha256: bytesHash(readFileSync(path.join(f.directory, "legacy.log"))),
+    },
+    mode: "reused",
+    policy: "f".repeat(64),
+    receipt: {
+      path: "qualified-prepared.json",
+      sha256: bytesHash(
+        readFileSync(path.join(f.directory, "qualified-prepared.json"))
+      ),
+    },
+    trustedOrigin:
+      "synthetic independently approved original wrapper execution",
+  };
+  f.authorize();
+};
+
+const wrapperFixture = (f) => {
+  const bin = path.join(f.city, "wrapper-bin");
+  mkdirSync(bin);
+  const beads = path.join(f.city, "wrapper-beads.json");
+  save(beads, f.rows);
+  writeFileSync(
+    path.join(bin, "gc"),
+    '#!/usr/bin/env node\nconst fs=require("node:fs");console.log(JSON.stringify([JSON.parse(fs.readFileSync(process.env.SKILL_TEST_BEADS))[process.argv.at(-2)]]));\n',
+    { mode: 0o700 }
+  );
+  writeFileSync(
+    path.join(bin, "bun"),
+    '#!/bin/sh\nprintf "%s\\n" "$*" >> "$SKILL_TEST_COMMANDS"\n[ "$SKILL_TEST_FAIL" != "$1" ]\n',
+    { mode: 0o700 }
+  );
+
+  const wrapper = fileURLToPath(
+    new URL(
+      "../gascity/skill-updates/assets/checks/qualify.sh",
+      import.meta.url
+    )
+  );
+
+  const script = readFileSync(wrapper, "utf-8").replace(
+    /^PATH=.*$/mu,
+    "PATH=$SKILL_TEST_PATH"
+  );
+
+  const commands = path.join(f.city, "commands.log");
+
+  const run = (failure = "") => {
+    save(beads, f.rows);
+
+    return spawnSync("/bin/sh", ["-c", script, wrapper, "prepared"], {
+      encoding: "utf-8",
+      env: {
+        ...f.env,
+        SKILL_TEST_BEADS: beads,
+        SKILL_TEST_COMMANDS: commands,
+        SKILL_TEST_FAIL: failure,
+        SKILL_TEST_PATH: `${bin}:${process.env.PATH}`,
+      },
+    });
+  };
+
+  return { commands, run };
+};
+
+test("authorized reuse executes zero install or verify commands and preserves prior bytes", (t) => {
+  const f = recoveryFixture(t, true);
+  approveReuse(f);
+  const old = readFileSync(path.join(f.directory, "qualified-prepared.json"));
+  const log = readFileSync(path.join(f.directory, "legacy.log"));
+  adoptPreparation(f.context());
+  selectReceipt("prepared", 0, "absent", f.context());
+  f.rows["ps-subject"].status = "closed";
+  f.rows["ps-subject"].assignee = "";
+  const wrapper = wrapperFixture(f);
+  const result = wrapper.run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(wrapper.commands), false);
+
+  const receipt = JSON.parse(
+    readFileSync(
+      path.join(f.directory, "attempts/ps-root/qualified-prepared.json")
+    )
+  );
+
+  assert.equal(receipt.mode, "reused");
+
+  const decision = JSON.parse(
+    readFileSync(
+      path.join(f.directory, "attempts/ps-root/qualification-decision.json")
+    )
+  );
+
+  assert.equal(decision.installExecuted, false);
+  assert.equal(decision.verifyExecuted, false);
+  assert.deepEqual(
+    readFileSync(path.join(f.directory, "qualified-prepared.json")),
+    old
+  );
+  assert.deepEqual(readFileSync(path.join(f.directory, "legacy.log")), log);
+  assert.notEqual(wrapper.run().status, 0);
+  assert.equal(existsSync(wrapper.commands), false);
+});
+
+test("missing qualification executes exactly one trusted qualification; failure emits no success", (t) => {
+  for (const failure of ["", "install", "run"]) {
+    const f = recoveryFixture(t);
+    adoptPreparation(f.context());
+    selectReceipt("prepared", 0, "absent", f.context());
+    f.rows["ps-subject"].status = "closed";
+    f.rows["ps-subject"].assignee = "";
+    const wrapper = wrapperFixture(f);
+    const result = wrapper.run(failure);
+    assert.equal(result.status === 0, failure === "", result.stderr);
+    const commands = readFileSync(wrapper.commands, "utf-8").trim().split("\n");
+    assert.equal(commands.length, failure === "install" ? 1 : 2);
+    assert.equal(commands[0], "install --frozen-lockfile --ignore-scripts");
+
+    if (commands.length === 2) {
+      assert.equal(commands[1], "run verify");
+    }
+
+    const receipt = path.join(
+      f.directory,
+      "attempts/ps-root/qualified-prepared.json"
+    );
+
+    assert.equal(existsSync(receipt), failure === "");
+
+    const archived = path.join(
+      f.directory,
+      "attempts/ps-root/ps-subject/checks/prepared"
+    );
+
+    const manifest = JSON.parse(
+      readFileSync(path.join(archived, "manifest.json"))
+    );
+
+    assert.equal(manifest.exitCode === 0, failure === "");
+    assert.notEqual(wrapper.run(failure).status, 0);
+    assert.equal(
+      readFileSync(wrapper.commands, "utf-8").trim().split("\n").length,
+      commands.length
+    );
+  }
+});
+
+const switchSubject = (f, step, role, executor) => {
+  const artifact = path.join(f.city, ".gc/molecules/ps-root/artifacts", step);
+  mkdirSync(artifact, { recursive: true });
+  f.rows[step] = {
+    assignee: executor,
+    id: step,
+    metadata: {
+      "gc.iteration": "1",
+      "gc.outcome": "pass",
+      "gc.ralph_step_id": role,
+      "gc.root_bead_id": "ps-root",
+      "gc.session_id": executor,
+      "gc.session_name": `gc__role-${executor}`,
+    },
+    status: "in_progress",
+  };
+  f.env.GC_BEAD_ID = step;
+  f.env.GC_ARTIFACT_DIR = artifact;
+  f.env.GC_SESSION_ID = executor;
+  f.env.GC_SESSION_NAME = `gc__role-${executor}`;
+  f.env.BEADS_ACTOR = executor;
+
+  return resolveWriteContext(f.env, f.read, () => step);
+};
+
+const preparedRecovery = (t, adapt = () => {}) => {
+  const f = recoveryFixture(t);
+  adapt(f);
+  approveReuse(f);
+  adoptPreparation(f.context());
+  selectReceipt("prepared", 0, "absent", f.context());
+  f.rows["ps-subject"].status = "closed";
+  f.rows["ps-subject"].assignee = "";
+  reuseQualification("prepared", resolveContext(f.env, f.read));
+
+  return f;
+};
+
+test("review binds exact native reviewer and rejects original preparer and adopter", (t) => {
+  const f = preparedRecovery(t);
+
+  const review = {
+    candidate: f.request.candidate,
+    commit: f.commit,
+    evidence: ["Exact synthetic source and recovery envelope inspected"],
+    reviewer: "psc-reviewer",
+    tree: f.tree,
+    verdict: "pass",
+  };
+
+  const context = switchSubject(f, "ps-reviewstep", "review", "psc-reviewer");
+  recordStage("reviewed", 0, review, context);
+  selectReceipt("reviewed", 0, "absent", context);
+  assert.equal(
+    checkStage("reviewed", resolveContext(f.env, f.read)).commit,
+    f.commit
+  );
+  const file = path.join(context.receiptDirectory, "reviewed.json");
+  const original = readFileSync(file);
+
+  for (const reviewer of ["psc-original", "psc-worker", "psc-foreign"]) {
+    const receipt = JSON.parse(original);
+    receipt.reviewer = reviewer;
+    save(file, receipt);
+    assert.throws(
+      () => checkStage("reviewed", resolveContext(f.env, f.read)),
+      /digest|review/u
+    );
+    writeFileSync(file, original);
+  }
+
+  f.rows["ps-reviewstep"].metadata["gc.session_id"] = "psc-foreign";
+  assert.throws(() => resolveContext(f.env, f.read), /ownership/u);
+});
+
+const localRemote = (f) => {
+  const remote = path.join(f.city, "remote.git");
+  git(f.city, "init", "--bare", remote);
+  git(f.checkout, "push", remote, `${f.base}:refs/heads/main`);
+  const bin = path.join(f.city, "git-bin");
+  mkdirSync(bin);
+
+  const realGit = spawnSync("which", ["git"], {
+    encoding: "utf-8",
+  }).stdout.trim();
+
+  assert.match(realGit, /^\/[a-zA-Z0-9_/.+-]+$/u);
+  writeFileSync(
+    path.join(bin, "git"),
+    `#!/bin/sh
+if [ "$1" = fetch ] && [ "$#" -ge 4 ] && [ "$3" = https://github.com/benschac/digitial-garden.git ]; then
+  exec ${realGit} fetch --no-tags "$SKILL_TEST_REMOTE" "$4"
+fi
+exec ${realGit} "$@"
+`,
+    { mode: 0o700 }
+  );
+
+  return { bin, remote };
+};
+
+const withLocalRemote = (f, fn) => {
+  const remote = localRemote(f);
+  const previous = process.env.PATH;
+  process.env.PATH = `${remote.bin}:${previous}`;
+  process.env.SKILL_TEST_REMOTE = remote.remote;
+
+  try {
+    return fn(remote.remote);
+  } finally {
+    process.env.PATH = previous;
+    delete process.env.SKILL_TEST_REMOTE;
+  }
+};
+
+test("second real-base landing preserves first bytes and requires exact qualification and acceptance selection", (t) => {
+  const f = preparedRecovery(t);
+  let context = switchSubject(f, "ps-reviewstep", "review", "psc-reviewer");
+  recordStage(
+    "reviewed",
+    0,
+    {
+      commit: f.commit,
+      evidence: ["Synthetic exact review"],
+      reviewer: "psc-reviewer",
+      tree: f.tree,
+      verdict: "pass",
+    },
+    context
+  );
+  selectReceipt("reviewed", 0, "absent", context);
+  f.rows["ps-reviewstep"].status = "closed";
+  f.rows["ps-reviewstep"].assignee = "";
+  context = switchSubject(f, "ps-publishstep", "publish", "psc-publisher");
+
+  const publishCheckout = path.join(
+    f.directory,
+    "attempts/ps-root/landing/1/checkout"
+  );
+
+  mkdirSync(path.dirname(publishCheckout), { recursive: true });
+  git(f.city, "clone", f.checkout, publishCheckout);
+  git(
+    publishCheckout,
+    "remote",
+    "set-url",
+    "origin",
+    "https://github.com/benschac/digitial-garden.git"
+  );
+
+  git(publishCheckout, "update-ref", "refs/remotes/origin/main", f.base);
+
+  const integration = {
+    base: f.base,
+    branch: "main",
+    checkout: publishCheckout,
+    commit: f.commit,
+    preparedCommit: f.commit,
+  };
+
+  withLocalRemote(f, (remote) => {
+    recordStage("integrated", 1, integration, context);
+
+    const integratedFile = path.join(
+      context.receiptDirectory,
+      "landing/1/integrated.json"
+    );
+
+    const exactIntegration = readFileSync(integratedFile);
+    save(integratedFile, {
+      ...JSON.parse(exactIntegration),
+      checkout: f.checkout,
+    });
+    assert.throws(
+      () => selectReceipt("integrated", 1, "absent", context),
+      /does not belong/u
+    );
+    writeFileSync(integratedFile, exactIntegration);
+    const unknown = path.join(context.receiptDirectory, "landing/1/unknown");
+    writeFileSync(unknown, "preserved until explicit reconciliation");
+    assert.throws(
+      () => selectReceipt("integrated", 1, "absent", context),
+      /Unknown landing/u
+    );
+    rmSync(unknown);
+    const first = selectReceipt("integrated", 1, "absent", context);
+    const pointerFile = path.join(context.artifactDirectory, "result.json");
+    const firstPointerBytes = readFileSync(pointerFile);
+
+    const firstReceipt = readFileSync(
+      path.join(context.receiptDirectory, "landing/1/integrated.json")
+    );
+
+    assert.deepEqual(
+      selectReceipt("integrated", 1, bytesHash(firstPointerBytes), context),
+      first
+    );
+    assert.throws(
+      () =>
+        selectReceipt("integrated", 4, bytesHash(firstPointerBytes), context),
+      /limit/u
+    );
+    assert.throws(
+      () =>
+        selectReceipt("published", 1, bytesHash(firstPointerBytes), context),
+      /ENOENT/u
+    );
+    const remoteWork = path.join(f.city, "remote-work");
+    git(f.city, "clone", f.checkout, remoteWork);
+    git(remoteWork, "reset", "--hard", f.base);
+    writeFileSync(path.join(remoteWork, "unrelated.txt"), "remote advance");
+    const nextBase = commit(remoteWork, "unrelated remote base");
+    git(remoteWork, "push", remote, `${nextBase}:refs/heads/main`);
+
+    const secondCheckout = path.join(
+      context.receiptDirectory,
+      "landing/2/checkout"
+    );
+
+    mkdirSync(path.dirname(secondCheckout));
+    git(f.city, "clone", f.checkout, secondCheckout);
+    git(
+      secondCheckout,
+      "remote",
+      "set-url",
+      "origin",
+      "https://github.com/benschac/digitial-garden.git"
+    );
+    git(secondCheckout, "update-ref", "refs/remotes/origin/main", f.base);
+    git(secondCheckout, "fetch", remote, "refs/heads/main");
+    git(secondCheckout, "checkout", "--detach", nextBase);
+    git(
+      secondCheckout,
+      "-c",
+      "user.name=Fixture",
+      "-c",
+      "user.email=fixture@example.invalid",
+      "cherry-pick",
+      f.commit
+    );
+    const secondCommit = git(secondCheckout, "rev-parse", "HEAD");
+    recordStage(
+      "integrated",
+      2,
+      {
+        ...integration,
+        base: nextBase,
+        checkout: secondCheckout,
+        commit: secondCommit,
+      },
+      context
+    );
+    assert.throws(
+      () =>
+        selectReceipt("integrated", 2, bytesHash(firstPointerBytes), context),
+      /ENOENT/u
+    );
+    writeImmutable(
+      path.join(context.receiptDirectory, "landing/2"),
+      "remote-race.json",
+      `${JSON.stringify({ nextBase, previousBase: f.base, previousSelector: bytesHash(firstPointerBytes) })}\n`
+    );
+
+    const second = selectReceipt(
+      "integrated",
+      2,
+      bytesHash(firstPointerBytes),
+      context
+    );
+
+    assert.equal(first.attempt, 1);
+    assert.equal(second.attempt, 2);
+    assert.deepEqual(
+      readFileSync(
+        path.join(context.receiptDirectory, "landing/1/integrated.json")
+      ),
+      firstReceipt
+    );
+    assert.deepEqual(
+      readFileSync(
+        path.join(
+          context.receiptDirectory,
+          `landing/2/selectors/${bytesHash(firstPointerBytes)}.json`
+        )
+      ),
+      firstPointerBytes
+    );
+    assert.throws(
+      () =>
+        selectReceipt(
+          "integrated",
+          1,
+          bytesHash(readFileSync(pointerFile)),
+          context
+        ),
+      /transition/u
+    );
+    const checked = checkStage("integrated", resolveContext(f.env, f.read));
+    assert.equal(checked.base, nextBase);
+    assert.equal(checked.commit, secondCommit);
+    assert.equal(
+      qualificationDecision("integrated", resolveContext(f.env, f.read)).mode,
+      "required"
+    );
+    const archive = beginCheckArchive("integrated", f.env, f.read);
+    qualifyResult("integrated", checked, resolveContext(f.env, f.read));
+    writeFileSync(path.join(archive, "stdout.log"), "synthetic trusted output");
+    writeFileSync(path.join(archive, "stderr.log"), "");
+    writeFileSync(
+      path.join(archive, "qualification.log"),
+      "synthetic exact integration qualification"
+    );
+    writeFileSync(path.join(archive, "exit.json"), '{"exitCode":0}');
+    finishCheckArchive("integrated", 0, f.env, f.read);
+
+    const selectedIntegration = JSON.parse(
+      readFileSync(
+        path.join(context.receiptDirectory, "landing/2/integrated.json")
+      )
+    );
+
+    recordStage("published", 2, selectedIntegration, context);
+    git(secondCheckout, "push", remote, `${secondCommit}:refs/heads/main`);
+
+    const sealedQualification = path.join(archive, "sealed/qualification.log");
+    const sealedBytes = readFileSync(sealedQualification);
+    writeFileSync(sealedQualification, "changed qualification evidence");
+    assert.throws(
+      () =>
+        selectReceipt(
+          "published",
+          2,
+          bytesHash(readFileSync(pointerFile)),
+          context
+        ),
+      /evidence digest/u
+    );
+    writeFileSync(sealedQualification, sealedBytes);
+    rmSync(sealedQualification);
+    assert.throws(
+      () =>
+        selectReceipt(
+          "published",
+          2,
+          bytesHash(readFileSync(pointerFile)),
+          context
+        ),
+      /ENOENT/u
+    );
+    writeFileSync(sealedQualification, sealedBytes);
+
+    const published = selectReceipt(
+      "published",
+      2,
+      bytesHash(readFileSync(pointerFile)),
+      context
+    );
+
+    assert.equal(published.stage, "published");
+    f.rows["ps-publishstep"].status = "closed";
+    f.rows["ps-publishstep"].assignee = "";
+
+    const acceptance = switchSubject(
+      f,
+      "ps-acceptstep",
+      "accept",
+      "psc-accepter"
+    );
+
+    const pointer = selectReceipt("accepted", 2, "absent", acceptance);
+    assert.equal(pointer.acceptance, true);
+    assert.equal(
+      checkStage("published", resolveContext(f.env, f.read)).commit,
+      secondCommit
+    );
+    const oldPublished = JSON.parse(readFileSync(pointerFile));
+    oldPublished.attempt = 1;
+    save(pointerFile, oldPublished);
+    assert.throws(
+      () => checkStage("published", resolveContext(f.env, f.read)),
+      /current published/u
+    );
+  });
+});
+
+test("canonical native names normalize independently from durable session IDs", (t) => {
+  const f = recoveryFixture(t);
+  f.rows["ps-subject"].assignee = "gc__worker-psc-worker";
+  assert.equal(f.context().executor, "psc-worker");
+  adoptPreparation(f.context());
+  selectReceipt("prepared", 0, "absent", f.context());
+  f.rows["ps-subject"].status = "closed";
+  f.rows["ps-subject"].assignee = "";
+  const context = resolveContext(f.env, f.read);
+  assert.equal(context.executor, "psc-worker");
+  assert.ok(context.ownerIdentities.includes("gc__worker-psc-worker"));
+  assert.doesNotThrow(() => checkStage("prepared", context));
+  delete f.rows["ps-subject"].metadata["gc.session_name"];
+  assert.throws(() => resolveContext(f.env, f.read), /identity missing/u);
+});
+
+test("review cannot evade independence through original or adopter canonical aliases", (t) => {
+  for (const reviewer of ["psc-original", "psc-worker"]) {
+    const f = preparedRecovery(t, (recovery) => {
+      recovery.prepared.preparer = "gc__original-psc-original";
+      save(
+        path.join(recovery.directory, recovery.preparedPath),
+        recovery.prepared
+      );
+      recovery.authorization.originalPreparer = recovery.prepared.preparer;
+      recovery.authorization.prepared.sha256 = bytesHash(
+        readFileSync(path.join(recovery.directory, recovery.preparedPath))
+      );
+      recovery.authorization.adopter = "gc__worker-psc-worker";
+    });
+
+    switchSubject(f, "ps-aliasreview", "review", reviewer);
+
+    const canonical =
+      reviewer === "psc-original"
+        ? "gc__original-psc-original"
+        : "gc__worker-psc-worker";
+
+    f.rows["ps-aliasreview"].metadata["gc.session_name"] = canonical;
+    f.env.GC_SESSION_NAME = canonical;
+    const context = resolveWriteContext(f.env, f.read, () => "ps-aliasreview");
+    recordStage(
+      "reviewed",
+      0,
+      {
+        commit: f.commit,
+        evidence: ["Synthetic alias independence rejection"],
+        reviewer,
+        tree: f.tree,
+        verdict: "pass",
+      },
+      context
+    );
+    assert.throws(
+      () => selectReceipt("reviewed", 0, "absent", context),
+      /cannot independently review/u
+    );
+  }
+});
+
+test("loss of a live claim during preparation cannot create adoption evidence", (t) => {
+  const f = recoveryFixture(t);
+  const context = f.context();
+  f.rows["ps-subject"].status = "closed";
+  f.rows["ps-subject"].assignee = "";
+  assert.throws(() => adoptPreparation(context), /live claim/u);
+  assert.equal(
+    existsSync(path.join(f.directory, "attempts/ps-root/adoption.json")),
+    false
+  );
+});
+
+test("schema-2 authorization failures retain durable raw check evidence", (t) => {
+  const f = recoveryFixture(t);
+  f.rows["ps-root"].metadata.skill_recovery_authorization_sha256 = "a".repeat(
+    64
+  );
+  const archive = beginCheckArchive("prepared", f.env, f.read);
+  writeFileSync(path.join(archive, "stdout.log"), "");
+  writeFileSync(path.join(archive, "stderr.log"), "authorization rejected");
+  writeFileSync(path.join(archive, "exit.json"), '{"exitCode":1}');
+  const manifest = finishCheckArchive("prepared", 1, f.env, f.read);
+  assert.match(manifest.receiptContextError, /digest/u);
+  assert.equal(manifest.exitCode, 1);
+  assert.equal(manifest.complete, true);
+});
+
+test("a new root retains the authorized candidate lineage limit and unknown counts hold", (t) => {
+  const f = recoveryFixture(t);
+  mkdirSync(path.join(f.directory, "history"));
+
+  for (const attempt of [1, 2, 3]) {
+    const relative = `history/${attempt}.json`;
+    save(path.join(f.directory, relative), {
+      attempt,
+      candidate: f.request.candidate,
+      complete: true,
+    });
+    f.authorization.landingHistory.push({
+      attempt,
+      manifest: {
+        path: relative,
+        sha256: bytesHash(readFileSync(path.join(f.directory, relative))),
+      },
+    });
+  }
+
+  f.authorize();
+  adoptPreparation(f.context());
+
+  const context = switchSubject(
+    f,
+    "ps-budgetpublish",
+    "publish",
+    "psc-publisher"
+  );
+
+  assert.throws(
+    () => recordStage("integrated", 1, {}, context),
+    /count reset/u
+  );
+  assert.throws(() => recordStage("integrated", 4, {}, context), /limit/u);
+  delete f.authorization.lineageComplete;
+  f.authorize();
+  assert.throws(
+    () => resolveReceiptContext(f.env, f.read),
+    /authorization schema/u
+  );
+});
+
+test("contradictory canonical names under distinct durable session IDs hold review", (t) => {
+  const f = preparedRecovery(t);
+
+  let context = switchSubject(
+    f,
+    "ps-ambiguousreview",
+    "review",
+    "psc-reviewer"
+  );
+
+  f.rows["ps-ambiguousreview"].metadata["gc.session_name"] =
+    "gc__original-psc-original";
+  f.env.GC_SESSION_NAME = "gc__original-psc-original";
+  context = resolveWriteContext(f.env, f.read, () => "ps-ambiguousreview");
+  recordStage(
+    "reviewed",
+    0,
+    {
+      commit: f.commit,
+      evidence: ["Synthetic contradictory canonical name"],
+      reviewer: "psc-reviewer",
+      tree: f.tree,
+      verdict: "pass",
+    },
+    context
+  );
+  assert.throws(
+    () => selectReceipt("reviewed", 0, "absent", context),
+    /ambiguous/u
+  );
+});
+
+test("foreign schema-2 pointers remain opaque archivable preflight failures", (t) => {
+  const f = recoveryFixture(t);
+  adoptPreparation(f.context());
+  const pointer = selectReceipt("prepared", 0, "absent", f.context());
+  save(path.join(f.artifacts, "result.json"), {
+    ...pointer,
+    root: "ps-foreign",
+  });
+  const archive = beginCheckArchive("prepared", f.env, f.read);
+  writeFileSync(path.join(archive, "stdout.log"), "");
+  writeFileSync(path.join(archive, "stderr.log"), "foreign selector rejected");
+  writeFileSync(path.join(archive, "exit.json"), '{"exitCode":1}');
+  assert.equal(finishCheckArchive("prepared", 1, f.env, f.read).exitCode, 1);
+  assert.equal(
+    JSON.parse(readFileSync(path.join(archive, "before/native/result.json")))
+      .root,
+    "ps-foreign"
+  );
 });

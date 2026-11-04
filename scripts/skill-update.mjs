@@ -2,14 +2,20 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   existsSync,
+  openSync,
+  closeSync,
+  fsyncSync,
+  renameSync,
   copyFileSync,
   constants,
   lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   realpathSync,
-  renameSync,
+  linkSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
@@ -361,6 +367,27 @@ const checkedFile = (directory, file) => {
   return file;
 };
 
+const executorIdentity = (step) => {
+  const id = step.metadata?.["gc.session_id"];
+  const name = step.metadata?.["gc.session_name"];
+  ensure(
+    Schema.is(Schema.NonEmptyString)(id) &&
+      Schema.is(Schema.NonEmptyString)(name) &&
+      id.trim() === id &&
+      name.trim() === name &&
+      id.trim().length > 0 &&
+      name.trim().length > 0,
+    "Native durable executor identity missing"
+  );
+  ensure(
+    (step.status === "closed" && !step.assignee) ||
+      [id, name].includes(step.assignee),
+    "Native subject ownership mismatch"
+  );
+
+  return { id, name };
+};
+
 export const resolveNativeContext = (env, readBead) => {
   ensure(
     env.GC_CITY && env.GC_BEAD_ID && env.GC_ARTIFACT_DIR,
@@ -396,11 +423,9 @@ export const resolveNativeContext = (env, readBead) => {
     ["open", "in_progress"].includes(root.status),
     "Skill workflow is terminal"
   );
-  ensure(
-    subject.assignee?.trim() &&
-      subject.metadata?.["gc.session_id"] === subject.assignee,
-    "Native subject ownership mismatch"
-  );
+  const owner = executorIdentity(subject);
+  const executor = owner.id;
+  const sessionName = owner.name;
   ensure(
     convoy.metadata?.["gc.synthetic_kind"] === "drain-unit-convoy",
     "Expected native drain unit"
@@ -434,15 +459,418 @@ export const resolveNativeContext = (env, readBead) => {
     anchor,
     artifactDirectory,
     candidate,
+    candidateDirectory: directory,
     convoy,
     directory,
+    executor,
+    ownerIdentities: [executor, sessionName].filter(Boolean),
+    readBead,
     root,
     subject,
   };
 };
 
-export const resolveContext = (env, readBead) => {
+const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+
+const hashSchema = Schema.String.check(Schema.isPattern(digest));
+const revisionSchema = Schema.String.check(Schema.isPattern(revision));
+
+const artifactSchema = Schema.Struct({
+  path: Schema.String,
+  sha256: hashSchema,
+});
+
+const recoverySchema = Schema.Struct({
+  adopter: Schema.NonEmptyString,
+  base: revisionSchema,
+  candidate: nativeIdentity,
+  commit: revisionSchema,
+  landingHistory: Schema.Array(
+    Schema.Struct({
+      attempt: Schema.Int,
+      manifest: artifactSchema,
+    })
+  ),
+  lineageComplete: Schema.Literal(true),
+  originalPreparer: Schema.NonEmptyString,
+  originalStep: artifactSchema,
+  prepared: artifactSchema,
+  qualification: Schema.Struct({
+    log: Schema.optionalKey(artifactSchema),
+    mode: Schema.Literals(["required", "reused"]),
+    policy: Schema.optionalKey(hashSchema),
+    receipt: Schema.optionalKey(artifactSchema),
+    trustedOrigin: Schema.optionalKey(Schema.NonEmptyString),
+  }),
+  repair: nativeIdentity,
+  requestHash: hashSchema,
+  root: nativeIdentity,
+  schema: Schema.Literal(2),
+  step: nativeIdentity,
+  tree: revisionSchema,
+});
+
+const readEvidence = (context, record) => {
+  ensure(safePath(record.path), "Unsafe authorized evidence path");
+
+  const file = checkedFile(
+    context.directory,
+    path.join(context.directory, record.path)
+  );
+
+  const bytes = readFileSync(file);
+  ensure(sha256(bytes) === record.sha256, "Authorized evidence digest changed");
+
+  return bytes;
+};
+
+export const resolveReceiptContext = (env, readBead) => {
   const context = resolveNativeContext(env, readBead);
+  const schema = context.root.metadata?.skill_receipt_schema;
+
+  const authorizationHash =
+    context.root.metadata?.skill_recovery_authorization_sha256;
+
+  if (!schema) {
+    ensure(!authorizationHash, "Contradictory schema authorization");
+
+    return context;
+  }
+
+  ensure(
+    schema === "2" && digest.test(authorizationHash),
+    "Invalid schema-2 authorization"
+  );
+
+  const authorizationBytes = readEvidence(context, {
+    path: `authorizations/${context.root.id}.json`,
+    sha256: authorizationHash,
+  });
+
+  const authorization = JSON.parse(authorizationBytes);
+  ensure(
+    Schema.is(recoverySchema)(authorization),
+    "Invalid recovery authorization schema"
+  );
+  ensure(
+    authorization.candidate === context.candidate &&
+      authorization.root === context.root.id,
+    "Foreign recovery authorization"
+  );
+  ensure(
+    context.root.metadata?.skill_recovery_repair_bead === authorization.repair,
+    "Recovery repair root binding mismatch"
+  );
+  const repair = readBead(authorization.repair);
+  ensure(
+    repair.id === authorization.repair &&
+      repair.metadata?.[
+        `skill_recovery_authorization.${context.root.id}.sha256`
+      ] === authorizationHash,
+    "Recovery lacks explicit repair approval"
+  );
+  const drain = context.root.metadata?.["gc.drain_control_id"];
+  ensure(
+    identity.test(drain) &&
+      context.convoy.metadata?.["gc.drain_control_id"] === drain &&
+      context.anchor.metadata?.["gc.exclusive_drain_reservation"] === drain,
+    "Native exclusive reservation mismatch"
+  );
+  const control = readBead(drain);
+  ensure(
+    control.id === drain && ["open", "in_progress"].includes(control.status),
+    "Native drain is terminal"
+  );
+
+  const manifest = JSON.parse(
+    control.metadata?.["gc.drain_manifest.v1"] ?? "null"
+  );
+
+  ensure(
+    manifest?.version === 1 &&
+      manifest.rows?.filter(
+        (row) =>
+          row.member_id === context.candidate &&
+          row.unit_convoy_id === context.convoy.id &&
+          row.item_root_id === context.root.id
+      ).length === 1,
+    "Native drain manifest mismatch"
+  );
+  ensure(
+    sha256(
+      readFileSync(
+        checkedFile(
+          context.directory,
+          path.join(context.directory, "request.json")
+        )
+      )
+    ) === authorization.requestHash,
+    "Authorized request changed"
+  );
+
+  const receiptDirectory = path.join(
+    context.directory,
+    "attempts",
+    context.root.id
+  );
+
+  return {
+    ...context,
+    authorization,
+    authorizationHash,
+    receiptDirectory,
+    schema: 2,
+  };
+};
+
+export const resolveWriteContext = (env, readBead, readClaim) => {
+  const context = resolveReceiptContext(env, readBead);
+
+  const assertLive = () => {
+    const fresh = resolveReceiptContext(env, readBead);
+    ensure(
+      fresh.schema === 2 &&
+        fresh.subject.status === "in_progress" &&
+        readClaim() === fresh.subject.id &&
+        env.GC_SESSION_ID === fresh.executor &&
+        (!env.GC_SESSION_NAME ||
+          env.GC_SESSION_NAME === fresh.subject.metadata["gc.session_name"]) &&
+        (!env.BEADS_ACTOR || fresh.ownerIdentities.includes(env.BEADS_ACTOR)) &&
+        fresh.subject.id === context.subject.id &&
+        fresh.executor === context.executor &&
+        fresh.authorizationHash === context.authorizationHash,
+      "Receipt write requires real live claim"
+    );
+  };
+
+  assertLive();
+
+  return { ...context, assertLive };
+};
+
+export const writeImmutable = (directory, name, bytes) => {
+  ensure(safePath(name), "Unsafe immutable receipt path");
+
+  const parent = checkedDirectory(
+    directory,
+    path.dirname(path.join(directory, name)),
+    true
+  );
+
+  const destination = path.join(directory, name);
+
+  const temporary = path.join(
+    parent,
+    `.receipt-${process.pid}-${createHash("sha256").update(bytes).digest("hex")}.tmp`
+  );
+
+  writeFileSync(temporary, bytes, { flag: "wx", mode: 0o600 });
+  const descriptor = openSync(temporary, "r");
+
+  try {
+    fsyncSync(descriptor);
+  } finally {
+    closeSync(descriptor);
+  }
+
+  try {
+    try {
+      linkSync(temporary, destination);
+      const directoryDescriptor = openSync(parent, "r");
+
+      try {
+        fsyncSync(directoryDescriptor);
+      } finally {
+        closeSync(directoryDescriptor);
+      }
+    } catch (error) {
+      if (error.code !== "EEXIST") {
+        throw error;
+      }
+
+      ensure(
+        readFileSync(checkedFile(directory, destination)).equals(
+          Buffer.from(bytes)
+        ),
+        "Conflicting immutable receipt"
+      );
+    }
+  } finally {
+    unlinkSync(temporary);
+  }
+};
+
+const writeRecord = (directory, name, value) =>
+  writeImmutable(directory, name, `${JSON.stringify(value)}\n`);
+
+const validateIdentityMappings = (identities) => {
+  for (const [index, first] of identities.entries()) {
+    for (const second of identities.slice(index + 1)) {
+      if (first.id === second.id) {
+        ensure(
+          first.name === second.name,
+          "Native executor identity is ambiguous"
+        );
+      } else {
+        ensure(
+          first.name !== second.name &&
+            first.id !== second.name &&
+            first.name !== second.id,
+          "Native executor identity is ambiguous"
+        );
+      }
+    }
+  }
+};
+
+const preparationIdentities = (context) => {
+  const original = JSON.parse(
+    readEvidence(context, context.authorization.originalStep)
+  );
+
+  ensure(
+    identity.test(original.id) &&
+      identity.test(original.metadata?.["gc.root_bead_id"]),
+    "Invalid original native preparation identity"
+  );
+
+  const originalRole =
+    original.metadata?.["gc.ralph_step_id"] ??
+    original.metadata?.["gc.step_id"];
+
+  ensure(
+    originalRole === "prepare",
+    "Original identity is not a preparation step"
+  );
+  const originalIdentity = executorIdentity(original);
+  ensure(
+    [originalIdentity.id, originalIdentity.name].includes(
+      context.authorization.originalPreparer
+    ),
+    "Original preparer normalization is ambiguous"
+  );
+  const adopted = context.readBead(context.authorization.step);
+  ensure(
+    adopted.id === context.authorization.step &&
+      adopted.metadata?.["gc.root_bead_id"] === context.root.id,
+    "Foreign native adopter step"
+  );
+
+  const adoptedRole =
+    adopted.metadata?.["gc.ralph_step_id"] ?? adopted.metadata?.["gc.step_id"];
+
+  ensure(adoptedRole === "prepare", "Adopter is not the native preparer");
+  const adopterIdentity = executorIdentity(adopted);
+  ensure(
+    [adopterIdentity.id, adopterIdentity.name].includes(
+      context.authorization.adopter
+    ),
+    "Adopter normalization is ambiguous"
+  );
+
+  validateIdentityMappings([adopterIdentity, originalIdentity]);
+
+  return { adopterIdentity, originalIdentity };
+};
+
+const adoptionInput = (context) => {
+  const a = context.authorization;
+  const { adopterIdentity, originalIdentity } = preparationIdentities(context);
+  const bytes = readEvidence(context, a.prepared);
+  const prepared = JSON.parse(bytes);
+
+  const request = validateRequest(
+    json(
+      checkedFile(
+        context.directory,
+        path.join(context.directory, "request.json")
+      )
+    )
+  );
+
+  ensure(
+    request.candidate === context.candidate &&
+      prepared.candidate === context.candidate &&
+      prepared.preparer === a.originalPreparer &&
+      prepared.base === request.scanBase &&
+      prepared.base === a.base &&
+      prepared.commit === a.commit,
+    "Retained preparation identity changed"
+  );
+  contained(context.directory, prepared.checkout);
+  contained(context.directory, prepared.sourceCheckout);
+
+  const tree = validateCommit(
+    request,
+    prepared.checkout,
+    prepared.base,
+    prepared.commit,
+    prepared.sourceCheckout
+  );
+
+  ensure(tree === a.tree, "Authorized preparation tree changed");
+
+  return {
+    envelope: {
+      adopter: a.adopter,
+      adopterSessionId: adopterIdentity.id,
+      adopterSessionName: adopterIdentity.name,
+      authorizationHash: context.authorizationHash,
+      base: prepared.base,
+      candidate: context.candidate,
+      commit: prepared.commit,
+      currentHash: request.currentHash,
+      originalPreparer: prepared.preparer,
+      originalSessionId: originalIdentity.id,
+      originalSessionName: originalIdentity.name,
+      originalStepHash: a.originalStep.sha256,
+      preparedHash: a.prepared.sha256,
+      preparedPath: a.prepared.path,
+      requestHash: a.requestHash,
+      root: context.root.id,
+      schema: 2,
+      source: request.source,
+      sourcePath: request.skillPath,
+      sourceRevision: request.targetRevision,
+      step: a.step,
+      targetHash: request.targetHash,
+      tree,
+    },
+    prepared,
+    request,
+  };
+};
+
+const binding = (context) => ({
+  adoptionHash: sha256(
+    readFileSync(
+      checkedFile(
+        context.receiptDirectory,
+        path.join(context.receiptDirectory, "adoption.json")
+      )
+    )
+  ),
+  authorizationHash: context.authorizationHash,
+  candidate: context.candidate,
+  preparedHash: context.authorization.prepared.sha256,
+  requestHash: context.authorization.requestHash,
+  root: context.root.id,
+  schema: 2,
+});
+
+const validateBinding = (record, context) => {
+  for (const [key, value] of Object.entries(binding(context))) {
+    ensure(record[key] === value, `Receipt binding mismatch: ${key}`);
+  }
+};
+
+export const resolveContext = (env, readBead) => {
+  const context = resolveReceiptContext(env, readBead);
+  ensure(
+    context.subject.status !== "closed" ||
+      context.subject.metadata?.["gc.outcome"] === "pass",
+    "Closed check subject did not pass"
+  );
 
   const pointer = json(
     checkedFile(
@@ -454,18 +882,191 @@ export const resolveContext = (env, readBead) => {
   const { candidate } = context;
   ensure(pointer.candidate === candidate, "Outcome pointer candidate mismatch");
 
+  if (context.schema === 2) {
+    validateBinding(pointer, context);
+    ensure(pointer.step === context.subject.id, "Foreign selector step");
+  } else {
+    ensure(!pointer.schema, "Schema-2 pointer requires root authorization");
+  }
+
   return { ...context, pointer };
 };
 
-const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+const validateAdoption = (context) => {
+  const { prepared, envelope } = adoptionInput(context);
+  const step = context.readBead(envelope.step);
+  ensure(
+    step.id === envelope.step &&
+      step.metadata?.["gc.root_bead_id"] === context.root.id &&
+      [
+        step.metadata?.["gc.session_id"],
+        step.metadata?.["gc.session_name"],
+      ].includes(envelope.adopter),
+    "Adopter differs from native preparation executor"
+  );
+  ensure(
+    isDeepStrictEqual(
+      json(
+        checkedFile(
+          context.receiptDirectory,
+          path.join(context.receiptDirectory, "adoption.json")
+        )
+      ),
+      envelope
+    ),
+    "Adoption envelope changed"
+  );
+
+  const manifest = json(
+    checkedFile(
+      context.receiptDirectory,
+      path.join(context.receiptDirectory, "manifest.json")
+    )
+  );
+
+  validateBinding(manifest, context);
+  ensure(manifest.complete === true, "Incomplete adoption");
+
+  return prepared;
+};
+
+export const adoptPreparation = (context) => {
+  const { envelope } = adoptionInput(context);
+  ensure(
+    context.subject.id === envelope.step &&
+      context.ownerIdentities.includes(envelope.adopter),
+    "Adopter claim differs from authorization"
+  );
+  context.assertLive();
+  checkedDirectory(context.directory, context.receiptDirectory, true);
+  const manifest = path.join(context.receiptDirectory, "manifest.json");
+
+  if (existsSync(manifest)) {
+    validateAdoption(context);
+
+    return envelope;
+  }
+
+  const names = readdirSync(context.receiptDirectory);
+  ensure(
+    names.every((name) => ["adoption.json", "manifest.json"].includes(name)),
+    "Unknown partial adoption state"
+  );
+
+  if (existsSync(path.join(context.receiptDirectory, "adoption.json"))) {
+    ensure(existsSync(manifest), "Incomplete adoption manifest holds");
+  }
+
+  context.assertLive();
+  writeRecord(context.receiptDirectory, "adoption.json", envelope);
+  context.assertLive();
+  writeRecord(context.receiptDirectory, "manifest.json", {
+    ...binding(context),
+    complete: true,
+  });
+
+  return envelope;
+};
+
+const landingDirectory = (context, attempt) => {
+  ensure(
+    Number.isInteger(attempt) && attempt >= 1 && attempt <= 3,
+    "Landing attempt limit"
+  );
+
+  return path.join(context.receiptDirectory, "landing", String(attempt));
+};
+
+const validateLandingContents = (context, attempt) => {
+  const directory = landingDirectory(context, attempt);
+
+  if (!existsSync(directory)) {
+    return;
+  }
+
+  checkedDirectory(context.directory, directory);
+
+  const allowed = new Set([
+    "checkout",
+    "integrated.json",
+    "qualified-integrated.json",
+    "published.json",
+    "manifest.json",
+    "remote-race.json",
+    "selectors",
+  ]);
+
+  ensure(
+    readdirSync(directory).every((name) => allowed.has(name)),
+    "Unknown landing partial state"
+  );
+};
+
+const validateLineage = (context) => {
+  const history = context.authorization.landingHistory;
+  ensure(history.length <= 3, "Landing history exceeds limit");
+
+  for (const [index, entry] of history.entries()) {
+    ensure(entry.attempt === index + 1, "Unknown landing count");
+    const manifest = JSON.parse(readEvidence(context, entry.manifest));
+    ensure(
+      manifest.candidate === context.candidate &&
+        manifest.attempt === entry.attempt &&
+        manifest.complete === true,
+      "Invalid retained landing lineage"
+    );
+  }
+
+  return history.length;
+};
+
+const archiveLandingDirectory = (context) => {
+  const pointer = json(
+    checkedFile(
+      context.artifactDirectory,
+      path.join(context.artifactDirectory, "result.json")
+    )
+  );
+
+  const selectorSchema = Schema.Struct({
+    attempt: Schema.Int,
+    stage: Schema.Literals(["integrated", "published"]),
+    step: nativeIdentity,
+  });
+
+  if (
+    !Schema.is(selectorSchema)(pointer) ||
+    pointer.step !== context.subject.id ||
+    !Object.entries(binding(context)).every(
+      ([key, value]) => pointer[key] === value
+    ) ||
+    pointer.attempt < 1 ||
+    pointer.attempt > 3
+  ) {
+    return null;
+  }
+
+  return landingDirectory(context, pointer.attempt);
+};
 
 const integrationArchiveIdentity = (context) => {
+  if (context.root.metadata?.skill_receipt_schema && context.schema !== 2) {
+    return "preflight";
+  }
+
   try {
+    let { directory } = context;
+
+    if (context.schema === 2) {
+      directory = archiveLandingDirectory(context);
+
+      if (!directory) {
+        return "preflight";
+      }
+    }
+
     const receipt = json(
-      checkedFile(
-        context.directory,
-        path.join(context.directory, "integrated.json")
-      )
+      checkedFile(directory, path.join(directory, "integrated.json"))
     );
 
     return Schema.is(integrationIdentity)(receipt) &&
@@ -482,7 +1083,16 @@ const integrationArchiveIdentity = (context) => {
 };
 
 const archiveContext = (stage, env, readBead) => {
-  const context = resolveNativeContext(env, readBead);
+  let context = resolveNativeContext(env, readBead);
+  let receiptContextError = null;
+
+  if (context.root.metadata?.skill_receipt_schema) {
+    try {
+      context = resolveReceiptContext(env, readBead);
+    } catch (error) {
+      receiptContextError = error.message;
+    }
+  }
 
   const steps = {
     integrated: ["publish"],
@@ -529,12 +1139,15 @@ const archiveContext = (stage, env, readBead) => {
   );
 
   const record = {
-    assignee: context.subject.assignee,
+    assignee: context.subject.assignee ?? "",
     candidate: context.candidate,
+    executorSessionId: context.executor,
+    executorSessionName: context.subject.metadata["gc.session_name"],
     integration:
       stage === "integrated" ? integrationArchiveIdentity(context) : null,
     iteration: context.subject.metadata?.["gc.iteration"] ?? "1",
     policy,
+    receiptContextError,
     requestHash,
     root: context.root.id,
     schema: "skill-check-evidence.v1",
@@ -572,6 +1185,49 @@ const archiveReceiptNames = [
 
 const archiveNativeNames = ["result.json", "failure.json"];
 
+const rootReceiptNames = [
+  "adoption.json",
+  "manifest.json",
+  "qualified-prepared.json",
+  "qualification-decision.json",
+  "reviewed.json",
+];
+
+const landingReceiptNames = [
+  "integrated.json",
+  "qualified-integrated.json",
+  "published.json",
+  "manifest.json",
+  "remote-race.json",
+];
+
+const checkReceiptSources = (context) => {
+  const sources = [
+    ["receipts", context.directory, archiveReceiptNames],
+    ["native", context.artifactDirectory, archiveNativeNames],
+  ];
+
+  if (context.schema !== 2) {
+    return sources;
+  }
+
+  sources.push(["root-receipts", context.receiptDirectory, rootReceiptNames]);
+
+  try {
+    const directory = archiveLandingDirectory(context);
+
+    if (directory) {
+      sources.push(["landing-receipts", directory, landingReceiptNames]);
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT" && !(error instanceof SyntaxError)) {
+      throw error;
+    }
+  }
+
+  return sources;
+};
+
 const snapshotCheckEvidence = (context, phase) => {
   const snapshot = checkedDirectory(
     context.archive,
@@ -581,10 +1237,7 @@ const snapshotCheckEvidence = (context, phase) => {
 
   const missing = [];
 
-  for (const [namespace, directory, names] of [
-    ["receipts", context.directory, archiveReceiptNames],
-    ["native", context.artifactDirectory, archiveNativeNames],
-  ]) {
+  for (const [namespace, directory, names] of checkReceiptSources(context)) {
     const target = checkedDirectory(
       snapshot,
       path.join(snapshot, namespace),
@@ -658,6 +1311,68 @@ export const beginCheckArchive = (stage, env, readBead) => {
   return context.archive;
 };
 
+const completeLandingManifest = (context, checkManifest) => {
+  const pointer = json(
+    checkedFile(
+      context.artifactDirectory,
+      path.join(context.artifactDirectory, "result.json")
+    )
+  );
+
+  validateBinding(pointer, context);
+  const directory = landingDirectory(context, pointer.attempt);
+  const names = ["integrated.json", "qualified-integrated.json"];
+
+  const receipts = names.map((name) =>
+    json(checkedFile(directory, path.join(directory, name)))
+  );
+
+  ensure(
+    receipts[0].commit === receipts[1].commit &&
+      receipts[0].base === receipts[1].base &&
+      receipts[1].attempt === pointer.attempt &&
+      receipts[1].mode === "required",
+    "Incomplete exact landing qualification"
+  );
+  ensure(
+    checkManifest.exitCode === 0 &&
+      checkManifest.integration === receipts[0].commit &&
+      checkManifest.hashes["sealed/qualification.log"],
+    "Missing durable landing qualification log"
+  );
+
+  const hashes = Object.fromEntries(
+    names.map((name) => [
+      name,
+      sha256(readFileSync(checkedFile(directory, path.join(directory, name)))),
+    ])
+  );
+
+  for (const name of names) {
+    ensure(
+      hashes[name] === checkManifest.hashes[`after/landing-receipts/${name}`],
+      "Landing receipt changed after archival"
+    );
+  }
+
+  const archiveManifest = path.relative(
+    context.directory,
+    path.join(context.archive, "manifest.json")
+  );
+
+  writeRecord(directory, "manifest.json", {
+    ...binding(context),
+    attempt: pointer.attempt,
+    check: {
+      path: archiveManifest,
+      sha256: sha256(readFileSync(path.join(context.archive, "manifest.json"))),
+    },
+    complete: true,
+    hashes,
+    step: context.subject.id,
+  });
+};
+
 export const finishCheckArchive = (stage, exitCode, env, readBead) => {
   ensure(
     Number.isInteger(exitCode) && exitCode >= 0 && exitCode <= 255,
@@ -722,6 +1437,8 @@ export const finishCheckArchive = (stage, exitCode, env, readBead) => {
     ...["before", "after"].flatMap((phase) => [
       ...archiveReceiptNames.map((name) => `${phase}/receipts/${name}`),
       ...archiveNativeNames.map((name) => `${phase}/native/${name}`),
+      ...rootReceiptNames.map((name) => `${phase}/root-receipts/${name}`),
+      ...landingReceiptNames.map((name) => `${phase}/landing-receipts/${name}`),
     ]),
   ]);
 
@@ -743,6 +1460,10 @@ export const finishCheckArchive = (stage, exitCode, env, readBead) => {
           "before/native",
           "after/receipts",
           "after/native",
+          "before/root-receipts",
+          "after/root-receipts",
+          "before/landing-receipts",
+          "after/landing-receipts",
           "sealed",
         ].includes(path.relative(context.archive, file)),
         "Unknown archive directory"
@@ -781,6 +1502,10 @@ export const finishCheckArchive = (stage, exitCode, env, readBead) => {
     `${JSON.stringify(manifest)}\n`,
     { flag: "wx", mode: 0o600 }
   );
+
+  if (context.schema === 2 && stage === "integrated" && exitCode === 0) {
+    completeLandingManifest(context, manifest);
+  }
 
   return manifest;
 };
@@ -833,6 +1558,267 @@ const validateQualification = (receipt, candidate, base, commit, tree) => {
   );
 };
 
+const receiptLocation = (name, context) => {
+  if (name === "request") {
+    return context.directory;
+  }
+
+  if (context.schema !== 2) {
+    return context.directory;
+  }
+
+  if (["integrated", "qualified-integrated", "published"].includes(name)) {
+    return landingDirectory(context, context.pointer.attempt);
+  }
+
+  return context.receiptDirectory;
+};
+
+const loadReceipt = (name, context) => {
+  const directory = receiptLocation(name, context);
+
+  const record = json(
+    checkedFile(directory, path.join(directory, `${name}.json`))
+  );
+
+  if (context.schema === 2 && name !== "request") {
+    validateBinding(record, context);
+    ensure(identity.test(record.step), "Missing native receipt step");
+    const actor = context.readBead(record.step);
+    ensure(
+      actor.id === record.step &&
+        actor.metadata?.["gc.root_bead_id"] === context.root.id,
+      "Foreign native receipt step"
+    );
+
+    const role =
+      actor.metadata?.["gc.ralph_step_id"] ?? actor.metadata?.["gc.step_id"];
+
+    const expected = {
+      integrated: "publish",
+      published: "publish",
+      "qualified-integrated": "publish",
+      "qualified-prepared": "prepare",
+      reviewed: "review",
+    };
+
+    ensure(role === expected[name], "Native receipt role mismatch");
+    ensure(
+      ["in_progress", "closed"].includes(actor.status) &&
+        actor.metadata?.["gc.session_id"],
+      "Native receipt executor missing"
+    );
+    ensure(
+      actor.status !== "closed" || actor.metadata?.["gc.outcome"] === "pass",
+      "Native receipt step failed"
+    );
+
+    if (name === "reviewed") {
+      ensure(
+        [
+          actor.metadata["gc.session_id"],
+          actor.metadata["gc.session_name"],
+        ].includes(record.reviewer),
+        "Review receipt does not match native reviewer"
+      );
+    }
+
+    if (["integrated", "qualified-integrated", "published"].includes(name)) {
+      ensure(
+        record.attempt === context.pointer.attempt,
+        "Foreign landing qualification"
+      );
+    }
+  }
+
+  return record;
+};
+
+const validateSelectedPointer = (stage, context) => {
+  const role =
+    context.subject.metadata?.["gc.ralph_step_id"] ??
+    context.subject.metadata?.["gc.step_id"];
+
+  const roles = {
+    integrated: ["publish"],
+    prepared: ["prepare"],
+    published: ["publish", "accept"],
+    reviewed: ["review"],
+  };
+
+  ensure(roles[stage].includes(role), "Stage differs from native subject");
+  ensure(
+    Boolean(context.pointer.acceptance) === (role === "accept"),
+    "Acceptance selector mismatch"
+  );
+
+  const selectedDirectory = ["integrated", "published"].includes(stage)
+    ? landingDirectory(context, context.pointer.attempt)
+    : context.receiptDirectory;
+
+  const selectedName = stage === "prepared" ? "adoption" : stage;
+
+  const bytes = readFileSync(
+    checkedFile(
+      selectedDirectory,
+      path.join(selectedDirectory, `${selectedName}.json`)
+    )
+  );
+
+  ensure(
+    context.pointer.receiptHash === sha256(bytes),
+    "Selected receipt digest changed"
+  );
+};
+
+const validateArchivedHashes = (context, reference, archived) => {
+  const required = Schema.Struct({
+    hashes: Schema.Struct({
+      "sealed/qualification.log": hashSchema,
+      "sealed/stderr.log": hashSchema,
+      "sealed/stdout.log": hashSchema,
+    }),
+  });
+
+  ensure(
+    Schema.is(required)(archived),
+    "Missing sealed qualification evidence hashes"
+  );
+  const directory = path.dirname(path.join(context.directory, reference.path));
+  checkedDirectory(context.directory, directory);
+
+  for (const [relative, expected] of Object.entries(archived.hashes)) {
+    ensure(
+      safePath(relative) &&
+        Schema.is(hashSchema)(expected) &&
+        !["stdout.log", "stderr.log", "qualification.log"].includes(relative),
+      "Invalid immutable archive evidence path"
+    );
+    ensure(
+      sha256(
+        readFileSync(checkedFile(directory, path.join(directory, relative)))
+      ) === expected,
+      "Archived evidence digest changed"
+    );
+  }
+};
+
+const validateLandingManifest = (context) => {
+  const directory = landingDirectory(context, context.pointer.attempt);
+
+  const manifest = json(
+    checkedFile(directory, path.join(directory, "manifest.json"))
+  );
+
+  validateBinding(manifest, context);
+  const archived = JSON.parse(readEvidence(context, manifest.check));
+  validateArchivedHashes(context, manifest.check, archived);
+  ensure(
+    archived.complete === true &&
+      archived.exitCode === 0 &&
+      archived.root === context.root.id &&
+      archived.candidate === context.candidate &&
+      archived.subject === manifest.step &&
+      archived.stage === "integrated",
+    "Landing check archive does not match attempt"
+  );
+  ensure(
+    manifest.complete === true && manifest.attempt === context.pointer.attempt,
+    "Incomplete landing manifest"
+  );
+
+  for (const name of ["integrated.json", "qualified-integrated.json"]) {
+    ensure(
+      manifest.hashes?.[name] ===
+        sha256(
+          readFileSync(checkedFile(directory, path.join(directory, name)))
+        ),
+      "Landing manifest digest mismatch"
+    );
+  }
+};
+
+const validateStagePrerequisites = (
+  stage,
+  context,
+  request,
+  prepared,
+  tree
+) => {
+  const load = (name) => loadReceipt(name, context);
+
+  if (stage !== "prepared") {
+    validateQualification(
+      load("qualified-prepared"),
+      request.candidate,
+      prepared.base,
+      prepared.commit,
+      tree
+    );
+  }
+
+  if (stage === "prepared") {
+    const preparer =
+      context.schema === 2 ? context.authorization.adopter : prepared.preparer;
+
+    ensure(
+      (context.ownerIdentities ?? [context.subject.assignee]).includes(
+        preparer
+      ),
+      "Preparer identity mismatch"
+    );
+  }
+
+  if (stage !== "prepared") {
+    const review = load("reviewed");
+    validateReview(review, request, prepared, tree);
+
+    if (context.schema === 2) {
+      const { adopterIdentity, originalIdentity } =
+        preparationIdentities(context);
+
+      const actor = context.readBead(review.step);
+      const reviewer = executorIdentity(actor);
+      validateIdentityMappings([originalIdentity, adopterIdentity, reviewer]);
+      ensure(
+        reviewer.id !== adopterIdentity.id &&
+          reviewer.id !== originalIdentity.id,
+        "Original preparer or adopter cannot independently review"
+      );
+    }
+
+    if (stage === "reviewed") {
+      ensure(
+        (context.ownerIdentities ?? [context.subject.assignee]).includes(
+          review.reviewer
+        ),
+        "Reviewer identity mismatch"
+      );
+    }
+  }
+};
+
+const validateAcceptanceSelection = (context, publication) => {
+  const artifact = path.join(
+    path.dirname(context.artifactDirectory),
+    publication.step
+  );
+
+  const pointer = json(
+    checkedFile(artifact, path.join(artifact, "result.json"))
+  );
+
+  validateBinding(pointer, context);
+  ensure(
+    pointer.stage === "published" &&
+      pointer.acceptance === false &&
+      pointer.step === publication.step &&
+      pointer.attempt === context.pointer.attempt &&
+      pointer.receiptHash === context.pointer.receiptHash,
+    "Acceptance does not select current published attempt"
+  );
+};
+
 export const checkStage = (stage, context) => {
   ensure(
     ["prepared", "reviewed", "integrated", "published"].includes(stage) &&
@@ -840,10 +1826,7 @@ export const checkStage = (stage, context) => {
     "Invalid artifact stage"
   );
 
-  const load = (name) =>
-    json(
-      contained(context.directory, path.join(context.directory, `${name}.json`))
-    );
+  const load = (name) => loadReceipt(name, context);
 
   const request = validateRequest(load("request"));
   ensure(request.candidate === context.candidate, "Request candidate mismatch");
@@ -865,7 +1848,13 @@ export const checkStage = (stage, context) => {
     );
   }
 
-  const prepared = load("prepared");
+  const prepared =
+    context.schema === 2 ? validateAdoption(context) : load("prepared");
+
+  if (context.schema === 2) {
+    validateSelectedPointer(stage, context);
+  }
+
   ensure(
     prepared.candidate === request.candidate && prepared.preparer?.trim(),
     "Prepared identity missing"
@@ -885,34 +1874,7 @@ export const checkStage = (stage, context) => {
     prepared.sourceCheckout
   );
 
-  if (stage !== "prepared") {
-    validateQualification(
-      load("qualified-prepared"),
-      request.candidate,
-      prepared.base,
-      prepared.commit,
-      tree
-    );
-  }
-
-  if (stage === "prepared") {
-    ensure(
-      context.subject.assignee === prepared.preparer,
-      "Preparer identity mismatch"
-    );
-  }
-
-  if (stage !== "prepared") {
-    const review = load("reviewed");
-    validateReview(review, request, prepared, tree);
-
-    if (stage === "reviewed") {
-      ensure(
-        context.subject.assignee === review.reviewer,
-        "Reviewer identity mismatch"
-      );
-    }
-  }
+  validateStagePrerequisites(stage, context, request, prepared, tree);
 
   let selected = prepared;
 
@@ -926,6 +1888,20 @@ export const checkStage = (stage, context) => {
       "Publication identity mismatch"
     );
     contained(context.directory, publication.checkout);
+
+    if (context.schema === 2) {
+      validateLandingContents(context, context.pointer.attempt);
+      ensure(
+        publication.checkout ===
+          path.join(
+            landingDirectory(context, context.pointer.attempt),
+            "checkout"
+          ),
+        "Landing checkout does not belong to attempt"
+      );
+      checkedDirectory(context.directory, publication.checkout);
+    }
+
     ensure(
       allowedOrigin(git(publication.checkout, "remote", "get-url", "origin")),
       "Publication origin mismatch"
@@ -944,7 +1920,16 @@ export const checkStage = (stage, context) => {
   }
 
   if (stage === "published") {
+    if (context.schema === 2) {
+      validateLandingManifest(context);
+    }
+
     const publication = load("published");
+
+    if (context.schema === 2 && context.pointer.acceptance) {
+      validateAcceptanceSelection(context, publication);
+    }
+
     ensure(
       isDeepStrictEqual(publication, selected),
       "Publication differs from qualified integration"
@@ -997,7 +1982,7 @@ export const checkStage = (stage, context) => {
     );
   }
 
-  return {
+  const result = {
     base: selected.base,
     candidate: request.candidate,
     checkout: selected.checkout,
@@ -1005,6 +1990,374 @@ export const checkStage = (stage, context) => {
     stage,
     tree: git(selected.checkout, "rev-parse", `${selected.commit}^{tree}`),
   };
+
+  if (context.schema === 2) {
+    return {
+      ...result,
+      ...binding(context),
+      attempt: context.pointer.attempt,
+      step: context.subject.id,
+    };
+  }
+
+  return result;
+};
+
+export const qualificationDecision = (stage, context) => {
+  const result = checkStage(stage, context);
+
+  if (context.schema !== 2 || stage === "integrated") {
+    return { mode: "required", result };
+  }
+
+  const q = context.authorization.qualification;
+
+  if (q.mode === "required") {
+    const historicalPaths = [
+      "qualified-prepared.json",
+      path.posix.join(
+        path.posix.dirname(context.authorization.prepared.path),
+        "qualified-prepared.json"
+      ),
+    ];
+
+    ensure(
+      historicalPaths.every(
+        (name) => !existsSync(path.join(context.directory, name))
+      ),
+      "Historical qualification requires explicit provenance approval"
+    );
+    ensure(
+      !q.receipt && !q.log && !q.policy && !q.trustedOrigin,
+      "Contradictory required qualification"
+    );
+
+    for (const name of [
+      "qualified-prepared.json",
+      "qualification-decision.json",
+    ]) {
+      ensure(
+        !existsSync(path.join(context.receiptDirectory, name)),
+        "Qualification already attempted"
+      );
+    }
+
+    return { mode: "required", result };
+  }
+
+  ensure(
+    q.receipt && q.log && q.policy && q.trustedOrigin,
+    "Qualification reuse provenance missing"
+  );
+  const prior = JSON.parse(readEvidence(context, q.receipt));
+  readEvidence(context, q.log);
+  validateQualification(
+    prior,
+    result.candidate,
+    result.base,
+    result.commit,
+    result.tree
+  );
+  ensure(
+    digest.test(q.policy) && q.trustedOrigin.trim(),
+    "Untrusted qualification reuse"
+  );
+
+  return { mode: "reused", provenance: q, result };
+};
+
+const validateLandingTransition = (stage, attempt, prior, count, context) => {
+  const selectedDirectory = landingDirectory(context, attempt);
+
+  if (prior) {
+    const previous = JSON.parse(prior);
+    validateBinding(previous, context);
+    ensure(
+      previous.step === context.subject.id &&
+        ((previous.stage === "integrated" &&
+          stage === "published" &&
+          previous.attempt === attempt) ||
+          (previous.stage === "integrated" &&
+            stage === "integrated" &&
+            attempt === previous.attempt + 1)),
+      "Invalid selector transition"
+    );
+
+    if (stage === "integrated") {
+      const race = json(
+        checkedFile(
+          selectedDirectory,
+          path.join(selectedDirectory, "remote-race.json")
+        )
+      );
+
+      const old = json(
+        checkedFile(
+          landingDirectory(context, previous.attempt),
+          path.join(
+            landingDirectory(context, previous.attempt),
+            "integrated.json"
+          )
+        )
+      );
+
+      const next = json(
+        checkedFile(
+          selectedDirectory,
+          path.join(selectedDirectory, "integrated.json")
+        )
+      );
+
+      ensure(
+        race.previousSelector === sha256(prior) &&
+          race.previousBase === old.base &&
+          race.nextBase === next.base &&
+          old.base !== next.base,
+        "Missing recorded remote base race"
+      );
+    }
+  } else {
+    ensure(
+      stage === "accepted" || (stage === "integrated" && attempt === count + 1),
+      "Skipped landing attempt"
+    );
+  }
+};
+
+export const selectReceipt = (stage, attempt, expected, context) => {
+  ensure(
+    ["prepared", "reviewed", "integrated", "published", "accepted"].includes(
+      stage
+    ),
+    "Invalid selection"
+  );
+  validateAdoption(context);
+
+  const role =
+    context.subject.metadata?.["gc.ralph_step_id"] ??
+    context.subject.metadata?.["gc.step_id"];
+
+  ensure(
+    {
+      accepted: "accept",
+      integrated: "publish",
+      prepared: "prepare",
+      published: "publish",
+      reviewed: "review",
+    }[stage] === role,
+    "Selector stage differs from claimed role"
+  );
+  const file = path.join(context.artifactDirectory, "result.json");
+
+  const prior = existsSync(file)
+    ? readFileSync(checkedFile(context.artifactDirectory, file))
+    : null;
+
+  ensure(
+    (prior ? sha256(prior) : "absent") === expected,
+    "Selector expected digest mismatch"
+  );
+  let selectedDirectory = context.receiptDirectory;
+
+  if (["integrated", "published", "accepted"].includes(stage)) {
+    selectedDirectory = landingDirectory(context, attempt);
+    ensure(attempt > validateLineage(context), "Landing count reset");
+  }
+
+  const receiptName = stage === "accepted" ? "published" : stage;
+
+  const receiptBytes =
+    stage === "prepared"
+      ? readFileSync(
+          checkedFile(
+            context.receiptDirectory,
+            path.join(context.receiptDirectory, "adoption.json")
+          )
+        )
+      : readFileSync(
+          checkedFile(
+            selectedDirectory,
+            path.join(selectedDirectory, `${receiptName}.json`)
+          )
+        );
+
+  const pointer = {
+    ...binding(context),
+    acceptance: stage === "accepted",
+    attempt,
+    receiptHash: sha256(receiptBytes),
+    stage: stage === "accepted" ? "published" : stage,
+    step: context.subject.id,
+  };
+
+  if (prior?.equals(Buffer.from(`${JSON.stringify(pointer)}\n`))) {
+    checkStage(pointer.stage, { ...context, pointer });
+    context.assertLive();
+
+    return pointer;
+  }
+
+  if (["integrated", "published", "accepted"].includes(stage)) {
+    validateLandingTransition(
+      stage,
+      attempt,
+      prior,
+      validateLineage(context),
+      context
+    );
+  } else {
+    ensure(!prior, "Stage selector already exists");
+  }
+
+  checkStage(pointer.stage, { ...context, pointer });
+  context.assertLive();
+
+  if (prior) {
+    writeImmutable(selectedDirectory, `selectors/${sha256(prior)}.json`, prior);
+    ensure(
+      sha256(readFileSync(checkedFile(context.artifactDirectory, file))) ===
+        expected,
+      "Selector changed during transition"
+    );
+    const lock = path.join(context.artifactDirectory, "selector.lock");
+    mkdirSync(lock);
+
+    try {
+      ensure(
+        sha256(readFileSync(checkedFile(context.artifactDirectory, file))) ===
+          expected,
+        "Selector raced"
+      );
+      const next = path.join(lock, "result.json");
+      writeRecord(lock, "result.json", pointer);
+      renameSync(next, file);
+    } finally {
+      rmSync(lock, { recursive: true });
+    }
+  } else {
+    writeRecord(context.artifactDirectory, "result.json", pointer);
+  }
+
+  return pointer;
+};
+
+export const recordStage = (stage, attempt, input, context) => {
+  ensure(
+    ["reviewed", "integrated", "published"].includes(stage),
+    "Invalid receipt stage"
+  );
+  validateAdoption(context);
+
+  const role =
+    context.subject.metadata?.["gc.ralph_step_id"] ??
+    context.subject.metadata?.["gc.step_id"];
+
+  ensure(
+    (stage === "reviewed" ? "review" : "publish") === role,
+    "Receipt stage differs from claim"
+  );
+  const record = { ...input, ...binding(context), step: context.subject.id };
+  let directory = context.receiptDirectory;
+
+  if (stage === "reviewed") {
+    ensure(
+      record.reviewer === context.executor,
+      "Review must name actual executor"
+    );
+  } else {
+    directory = landingDirectory(context, attempt);
+    ensure(attempt > validateLineage(context), "Landing count reset");
+    record.attempt = attempt;
+  }
+
+  checkedDirectory(context.directory, directory, true);
+
+  if (stage !== "reviewed") {
+    validateLandingContents(context, attempt);
+  }
+
+  context.assertLive();
+  writeRecord(directory, `${stage}.json`, record);
+
+  return record;
+};
+
+const assertCheckInvocation = (stage, env, readBead) => {
+  const context = archiveContext(stage, env, readBead);
+
+  const started = json(
+    checkedFile(context.archive, path.join(context.archive, "started.json"))
+  );
+
+  ensure(
+    isDeepStrictEqual(started, { ...context.record, complete: false }),
+    "Qualification invocation identity changed"
+  );
+  ensure(
+    !existsSync(path.join(context.archive, "exit.json")) &&
+      !existsSync(path.join(context.archive, "manifest.json")),
+    "Qualification invocation is already terminal"
+  );
+  checkedFile(context.archive, path.join(context.archive, "stdout.log"));
+  checkedFile(context.archive, path.join(context.archive, "stderr.log"));
+};
+
+export const reuseQualification = (stage, context) => {
+  const decision = qualificationDecision(stage, context);
+  ensure(decision.mode === "reused", "Reuse was not authorized");
+
+  const decisionFile = path.join(
+    context.receiptDirectory,
+    "qualification-decision.json"
+  );
+
+  const receiptFile = path.join(
+    context.receiptDirectory,
+    "qualified-prepared.json"
+  );
+
+  ensure(
+    existsSync(decisionFile) === existsSync(receiptFile),
+    "Incomplete qualification reuse holds"
+  );
+  ensure(
+    isDeepStrictEqual(decision, qualificationDecision(stage, context)),
+    "Qualification reuse selection changed"
+  );
+  writeRecord(context.receiptDirectory, "qualification-decision.json", {
+    ...binding(context),
+    ...decision,
+    installExecuted: false,
+    verifyExecuted: false,
+  });
+  writeRecord(context.receiptDirectory, "qualified-prepared.json", {
+    ...decision.result,
+    mode: "reused",
+  });
+
+  return decision;
+};
+
+export const qualifyResult = (stage, result, context) => {
+  let receipt = {
+    base: result.base,
+    candidate: result.candidate,
+    commit: result.commit,
+    tree: result.tree,
+  };
+
+  if (context.schema === 2) {
+    receipt = {
+      ...receipt,
+      ...binding(context),
+      attempt: context.pointer.attempt,
+      mode: "required",
+      step: context.subject.id,
+    };
+  }
+
+  const directory = receiptLocation(`qualified-${stage}`, context);
+  writeRecord(directory, `qualified-${stage}.json`, receipt);
 };
 
 export const main = (args, env = process.env) => {
@@ -1012,15 +2365,22 @@ export const main = (args, env = process.env) => {
     return hashDirectory(args[1]);
   }
 
+  const lengths = {
+    adopt: 1,
+    check: 2,
+    decision: 2,
+    qualify: 3,
+    record: 4,
+    reuse: 2,
+    select: 4,
+  };
+
+  const validArchive =
+    args[0] === "archive" && { begin: 3, finish: 4 }[args[1]] === args.length;
+
   ensure(
-    (args[0] === "archive" &&
-      ["begin", "finish"].includes(args[1]) &&
-      args.length === (args[1] === "begin" ? 3 : 4)) ||
-      (args[0] === "check" && args.length === 2) ||
-      (args[0] === "qualify" &&
-        args.length === 3 &&
-        ["prepared", "integrated"].includes(args[1])),
-    "Usage: skill-update.mjs hash DIR | check prepared|reviewed|integrated|published"
+    validArchive || lengths[args[0]] === args.length,
+    "Invalid skill-update command"
   );
 
   const readBead = (id) => {
@@ -1064,40 +2424,56 @@ export const main = (args, env = process.env) => {
         );
   }
 
+  if (["adopt", "select", "record"].includes(args[0])) {
+    const context = resolveWriteContext(env, readBead, () =>
+      command("gc", ["--city", env.GC_CITY, "hook", "current", "--id-only"])
+    );
+
+    if (args[0] === "adopt") {
+      return JSON.stringify(adoptPreparation(context));
+    }
+
+    if (args[0] === "record") {
+      return JSON.stringify(
+        recordStage(args[1], Number(args[2]), JSON.parse(args[3]), context)
+      );
+    }
+
+    return JSON.stringify(
+      selectReceipt(args[1], Number(args[2]), args[3], context)
+    );
+  }
+
   const context = resolveContext(env, readBead);
+
+  if (["decision", "reuse"].includes(args[0])) {
+    ensure(
+      ["prepared", "integrated"].includes(args[1]),
+      "Invalid qualification stage"
+    );
+    assertCheckInvocation(args[1], env, readBead);
+
+    return JSON.stringify(
+      args[0] === "reuse"
+        ? reuseQualification(args[1], context)
+        : qualificationDecision(args[1], context)
+    );
+  }
+
   const result = checkStage(args[1], context);
 
   if (args[0] === "qualify") {
+    ensure(
+      ["prepared", "integrated"].includes(args[1]),
+      "Invalid qualification stage"
+    );
+    assertCheckInvocation(args[1], env, readBead);
     ensure(
       isDeepStrictEqual(JSON.parse(args[2]), result),
       "Tree changed during qualification"
     );
 
-    const receipt = {
-      base: result.base,
-      candidate: result.candidate,
-      commit: result.commit,
-      tree: result.tree,
-    };
-
-    const destination = path.join(
-      context.directory,
-      `qualified-${args[1]}.json`
-    );
-
-    if (existsSync(destination)) {
-      ensure(
-        isDeepStrictEqual(
-          json(contained(context.directory, destination)),
-          receipt
-        ),
-        "Qualification receipt already exists for another tree"
-      );
-    } else {
-      const temporary = `${destination}.${process.pid}.tmp`;
-      writeFileSync(temporary, `${JSON.stringify(receipt)}\n`, { flag: "wx" });
-      renameSync(temporary, destination);
-    }
+    qualifyResult(args[1], result, context);
   }
 
   return JSON.stringify(result);

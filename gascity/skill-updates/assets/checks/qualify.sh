@@ -7,7 +7,14 @@ pack=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 repo=$(CDPATH= cd -- "$pack/../.." && pwd)
 . "$pack/assets/checks/archive.sh"
 skill_archive_begin "$stage"
-result=$(node "$repo/scripts/skill-update.mjs" check "$stage")
+decision=$(node "$repo/scripts/skill-update.mjs" decision "$stage")
+mode=$(printf '%s' "$decision" | jq -er '.mode')
+if [ "$mode" = reused ]; then
+  node "$repo/scripts/skill-update.mjs" reuse "$stage"
+  exit 0
+fi
+[ "$mode" = required ]
+result=$(printf '%s' "$decision" | jq -ec '.result')
 checkout=$(printf '%s' "$result" | jq -er '.checkout')
 base=$(printf '%s' "$result" | jq -er '.base')
 : "${GC_CITY:?}"
