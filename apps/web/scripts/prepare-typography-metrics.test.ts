@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import {
   copyFile,
   mkdir,
@@ -60,9 +61,13 @@ test("rejects a build without compiled font assets", async () => {
 
   try {
     await mkdir(path.join(distDir, "static"));
-    await expect(prepareTypographyMetrics({ distDir })).rejects.toThrow(
-      "No compiled font assets found"
-    );
+    await rejects(prepareTypographyMetrics({ distDir }), (error) => {
+      expect(() => {
+        throw error;
+      }).toThrow("No compiled font assets found");
+
+      return true;
+    });
   } finally {
     await rm(distDir, { force: true, recursive: true });
   }

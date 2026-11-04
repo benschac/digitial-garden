@@ -200,7 +200,7 @@ export const typographyVariants = ({
   cn(
     variant && isPageVariant(variant)
       ? pageTypography[variant]
-      : sharedTypographyVariants({ variant: variant as SharedVariant }),
+      : sharedTypographyVariants({ variant }),
     className
   );
 

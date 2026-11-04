@@ -75,8 +75,8 @@ const fontFaces = () => {
     for (const rule of rules) {
       if (rule instanceof CSSFontFaceRule) {
         faces.push(rule);
-      } else if ("cssRules" in rule) {
-        visit((rule as CSSGroupingRule).cssRules);
+      } else if (rule instanceof CSSGroupingRule) {
+        visit(rule.cssRules);
       }
     }
   };
@@ -139,12 +139,11 @@ export const resolveFont = async (
       /U\+0-FF/iu.test(candidate.style.getPropertyValue("unicode-range"))
     ) ?? nearest[0];
 
-  const asset = face?.style
-    .getPropertyValue("src")
-    .match(/\/[^/"')]+\.(?:woff2?|otf|ttf)/u)?.[0]
+  const asset = /\/[^/"')]+\.(?:woff2?|otf|ttf)/u
+    .exec(face?.style.getPropertyValue("src"))?.[0]
     .slice(1);
 
-  if (!asset) {
+  if (!(asset != null && asset !== "")) {
     // A catalog reference is useful, but is not proof of the installed OS font.
     return family === "Georgia"
       ? {
@@ -169,7 +168,7 @@ export const resolveFont = async (
     return undefined;
   }
 
-  return requestTypographyMetrics(
+  return await requestTypographyMetrics(
     process.env.NODE_ENV === "production"
       ? `/_next/static/typography-metrics/${encodeURIComponent(asset)}.json`
       : `/api/typography-metrics?asset=${encodeURIComponent(asset)}`,
@@ -212,7 +211,7 @@ export const setTrim = (
     return;
   }
 
-  if (!font?.verified) {
+  if (font?.verified !== true) {
     clearTrim(element);
 
     return;
@@ -237,7 +236,12 @@ export const measureBox = (
   font?: FontSource
 ): BoxMeasurement => {
   const css = getComputedStyle(element);
-  const clone = element.cloneNode(true) as HTMLElement;
+  const clone = element.cloneNode(true);
+
+  if (!(clone instanceof HTMLElement)) {
+    throw new TypeError("Expected an HTML element clone");
+  }
+
   clone.removeAttribute("id");
   clone.setAttribute("aria-hidden", "true");
   clone.dataset.typographyProbe = "";
@@ -265,7 +269,7 @@ export const measureBox = (
   element.parentElement?.append(clone);
   setTrim(clone, mode, font);
 
-  if (mode === "native" && font?.verified) {
+  if (mode === "native" && font?.verified === true) {
     clone.style.setProperty("text-box-trim", "trim-both");
     clone.style.setProperty("text-box-edge", "cap alphabetic");
   }
@@ -284,7 +288,11 @@ export const measureBox = (
     }[] = [];
 
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      const text = node as Text;
+      if (!(node instanceof Text)) {
+        continue;
+      }
+
+      const text = node;
 
       for (const match of text.data.matchAll(/\S+/gu)) {
         const range = document.createRange();
@@ -360,7 +368,7 @@ export const scaledMetrics = (element: HTMLElement, metrics: FontMetrics) => {
 };
 
 export const exportTrimCss = (target: Target, mode: TrimMode) => {
-  if (!target.font?.verified) {
+  if (target.font?.verified !== true) {
     return "/* Select a loaded web font to export exact trim CSS. */";
   }
 

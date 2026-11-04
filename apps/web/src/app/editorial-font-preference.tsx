@@ -59,7 +59,9 @@ const applyEntryFont = (font: EntryFontId) => {
 const subscribeToFontStorage = (listener: () => void) => {
   window.addEventListener("storage", listener);
 
-  return () => window.removeEventListener("storage", listener);
+  return () => {
+    window.removeEventListener("storage", listener);
+  };
 };
 
 const useFontPreference = <T extends string>(

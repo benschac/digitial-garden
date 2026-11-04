@@ -5,6 +5,7 @@ import {
   useResizeObserver,
   useWindowEvent,
 } from "@personal-site/react-hooks";
+import type { EffectCallback } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -344,7 +345,7 @@ export const ArticleRhythmInspector = ({
     requestFrame();
   });
 
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     const article = document.querySelector<HTMLElement>(
       ".ui-article-typography > article"
     );
@@ -453,8 +454,9 @@ export const ArticleRhythmInspector = ({
     onChange();
     requestFrame();
 
-    return () =>
+    return () => {
       restoreRhythm(root, title, titleLeading, titlePriority, tokens, margins);
+    };
   }, [
     preset,
     spacingScale,
@@ -484,7 +486,21 @@ export const ArticleRhythmInspector = ({
             id={`${id}-preset`}
             value={preset}
             onChange={(event) => {
-              const next = event.target.value as RhythmPreset;
+              const next = event.target.value;
+
+              if (
+                next !== "current" &&
+                next !== "airy" &&
+                next !== "custom" &&
+                next !== "golden" &&
+                next !== "grid4" &&
+                next !== "grid8" &&
+                next !== "fluid" &&
+                next !== "compact"
+              ) {
+                return;
+              }
+
               setPreset(next);
               setSpacingScale(
                 next === "golden" ||
@@ -646,7 +662,9 @@ export const ArticleRhythmInspector = ({
               <input
                 type="checkbox"
                 checked={nestedGaps}
-                onChange={(event) => setNestedGaps(event.target.checked)}
+                onChange={(event) => {
+                  setNestedGaps(event.target.checked);
+                }}
               />
               Include spacing inside lists, tables, notes and figures
             </label>

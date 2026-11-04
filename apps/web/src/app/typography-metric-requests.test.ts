@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
 
 import { createTypographyMetricRequests } from "./typography-metric-requests";
 
@@ -28,17 +29,17 @@ const controlledRequests = () => {
     reject: (cause: unknown) => void;
   }[] = [];
 
-  const request = createTypographyMetricRequests((url, signal) => {
+  const request = createTypographyMetricRequests(async (url, signal) => {
     const response = Promise.withResolvers<MetricResponse>();
     calls.push({ signal, url, ...response });
 
-    return response.promise;
+    return await response.promise;
   });
 
   const call = (index: number) => {
     const value = calls[index];
 
-    if (!value) {
+    if (value == null) {
       throw new Error(`Request ${index} did not start`);
     }
 
@@ -49,7 +50,7 @@ const controlledRequests = () => {
 };
 
 const response = (value: typeof payload = payload): MetricResponse => ({
-  json: () => Promise.resolve(value),
+  json: async () => await Promise.resolve(value),
   ok: true,
 });
 
@@ -93,8 +94,8 @@ describe("typography metric requests", () => {
       "/api/typography-metrics?asset=example.woff2",
     ];
 
-    const results = urls.map((url) =>
-      owner.request(url, new AbortController().signal)
+    const results = urls.map(
+      async (url) => await owner.request(url, new AbortController().signal)
     );
 
     expect(owner.calls.map((call) => call.url)).toEqual(urls);
@@ -155,9 +156,7 @@ describe("typography metric requests", () => {
     const owner = controlledRequests();
     const controller = new AbortController();
     controller.abort();
-    await expect(
-      owner.request("/metrics/example", controller.signal)
-    ).rejects.toThrow();
+    await assert.rejects(owner.request("/metrics/example", controller.signal));
     expect(owner.calls).toHaveLength(0);
   });
 
@@ -213,7 +212,7 @@ describe("typography metric requests", () => {
         invalid = { ...response(), ok: false };
       } else if (stage === "json") {
         invalid = {
-          json: () => Promise.reject(new Error("Invalid JSON")),
+          json: async () => await Promise.reject(new Error("Invalid JSON")),
           ok: true,
         };
       }
@@ -239,10 +238,10 @@ describe("typography metric requests", () => {
     const result = owner.request("/metrics/example", controller.signal);
     const failure = settleFailure(result);
     owner.call(0).resolve({
-      json: () => {
+      json: async () => {
         decodingStarted.resolve(undefined);
 
-        return decoded.promise;
+        return await decoded.promise;
       },
       ok: true,
     });

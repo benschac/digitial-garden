@@ -142,7 +142,7 @@ const SelectedInspection = ({
       <p className={`${styles.note} ${styles.asset}`}>
         {fontDescription(target)}
       </p>
-      {target.font?.verified ? null : (
+      {target.font?.verified === true ? null : (
         <p className={styles.note}>
           Exact metric guides and Capsize comparison need a verified web font.
           Native heading defaults still follow the browser’s font metrics.
@@ -197,13 +197,15 @@ const SelectedInspection = ({
         <button
           type="button"
           className={controls.toggle}
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(inspection?.css ?? "");
-              onCopyStatus("CSS copied");
-            } catch {
-              onCopyStatus("Select and copy the CSS above");
-            }
+          onClick={() => {
+            void (async () => {
+              try {
+                await navigator.clipboard.writeText(inspection?.css ?? "");
+                onCopyStatus("CSS copied");
+              } catch {
+                onCopyStatus("Select and copy the CSS above");
+              }
+            })();
           }}
         >
           Copy CSS
@@ -223,10 +225,12 @@ const inspectionPresentation = (
   const target = targets[selected];
 
   const currentBox =
-    inspection?.boxes[target?.font?.verified ? mode : "original"];
+    inspection?.boxes[target?.font?.verified === true ? mode : "original"];
 
   const originalBox = inspection?.boxes.original;
-  const metrics = target?.font?.verified ? inspection?.metrics : undefined;
+
+  const metrics =
+    target?.font?.verified === true ? inspection?.metrics : undefined;
 
   return { currentBox, metrics, originalBox, target };
 };
@@ -339,10 +343,11 @@ export const TypographyInspector = ({
         ),
       ].filter((element) => !element.closest("[data-prose-exclude]"));
 
-      const pending = fontElements.map((element) =>
-        resolveFont(element, controller.signal).catch(
-          (): undefined => undefined
-        )
+      const pending = fontElements.map(
+        async (element) =>
+          await resolveFont(element, controller.signal).catch(
+            (): undefined => undefined
+          )
       );
 
       const resolved = await Promise.all(
@@ -375,7 +380,7 @@ export const TypographyInspector = ({
       const files = new Map<string, FontSource>();
 
       for (const font of allFonts) {
-        if (font?.verified) {
+        if (font?.verified === true) {
           files.set(font.source, font);
         }
       }
@@ -422,7 +427,7 @@ export const TypographyInspector = ({
     if (!boxes) {
       boxes = { original: measureBox(target.element, "original", target.font) };
 
-      if (target.font?.verified) {
+      if (target.font?.verified === true) {
         boxes.capsize = measureBox(target.element, "capsize", target.font);
 
         if (nativeSupported) {
@@ -443,9 +448,10 @@ export const TypographyInspector = ({
       boxes,
       css: exportTrimCss(target, mode),
       leading: css.lineHeight,
-      metrics: target.font?.verified
-        ? scaledMetrics(target.element, target.font.metrics)
-        : undefined,
+      metrics:
+        target.font?.verified === true
+          ? scaledMetrics(target.element, target.font.metrics)
+          : undefined,
       nextGap: next
         ? next.getBoundingClientRect().top - rect.bottom
         : undefined,
@@ -502,7 +508,9 @@ export const TypographyInspector = ({
         <InspectorSelect
           id={scopeId}
           value={scope}
-          onChange={(event) => setScope(event.target.value)}
+          onChange={(event) => {
+            setScope(event.target.value);
+          }}
         >
           <option value="headings">Article headings</option>
           <option value="text">Headings and paragraphs</option>
@@ -513,7 +521,17 @@ export const TypographyInspector = ({
         <InspectorSelect
           id={modeId}
           value={mode}
-          onChange={(event) => setSelectedMode(event.target.value as TrimMode)}
+          onChange={(event) => {
+            const next = event.target.value;
+
+            if (
+              next === "original" ||
+              next === "native" ||
+              next === "capsize"
+            ) {
+              setSelectedMode(next);
+            }
+          }}
         >
           <option value="original">Trim off · compare</option>
           <option value="capsize">Capsize · trim on</option>
@@ -576,8 +594,10 @@ export const TypographyInspector = ({
       <button
         type="button"
         className={controls.toggle}
-        onClick={() => target?.element.scrollIntoView({ block: "center" })}
-        disabled={!target}
+        onClick={() => {
+          target?.element.scrollIntoView({ block: "center" });
+        }}
+        disabled={target == null}
       >
         Scroll to inspected text
       </button>

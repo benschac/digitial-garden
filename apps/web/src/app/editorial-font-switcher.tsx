@@ -15,7 +15,6 @@ import { Typography, typographyVariants } from "@/components/page-typography";
 import { useEditorialFontPreference } from "./editorial-font-preference";
 import styles from "./editorial-font-switcher-styles";
 import { editorialFontOptions, entryFontOptions } from "./editorial-fonts";
-import type { EditorialFontId, EntryFontId } from "./editorial-fonts";
 import { TypographyInspector } from "./typography-inspector";
 import { InspectorSelect } from "./typography-inspector-select";
 
@@ -179,7 +178,9 @@ const TypographyPreview = ({ pathname }: { pathname: string }) => {
                 aria-label="Panel animation"
                 aria-checked={animatePanel}
                 checked={animatePanel}
-                onChange={(event) => setAnimatePanel(event.target.checked)}
+                onChange={(event) => {
+                  setAnimatePanel(event.target.checked);
+                }}
               />
               Animate
             </label>
@@ -208,7 +209,9 @@ const TypographyPreview = ({ pathname }: { pathname: string }) => {
               aria-controls={panelId}
               data-cuelume-open="close"
               data-cuelume-emphasis="subtle"
-              onClick={(event) => closePanel(event.detail > 0)}
+              onClick={(event) => {
+                closePanel(event.detail > 0);
+              }}
             >
               <X aria-hidden="true" size={22} />
             </button>
@@ -234,9 +237,15 @@ const TypographyPreview = ({ pathname }: { pathname: string }) => {
                   data-cuelume-emphasis="subtle"
                   id={entrySelectId}
                   value={entryFont}
-                  onChange={(event) =>
-                    selectEntryFont(event.currentTarget.value as EntryFontId)
-                  }
+                  onChange={(event) => {
+                    const option = entryFontOptions.find(
+                      (candidate) => candidate.id === event.currentTarget.value
+                    );
+
+                    if (option) {
+                      selectEntryFont(option.id);
+                    }
+                  }}
                 >
                   {entryFontOptions.map((option) => (
                     <option key={option.id} value={option.id}>
@@ -258,9 +267,15 @@ const TypographyPreview = ({ pathname }: { pathname: string }) => {
               data-cuelume-select=""
               data-cuelume-emphasis="subtle"
               id={displaySelectId}
-              onChange={(event) =>
-                selectDisplayFont(event.currentTarget.value as EditorialFontId)
-              }
+              onChange={(event) => {
+                const option = editorialFontOptions.find(
+                  (candidate) => candidate.id === event.currentTarget.value
+                );
+
+                if (option) {
+                  selectDisplayFont(option.id);
+                }
+              }}
               value={displayFont}
             >
               {editorialFontOptions.map((option) => (
@@ -281,9 +296,15 @@ const TypographyPreview = ({ pathname }: { pathname: string }) => {
               data-cuelume-select=""
               data-cuelume-emphasis="subtle"
               id={readingSelectId}
-              onChange={(event) =>
-                selectReadingFont(event.currentTarget.value as EditorialFontId)
-              }
+              onChange={(event) => {
+                const option = editorialFontOptions.find(
+                  (candidate) => candidate.id === event.currentTarget.value
+                );
+
+                if (option) {
+                  selectReadingFont(option.id);
+                }
+              }}
               value={readingFont}
             >
               {editorialFontOptions.map((option) => (

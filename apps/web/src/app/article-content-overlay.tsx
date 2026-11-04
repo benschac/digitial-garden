@@ -5,6 +5,7 @@ import {
   useResizeObserver,
   useWindowEvent,
 } from "@personal-site/react-hooks";
+import type { EffectCallback } from "react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -62,7 +63,9 @@ const textBlocks = (article: HTMLElement) => {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
 
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      if (!node.textContent?.trim()) {
+      if (
+        !(node.textContent?.trim() != null && node.textContent?.trim() !== "")
+      ) {
         continue;
       }
 
@@ -121,9 +124,11 @@ const clippedRect = (element: Element): Rect | undefined => {
     parent;
     parent =
       parent.parentElement ??
-      (parent.getRootNode() instanceof ShadowRoot
-        ? (parent.getRootNode() as ShadowRoot).host
-        : null)
+      (() => {
+        const root = parent.getRootNode();
+
+        return root instanceof ShadowRoot ? root.host : null;
+      })()
   ) {
     const css = getComputedStyle(parent);
     const bounds = parent.getBoundingClientRect();
@@ -230,7 +235,7 @@ export const ArticleContentOverlay = ({
         const clip = clippedRect(element);
         const font = fonts.get(element);
 
-        if (!clip || !font?.verified) {
+        if (!clip || font?.verified !== true) {
           continue;
         }
 
@@ -300,7 +305,7 @@ export const ArticleContentOverlay = ({
   });
 
   // reconnect when newly loaded components add shadow roots
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     if (!enabled) {
       return;
     }
@@ -377,7 +382,7 @@ export const ArticleContentOverlay = ({
   }, [enabled, contentVersion, requestFrame]);
 
   // font tokens and dynamic article content restart exact-asset resolution
-  useEffect(() => {
+  useEffect((): ReturnType<EffectCallback> => {
     const article = articleRef.current;
 
     if (!enabled || !article) {
@@ -389,7 +394,7 @@ export const ArticleContentOverlay = ({
     const load = async () => {
       await document.fonts.ready;
 
-      if (controller.signal.aborted || !article) {
+      if (controller.signal.aborted || article == null) {
         return;
       }
 
@@ -414,7 +419,9 @@ export const ArticleContentOverlay = ({
 
     void load();
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+    };
   }, [enabled, contentVersion, displayFont, readingFont, requestFrame]);
 
   // these inputs invalidate the latest frame callback
@@ -431,7 +438,9 @@ export const ArticleContentOverlay = ({
         <input
           type="checkbox"
           checked={enabled}
-          onChange={(event) => onEnabledChange(event.target.checked)}
+          onChange={(event) => {
+            onEnabledChange(event.target.checked);
+          }}
         />
         Show all content overlays
       </label>
@@ -441,7 +450,9 @@ export const ArticleContentOverlay = ({
             <input
               type="checkbox"
               checked={fontGuides}
-              onChange={(event) => setFontGuides(event.target.checked)}
+              onChange={(event) => {
+                setFontGuides(event.target.checked);
+              }}
             />
             Include font guides for all text
           </label>

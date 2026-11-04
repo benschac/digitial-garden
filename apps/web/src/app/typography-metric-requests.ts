@@ -14,7 +14,8 @@ class TypographyMetricError extends Data.TaggedError("TypographyMetricError")<{
 }> {}
 
 export const createTypographyMetricRequests = (
-  fetchMetrics: FetchMetrics = (url, signal) => fetch(url, { signal })
+  fetchMetrics: FetchMetrics = async (url, signal) =>
+    await fetch(url, { signal })
 ) => {
   const requests = Effect.runSync(
     Cache.make({
@@ -23,7 +24,7 @@ export const createTypographyMetricRequests = (
         const response = yield* Effect.tryPromise({
           catch: (cause) =>
             new TypographyMetricError({ cause, stage: "request", url }),
-          try: (signal) => fetchMetrics(url, signal),
+          try: async (signal) => await fetchMetrics(url, signal),
         });
 
         if (!response.ok) {
@@ -34,16 +35,14 @@ export const createTypographyMetricRequests = (
           });
         }
 
-        const payload: unknown = yield* Effect.tryPromise({
+        const result = yield* Effect.tryPromise({
           catch: (cause) =>
             new TypographyMetricError({ cause, stage: "decode", url }),
-          try: () => response.json(),
-        });
+          try: async () => {
+            const payload: unknown = await response.json();
 
-        const result = yield* Effect.try({
-          catch: (cause) =>
-            new TypographyMetricError({ cause, stage: "decode", url }),
-          try: () => decodeTypographyMetrics(payload),
+            return decodeTypographyMetrics(payload);
+          },
         });
 
         return { ...result, verified: true as const };

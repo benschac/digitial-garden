@@ -2,8 +2,13 @@ import { mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { fromFile } from "@capsizecss/unpack/fs";
+import { Schema } from "effect";
 
-export const prepareTypographyMetrics = async ({ distDir }) => {
+export const prepareTypographyMetrics = async (options) => {
+  const { distDir } = Schema.decodeUnknownSync(
+    Schema.Struct({ distDir: Schema.String })
+  )(options);
+
   const assets = path.join(distDir, "static");
   const output = path.join(distDir, "static/typography-metrics");
 
