@@ -1,5 +1,10 @@
 # Repository conventions
 
+## Experimentation tolerance
+
+- This is a personal site, not a revenue-generating product. Trying new libraries and tooling is part of its purpose; some churn and migration work are acceptable.
+- Do not reject a useful experiment solely because a dependency is new, experimental, or prerelease. Prefer a small, reversible trial with concrete findings. Preserve existing checks, report regressions honestly, and distinguish learning value from measured improvements.
+
 ## Response style and token efficiency
 
 - Condense responses to the point. Lead with the answer or outcome; use bullets for multiple points and nested bullets for subpoints. A simple answer can be one sentence.

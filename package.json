@@ -15,7 +15,7 @@
     "check": "turbo run lint lint:root format:check format:root --affected --output-logs=errors-only",
     "check-types": "turbo run check-types check-types:root --affected",
     "check-types:all": "turbo run check-types check-types:root",
-    "check-types:effect": "bun run --cwd apps/web typegen && effect-tsgo tsrs@0.20.1-ts7.1.0-beta --project apps/web/tsconfig.json --noEmit --incremental false",
+    "check-types:effect": "bun run --cwd apps/web typegen && effect-tsgo tsrs@0.21.0-ts7.1.0-beta --project apps/web/tsconfig.json --noEmit --incremental false",
     "content:validate": "turbo run content:validate",
     "test": "turbo run test:content test --affected",
     "test:all": "turbo run test:content test",
@@ -38,11 +38,12 @@
     "patterns:check-sources": "node scripts/agent-patterns.mjs check-sources",
     "ratstack:adoption": "node scripts/ratstack-adoption.mjs",
     "ratstack:adoption:check": "node scripts/ratstack-adoption.mjs check",
-    "check-types:root": "effect-tsgo tsc@7.0.2 --project gascity/tsconfig.json --noEmit --incremental false"
+    "check-types:root": "effect-tsgo tsc@7.0.2 --project gascity/tsconfig.json --noEmit --incremental false",
+    "lint:typed": "bun run --cwd apps/web typegen && effect-tsgo --tsrs-lint=0.21.0-ts7.1.0-beta oxlint --type-aware --config oxlint.typed.config.mts apps packages gascity"
   },
   "devDependencies": {
     "@effect/platform-bun": "4.1.2",
-    "@effect/tsgo": "0.63.0",
+    "@effect/tsgo": "0.67.1",
     "@oxlint/plugins": "1.91.0",
     "@types/node": "24.19.2",
     "effect": "4.1.2",

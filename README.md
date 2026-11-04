@@ -117,17 +117,19 @@ bun run test:tools
 bun run build
 ```
 
-`bun run check-types:effect` generates route/content types and checks the web project with the [Effect-patched `tsrs`](https://github.com/Effect-TS/tsgo/blob/7d25af7531707a9a728b4f7c337f8694c1b4ee16/README.md#run-the-patched-tools-without-patching). It pins `@effect/tsgo` 0.63.0 and `tsrs` `0.20.1-ts7.1.0-beta`, uses no incremental cache, and fails on Effect errors and warnings. The default checks and build retain TypeScript 7.0.2. Gas City scripts use the Effect-patched build of that same version through `check-types:root`, included in `verify`.
+`bun run check-types:effect` generates route/content types and checks the web project with the [Effect-patched `tsrs`](https://github.com/Effect-TS/tsgo/blob/7d25af7531707a9a728b4f7c337f8694c1b4ee16/README.md#run-the-patched-tools-without-patching). It pins `@effect/tsgo` 0.67.1 and `tsrs` `0.21.0-ts7.1.0-beta`, uses no incremental cache, and fails on Effect errors and warnings. The default checks and build retain TypeScript 7.0.2. Gas City scripts use the Effect-patched build of that same version through `check-types:root`, included in `verify`.
 
 The additional check currently fails on four TS2615 content-AST errors and three Effect warnings in `particle-lifecycle.ts` and `renderer-lifecycle.ts`. Patched TypeScript 7.1 beta reports the same errors. Resolve these before making it the default.
 
-Editors must launch the patched language server with `bun run effect-tsgo tsrs@0.20.1-ts7.1.0-beta --lsp --stdio`; editor integration is unverified.
+Editors must launch the patched language server with `bun run effect-tsgo tsrs@0.21.0-ts7.1.0-beta --lsp --stdio`; editor integration is unverified.
 
 Linting uses Oxlint with Ultracite's core, React, and Next.js presets in `oxlint.config.mts`. Formatting uses Ultracite's Oxfmt preset in `oxfmt.config.mts`. `bun install` installs the tools.
 
 Run `bun run format` to format the workspace or `bun run lint:fix` for safe lint fixes. Both accept paths, for example `bun run format scripts/agent-sources.mjs`. Formatting sorts imports and package.json fields; Tailwind class sorting stays disabled to preserve class order and `cn()` behavior.
 
-[Anti-slop](https://github.com/dmmulroy/anti-slop) is vendored under `tools/oxlint/anti-slop`, with its generic and Effect rules enabled. Source identity and local adaptations are recorded in its `UPSTREAM.md`. Keep `oxlint` and `@oxlint/plugins` pinned to the same exact version when upgrading. The [coverage audit](docs/oxc-rule-parity.md) records the former Biome mappings and remaining gaps. Oxlint does not lint CSS or JSON. Type-aware linting is not enabled; the existing TypeScript checks remain separate.
+[Anti-slop](https://github.com/dmmulroy/anti-slop) is vendored under `tools/oxlint/anti-slop`, with its generic and Effect rules enabled. Source identity and local adaptations are recorded in its `UPSTREAM.md`. Keep `oxlint` and `@oxlint/plugins` pinned to the same exact version when upgrading. The [coverage audit](docs/oxc-rule-parity.md) records the former Biome mappings and remaining gaps. Oxlint does not lint CSS or JSON. Default linting is syntax-only; the existing TypeScript checks remain separate.
+
+`bun run lint:typed` generates route/content types, then runs Oxlint with the pinned Effect-patched TSRS 0.21.0 backend across `apps`, `packages`, and `gascity`. `oxlint.typed.config.mts` retains the normal rules, overrides, and JavaScript plugins and adds Effect's recommended preset. Type-aware mode also activates Ultracite's existing typed rules, including Promise misuse checks. This experimental command reports errors with a nonzero exit status and is not yet part of `verify`: its first run reported 1,097 diagnostics requiring triage. See [the evaluation](docs/tsrs-lint-research.md) for source evidence and limitations.
 
 ESLint is not installed or invoked by this workspace. Oxlint owns linting; its built-in `eslint/...` rule names and the vendored compatibility API do not run ESLint. Ultracite lists ESLint as an optional peer for its other presets, which does not install or enable it here.
 
