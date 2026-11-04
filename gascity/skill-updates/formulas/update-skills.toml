@@ -1,0 +1,18 @@
+formula = "update-skills"
+description = "Process each project skill candidate in an exclusive native drain"
+target_required = true
+
+[requires]
+formula_compiler = ">=2.0.0"
+
+[[steps]]
+id = "updates"
+title = "Prepare, review and publish project skill candidates"
+metadata = { "gc.run_target" = "skills.worker" }
+
+[steps.drain]
+formula = "update-skill"
+context = "separate"
+member_access = "exclusive"
+max_units = 100
+on_item_failure = "continue"

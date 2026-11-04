@@ -1,0 +1,64 @@
+formula = "update-skill"
+description = "Checked lifecycle for one original skill candidate in {{convoy_id}}"
+target_required = true
+
+[requires]
+formula_compiler = ">=2.0.0"
+
+[[steps]]
+id = "body"
+title = "Settle one skill update"
+needs = ["prepare", "review", "publish", "accept"]
+metadata = { "gc.kind" = "scope", "gc.scope_name" = "skill-update", "gc.scope_role" = "body" }
+
+[[steps]]
+id = "prepare"
+title = "Prepare the exact project skill candidate"
+needs = []
+metadata = { "gc.run_target" = "skills.worker", "gc.scope_ref" = "body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope" }
+description = "Follow the worker role. Resolve the original candidate through input convoy {{convoy_id}}. Write the prepared receipt and this attempt artifact pointer before closing with gc.outcome=pass. Failure must close with gc.outcome=fail and preserve candidate hold evidence. Do not close the source candidate or workflow controls."
+
+[steps.check]
+max_attempts = 1
+
+[steps.check.check]
+mode = "exec"
+path = "../assets/checks/prepared.sh"
+timeout = "30m"
+
+[[steps]]
+id = "review"
+title = "Review the exact project skill candidate"
+needs = ["prepare"]
+metadata = { "gc.run_target" = "skills.reviewer", "gc.scope_ref" = "body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope" }
+description = "Follow the reviewer role. Resolve the original candidate through input convoy {{convoy_id}}. Write the reviewed receipt and this attempt artifact pointer before closing with gc.outcome=pass. Failure must close with gc.outcome=fail and preserve candidate hold evidence. Do not close the source candidate or workflow controls."
+
+[steps.check]
+max_attempts = 1
+
+[steps.check.check]
+mode = "exec"
+path = "../assets/checks/reviewed.sh"
+timeout = "30m"
+
+[[steps]]
+id = "publish"
+title = "Publish the exact project skill candidate"
+needs = ["review"]
+metadata = { "gc.run_target" = "skills.publisher", "gc.scope_ref" = "body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope" }
+description = "Follow the publisher role. Resolve the original candidate through input convoy {{convoy_id}}. Write the published receipt and this attempt artifact pointer before closing with gc.outcome=pass. Failure must close with gc.outcome=fail and preserve candidate hold evidence. Do not close the source candidate or workflow controls."
+
+[steps.check]
+max_attempts = 1
+
+[steps.check.check]
+mode = "exec"
+path = "../assets/checks/published.sh"
+timeout = "30m"
+
+[[steps]]
+id = "accept"
+title = "Accept and close the verified original skill candidate"
+needs = ["publish"]
+metadata = { "gc.run_target" = "skills.publisher", "gc.scope_ref" = "body", "gc.scope_role" = "member", "gc.on_fail" = "abort_scope" }
+description = "Resolve the original candidate from input convoy {{convoy_id}}. Follow the publisher acceptance procedure. After independently rechecking published proof, record skill_phase=landed, skill_landed_sha and acceptance evidence on the original candidate using guarded updates. Close that original candidate and read it back to verify closed status, landed phase and exact SHA. Only then close this claimed acceptance step with gc.outcome=pass. Do not close the synthetic convoy, scope or workflow root. On any uncertain acceptance operation fail this step and retain evidence."

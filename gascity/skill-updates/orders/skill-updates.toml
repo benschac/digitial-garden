@@ -1,0 +1,8 @@
+[order]
+description = "Discover project skill updates daily"
+formula = "scan-skills"
+pool = "scanner"
+trigger = "cron"
+schedule = "0 9 * * *"
+tz = "America/New_York"
+enabled = true

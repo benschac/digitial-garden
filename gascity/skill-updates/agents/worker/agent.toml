@@ -1,0 +1,7 @@
+description = "Project skill worker"
+scope = "rig"
+max_active_sessions = 8
+min_active_sessions = 0
+option_defaults = { model = "gpt-6-luna", effort = "low" }
+idle_timeout = "1h"
+nudge = "Claim your skill workflow step and follow your role."

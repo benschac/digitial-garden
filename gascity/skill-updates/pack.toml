@@ -1,0 +1,4 @@
+[pack]
+name = "skill-updates"
+schema = 2
+description = "Daily project skill updates with native checked workflows"

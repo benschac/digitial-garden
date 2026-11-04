@@ -1,0 +1,11 @@
+formula = "scan-skills"
+description = "Discover and dispatch persistent project skill candidates"
+
+[requires]
+formula_compiler = ">=2.0.0"
+
+[[steps]]
+id = "scan"
+title = "Inventory all tracked project skills and dispatch eligible candidates"
+metadata = { "gc.run_target" = "skills.scanner" }
+description = "Follow the scanner role. Record all created, reused, held and dispatched candidates on this scan step. Close only this step with gc.outcome=pass after the complete inventory and recoverable dispatch records are written."
