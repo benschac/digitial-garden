@@ -14,8 +14,12 @@ const rustDirectory = path.resolve(
 
 await Effect.runPromise(
   watchWasm({
-    error: (message) => console.error(message),
-    log: (message) => console.log(message),
+    error: (message) => {
+      console.error(message);
+    },
+    log: (message) => {
+      console.log(message);
+    },
     offSignal: (signal, listener) => {
       process.off(signal, listener);
     },

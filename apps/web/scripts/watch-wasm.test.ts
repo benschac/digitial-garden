@@ -46,8 +46,12 @@ const createHarness = (
   let spawns = 0;
 
   const dependencies: WatchWasmDependencies = {
-    error: (message) => errors.push(message),
-    log: (message) => logs.push(message),
+    error: (message) => {
+      errors.push(message);
+    },
+    log: (message) => {
+      logs.push(message);
+    },
     offSignal: (signal, listener) => {
       expect(signals.get(signal)).toBe(listener);
       signals.delete(signal);
@@ -110,8 +114,9 @@ const createHarness = (
   });
 
   const harness = {
-    advance: (milliseconds = 0) =>
-      runtime.runPromise(TestClock.adjust(milliseconds)),
+    advance: async (milliseconds = 0) => {
+      await runtime.runPromise(TestClock.adjust(milliseconds));
+    },
     change() {
       for (const watcher of watchers) {
         watcher.change();
@@ -127,11 +132,11 @@ const createHarness = (
     get spawns() {
       return spawns;
     },
-    stop() {
+    async stop() {
       signals.get("SIGTERM")?.();
       controller.abort();
 
-      return result;
+      return await result;
     },
     watchers,
   };
@@ -153,14 +158,21 @@ const processAt = (
 ) => {
   const process = harness.processes[index];
 
-  if (!process) {
+  if (process === undefined) {
     throw new Error(`Missing process ${index}`);
   }
 
   return process;
 };
 
-afterEach(() => Promise.all(cleanups.splice(0).map((cleanup) => cleanup())));
+afterEach(
+  async () =>
+    await Promise.all(
+      cleanups.splice(0).map(async (cleanup) => {
+        await cleanup();
+      })
+    )
+);
 
 describe("watch-wasm lifecycle", () => {
   test("builds initially and debounces bursts for 120ms after the last edit", async () => {

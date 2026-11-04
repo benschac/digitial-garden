@@ -21,10 +21,10 @@ export interface WatchWasmDependencies {
   readonly watchingMessage: string;
 }
 
-export class WatchWasmError extends Schema.TaggedError<WatchWasmError>()(
-  "WatchWasmError",
-  { cause: Schema.Defect(), operation: Schema.String }
-) {}
+export class WatchWasmError extends Schema.TaggedError<
+  WatchWasmError,
+  { readonly brand: unique symbol }
+>()("WatchWasmError", { cause: Schema.Defect(), operation: Schema.String }) {}
 
 const attempt = <A>(operation: string, action: () => A) =>
   Effect.try({
@@ -36,11 +36,11 @@ export const watchWasm = Effect.fn("watchWasm")(function* watchWasmProgram(
   dependencies: WatchWasmDependencies
 ) {
   const report = (error: WatchWasmError) =>
-    Effect.sync(() =>
+    Effect.sync(() => {
       dependencies.error(
         `WASM ${error.operation} failed: ${String(error.cause)}`
-      )
-    );
+      );
+    });
 
   const cleanup = (operation: string, action: () => void) =>
     attempt(operation, action).pipe(Effect.catch(report));
@@ -52,18 +52,18 @@ export const watchWasm = Effect.fn("watchWasm")(function* watchWasmProgram(
 
       const stop = () => {
         acceptingChanges = false;
-        Deferred.doneUnsafe(stopped, Effect.succeed(undefined));
+        Deferred.doneUnsafe(stopped, Effect.undefined);
       };
 
       for (const signal of ["SIGINT", "SIGTERM"] as const) {
         yield* Effect.acquireRelease(
-          attempt("signal registration", () =>
-            dependencies.onSignal(signal, stop)
-          ),
+          attempt("signal registration", () => {
+            dependencies.onSignal(signal, stop);
+          }),
           () =>
-            cleanup("signal removal", () =>
-              dependencies.offSignal(signal, stop)
-            )
+            cleanup("signal removal", () => {
+              dependencies.offSignal(signal, stop);
+            })
         );
       }
 
@@ -93,22 +93,27 @@ export const watchWasm = Effect.fn("watchWasm")(function* watchWasmProgram(
             attempt("watch acquisition", () =>
               dependencies.watch(target, onChange)
             ),
-            (watcher) => cleanup("watch cleanup", () => watcher.close())
+            (watcher) =>
+              cleanup("watch cleanup", () => {
+                watcher.close();
+              })
           );
         }
 
-        yield* Effect.sync(() =>
-          dependencies.log(dependencies.watchingMessage)
-        );
+        yield* Effect.sync(() => {
+          dependencies.log(dependencies.watchingMessage);
+        });
 
         const build = Effect.gen(function* build() {
           if (!acceptingChanges) {
             return;
           }
 
-          yield* Effect.sync(() =>
-            dependencies.log("\nRust changed — rebuilding particle-engine.wasm")
-          );
+          yield* Effect.sync(() => {
+            dependencies.log(
+              "\nRust changed — rebuilding particle-engine.wasm"
+            );
+          });
 
           const owned = yield* Effect.acquireRelease(
             attempt("build spawn", () => ({
@@ -119,16 +124,16 @@ export const watchWasm = Effect.fn("watchWasm")(function* watchWasmProgram(
               acquired.exited
                 ? Effect.void
                 : Effect.gen(function* releaseWasmProcess() {
-                    yield* cleanup("process cleanup", () =>
-                      acquired.process.kill()
-                    );
+                    yield* cleanup("process cleanup", () => {
+                      acquired.process.kill();
+                    });
                     yield* Effect.tryPromise({
                       catch: (cause) =>
                         new WatchWasmError({
                           cause,
                           operation: "process exit",
                         }),
-                      try: () => acquired.process.exited,
+                      try: async () => await acquired.process.exited,
                     }).pipe(Effect.catch(report));
                   })
           );
@@ -136,15 +141,17 @@ export const watchWasm = Effect.fn("watchWasm")(function* watchWasmProgram(
           const exitCode = yield* Effect.tryPromise({
             catch: (cause) =>
               new WatchWasmError({ cause, operation: "build wait" }),
-            try: () => owned.process.exited,
+            try: async () => await owned.process.exited,
           });
 
           owned.exited = true;
 
           if (exitCode !== 0) {
-            yield* Effect.sync(() =>
-              dependencies.error(`WASM build failed with exit code ${exitCode}`)
-            );
+            yield* Effect.sync(() => {
+              dependencies.error(
+                `WASM build failed with exit code ${exitCode}`
+              );
+            });
           }
         }).pipe(Effect.scoped, Effect.catch(report));
 
