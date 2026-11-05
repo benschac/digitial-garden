@@ -101,12 +101,12 @@ export const StyleBoundaryFixture = () => {
   const [failures, setFailures] = useState<string[] | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    const lifetime = { cancelled: false };
 
     const check = () => {
       const host = root.current;
 
-      if (!host || cancelled) {
+      if (!host || lifetime.cancelled) {
         return;
       }
 
@@ -168,7 +168,7 @@ export const StyleBoundaryFixture = () => {
     window.addEventListener("resize", check);
 
     return () => {
-      cancelled = true;
+      lifetime.cancelled = true;
       window.removeEventListener("resize", check);
     };
   }, []);

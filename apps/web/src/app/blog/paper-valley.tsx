@@ -143,7 +143,7 @@ export const PaperValley = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     // decode() cannot be aborted; ignore completions after unmount/Strict Mode replay.
-    let cancelled = false;
+    const lifetime = { cancelled: false };
 
     const decodeLayers = async () => {
       try {
@@ -153,11 +153,11 @@ export const PaperValley = ({ children }: { children: ReactNode }) => {
           })
         );
 
-        if (!cancelled) {
+        if (!lifetime.cancelled) {
           setReady(true);
         }
       } catch {
-        if (!cancelled) {
+        if (!lifetime.cancelled) {
           setFailed(true);
         }
       }
@@ -166,7 +166,7 @@ export const PaperValley = ({ children }: { children: ReactNode }) => {
     void decodeLayers();
 
     return () => {
-      cancelled = true;
+      lifetime.cancelled = true;
     };
   }, []);
 

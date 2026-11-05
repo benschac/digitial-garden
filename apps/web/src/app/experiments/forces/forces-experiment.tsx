@@ -308,17 +308,20 @@ export const ForcesExperiment = () => {
       return;
     }
 
-    let animationFrame = 0;
-    let previousTime = performance.now();
-    let lastTelemetryUpdate = 0;
-    let width = 1;
-    let height = 1;
-    let firstPosition = 0.16;
+    const simulation = {
+      animationFrame: 0,
+      bodyAPosition: 0.45,
+      bodyBPosition: 0.55,
+      firstPosition: 0.16,
+      height: 1,
+      lastTelemetryUpdate: 0,
+      previousTime: performance.now(),
+      secondPosition: 0.12,
+      secondVelocity: 0,
+      width: 1,
+    };
+
     const firstVelocity = speed;
-    let secondPosition = 0.12;
-    let secondVelocity = 0;
-    let bodyAPosition = 0.45;
-    let bodyBPosition = 0.55;
 
     const interactionVelocity = pushed
       ? velocitiesAfterImpulse(9, firstMass, secondMass)
@@ -334,71 +337,75 @@ export const ForcesExperiment = () => {
     const resize = () => {
       const bounds = canvas.getBoundingClientRect();
       const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-      width = Math.max(1, bounds.width);
-      height = Math.max(1, bounds.height);
-      canvas.width = Math.round(width * pixelRatio);
-      canvas.height = Math.round(height * pixelRatio);
+      simulation.width = Math.max(1, bounds.width);
+      simulation.height = Math.max(1, bounds.height);
+      canvas.width = Math.round(simulation.width * pixelRatio);
+      canvas.height = Math.round(simulation.height * pixelRatio);
       context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     };
 
     const draw = (time: number) => {
-      const deltaSeconds = Math.min((time - previousTime) / 1000, 0.04);
-      previousTime = time;
+      const deltaSeconds = Math.min(
+        (time - simulation.previousTime) / 1000,
+        0.04
+      );
+
+      simulation.previousTime = time;
 
       if (!pausedRef.current && !prefersReducedMotion) {
         if (law === "first") {
-          firstPosition = advancePosition(
-            firstPosition,
+          simulation.firstPosition = advancePosition(
+            simulation.firstPosition,
             firstVelocity * 0.065,
             deltaSeconds
           );
 
-          if (firstPosition > 1.08) {
-            firstPosition = -0.08;
+          if (simulation.firstPosition > 1.08) {
+            simulation.firstPosition = -0.08;
           }
         } else if (law === "second") {
-          secondVelocity += acceleration(force, mass) * deltaSeconds;
-          secondPosition = advancePosition(
-            secondPosition,
-            secondVelocity * 0.012,
+          simulation.secondVelocity += acceleration(force, mass) * deltaSeconds;
+          simulation.secondPosition = advancePosition(
+            simulation.secondPosition,
+            simulation.secondVelocity * 0.012,
             deltaSeconds
           );
 
-          if (secondPosition > 1.08) {
-            secondPosition = 0.1;
-            secondVelocity = 0;
+          if (simulation.secondPosition > 1.08) {
+            simulation.secondPosition = 0.1;
+            simulation.secondVelocity = 0;
           }
         } else if (pushed) {
-          bodyAPosition = advancePosition(
-            bodyAPosition,
+          simulation.bodyAPosition = advancePosition(
+            simulation.bodyAPosition,
             interactionVelocity.first * 0.035,
             deltaSeconds
           );
-          bodyBPosition = advancePosition(
-            bodyBPosition,
+          simulation.bodyBPosition = advancePosition(
+            simulation.bodyBPosition,
             interactionVelocity.second * 0.035,
             deltaSeconds
           );
         }
       }
 
-      drawScene(context, width, height, law, {
-        bodyAPosition,
-        bodyBPosition,
+      drawScene(context, simulation.width, simulation.height, law, {
+        bodyAPosition: simulation.bodyAPosition,
+        bodyBPosition: simulation.bodyBPosition,
         firstMass,
-        firstPosition,
+        firstPosition: simulation.firstPosition,
         firstVelocity,
         force,
         interactionVelocity,
         mass,
         pushed,
         secondMass,
-        secondPosition,
-        secondVelocity,
+        secondPosition: simulation.secondPosition,
+        secondVelocity: simulation.secondVelocity,
       });
 
-      if (time - lastTelemetryUpdate > 120) {
-        lastTelemetryUpdate = time;
+      if (time - simulation.lastTelemetryUpdate > 120) {
+        simulation.lastTelemetryUpdate = time;
 
         if (law === "first") {
           setTelemetry({
@@ -408,7 +415,7 @@ export const ForcesExperiment = () => {
         } else if (law === "second") {
           setTelemetry({
             primary: `${acceleration(force, mass).toFixed(2)} m/s²`,
-            secondary: `${secondVelocity.toFixed(2)} m/s velocity`,
+            secondary: `${simulation.secondVelocity.toFixed(2)} m/s velocity`,
           });
         } else {
           setTelemetry({
@@ -418,16 +425,16 @@ export const ForcesExperiment = () => {
         }
       }
 
-      animationFrame = requestAnimationFrame(draw);
+      simulation.animationFrame = requestAnimationFrame(draw);
     };
 
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(canvas);
     resize();
-    animationFrame = requestAnimationFrame(draw);
+    simulation.animationFrame = requestAnimationFrame(draw);
 
     return () => {
-      cancelAnimationFrame(animationFrame);
+      cancelAnimationFrame(simulation.animationFrame);
       resizeObserver.disconnect();
     };
   }, [firstMass, force, law, mass, pushed, resetKey, secondMass, speed]);

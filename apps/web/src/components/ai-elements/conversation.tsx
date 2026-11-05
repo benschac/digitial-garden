@@ -26,6 +26,10 @@ export type ConversationProps = ComponentProps<typeof StickToBottom> & {
   scrollRestorationKey?: string;
 };
 
+interface ScrollSaveFrame {
+  id?: number;
+}
+
 const ConversationScrollRestoration = ({
   storageKey,
 }: {
@@ -64,15 +68,15 @@ const ConversationScrollRestoration = ({
       });
     };
 
-    let frame: number | undefined;
+    const frame: ScrollSaveFrame = {};
 
     const scheduleSave = () => {
-      if (frame !== undefined) {
+      if (frame.id !== undefined) {
         return;
       }
 
-      frame = requestAnimationFrame(() => {
-        frame = undefined;
+      frame.id = requestAnimationFrame(() => {
+        frame.id = undefined;
         saveNow();
       });
     };
@@ -84,8 +88,8 @@ const ConversationScrollRestoration = ({
       scrollElement.removeEventListener("scroll", scheduleSave);
       window.removeEventListener("pagehide", saveNow);
 
-      if (frame !== undefined) {
-        cancelAnimationFrame(frame);
+      if (frame.id !== undefined) {
+        cancelAnimationFrame(frame.id);
       }
 
       saveNow();

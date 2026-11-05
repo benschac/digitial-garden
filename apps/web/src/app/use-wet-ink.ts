@@ -14,6 +14,10 @@ import { useEffect, useRef, useState } from "react";
 
 import type { createWetInkRenderer } from "./wet-ink-renderer";
 
+interface WetInkOwner {
+  instance: Awaited<ReturnType<typeof createWetInkRenderer>>;
+}
+
 const interactionQuery =
   "(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) and (forced-colors: none)";
 
@@ -127,7 +131,7 @@ export const useWetInk = <T extends HTMLSpanElement>(
       return;
     }
 
-    let instance: Awaited<ReturnType<typeof createWetInkRenderer>> = null;
+    const owner: WetInkOwner = { instance: null };
 
     const initialize = async () => {
       try {
@@ -138,16 +142,16 @@ export const useWetInk = <T extends HTMLSpanElement>(
           return;
         }
 
-        instance = await createRenderer(target, element, signal);
+        owner.instance = await createRenderer(target, element, signal);
 
         if (signal.aborted) {
-          instance?.destroy();
+          owner.instance?.destroy();
 
           return;
         }
 
-        renderer.current = instance;
-        instance?.render(lightX.get(), lightY.get(), sheen.get());
+        renderer.current = owner.instance;
+        owner.instance?.render(lightX.get(), lightY.get(), sheen.get());
       } catch (error) {
         if (!signal.aborted) {
           console.warn("Wet ink unavailable; keeping static lettering.", error);
@@ -160,7 +164,7 @@ export const useWetInk = <T extends HTMLSpanElement>(
     return () => {
       cancelFrame();
       renderer.current = null;
-      instance?.destroy();
+      owner.instance?.destroy();
     };
   }, interactionEnabled);
 

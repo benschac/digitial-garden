@@ -12,6 +12,10 @@ interface MermaidDiagramProps {
   description: string;
 }
 
+interface MountedDiagram {
+  destroy?: () => void;
+}
+
 const loadPele = async () => await import("pele");
 
 export const MermaidDiagram = ({
@@ -32,7 +36,7 @@ export const MermaidDiagram = ({
     }
 
     const controller = createController();
-    let destroy: (() => void) | undefined;
+    const mounted: MountedDiagram = {};
 
     const initialize = async (target: HTMLDivElement) => {
       setStatus("Loading diagram…");
@@ -60,12 +64,12 @@ export const MermaidDiagram = ({
           },
         });
 
-        destroy = () => {
+        mounted.destroy = () => {
           diagram.destroy();
         };
 
         if (controller.signal.aborted) {
-          destroy();
+          mounted.destroy();
           target.replaceChildren();
         }
       } catch {
@@ -79,7 +83,7 @@ export const MermaidDiagram = ({
 
     return () => {
       controller.abort();
-      destroy?.();
+      mounted.destroy?.();
       container.replaceChildren();
     };
   }, [source, id, createController]);

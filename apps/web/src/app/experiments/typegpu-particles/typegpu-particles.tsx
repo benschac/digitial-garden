@@ -144,7 +144,7 @@ export const TypeGpuParticles = () => {
       setPaused(true);
     }
 
-    let readyStatus = "";
+    const readiness = { status: "" };
 
     const lifecycle = createParticleLifecycle({
       configure: (renderer, rendererSignal) => {
@@ -158,7 +158,7 @@ export const TypeGpuParticles = () => {
         densityRef.current = actualDensity;
         setDensity(actualDensity);
         setParticleLimit(renderer.maxParticleCount);
-        readyStatus =
+        readiness.status =
           renderer.kind === "Rust/WASM + WebGPU"
             ? "Rust/WASM control + TypeGPU compute online"
             : "Rust/WASM fallback online";
@@ -203,7 +203,7 @@ export const TypeGpuParticles = () => {
       },
       onState: (state, detail) => {
         if (state === "ready") {
-          setStatus(readyStatus);
+          setStatus(readiness.status);
         }
 
         if (state === "lost") {

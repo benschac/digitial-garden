@@ -298,7 +298,7 @@ export const TypographyInspector = ({
 
     articleRef.current = article;
     cache.current = null;
-    let elements: HTMLElement[] = [];
+    const elements: HTMLElement[] = [];
 
     const load = async () => {
       await document.fonts.ready;
@@ -315,18 +315,22 @@ export const TypographyInspector = ({
         return;
       }
 
-      elements = [
-        ...article.querySelectorAll<HTMLElement>("h1, h2, h3, h4, p"),
-      ].filter(
-        (element) =>
-          !element.closest("[data-prose-exclude], pre, table, figure, aside") &&
-          (scope === "text" || /^H[1234]$/u.test(element.tagName)) &&
-          !["::before", "::after"].some(
-            (pseudo) =>
-              !["none", "normal", '""'].includes(
-                getComputedStyle(element, pseudo).content
-              )
-          )
+      elements.push(
+        ...[
+          ...article.querySelectorAll<HTMLElement>("h1, h2, h3, h4, p"),
+        ].filter(
+          (element) =>
+            !element.closest(
+              "[data-prose-exclude], pre, table, figure, aside"
+            ) &&
+            (scope === "text" || /^H[1234]$/u.test(element.tagName)) &&
+            !["::before", "::after"].some(
+              (pseudo) =>
+                !["none", "normal", '""'].includes(
+                  getComputedStyle(element, pseudo).content
+                )
+            )
+        )
       );
 
       const next = elements.map((element) => ({
