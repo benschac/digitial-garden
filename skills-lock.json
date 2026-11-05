@@ -35,7 +35,37 @@
       "source": "roble3/cc-blender-skill",
       "sourceType": "github",
       "skillPath": "plugin/skills/blender-modeling/SKILL.md",
-      "computedHash": "9f5ffb5e39936d0e884258fd5f2ace437f6eddfe189318d652f2a6e157a0d924"
+      "computedHash": "e81159703b7dac34037d40322cef1caa903811ce0053d41c0072a12e3b7c9dcf",
+      "customization": {
+        "upstreamRevision": "a2634b588e80265e796aa53f8ab178d75105c2af",
+        "upstreamHash": "66d23a57c0e11cdc21d9d06494810534354ad063c425e5848894927453ddcbd2",
+        "installedHash": "e81159703b7dac34037d40322cef1caa903811ce0053d41c0072a12e3b7c9dcf",
+        "reason": "Standalone pinned backend-reference closure within the existing blender-modeling skill.",
+        "references": [
+          {
+            "sourcePath": "plugin/skills/text-to-blender/references/mcp-backends.md",
+            "sha256": "7955a3ec4d33905379e006404271595f3195b4b4dd9f294d98606218221537a6",
+            "blob": "243551fc9e916c90d333be56a42c489d9bea465a"
+          },
+          {
+            "sourcePath": "plugin/skills/text-to-blender/references/agent-hosts.md",
+            "sha256": "7723a628497e2c2c80d58996553e92ac8fc606fbc57713e3a9546e974fd564f0",
+            "blob": "64732377f9a5d814ba3faecf927c4782098ee77b"
+          },
+          {
+            "sourcePath": "plugin/skills/text-to-blender/references/blender-version-compat.md",
+            "sha256": "88d70e06b7ef76ae415436ffec8283d032f87035cacd6a80477a0d3936468f37",
+            "blob": "ac59b0b22381f7fd0fcc51ddcbb7e5198521e27b"
+          }
+        ],
+        "skillLinkEdit": {
+          "sourcePath": "plugin/skills/blender-modeling/SKILL.md",
+          "sourceSha256": "5ff43df5f31ef9189b23a9ddb074e58ecef49ef3723d150113e6eb0d66f95000",
+          "from": "../text-to-blender/references/mcp-backends.md",
+          "to": "references/mcp-backends.md",
+          "occurrences": 2
+        }
+      }
     },
     "codebase-design": {
       "source": "mattpocock/skills",
