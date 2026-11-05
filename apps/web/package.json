@@ -52,7 +52,7 @@
     "@videojs/mux-video": "10.1.0",
     "@videojs/react": "10.1.0",
     "@xstate/effect": "1.0.0-alpha.10",
-    "ai": "7.0.143",
+    "ai": "7.0.162",
     "cuelume": "0.2.8",
     "effect": "4.1.2",
     "eve": "0.80.1",
