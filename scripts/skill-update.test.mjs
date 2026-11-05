@@ -1762,6 +1762,26 @@ test("second real-base landing preserves first bytes and requires exact qualific
       checkStage("published", resolveContext(f.env, f.read)).commit,
       secondCommit
     );
+    switchSubject(f, "ps-directaccept", "accept", "psc-directaccepter");
+    const direct = f.rows["ps-directaccept"];
+    delete direct.metadata["gc.ralph_step_id"];
+    direct.metadata["gc.step_id"] = "update-skill.accept";
+    direct.metadata["gc.step_ref"] = "update-skill.accept";
+    const directContext = resolveWriteContext(f.env, f.read, () => direct.id);
+    assert.equal(
+      selectReceipt("accepted", 2, "absent", directContext).acceptance,
+      true
+    );
+    assert.equal(
+      checkStage("published", resolveContext(f.env, f.read)).commit,
+      secondCommit
+    );
+    const directArchive = beginCheckArchive("published", f.env, f.read);
+    assert.equal(
+      JSON.parse(readFileSync(path.join(directArchive, "subject.json")))
+        .metadata["gc.step_id"],
+      "update-skill.accept"
+    );
     const oldPublished = JSON.parse(readFileSync(pointerFile));
     oldPublished.attempt = 1;
     save(pointerFile, oldPublished);
@@ -1878,6 +1898,45 @@ test("singleton native aliases bind exact durable sessions and claims", async (t
         ),
         "singleton check\n"
       );
+    }
+  );
+
+  await t.test("Ralph body child preserves its bare owner role", () => {
+    const f = singletonFixture();
+    f.step.metadata["gc.step_id"] = "execute";
+    f.step.metadata["gc.step_ref"] = "update-skill.publish.iteration.1.execute";
+    assert.equal(resolveContext(f.env, f.read).executor, "psc-wisp-worker");
+  });
+
+  await t.test(
+    "direct native acceptance binds its exact qualified role",
+    () => {
+      const f = singletonFixture();
+      delete f.step.metadata["gc.ralph_step_id"];
+      f.step.metadata["gc.step_id"] = "update-skill.accept";
+      f.step.metadata["gc.step_ref"] = "update-skill.accept";
+      f.step.status = "in_progress";
+      delete f.step.closed_at;
+      f.step.lease_expires_at = "2999-01-01T00:00:00Z";
+      f.session.status = "open";
+      f.session.metadata.state = "awake";
+      f.session.metadata.current_claim_bead_id = f.step.id;
+      assert.equal(resolveContext(f.env, f.read).executor, "psc-wisp-worker");
+
+      for (const metadata of [
+        { "gc.step_id": "foreign.accept", "gc.step_ref": "foreign.accept" },
+        { "gc.step_ref": "foreign.accept" },
+        { "gc.step_id": "accept" },
+        { "gc.ralph_step_id": "publish" },
+      ]) {
+        const original = { ...f.step.metadata };
+        Object.assign(f.step.metadata, metadata);
+        assert.throws(() => resolveContext(f.env, f.read));
+        f.step.metadata = original;
+      }
+
+      f.rows["ps-root"].metadata["gc.formula_name"] = "foreign";
+      assert.throws(() => resolveContext(f.env, f.read));
     }
   );
 

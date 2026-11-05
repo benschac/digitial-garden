@@ -367,9 +367,33 @@ const checkedFile = (directory, file) => {
   return file;
 };
 
+const nativeRole = (step, readBead) => {
+  const metadata = step.metadata ?? {};
+  const ralph = metadata["gc.ralph_step_id"];
+  const direct = metadata["gc.step_id"];
+  const reference = metadata["gc.step_ref"];
+
+  if (direct === "update-skill.accept" || reference === "update-skill.accept") {
+    const root = readBead(metadata["gc.root_bead_id"]);
+    ensure(
+      direct === "update-skill.accept" &&
+        reference === direct &&
+        (ralph === undefined || ralph === "accept") &&
+        root?.id === metadata["gc.root_bead_id"] &&
+        root?.metadata?.["gc.kind"] === "workflow" &&
+        root?.metadata?.["gc.formula_name"] === "update-skill",
+      "Native direct acceptance role mismatch"
+    );
+
+    return "accept";
+  }
+
+  return ralph ?? direct;
+};
+
 const singletonExecutorSession = (step, id, name, readBead) => {
   const metadata = step.metadata ?? {};
-  const role = metadata["gc.ralph_step_id"] ?? metadata["gc.step_id"];
+  const role = nativeRole(step, readBead);
 
   const target = {
     accept: "skills.publisher",
@@ -794,9 +818,7 @@ const preparationIdentities = (context) => {
     "Invalid original native preparation identity"
   );
 
-  const originalRole =
-    original.metadata?.["gc.ralph_step_id"] ??
-    original.metadata?.["gc.step_id"];
+  const originalRole = nativeRole(original, context.readBead);
 
   ensure(
     originalRole === "prepare",
@@ -816,8 +838,7 @@ const preparationIdentities = (context) => {
     "Foreign native adopter step"
   );
 
-  const adoptedRole =
-    adopted.metadata?.["gc.ralph_step_id"] ?? adopted.metadata?.["gc.step_id"];
+  const adoptedRole = nativeRole(adopted, context.readBead);
 
   ensure(adoptedRole === "prepare", "Adopter is not the native preparer");
   const adopterIdentity = executorIdentity(adopted, context.readBead);
@@ -1162,10 +1183,7 @@ const archiveContext = (stage, env, readBead) => {
   };
 
   ensure(
-    steps[stage]?.includes(
-      context.subject.metadata?.["gc.ralph_step_id"] ??
-        context.subject.metadata?.["gc.step_id"]
-    ),
+    steps[stage]?.includes(nativeRole(context.subject, context.readBead)),
     "Check stage does not match native subject"
   );
   const requestFile = path.join(context.directory, "request.json");
@@ -1651,8 +1669,7 @@ const loadReceipt = (name, context) => {
       "Foreign native receipt step"
     );
 
-    const role =
-      actor.metadata?.["gc.ralph_step_id"] ?? actor.metadata?.["gc.step_id"];
+    const role = nativeRole(actor, context.readBead);
 
     const expected = {
       integrated: "publish",
@@ -1695,9 +1712,7 @@ const loadReceipt = (name, context) => {
 };
 
 const validateSelectedPointer = (stage, context) => {
-  const role =
-    context.subject.metadata?.["gc.ralph_step_id"] ??
-    context.subject.metadata?.["gc.step_id"];
+  const role = nativeRole(context.subject, context.readBead);
 
   const roles = {
     integrated: ["publish"],
@@ -2193,9 +2208,7 @@ export const selectReceipt = (stage, attempt, expected, context) => {
   );
   validateAdoption(context);
 
-  const role =
-    context.subject.metadata?.["gc.ralph_step_id"] ??
-    context.subject.metadata?.["gc.step_id"];
+  const role = nativeRole(context.subject, context.readBead);
 
   ensure(
     {
@@ -2308,9 +2321,7 @@ export const recordStage = (stage, attempt, input, context) => {
   );
   validateAdoption(context);
 
-  const role =
-    context.subject.metadata?.["gc.ralph_step_id"] ??
-    context.subject.metadata?.["gc.step_id"];
+  const role = nativeRole(context.subject, context.readBead);
 
   ensure(
     (stage === "reviewed" ? "review" : "publish") === role,
