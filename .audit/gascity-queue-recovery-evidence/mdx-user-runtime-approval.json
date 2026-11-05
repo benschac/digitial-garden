@@ -1,0 +1,19 @@
+{
+  "schema": "operator.mdx-runtime-decision.v1",
+  "source": "Direct user response in this conversation",
+  "questionItemId": "[\"request_user_input_async\",\"call_d1459eeb5ed0492fb173287a00e49f32\",0]",
+  "answer": "Authorize one run and cleanup hold",
+  "operatorReference": "direct-user-call_d1459eeb5ed0492fb173287a00e49f32-item0-authorize-one-run-and-cleanup-hold",
+  "bead": "ps-2u4",
+  "executionManifestSha256": "8309d8d411bf47c72a688fe9e6a339728204ce8bd22c4c3010d8c366e2d9eb35",
+  "revision6SourceManifestSha256": "d66f3aca107615cca8de351df815fb56fff8463b64566424387afe18317dd801",
+  "priorCurrentSourceWorkloadCount": 2,
+  "additionalWorkloadLimit": 1,
+  "deadlineSeconds": 1200,
+  "lockWaitMaxSeconds": 60,
+  "approveCleanupHoldTotalExitException": true,
+  "cleanupHoldContract": "same-foreground-owner-retains-kernel-lock-until-confirmed-clean",
+  "sampler": false,
+  "retryAllowed": false,
+  "executionAuthorizationFile": false
+}

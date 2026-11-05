@@ -1,0 +1,10 @@
+{
+  "manifestSha256": "d66f3aca107615cca8de351df815fb56fff8463b64566424387afe18317dd801",
+  "head": "4f2d7f45d31a86e5cc9a33207f2ba195c8d8daca",
+  "sourceInputsVerified": 13,
+  "checkoutInputsVerified": 14,
+  "indexEmpty": true,
+  "patchExactlyMatches": true,
+  "combinedPatchSha256": "76478de8c5e358bd91937c65a0037b2894311d71d55c1c9b9bb1a66b24746816",
+  "runtimeWorkloads": 0
+}
