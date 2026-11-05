@@ -101,7 +101,22 @@
       "source": "higgsfield-ai/skills",
       "sourceType": "github",
       "skillPath": "higgsfield-generate/SKILL.md",
-      "computedHash": "28871703b1a3a3cbedbf174330babcc257735a7707becd338c23d72ae5aaa2b8"
+      "computedHash": "4929522e1f73cde5f02ea79aa8dc0cc38e247259707b744a82134b8e826f8b57",
+      "customization": {
+        "upstreamRevision": "4d0757471a704dac8729ea3c2ef0f3f330e0d9b6",
+        "upstreamHash": "ed27650a0b13b5cad670dafbc1fb5e5daa4855ddd41d5c497b6b641ca51e0422",
+        "installedHash": "4929522e1f73cde5f02ea79aa8dc0cc38e247259707b744a82134b8e826f8b57",
+        "reason": "Correct Seedance 2.0 reference-audio and output-audio guidance in two localized media-inputs.md regions using the pinned official CLI documentation.",
+        "references": [
+          {
+            "source": "higgsfield-ai/cli",
+            "revision": "fd21e7cb550b5835cc00c6b4abfea0c02fe77ff2",
+            "path": "MODELS.md",
+            "sha256": "a8bc9b7d62f6e2b23ac0001c92dafd7126fb8fa583cb37213f6d17cef8796f92",
+            "url": "https://raw.githubusercontent.com/higgsfield-ai/cli/fd21e7cb550b5835cc00c6b4abfea0c02fe77ff2/MODELS.md"
+          }
+        ]
+      }
     },
     "improve-animations": {
       "source": "emilkowalski/skill",
