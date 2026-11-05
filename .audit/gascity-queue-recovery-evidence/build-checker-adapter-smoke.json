@@ -1,0 +1,22 @@
+{
+  "missing_context": {
+    "exit_code": 1,
+    "stderr": "build-artifact-check: GC_BEAD_ID is required\n"
+  },
+  "retained_blocked_summary_shape": {
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "build-artifact-check: schema=gc.build.implementation-summary.v1 path=/Users/benjaminschachter/personal-site-city/.gc/skill-remediation/checked-evidence-archive-20261104/catalog-implementation-summary.md failed validation\nerror: trace.coverage[0].rationale must be a non-empty string\n"
+  },
+  "workflow_status_before": {
+    "ps-f69f": "closed",
+    "ps-xkkq": "closed",
+    "ps-rarf": "closed"
+  },
+  "workflow_status_after": {
+    "ps-f69f": "closed",
+    "ps-xkkq": "closed",
+    "ps-rarf": "closed"
+  },
+  "claim": "adapter/schema smoke only; failed workflow acceptance unchanged; no application workload"
+}

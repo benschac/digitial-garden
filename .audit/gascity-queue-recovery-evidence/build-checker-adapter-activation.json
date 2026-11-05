@@ -1,0 +1,12 @@
+{
+  "paths": [
+    "/Users/benjaminschachter/personal-site/.gc/scripts/checks/build-artifact-valid.sh",
+    "/Users/benjaminschachter/personal-site-city/.gc/scripts/checks/build-artifact-valid.sh"
+  ],
+  "sha256": "ae0bcdd4afa77de6141f3e9511cf1e7b96567a6eb2f9547cd3eec1bbf14b6079",
+  "pack_commit": "3b3b89f2011e06d84459aa7bea1552382f13930a",
+  "cache_content_hash": "sha256:b2d4b146c7df43ea2b7d080716cc613ade3bf208ec83d0a26f0101e8ef38b477",
+  "python": "/opt/homebrew/opt/python@3.12/libexec/bin/python3",
+  "scope": "additive local checker adapter; no cache/dependency/graph changes",
+  "validator_precedence": "upstream GC_WORK_DIR validator precedence preserved; alternate absent for validated current roots"
+}
