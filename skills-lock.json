@@ -164,7 +164,20 @@
       "source": "wshobson/agents",
       "sourceType": "github",
       "skillPath": "plugins/frontend-mobile-development/skills/tailwind-design-system/SKILL.md",
-      "computedHash": "cd61afd28f594e8b6712b61749209cbb4466e3eec4e4223793bbd97fc85c1b63"
+      "computedHash": "b3e36b3593ce51472b14e591e29e96e9e7fccf737973b31b3055302b13d45943",
+      "customization": {
+        "upstreamRevision": "7e2fb559cf4b824b27f1fec49fe88f7511066d26",
+        "upstreamHash": "4e5bfe5af9b5da504752432dc45ed605af350cf1489a58419afad4123a514f89",
+        "installedHash": "b3e36b3593ce51472b14e591e29e96e9e7fccf737973b31b3055302b13d45943",
+        "reason": "Preserve committed Effect Schema guidance and omitted RHF/Zod example; take only the two upstream relative-link corrections.",
+        "provenance": {
+          "source": "wshobson/agents",
+          "skillPath": "plugins/frontend-mobile-development/skills/tailwind-design-system/SKILL.md",
+          "localCustomizationRevision": "5e3b4761e0aba7975c793de89c1793459f744991",
+          "linkCorrectionPath": "plugins/frontend-mobile-development/skills/tailwind-design-system/references/details.md",
+          "linkCorrectionBlob": "a5dbeed732b46b8e2d1ae1dc6ac32b8ba20c076f"
+        }
+      }
     },
     "tdd": {
       "source": "mattpocock/skills",
