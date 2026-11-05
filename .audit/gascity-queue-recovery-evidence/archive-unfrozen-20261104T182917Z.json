@@ -1,0 +1,9 @@
+{
+  "captured_at": "2026-11-04T18:29:17.283540+00:00",
+  "worktree": "/Users/benjaminschachter/personal-site/worktrees/ps-hwae",
+  "head": "630a89dd191e7711dadf893c10cc8c169407bc13",
+  "state": "unfrozen point-in-time preservation only; not review or acceptance",
+  "patch_bytes": 39173,
+  "untracked_archive_helper_snapshot": ".audit/gascity-queue-recovery-evidence/archive-unfrozen-20261104T182917Z.archive-helper.txt",
+  "untracked_archive_helper_bytes": 858
+}

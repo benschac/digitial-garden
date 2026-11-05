@@ -1,0 +1,18 @@
+{
+  "workspaceManifestsMatch": true,
+  "lockMatches": true,
+  "changes": [
+    {
+      "package": "packages/ui",
+      "action": "exact-existing-dependency-links",
+      "count": 19
+    },
+    {
+      "package": "packages/react-hooks",
+      "action": "exact-existing-dependency-links",
+      "count": 4
+    }
+  ],
+  "installs": 0,
+  "sourceChanges": 0
+}

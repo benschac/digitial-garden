@@ -1,0 +1,24 @@
+{
+  "path": "/Users/benjaminschachter/personal-site/worktrees/ps-hwae/.agent_sources/xstate-effect",
+  "target": "/Users/benjaminschachter/personal-site/.agent_sources/xstate-effect",
+  "identity": {
+    "name": "xstate-effect",
+    "repository": "https://github.com/statelyai/xstate.git",
+    "ref": "@xstate/effect@1.0.0-alpha.10",
+    "commit": "8cf3f00b41984a32ce935db117f52b628cfcd5ac",
+    "packages": [
+      {
+        "name": "@xstate/effect",
+        "version": "1.0.0-alpha.10",
+        "path": "packages/xstate-effect/package.json"
+      },
+      {
+        "name": "xstate",
+        "version": "6.0.0-alpha.71",
+        "path": "packages/core/package.json"
+      }
+    ]
+  },
+  "existingDirtyMirrorsReplaced": false,
+  "fetched": false
+}

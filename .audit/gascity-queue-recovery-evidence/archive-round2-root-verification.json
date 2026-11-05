@@ -1,0 +1,47 @@
+{
+  "schema": "ps-hwae.root-verification.v1",
+  "sourcePatchSha256": "28dff8241f60e705cb486f0b506e441548812638170f50725c439e4483990f10",
+  "worktree": "/Users/benjaminschachter/personal-site/worktrees/ps-hwae",
+  "verification": {
+    "argv": [
+      "env",
+      "TURBO_SCM_BASE=HEAD",
+      "TURBO_SCM_HEAD=HEAD",
+      "flock",
+      "--exclusive",
+      "--timeout",
+      "30",
+      "/Users/benjaminschachter/personal-site-city/.gc/dependency-updates/verify.lock",
+      "timeout",
+      "--signal=TERM",
+      "180s",
+      "bun",
+      "run",
+      "verify"
+    ],
+    "exitCode": 0,
+    "execChunkId": "e82547",
+    "successfulTasks": 4,
+    "totalTasks": 4,
+    "cachedTasks": 3,
+    "log": "archive-round2-root-verify.log",
+    "permissionContext": "Escalated only after existing dev-port tests failed with sandbox listen EPERM; temporary test TCP binds permitted."
+  },
+  "focusedFrameworkCheck": {
+    "exitCode": 0,
+    "execChunkId": "db9b4b",
+    "tests": 9,
+    "failed": 0,
+    "source": "Existing framework-rules test, after exact isolated UI dependency links were repaired."
+  },
+  "priorSandboxVerify": {
+    "exitCode": 1,
+    "execChunkId": "427f94",
+    "log": "archive-round2-root-verify-sandbox.log",
+    "cause": "Existing dev-port tests listen EPERM."
+  },
+  "allEightFrozenSourceHashesMatchAfterVerify": true,
+  "applicationContentTypegenBuildWorkloads": 0,
+  "accepted": false,
+  "sequenceBImplemented": false
+}

@@ -1,0 +1,11 @@
+{
+  "beforeHead": "9d35043d259cac0e3c00f325ba2f223eddbf6c5a",
+  "afterHead": "7bc372e20d687a35b3bbf016d71626e6fc1227ff",
+  "fastForwardOnly": true,
+  "sourceFilesVerified": 8,
+  "savedDirtyGuidanceFullyPreservedInLandedCommit": true,
+  "unrelatedPostHashUnchanged": true,
+  "trackedDiffClean": true,
+  "noStashResetOrNewCommit": true,
+  "nativeCandidateOrHookActivationClaimed": false
+}
