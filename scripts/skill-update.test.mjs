@@ -18,6 +18,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  main,
   validateLandingBase,
   validateRemoteEntry,
   hashDirectory,
@@ -612,7 +613,7 @@ const commit = (cwd, subject) => {
   return git(cwd, "rev-parse", "HEAD");
 };
 
-const fixture = (t) => {
+const fixture = (t, customizeLock = () => {}) => {
   const directory = mkdtempSync(path.join(os.tmpdir(), "skill-check-"));
   t.after(() => rmSync(directory, { force: true, recursive: true }));
   const checkout = path.join(directory, "checkout");
@@ -652,6 +653,7 @@ const fixture = (t) => {
     version: 1,
   };
 
+  customizeLock(lock);
   save(path.join(checkout, "skills-lock.json"), lock);
   const base = commit(checkout, "base");
   writeFileSync(path.join(skillDirectory, "SKILL.md"), "new\n");
@@ -2265,5 +2267,124 @@ test("foreign schema-2 pointers remain opaque archivable preflight failures", (t
     JSON.parse(readFileSync(path.join(archive, "before/native/result.json")))
       .root,
     "ps-foreign"
+  );
+});
+
+const customization = () => ({
+  installedHash: "c".repeat(64),
+  upstreamHash: "d".repeat(64),
+  upstreamRevision: "b".repeat(40),
+});
+
+test("scanner admission holds marked installed bytes even when computedHash matches", (t) => {
+  const f = fixture(t, (lock) => {
+    lock.skills.demo.customization = customization();
+    lock.skills.demo.customization.installedHash =
+      lock.skills.demo.computedHash;
+  });
+
+  git(f.checkout, "checkout", "--detach", f.base);
+  assert.equal(
+    hashDirectory(path.join(f.checkout, ".agents/skills/demo")),
+    f.request.currentHash
+  );
+
+  const prompt = readFileSync(
+    new URL(
+      "../gascity/skill-updates/agents/scanner/prompt.template.md",
+      import.meta.url
+    ),
+    "utf-8"
+  );
+
+  assert.match(prompt, /node scripts\/skill-update\.mjs scan-admission/u);
+  assert.throws(
+    () => main(["scan-admission", f.checkout, "demo"]),
+    /customization.*review/u
+  );
+});
+
+test("trusted prepared validation rejects marked baselines independently of scanner", (t) => {
+  for (const marker of [
+    customization(),
+    null,
+    false,
+    "",
+    {},
+    { upstreamRevision: "bad" },
+  ]) {
+    const f = fixture(t, (lock) => {
+      lock.skills.demo.customization = marker;
+    });
+
+    assert.throws(
+      () =>
+        validateCommit(
+          f.request,
+          f.checkout,
+          f.base,
+          f.commit,
+          f.sourceCheckout
+        ),
+      /customization.*review/u
+    );
+    git(f.checkout, "checkout", "--detach", f.base);
+    assert.throws(
+      () => main(["scan-admission", f.checkout, "demo"]),
+      /customization.*review/u
+    );
+  }
+});
+
+test("ordinary updates preserve unrelated markers and lock fields", (t) => {
+  const f = fixture(t, (lock) => {
+    lock.skills.other.customization = customization();
+    lock.skills.demo.extra = { keep: true };
+    lock.extra = { keep: [1, 2] };
+  });
+
+  assert.match(
+    validateCommit(f.request, f.checkout, f.base, f.commit, f.sourceCheckout),
+    /^[a-f0-9]{40}$/u
+  );
+  assert.equal(
+    main(["scan-admission", f.checkout, "demo"]),
+    f.request.targetHash
+  );
+
+  const before = JSON.parse(
+    git(f.checkout, "show", `${f.base}:skills-lock.json`)
+  );
+
+  const after = JSON.parse(
+    readFileSync(path.join(f.checkout, "skills-lock.json"), "utf-8")
+  );
+
+  before.skills.demo.computedHash = f.request.targetHash;
+  assert.deepEqual(after, before);
+  delete f.lock.skills.other.customization;
+  save(path.join(f.checkout, "skills-lock.json"), f.lock);
+  git(f.checkout, "add", ".");
+  git(
+    f.checkout,
+    "-c",
+    "user.name=Fixture",
+    "-c",
+    "user.email=fixture@example.invalid",
+    "commit",
+    "--amend",
+    "--no-edit",
+    "-q"
+  );
+  assert.throws(
+    () =>
+      validateCommit(
+        f.request,
+        f.checkout,
+        f.base,
+        git(f.checkout, "rev-parse", "HEAD"),
+        f.sourceCheckout
+      ),
+    /Unrelated lock mutation/u
   );
 });

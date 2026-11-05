@@ -124,6 +124,31 @@ export const hashDirectory = (directory) => {
   return hashFiles(files);
 };
 
+const requireOrdinaryEntry = (entry) => {
+  ensure(
+    !Object.hasOwn(entry ?? {}, "customization"),
+    "Skill customization requires review"
+  );
+};
+
+const scanAdmission = (checkout, skill) => {
+  ensure(/^[a-z0-9][a-z0-9-]*$/u.test(skill), "Invalid skill name");
+  const lock = json(path.join(checkout, "skills-lock.json"));
+  const entry = lock.skills?.[skill];
+  requireOrdinaryEntry(entry);
+
+  const installedHash = hashDirectory(
+    path.join(checkout, ".agents", "skills", skill)
+  );
+
+  ensure(
+    installedHash === entry?.computedHash,
+    "Local skill modifications require review"
+  );
+
+  return installedHash;
+};
+
 export const validateRequest = (request) => {
   ensure(identity.test(request.candidate), "Invalid candidate");
   ensure(/^[a-z0-9][a-z0-9-]*$/u.test(request.skill), "Invalid skill name");
@@ -231,6 +256,7 @@ export const validateCommit = (
   const before = JSON.parse(readObject(checkout, base, "skills-lock.json"));
   const after = JSON.parse(readObject(checkout, commit, "skills-lock.json"));
   const oldEntry = before.skills?.[request.skill];
+  requireOrdinaryEntry(oldEntry);
   ensure(
     oldEntry?.source === request.source &&
       oldEntry.sourceType === "github" &&
@@ -2434,6 +2460,10 @@ export const qualifyResult = (stage, result, context) => {
 export const main = (args, env = process.env) => {
   if (args[0] === "hash" && args.length === 2) {
     return hashDirectory(args[1]);
+  }
+
+  if (args[0] === "scan-admission" && args.length === 3) {
+    return scanAdmission(args[1], args[2]);
   }
 
   const lengths = {
