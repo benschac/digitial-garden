@@ -1,0 +1,77 @@
+---
+title: "How I work with agents now"
+slug: "how-i-work-with-agents-now"
+summary: "How I connect Gas City, a searchable brain, project patterns, and Effect so useful context survives each coding session."
+publishedAt: "2026-11-04"
+status: "draft"
+tags:
+  - "AI"
+  - "Gas City"
+  - "Effect"
+  - "TypeScript"
+featured: false
+---
+
+I want the useful parts of a coding session to survive the session. If I work through why a library behaves a certain way, or decide how a project should handle a problem, I want the next agent to find that work and understand why it matters.
+
+That is the idea behind the setup I've been putting together. Codex is still my main coding tool. Around it, I have Gas City to coordinate work, a searchable brain of reference material, and a pattern catalog that records decisions for the project. My growing use of Effect fits into the same effort to make the behavior I expect explicit.
+
+## The context I want to keep
+
+I started using AI coding tools with the early GitHub Copilot preview, then moved through Cursor and Claude Code. I switched to Codex in August 2025.
+
+Along the way, I collected skills and reusable instructions. I used OMX to coordinate agents in terminal sessions, with separate roles for implementation and review. I also started keeping work plans in Markdown so I could return to a task across sessions.
+
+Those plans give me a reliable place to find the current decision, the unfinished work, and the reason a previous attempt stopped.
+
+I want the same continuity for technical knowledge. An agent can find a plausible answer to a question about cancellation or retries. What I need is an answer that fits the library version and the code I'm actually using.
+
+## My brain and my project's decisions
+
+The brain gives me reference material to search. Some of that material comes from the Rat Stack brain, an inherited archive of ideas and earlier decisions. I want access to that history without treating every old decision as a rule for my project.
+
+The project has its own pattern catalog. Each entry can connect a concern to the code that owns it, the upstream source, and the checks that cover it. Exceptions and known gaps belong there too.
+
+For example, `bun run patterns consult cancellation` searches both the local catalog and the indexed Rat Stack material. The results distinguish project patterns from source references and retain the references' adoption status. An agent can find an older idea, see whether I've adopted it, and follow the source before applying it.
+
+That distinction matters to me. Saving an idea doesn't mean I've decided to use it everywhere.
+
+I also keep pinned source checkouts for relevant dependencies. Before an agent relies on a library example, the workflow asks it to check that the source matches the version the project uses. Then it reads the implementation and relevant tests.
+
+The catalog helps the agent find the right place to look. The source still has to support the decision.
+
+## Gas City coordinates work across sessions
+
+Gas City is the newer part of this setup. I'm using it to coordinate work that has to continue beyond one agent session, with recorded ownership and a clear next step.
+
+Dependency updates are a concrete example. In the workflow I've configured, each package update gets a persistent work item called a bead. Workers prepare updates in separate clones. A single publisher integrates the prepared changes one at a time.
+
+The bead follows the update through preparation, readiness, and publication, or into review if something blocks it. The work keeps its identity when responsibility moves between agents.
+
+Suppose an agent prepares an update and the verification fails. I want the next agent to find the failed attempt, its logs, and the reason it stopped. The workflow preserves those artifacts and requires review before another attempt. The restart instructions tell agents to inspect existing evidence and remote history before repeating work.
+
+That's the part of orchestration I care about most. More agents create more work to coordinate. Persistent task records and clear ownership help me understand what each agent has done and what remains unresolved.
+
+Preparation and publication also mean different things. A verified local change is a candidate to integrate. Publication needs its own evidence, and a published commit doesn't establish that deployment succeeded.
+
+I haven't measured throughput or cost savings from this setup. For now, I'm interested in whether the work is easier to inspect and continue.
+
+## Effect makes more of the contract explicit
+
+My interest in Effect started with tools I already liked. I used TS-Pattern for pattern matching and Zod for schema validation. Effect had modules for both concerns, which gave me a practical way to start exploring it.
+
+That connects to why I enjoy TypeScript. Types describe the data and relationships a change needs to preserve. When the data layer, API, and client share those contracts, an agent gets useful feedback as it works through a change.
+
+There is a concrete connection to Gas City here too. The dependency supervision helper uses Effect Schema to validate JSON and Effect to coordinate reminders and resource cleanup. Those are operational details, but they matter when a process stops halfway through its work.
+
+The instructions around Effect ask agents to investigate success, failure, cancellation, and resource ownership. They also ask agents to look for an existing library capability before writing custom coordination code.
+
+I still need runtime checks and review. A successful typecheck answers a narrower question than whether a process releases its resources correctly when interrupted.
+
+## What I still decide
+
+I want agents to work autonomously on clear tasks. My instructions ask them to preserve unrelated changes, keep edits focused, and verify the behavior that motivated the work. Independent review is part of that process when a change warrants it.
+
+I still have to decide whether the task is worth doing and whether the result solves the problem. The reference material can help explain a choice. The compiler and tests can catch mistakes. The task record can show what happened. I need all of that evidence to judge the result.
+
+The setup is still changing. What I want to keep is a working habit: leave enough context that the next session can continue from an understood decision, with the unfinished work still visible.
