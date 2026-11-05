@@ -1,0 +1,32 @@
+[
+  {
+    "fakeGcExit": 0,
+    "hookExit": 0,
+    "stdout": "",
+    "stderr": "fixture-stderr\n",
+    "args": [
+      "--city",
+      "/Users/benjaminschachter/personal-site-city",
+      "handoff",
+      "--auto",
+      "--hook-format",
+      "codex",
+      "context cycle"
+    ]
+  },
+  {
+    "fakeGcExit": 7,
+    "hookExit": 7,
+    "stdout": "",
+    "stderr": "fixture-stderr\n",
+    "args": [
+      "--city",
+      "/Users/benjaminschachter/personal-site-city",
+      "handoff",
+      "--auto",
+      "--hook-format",
+      "codex",
+      "context cycle"
+    ]
+  }
+]

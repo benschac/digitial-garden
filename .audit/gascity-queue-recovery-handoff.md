@@ -1,0 +1,43 @@
+# Current user request and verified operational handoff
+
+The operator asks why the queue repeatedly needs pushing, asks to check Gas City documentation and repository instructions, reconcile genuinely stale tickets, and kick off the Mayor or appropriate existing orchestrator to carry the queue forward. This request includes dependency and project-skill work. Own progress within the standing authorized workflow rather than only reporting an empty ready queue.
+
+Verified at 2026-11-04 17:10 UTC:
+
+- Installed Gas City 1.5.1 matches the project's pinned source 4f698fe2a7eefae49e545c5e38189f1b63fb9b39; sources:check passed in the independent source audit. Native scale-from-zero is intentional. Do not add seats, another coordinator, duplicate scan, publisher, or watcher.
+- Existing Mayor session psc-wisp-hkn is active and owns psc-0e7. Native supervise-updated, supervise-closed and five-minute supervise-catch-up are enabled. Read complete direct bead results because status health/cache timeouts are a known separate diagnostic limitation.
+- Live ps-8p4 is already closed, gc.outcome=fail, with completion facts converged at16:53:21Z. Preserve that failure evidence; do not close skill source candidates merely to clear dashboard attention. Dashboard open/unclaimed can conceal actual blocked status and dependencies.
+- At the last complete read all 15 dependency targets, four existing remediation roots and 11 project-skill candidates were blocked; there were no running executors. The batch convoy remains open. Re-read before changing anything.
+- Current SUPERVISION.md already restores compatible preparation commits and normal guarded publication. Historical blanket no-commit notes are superseded. Real failed checks, explicit phase budgets, source qualification and reviewed integration boundaries remain applicable.
+- ps-2u4 has a reviewed static-ready diagnostic packet at .gc/dependency-remediation/mdx-validity-repair-20261104/frozen-manifest.json, sha256 5a7c859b8490b882c04a3a9d531680f1f7a33e2081c225442df4df07128313aa. It fixes the four diagnostic callback lint errors and lowers observer cadence. The prior one official invocation is consumed and the packet requires explicit additional-run authority. Do not infer that this general kickoff resets that cap. Keep the root and full evidence. A narrowly worded concrete operator decision may be necessary for that run, while independent work proceeds.
+
+Continue now:
+
+1. Acknowledge this request on psc-0e7 using a guarded update and record a current checkpoint naming exact owners and next executable actions for BOTH dependencies and skills.
+2. Advance existing AI ps-dmq, Video.js ps-0u3 and Oxlint ps-966 independent qualification/review prerequisites using their newest reports. Arrange the required exact-patch independent reviews and any scoped plan for demonstrated defects. Preserve consumed budgets and do not rerun a failed check unchanged. Route scoped implementation/review through configured native roles and discover/inspect current formulas first.
+3. Reconcile the eleven held skill candidates against their exact failed artifacts and current prompt/checker owners. Commit630a89d already documents claimed-step artifact derivation and receipt placement. Determine which failures it actually resolves, then arrange one reviewed same-candidate recovery where permitted. Preserve prior workflow/check attempts and evidence; no blanket reopen or duplicate candidates. Semantic compatibility holds, including domain-modeling CONTEXT/GLOSSARY behavior, need their own scoped review.
+4. Resolve truly stale routing/claims or workflow bookkeeping only from live ownership and artifact proof. Keep original source beads until checked remote acceptance or actual user deferral. Do not label failures complete.
+5. Dispatch independent ready prerequisites and record actual claimed IDs. If one subset requires a real operator decision, isolate that subset and explain the exact boundary; do not stop all other work. Routine scoped planning, implementation, reviews and normal guarded publication already covered by current standing authority do not need repeated permission.
+6. Continue through supported native waits/orders and durable checkpoints, preserving current singleton publication/integration ownership and verify.lock. A queued nudge is not completed coordination. Root will verify acknowledgement and actual dispatch from live records.
+
+No manual deployment, force push, credential changes, weakened checks, unrelated app edits or aggregate gate waiver is authorized.
+
+## New explicit operator approval received after this handoff
+
+The operator answered "Authorize one additional run" to this root conversation's concrete request: "The MDX diagnosis used its earlier explicit one-run allowance. A corrected, independently reviewed run is ready: `bun run verify` on retained commit `4f2d7f45`, with telemetry, one invocation, and a 20-minute limit. Do you authorize that additional run? This is required by the preserved operator cap in ps-2u4 and its reviewed authorization-contract.md; other queue work can continue meanwhile."
+
+Approval reference: direct operator reply to request_user_input_async call_6250d023d1954b34b888211e278ad59b, item0, in the root queue-recovery conversation on2026-11-04. This is an actual received operator answer, not a timeout or inferred approval.
+
+This authorizes exactly ONE additional official diagnostic invocation against frozen manifest5a7c859b8490b882c04a3a9d531680f1f7a33e2081c225442df4df07128313aa and its retained Next commit4f2d7f45d31a86e5cc9a33207f2ba195c8d8daca. It supersedes only the pending-additional-run authority condition, with prior invocation count1 preserved. Mayor must verify current bytes, assign the existing root, issue the exact manifest-bound continuation and deadline within20minutes, and observe the one-shot runner's actual outcome. No repeated invocation, fix acceptance, dependency qualification, push or publication follows from this diagnostic approval alone. Continue other eligible prerequisites independently.
+
+## Verified recovery outcome
+
+The Mayor consumed the recovered submission and acknowledged on psc-0e7. The approved additional diagnostic executed exactly once, reproduced the content timeout, and exited1; sampler exited0. The invocation is consumed and establishes no qualification. The same ps-2u4 root now owns a source audit. AI, Video.js, Oxlint and skill recovery have actual executor ownership through the existing pools.
+
+Version-matched source lookup found native startup staging was undoing managed-hook repairs. The final city-local overlay at personal-site-city/.gc/overlays/codex-current-hooks/per-provider/codex/.codex/hooks.json now runs after pack overlays. City-only agent patches cover all25 current resolved agents, including implicit Codex templates. Existing overlay ownership was empty; reserved hook groups were checked as managed before replacement. Other custom matchers remain preserved. Do not edit the imported cache or repeat generic doctor/reload cycles. Newly named roles must receive equivalent overlay coverage.
+
+The Fix Root Causes principle changed the repair from repeated nudges and doctor runs to correcting final startup ownership. Prove It Works required actual transcript consumption, a claimed and executed diagnostic, native merge replay, configuration validation and checks after a later natural worker start. The gascity-source-lookup catalog entry kept the installed1.5.1 implementation authoritative; changing the core pin would not fix the identical generic overlay.
+
+Native Go merge replay passed five iterations and preserved a custom hook fixture. Current config and hook doctor checks pass. A later naturally started worker retained identical final managed-hook groups and no subsequent configuration drift was observed. Its terminal still showed an interrupted startup prompt, so transport-to-agent consumption for every future process remains a separate limitation; use supported same-session semantic submission for such a stop, preserving claims and budgets. Do not infer execution from startup or delivery receipts. The Mayor owns this continuing checkpoint.
+
+Affected repository verification passed both selected root checks. No tracked repository source, dependency, imported cache, or installed binary changed. Independent gpt-6.1-terra review found the initially omitted implicit templates; that finding was corrected and25/25 configuration validation passed. Remaining attention is the real MDX timeout, future role coverage, and independently observing future startup consumption.

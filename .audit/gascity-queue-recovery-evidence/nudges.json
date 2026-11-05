@@ -1,0 +1,31 @@
+{
+  "agent": "mayor",
+  "city_path": "/Users/benjaminschachter/personal-site-city",
+  "command": "nudge status",
+  "counts": { "pending": 1, "in_flight": 0, "dead": 0 },
+  "dead": [],
+  "dispatch_skips": { "not-delivered": 7810 },
+  "in_flight": [],
+  "ok": true,
+  "pending": [
+    {
+      "id": "nudge-0c44d4513a0e",
+      "bead_id": "psc-wisp-y9mtlo",
+      "agent": "mayor",
+      "session_id": "psc-wisp-hkn",
+      "continuation_epoch": "11",
+      "source": "session",
+      "message": "Reconcile the personal-site dependency queue using /Users/benjaminschachter/personal-site/gascity/dependency-updates/SUPERVISION.md. Read current beads and ownership first. Continue scoped remediation until verified landed or explicitly deferred by the user.",
+      "created_at": "2026-11-04T16:24:04.379865Z",
+      "deliver_after": "2026-11-04T16:24:04.379865Z",
+      "expires_at": "2026-11-05T16:24:04.379865Z",
+      "last_attempt_at": "0001-01-01T00:00:00Z",
+      "claimed_at": "0001-01-01T00:00:00Z",
+      "lease_until": "0001-01-01T00:00:00Z",
+      "dead_at": "0001-01-01T00:00:00Z"
+    }
+  ],
+  "schema_version": "1",
+  "session": "mayor",
+  "session_id": "psc-wisp-hkn"
+}

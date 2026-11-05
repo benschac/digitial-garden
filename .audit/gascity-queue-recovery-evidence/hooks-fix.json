@@ -1,0 +1,17 @@
+{
+  "blocking_failed": 0,
+  "failed": 0,
+  "fixed": 1,
+  "ok": true,
+  "passed": 1,
+  "results": [
+    {
+      "name": "codex-hooks-drift",
+      "status": "ok",
+      "severity": "blocking",
+      "message": "Codex hooks are current or user-owned",
+      "fixed": true
+    }
+  ],
+  "warned": 0
+}

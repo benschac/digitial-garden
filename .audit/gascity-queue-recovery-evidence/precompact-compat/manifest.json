@@ -1,0 +1,30 @@
+{
+  "codexVersion": "0.166.0",
+  "gasCityVersion": "1.5.1",
+  "sourceCommit": "4f698fe2a7eefae49e545c5e38189f1b63fb9b39",
+  "files": {
+    "overlay": {
+      "path": "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks/per-provider/codex/.codex/hooks.json",
+      "beforeSha256": "6acaa205092ac92eb77d024e588257bf75f766013d0b3893ac31ea8b7c2b15aa",
+      "afterSha256": "3d97667120caf7201301ee784316e950f0a26e20dc7f23e12316023caac01df4",
+      "commandBefore": "export PATH=\"$PATH:$HOME/go/bin:$HOME/.local/bin\" && \"${GC_BIN:-gc}\" --city '/Users/benjaminschachter/personal-site-city' handoff --auto --hook-format codex \"context cycle\"",
+      "commandAfter": "export PATH=\"$PATH:$HOME/go/bin:$HOME/.local/bin\" && \"${GC_BIN:-gc}\" --city '/Users/benjaminschachter/personal-site-city' handoff --auto --hook-format codex \"context cycle\" >/dev/null"
+    },
+    "city": {
+      "path": "/Users/benjaminschachter/personal-site-city/.codex/hooks.json",
+      "beforeSha256": "6acaa205092ac92eb77d024e588257bf75f766013d0b3893ac31ea8b7c2b15aa",
+      "afterSha256": "3d97667120caf7201301ee784316e950f0a26e20dc7f23e12316023caac01df4",
+      "commandBefore": "export PATH=\"$PATH:$HOME/go/bin:$HOME/.local/bin\" && \"${GC_BIN:-gc}\" --city '/Users/benjaminschachter/personal-site-city' handoff --auto --hook-format codex \"context cycle\"",
+      "commandAfter": "export PATH=\"$PATH:$HOME/go/bin:$HOME/.local/bin\" && \"${GC_BIN:-gc}\" --city '/Users/benjaminschachter/personal-site-city' handoff --auto --hook-format codex \"context cycle\" >/dev/null"
+    },
+    "rig": {
+      "path": "/Users/benjaminschachter/personal-site/.codex/hooks.json",
+      "beforeSha256": "4f8c0fc03926c418566afc492e9ff92011b76031786bb2b578f29d6a136d605a",
+      "afterSha256": "b24a6f9ea3d1f0dedc9fe7444fa3d2a3808f0c1ae72fdfd14e27345787c813f8",
+      "commandBefore": "export PATH=\"$PATH:$HOME/go/bin:$HOME/.local/bin\" && \"${GC_BIN:-gc}\" --city '/Users/benjaminschachter/personal-site-city' handoff --auto --hook-format codex \"context cycle\"",
+      "commandAfter": "export PATH=\"$PATH:$HOME/go/bin:$HOME/.local/bin\" && \"${GC_BIN:-gc}\" --city '/Users/benjaminschachter/personal-site-city' handoff --auto --hook-format codex \"context cycle\" >/dev/null"
+    }
+  },
+  "currentProcessActivationClaimed": false,
+  "syntheticFixture": "/private/tmp/precompact-compat-nojdksc3"
+}

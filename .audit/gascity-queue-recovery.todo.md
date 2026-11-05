@@ -1,0 +1,9 @@
+- [x] Route through the how skill and inspect version-matched source.
+- [x] Throughput checkpoint: n/a for read-only diagnosis; one existing Mayor owns continuation, with independent remediation work using existing configured pools.
+- [x] Read live queue, sessions, orders, exact holds and current authorization.
+- [x] Distinguish stale dashboard attention from runnable work and actual failed checks.
+- [x] Give the existing Mayor a durable, concrete continuation for dependencies and skills.
+- [x] Observe actual consumption and a new coordination checkpoint or dispatch.
+- [x] Verify repository state and native health without changing runtime limits.
+- [x] Review and report remaining true blockers.
+- skip: no PR, source implementation or architecture migration is needed for the current operational handoff.

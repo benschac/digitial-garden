@@ -1,0 +1,4 @@
+/Users/benjaminschachter/personal-site/.codex/hooks.json
+/Users/benjaminschachter/personal-site-city/.codex/hooks.json
+/Users/benjaminschachter/personal-site-city/.gc/agents/bd.dog-1/.codex/hooks.json
+/Users/benjaminschachter/personal-site-city/.gc/agents/bd.dog-2/.codex/hooks.json

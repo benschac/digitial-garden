@@ -1,0 +1,29 @@
+{
+  "filters": {},
+  "ok": true,
+  "schema_version": "1",
+  "sessions": [
+    {
+      "id": "psc-wisp-hkn",
+      "name": "mayor",
+      "template": "mayor",
+      "provider": "codex",
+      "state": "active",
+      "title": "mayor",
+      "alias": "mayor",
+      "agent_name": "mayor",
+      "command": "codex --dangerously-bypass-approvals-and-sandbox --model gpt-6.1-sol -c model_reasoning_effort=high",
+      "work_dir": "/Users/benjaminschachter/personal-site-city",
+      "session_name": "mayor",
+      "session_key": "01a1a561-f639-7b70-80e6-336753331d04",
+      "resume_flag": "resume",
+      "resume_style": "subcommand",
+      "created_at": "2026-11-03T14:23:45Z",
+      "last_active": "2026-11-04T12:12:39-05:00",
+      "last_nudge_delivered_at": "2026-11-04T16:23:38Z",
+      "attached": false,
+      "closed": false
+    }
+  ],
+  "summary": { "total": 1, "active": 1, "suspended": 0, "closed": 0 }
+}

@@ -1,0 +1,15 @@
+{
+  "fixture": "/private/tmp/precompact-merge-f7p7_yql",
+  "argv": [
+    "go",
+    "test",
+    "-count=1",
+    "-run",
+    "TestCityHookOverlayStable",
+    "-v"
+  ],
+  "exitCode": 0,
+  "startupMergeIterations": 5,
+  "usesCopiedVersionMatchedNativeMerge": true,
+  "realHandoffCalls": 0
+}

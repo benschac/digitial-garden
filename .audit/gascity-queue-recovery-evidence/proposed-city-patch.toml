@@ -1,0 +1,95 @@
+
+[[patches.agent]]
+name = "control-dispatcher"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "design-author"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "design-implementation-reviewer"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "design-test-risk-reviewer"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "dog"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "gap-analyst"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "implementation-reviewer"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "implementation-worker"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "issue-triager"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "mayor"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "publisher"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "requirements-planner"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "review-synthesizer"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "reviewer"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "run-operator"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "scanner"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "task-decomposer"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "worker"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
+
+[[patches.agent]]
+name = "codex"
+rig = "*"
+overlay_dir = "/Users/benjaminschachter/personal-site-city/.gc/overlays/codex-current-hooks"
