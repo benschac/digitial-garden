@@ -1,31 +1,18 @@
 [
   {
-    "argv": [
-      "git",
-      "rev-parse",
-      "HEAD"
-    ],
+    "argv": ["git", "rev-parse", "HEAD"],
     "exitCode": 0,
     "stdout": "9d35043d259cac0e3c00f325ba2f223eddbf6c5a\n",
     "stderr": ""
   },
   {
-    "argv": [
-      "git",
-      "diff",
-      "--cached",
-      "--name-only"
-    ],
+    "argv": ["git", "diff", "--cached", "--name-only"],
     "exitCode": 0,
     "stdout": "",
     "stderr": ""
   },
   {
-    "argv": [
-      "git",
-      "diff",
-      "--name-only"
-    ],
+    "argv": ["git", "diff", "--name-only"],
     "exitCode": 0,
     "stdout": "gascity/skill-updates/README.md\ngascity/skill-updates/agents/worker/prompt.template.md\n",
     "stderr": ""
@@ -44,12 +31,7 @@
     "stderr": ""
   },
   {
-    "argv": [
-      "git",
-      "rev-parse",
-      "--git-path",
-      "hooks"
-    ],
+    "argv": ["git", "rev-parse", "--git-path", "hooks"],
     "exitCode": 0,
     "stdout": ".git/hooks\n",
     "stderr": ""
@@ -67,21 +49,13 @@
     "stderr": "From https://github.com/benschac/digitial-garden\n * branch            7bc372e20d687a35b3bbf016d71626e6fc1227ff -> FETCH_HEAD\n"
   },
   {
-    "argv": [
-      "git",
-      "rev-parse",
-      "FETCH_HEAD"
-    ],
+    "argv": ["git", "rev-parse", "FETCH_HEAD"],
     "exitCode": 0,
     "stdout": "7bc372e20d687a35b3bbf016d71626e6fc1227ff\n",
     "stderr": ""
   },
   {
-    "argv": [
-      "git",
-      "rev-parse",
-      "7bc372e20d687a35b3bbf016d71626e6fc1227ff^"
-    ],
+    "argv": ["git", "rev-parse", "7bc372e20d687a35b3bbf016d71626e6fc1227ff^"],
     "exitCode": 0,
     "stdout": "9d35043d259cac0e3c00f325ba2f223eddbf6c5a\n",
     "stderr": ""
@@ -200,22 +174,13 @@
     "stderr": ""
   },
   {
-    "argv": [
-      "git",
-      "rev-parse",
-      "HEAD"
-    ],
+    "argv": ["git", "rev-parse", "HEAD"],
     "exitCode": 0,
     "stdout": "9d35043d259cac0e3c00f325ba2f223eddbf6c5a\n",
     "stderr": ""
   },
   {
-    "argv": [
-      "git",
-      "diff",
-      "--cached",
-      "--name-only"
-    ],
+    "argv": ["git", "diff", "--cached", "--name-only"],
     "exitCode": 0,
     "stdout": "",
     "stderr": ""
@@ -246,32 +211,19 @@
     "stderr": ""
   },
   {
-    "argv": [
-      "git",
-      "rev-parse",
-      "HEAD"
-    ],
+    "argv": ["git", "rev-parse", "HEAD"],
     "exitCode": 0,
     "stdout": "7bc372e20d687a35b3bbf016d71626e6fc1227ff\n",
     "stderr": ""
   },
   {
-    "argv": [
-      "git",
-      "diff",
-      "--name-only"
-    ],
+    "argv": ["git", "diff", "--name-only"],
     "exitCode": 0,
     "stdout": "",
     "stderr": ""
   },
   {
-    "argv": [
-      "git",
-      "diff",
-      "--cached",
-      "--name-only"
-    ],
+    "argv": ["git", "diff", "--cached", "--name-only"],
     "exitCode": 0,
     "stdout": "",
     "stderr": ""
