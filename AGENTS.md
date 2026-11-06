@@ -123,3 +123,17 @@ The [Rat Stack adoption record](agent-patterns/ratstack-adoption.md) records sou
 When a change alters a cataloged owner, boundary, or dependency, inspect its affected entries and update their evidence. For dependency changes, `bun run patterns affected <source-name>` lists the entries requiring review even while their recorded commits are stale. Re-read the changed guidance, implementation, and tests before updating a recorded commit. Run `bun run patterns:check-sources` for library-dependent changes after fetching missing mirrors. `verify` validates catalog structure, local links, and source identities; it does not prove that an agent read the evidence or that every listed behavior passed. Keep review-only gaps explicit. Add positive and negative fixtures before claiming a new rule enforces a pattern.
 
 Before implementing or reviewing Effect, XState, or their framework integrations, follow the [source lookup workflow](agent-patterns/README.md), including when evaluating custom HTTP, cache, retry, subscription, or resource adapters. Implementation agents must provide its source/decision/test evidence; reviewers must independently read the matching upstream guidance, implementation and tests. Coordinators must include these requirements in delegated tasks and enforce the workflow's completion gate before submitting or updating a PR. Use the installed Effect v4 package's full public surface and matching source checkout; keep upstream API recipes out of local guides.
+
+## Agent skills
+
+### Issue tracker
+
+Engineering-skill issues use Gas City Beads in the personal-site rig. Read [the tracker contract](docs/agents/issue-tracker.md) before ticket operations. Asset-workflow tickets are publication-only and held; setup does not authorize dispatch.
+
+### Triage labels
+
+Read [the triage vocabulary](docs/agents/triage-labels.md). Readiness labels do not override an explicit hold.
+
+### Domain docs
+
+Read [the domain-document guidance](docs/agents/domain.md). Preserve the existing CONTEXT.md vocabulary and use the asset spec's domain terms for this feature.
