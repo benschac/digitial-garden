@@ -101,11 +101,11 @@
       "source": "higgsfield-ai/skills",
       "sourceType": "github",
       "skillPath": "higgsfield-generate/SKILL.md",
-      "computedHash": "4929522e1f73cde5f02ea79aa8dc0cc38e247259707b744a82134b8e826f8b57",
+      "computedHash": "a969c42446aba1e9d89f717f2144f6fa465567af7b0e388f2e2367eaea417b18",
       "customization": {
-        "upstreamRevision": "4d0757471a704dac8729ea3c2ef0f3f330e0d9b6",
-        "upstreamHash": "ed27650a0b13b5cad670dafbc1fb5e5daa4855ddd41d5c497b6b641ca51e0422",
-        "installedHash": "4929522e1f73cde5f02ea79aa8dc0cc38e247259707b744a82134b8e826f8b57",
+        "upstreamRevision": "27000402070db19d958789d05b3b52b6f4718d7c",
+        "upstreamHash": "06d828993a78cb7d4662db0d30f2be18280083fccaa542d08740110c7cc64bdc",
+        "installedHash": "a969c42446aba1e9d89f717f2144f6fa465567af7b0e388f2e2367eaea417b18",
         "reason": "Correct Seedance 2.0 reference-audio and output-audio guidance in two localized media-inputs.md regions using the pinned official CLI documentation.",
         "references": [
           {
