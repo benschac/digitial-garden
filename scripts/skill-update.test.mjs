@@ -3,6 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { once } from "node:events";
 import {
+  chmodSync,
   mkdtempSync,
   renameSync,
   mkdirSync,
@@ -10,7 +11,9 @@ import {
   rmSync,
   symlinkSync,
   readFileSync,
+  realpathSync,
   existsSync,
+  linkSync,
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -37,6 +40,9 @@ import {
   recordStage,
   qualifyResult,
   reuseQualification,
+  collectScanEvidence,
+  validateScanEvidence,
+  validateScanReport,
 } from "./skill-update.mjs";
 
 const nativeFixture = (t, stage = "reviewed") => {
@@ -2387,4 +2393,842 @@ test("ordinary updates preserve unrelated markers and lock fields", (t) => {
       ),
     /Unrelated lock mutation/u
   );
+});
+
+const scanEvidenceFixture = (t) => {
+  const directory = realpathSync(
+    mkdtempSync(path.join(os.tmpdir(), "skill-scan-evidence-"))
+  );
+
+  t.after(() => rmSync(directory, { force: true, recursive: true }));
+  const checkout = path.join(directory, "scan");
+  const repository = path.join(directory, "upstream", "repository");
+  const materializedDirectory = path.join(directory, "upstream", "demo");
+  const sourceDirectory = path.join(repository, "skills", "demo");
+  const installedDirectory = path.join(checkout, ".agents", "skills", "demo");
+  const localDirectory = path.join(checkout, ".agents", "skills", "editorial");
+
+  const sourceFiles = {
+    "-notes.md": "punctuation member\n",
+    "A-upper.md": "uppercase member\n",
+    "SKILL.md": "distinct pinned upstream skill\n",
+    "_notes.md": "underscore member\n",
+    "a-lower.md": "lowercase member\n",
+  };
+
+  for (const location of [
+    checkout,
+    repository,
+    sourceDirectory,
+    materializedDirectory,
+    installedDirectory,
+    localDirectory,
+  ]) {
+    mkdirSync(location, { recursive: true });
+  }
+
+  for (const location of [checkout, repository]) {
+    git(location, "init", "-q");
+  }
+
+  git(
+    repository,
+    "remote",
+    "add",
+    "origin",
+    "https://github.com/owner/repo.git"
+  );
+
+  for (const [name, bytes] of Object.entries(sourceFiles)) {
+    writeFileSync(path.join(sourceDirectory, name), bytes, { mode: 0o644 });
+    writeFileSync(path.join(materializedDirectory, name), bytes, {
+      mode: 0o644,
+    });
+    writeFileSync(path.join(installedDirectory, name), bytes, { mode: 0o644 });
+  }
+
+  writeFileSync(path.join(installedDirectory, "SKILL.md"), "installed skill\n");
+  writeFileSync(path.join(localDirectory, "SKILL.md"), "local-only skill\n", {
+    mode: 0o644,
+  });
+  writeFileSync(path.join(localDirectory, "notes.md"), "local-only notes\n", {
+    mode: 0o644,
+  });
+
+  const targetRevision = commit(repository, "pinned source");
+  save(path.join(checkout, "skills-lock.json"), {
+    skills: {
+      demo: {
+        computedHash: hashDirectory(installedDirectory),
+        skillPath: "skills/demo/SKILL.md",
+        source: "owner/repo",
+        sourceType: "github",
+      },
+    },
+    version: 1,
+  });
+  const scanBase = commit(checkout, "installed scan base");
+
+  const sources = [
+    {
+      materializedDirectory,
+      repository,
+      revision: targetRevision,
+      skill: "demo",
+      skillPath: "skills/demo/SKILL.md",
+    },
+  ];
+
+  const evidence = () =>
+    collectScanEvidence(checkout, scanBase, sources, directory);
+
+  const context = {
+    directory,
+    executor: "psc-scanner",
+    root: { id: "ps-root" },
+    subject: {
+      assignee: "personal-site/skills.scanner",
+      id: "ps-scan",
+      metadata: {
+        "gc.root_bead_id": "ps-root",
+        "gc.session_id": "psc-scanner",
+      },
+    },
+  };
+
+  const retainedPath = path.join(directory, "scan-evidence.json");
+
+  const report = (value) => {
+    save(retainedPath, value);
+
+    return {
+      retainedManifest: {
+        path: retainedPath,
+        sha256: createHash("sha256")
+          .update(readFileSync(retainedPath))
+          .digest("hex"),
+      },
+      scan: {
+        assignee: context.subject.assignee,
+        checkout,
+        registeredCheckout: checkout,
+        registeredRevision: scanBase,
+        root: context.root.id,
+        scanBase,
+        session: context.executor,
+        step: context.subject.id,
+        validatedRemoteRevision: scanBase,
+      },
+      schema: "gc.skill-scan-report.v2",
+      state: "complete",
+    };
+  };
+
+  return {
+    checkout,
+    context,
+    directory,
+    evidence,
+    materializedDirectory,
+    report,
+    repository,
+    retainedPath,
+    scanBase,
+    sourceDirectory,
+    sourceFiles,
+    sources,
+    targetRevision,
+  };
+};
+
+test("scan evidence: distinct pinned source and every local-only file validate", (t) => {
+  const f = scanEvidenceFixture(t);
+  const evidence = f.evidence();
+  const source = evidence.sources.find((entry) => entry.skill === "demo");
+  const installed = evidence.installed.find((entry) => entry.skill === "demo");
+  const local = evidence.installed.find((entry) => entry.skill === "editorial");
+
+  assert.equal(evidence.schema, "skill-scan-evidence.v1");
+  assert.equal(evidence.sources.length, 1);
+  assert.equal(evidence.installed.length, 2);
+  assert.notEqual(source.hash, installed.hash);
+  assert.equal(
+    source.members.find((member) => member.path === "SKILL.md").gitBlob,
+    git(f.repository, "rev-parse", `${f.targetRevision}:skills/demo/SKILL.md`)
+  );
+  assert.equal(local.localOnly, true);
+  assert.deepEqual(local.members.map((member) => member.path).toSorted(), [
+    "SKILL.md",
+    "notes.md",
+  ]);
+  assert.doesNotThrow(() => validateScanEvidence(evidence, f.directory));
+  assert.doesNotThrow(() =>
+    validateScanReport(f.report(evidence), f.context, f.scanBase)
+  );
+});
+
+test("scan evidence: copied installed members cannot represent differing pinned source", (t) => {
+  const f = scanEvidenceFixture(t);
+  const evidence = f.evidence();
+  const installed = evidence.installed.find((entry) => entry.skill === "demo");
+  const source = evidence.sources.find((entry) => entry.skill === "demo");
+
+  assert.notDeepEqual(source.members, installed.members);
+  source.members = structuredClone(installed.members);
+  source.hash = installed.hash;
+
+  assert.throws(() => validateScanEvidence(evidence, f.directory));
+});
+
+test("scan evidence: bytewise caller sorting cannot replace canonical localeCompare hash", (t) => {
+  const f = scanEvidenceFixture(t);
+  const evidence = f.evidence();
+  const hash = createHash("sha256");
+
+  for (const name of Object.keys(f.sourceFiles).toSorted((first, second) =>
+    Buffer.compare(Buffer.from(first), Buffer.from(second))
+  )) {
+    hash.update(name);
+    hash.update(readFileSync(path.join(f.materializedDirectory, name)));
+  }
+
+  const wrongHash = hash.digest("hex");
+  const source = evidence.sources.find((entry) => entry.skill === "demo");
+  assert.equal(source.hash, hashDirectory(f.materializedDirectory));
+  assert.notEqual(wrongHash, source.hash);
+  source.hash = wrongHash;
+
+  assert.throws(() => validateScanEvidence(evidence, f.directory));
+});
+
+test("scan evidence: retained draft digest and canonical selfbinding are rejected", (t) => {
+  const f = scanEvidenceFixture(t);
+  const evidence = f.evidence();
+  const report = f.report(evidence);
+
+  const draftDigest = createHash("sha256")
+    .update("draft bytes\n")
+    .digest("hex");
+
+  assert.notEqual(report.retainedManifest.sha256, draftDigest);
+  assert.throws(() =>
+    validateScanReport(
+      {
+        ...report,
+        retainedManifest: { ...report.retainedManifest, sha256: draftDigest },
+      },
+      f.context,
+      f.scanBase
+    )
+  );
+
+  const canonical = path.join(f.directory, "scan-report.json");
+
+  const selfBound = {
+    ...report,
+    retainedManifest: { path: canonical, sha256: draftDigest },
+  };
+
+  save(canonical, selfBound);
+
+  assert.throws(() => validateScanReport(selfBound, f.context, f.scanBase));
+});
+
+test("scan evidence: omission of local-only tracked files or entire trees is rejected", (t) => {
+  const f = scanEvidenceFixture(t);
+  const evidence = f.evidence();
+  const local = evidence.installed.find((entry) => entry.skill === "editorial");
+
+  assert.equal(local.members.length, 2);
+  local.members = local.members.filter((member) => member.path !== "notes.md");
+  assert.throws(() => validateScanEvidence(evidence, f.directory));
+
+  const omitted = f.evidence();
+  omitted.installed = omitted.installed.filter(
+    (entry) => entry.skill !== "editorial"
+  );
+  assert.throws(() => validateScanEvidence(omitted, f.directory));
+});
+
+test("scan evidence: executable source exports and escaped materialization refuse", (t) => {
+  const f = scanEvidenceFixture(t);
+  const file = path.join(f.materializedDirectory, "SKILL.md");
+
+  assert.doesNotThrow(() => f.evidence());
+  chmodSync(file, 0o755);
+  assert.throws(() => f.evidence());
+  chmodSync(file, 0o644);
+
+  const outside = realpathSync(
+    mkdtempSync(path.join(os.tmpdir(), "skill-scan-escape-"))
+  );
+
+  t.after(() => rmSync(outside, { force: true, recursive: true }));
+
+  for (const [name, bytes] of Object.entries(f.sourceFiles)) {
+    writeFileSync(path.join(outside, name), bytes, { mode: 0o644 });
+  }
+
+  assert.throws(() =>
+    collectScanEvidence(
+      f.checkout,
+      f.scanBase,
+      [{ ...f.sources[0], materializedDirectory: outside }],
+      f.directory
+    )
+  );
+});
+
+test("scan evidence: postclosure native check archives without worker identity or item receipts", (t) => {
+  const city = realpathSync(
+    mkdtempSync(path.join(os.tmpdir(), "skill-scan-archive-"))
+  );
+
+  t.after(() => rmSync(city, { force: true, recursive: true }));
+  const directory = path.join(city, ".gc", "skill-updates", "ps-scan");
+  const molecule = path.join(city, ".gc", "molecules", "ps-root");
+  const artifacts = path.join(molecule, "artifacts", "ps-scan");
+  mkdirSync(directory, { recursive: true });
+  mkdirSync(artifacts, { recursive: true });
+  save(path.join(directory, "scan-report.json"), { report: "retained final" });
+  save(path.join(directory, "scan-evidence.json"), {
+    evidence: "retained members",
+  });
+
+  const actor = "personal-site/skills.scanner";
+
+  const rows = {
+    "ps-root": {
+      id: "ps-root",
+      metadata: { "gc.formula_name": "scan-skills", "gc.kind": "workflow" },
+      status: "in_progress",
+    },
+    "ps-scan": {
+      assignee: actor,
+      closed_at: "2026-11-08T18:00:10Z",
+      id: "ps-scan",
+      metadata: {
+        "gc.claimed_at": "2026-11-08T18:00:00Z",
+        "gc.iteration": "1",
+        "gc.outcome": "pass",
+        "gc.ralph_step_id": "scan",
+        "gc.root_bead_id": "ps-root",
+        "gc.routed_to": actor,
+        "gc.run_target": "skills.scanner",
+        "gc.session_id": "psc-session",
+        "gc.session_name": "gc__skills-session",
+      },
+      started_at: "2026-11-08T18:00:00Z",
+      status: "closed",
+    },
+    "psc-session": {
+      id: "psc-session",
+      issue_type: "session",
+      metadata: {
+        agent_name: actor,
+        alias: actor,
+        canonical_instance_name: actor,
+        current_claim_bead_id: "ps-different",
+        session_name: "gc__skills-session",
+        state: "active",
+        template: actor,
+      },
+      status: "open",
+    },
+  };
+
+  const env = {
+    GC_ARTIFACT_DIR: artifacts,
+    GC_BEAD_ID: "ps-scan",
+    GC_CITY: city,
+    GC_ITERATION: "1",
+    GC_MOLECULE_DIR: molecule,
+  };
+
+  const read = (id) => rows[id];
+  assert.equal(env.GC_SESSION_ID, undefined);
+  assert.equal(env.GC_INSTANCE_TOKEN, undefined);
+  assert.equal(env.BEADS_ACTOR, undefined);
+
+  rows["ps-root"].metadata["gc.formula_name"] = "update-skill";
+  assert.throws(() => beginCheckArchive("scanned", env, read));
+  rows["ps-root"].metadata["gc.formula_name"] = "scan-skills";
+  rows["psc-session"].metadata.agent_name = "personal-site/skills.worker";
+  assert.throws(() => beginCheckArchive("scanned", env, read));
+  rows["psc-session"].metadata.agent_name = actor;
+  rows["ps-scan"].metadata["gc.run_target"] = "skills.worker";
+  assert.throws(() => beginCheckArchive("scanned", env, read));
+  rows["ps-scan"].metadata["gc.run_target"] = "skills.scanner";
+
+  const archive = beginCheckArchive("scanned", env, read);
+  writeFileSync(
+    path.join(archive, "stdout.log"),
+    "scan gate retained output\n"
+  );
+  writeFileSync(path.join(archive, "stderr.log"), "");
+  save(path.join(archive, "exit.json"), { exitCode: 0 });
+  const manifest = finishCheckArchive("scanned", 0, env, read);
+
+  assert.equal(manifest.stage, "scanned");
+  assert.equal(manifest.subject, "ps-scan");
+  assert.equal(manifest.root, "ps-root");
+  assert.equal(manifest.executorSessionId, "psc-session");
+  assert.equal(manifest.exitCode, 0);
+  assert.equal(manifest.complete, true);
+  assert.equal(existsSync(path.join(archive, "candidate.json")), false);
+  assert.equal(existsSync(path.join(archive, "convoy.json")), false);
+  assert.ok(manifest.hashes["before/receipts/scan-report.json"]);
+  assert.ok(manifest.hashes["after/receipts/scan-evidence.json"]);
+  assert.equal(
+    readFileSync(path.join(archive, "sealed", "stdout.log"), "utf-8"),
+    "scan gate retained output\n"
+  );
+  rmSync(molecule, { force: true, recursive: true });
+  assert.equal(
+    readFileSync(
+      path.join(archive, "after", "receipts", "scan-report.json"),
+      "utf-8"
+    ),
+    readFileSync(path.join(directory, "scan-report.json"), "utf-8")
+  );
+});
+
+test("scan evidence R2: invalid schema, native identity and external checkout cause zero Git calls", (t) => {
+  const f = scanEvidenceFixture(t);
+  const report = f.report(f.evidence());
+  const bin = path.join(f.directory, "git-spy-bin");
+  const log = path.join(f.directory, "git-spy.log");
+  const input = path.join(f.directory, "git-spy-input.json");
+  mkdirSync(bin);
+  writeFileSync(log, "");
+  writeFileSync(
+    path.join(bin, "git"),
+    '#!/bin/sh\nprintf "%s\\n" "$@" >> "$SCAN_GIT_LOG"\nexit 1\n',
+    { mode: 0o700 }
+  );
+  save(input, { context: f.context, freshBase: f.scanBase, report });
+  const helper = new URL("skill-update.mjs", import.meta.url).href;
+
+  const program = `
+    import assert from "node:assert/strict";
+    import { readFileSync } from "node:fs";
+    import { spawnSync } from "node:child_process";
+    import { validateScanReport } from ${JSON.stringify(helper)};
+    const { report, context, freshBase } = JSON.parse(readFileSync(process.env.SCAN_SPY_INPUT, "utf-8"));
+    const freshReader = (checkout) => {
+      spawnSync("git", ["fresh-reader", checkout], { env: process.env });
+      return freshBase;
+    };
+    const invalid = [
+      { ...report, schema: "foreign-report" },
+      { ...report, scan: { ...report.scan, step: "ps-foreign" } },
+      { ...report, scan: { ...report.scan, checkout: ${JSON.stringify(path.dirname(f.directory))} } }
+    ];
+    for (const value of invalid) {
+      assert.throws(() => validateScanReport(value, context, freshReader));
+    }
+  `;
+
+  const child = spawnSync(
+    process.execPath,
+    ["--input-type=module", "-e", program],
+    {
+      cwd: f.directory,
+      encoding: "utf-8",
+      env: {
+        ...process.env,
+        PATH: `${bin}:${process.env.PATH}`,
+        SCAN_GIT_LOG: log,
+        SCAN_SPY_INPUT: input,
+      },
+      timeout: 15_000,
+    }
+  );
+
+  assert.equal(child.status, 0, child.stderr);
+  assert.equal(readFileSync(log, "utf-8"), "");
+});
+
+test("scan evidence R2: raw dot segments and installed materialization aliases refuse", (t) => {
+  const f = scanEvidenceFixture(t);
+  assert.doesNotThrow(() => f.evidence());
+
+  assert.throws(() =>
+    collectScanEvidence(
+      `${f.checkout}/../scan`,
+      f.scanBase,
+      f.sources,
+      f.directory
+    )
+  );
+  assert.throws(() =>
+    collectScanEvidence(
+      f.checkout,
+      f.scanBase,
+      [{ ...f.sources[0], repository: `${f.repository}/../repository` }],
+      f.directory
+    )
+  );
+  assert.throws(() =>
+    collectScanEvidence(
+      f.checkout,
+      f.scanBase,
+      [
+        {
+          ...f.sources[0],
+          materializedDirectory: `${f.materializedDirectory}/../demo`,
+        },
+      ],
+      f.directory
+    )
+  );
+
+  const installed = path.join(f.checkout, ".agents", "skills", "demo");
+  writeFileSync(
+    path.join(f.sourceDirectory, "SKILL.md"),
+    readFileSync(path.join(installed, "SKILL.md"))
+  );
+  const matchingRevision = commit(f.repository, "matching installed bytes");
+  assert.equal(hashDirectory(f.sourceDirectory), hashDirectory(installed));
+
+  assert.throws(() =>
+    collectScanEvidence(
+      f.checkout,
+      f.scanBase,
+      [
+        {
+          ...f.sources[0],
+          materializedDirectory: `${f.directory}/upstream/../scan/.agents/skills/demo`,
+          revision: matchingRevision,
+        },
+      ],
+      f.directory
+    )
+  );
+});
+
+test("scan evidence R2: symlink ancestors of installed skills reject matching bytes", (t) => {
+  for (const ancestor of [".agents", ".agents/skills"]) {
+    const f = scanEvidenceFixture(t);
+    const baseline = f.evidence();
+    const installed = path.join(f.checkout, ".agents", "skills", "demo");
+    const before = hashDirectory(installed);
+    const original = path.join(f.checkout, ancestor);
+    const moved = path.join(f.directory, "moved-installed-ancestor");
+    renameSync(original, moved);
+    symlinkSync(moved, original);
+
+    assert.equal(hashDirectory(installed), before);
+    assert.equal(
+      baseline.installed.find((entry) => entry.skill === "demo").hash,
+      before
+    );
+    assert.throws(() => f.evidence());
+    assert.throws(() => validateScanEvidence(baseline, f.directory));
+  }
+});
+
+test("scan evidence R2: final remote revision is explicit and fresh scoped readback remains separate", (t) => {
+  const f = scanEvidenceFixture(t);
+  const report = f.report(f.evidence());
+  assert.equal(report.scan.validatedRemoteRevision, f.scanBase);
+  const canonical = path.join(f.directory, "scan-report.json");
+  save(canonical, report);
+  const canonicalBytes = readFileSync(canonical);
+
+  writeFileSync(
+    path.join(f.checkout, "unrelated.md"),
+    "unrelated remote change\n"
+  );
+  const freshUnrelated = commit(f.checkout, "unrelated successor");
+  git(f.checkout, "checkout", "--detach", f.scanBase);
+  let reads = 0;
+
+  const actual = validateScanReport(report, f.context, (checkout) => {
+    reads += 1;
+    assert.equal(checkout, f.checkout);
+
+    return freshUnrelated;
+  });
+
+  assert.equal(reads, 1);
+  assert.equal(actual.validatedRemoteRevision, freshUnrelated);
+  assert.equal(actual.report.scan.validatedRemoteRevision, f.scanBase);
+  assert.deepEqual(readFileSync(canonical), canonicalBytes);
+
+  for (const bound of [false, true]) {
+    const draft = structuredClone(report);
+
+    if (!bound) {
+      delete draft.scan.validatedRemoteRevision;
+      draft.details = { validatedRemoteRevision: freshUnrelated };
+      assert.throws(() => validateScanReport(draft, f.context, freshUnrelated));
+    }
+
+    const finalized = validateScanReport(
+      draft,
+      f.context,
+      freshUnrelated,
+      true
+    );
+
+    assert.equal(finalized.validatedRemoteRevision, freshUnrelated);
+    assert.equal(finalized.report.scan.validatedRemoteRevision, freshUnrelated);
+  }
+
+  writeFileSync(
+    path.join(f.checkout, ".agents", "skills", "demo", "SKILL.md"),
+    "relevant remote change\n"
+  );
+  const freshRelevant = commit(f.checkout, "changed remote skill");
+  git(f.checkout, "checkout", "--detach", f.scanBase);
+  assert.throws(() => validateScanReport(report, f.context, freshRelevant));
+  assert.throws(() =>
+    validateScanReport(
+      {
+        ...report,
+        scan: { ...report.scan, validatedRemoteRevision: freshRelevant },
+      },
+      f.context,
+      freshUnrelated
+    )
+  );
+  assert.deepEqual(readFileSync(canonical), canonicalBytes);
+});
+
+const scanGitBoundaryProbe = (f, report, mode, redirects = {}) => {
+  const probe = mkdtempSync(path.join(f.directory, "git-boundary-"));
+  const bin = path.join(probe, "bin");
+  const log = path.join(probe, "git.log");
+  const input = path.join(probe, "input.json");
+  mkdirSync(bin);
+  writeFileSync(log, "");
+  writeFileSync(
+    path.join(bin, "git"),
+    `#!/bin/sh\nprintf "%s\\t%s\\t%s\\t%s\\n" "$PWD" "$*" "\${GIT_CONFIG_COUNT-unset}" "\${GIT_NO_REPLACE_OBJECTS-unset}" >> "$SCAN_GIT_LOG"\nif [ "$1" = fresh-reader ]; then exit 1; fi\nif [ "$SCAN_LOCAL_GIT" = 1 ]; then exec /usr/bin/git "$@"; fi\nexit 1\n`,
+    { mode: 0o700 }
+  );
+  save(input, { context: f.context, freshBase: f.scanBase, mode, report });
+  const helper = new URL("skill-update.mjs", import.meta.url).href;
+
+  const program = `
+    import assert from "node:assert/strict";
+    import { readFileSync } from "node:fs";
+    import { spawnSync } from "node:child_process";
+    import { validateScanReport } from ${JSON.stringify(helper)};
+    const { report, context, freshBase, mode } = JSON.parse(readFileSync(process.env.SCAN_BOUNDARY_INPUT, "utf-8"));
+    const freshReader = (checkout) => {
+      spawnSync("git", ["fresh-reader", checkout], { env: process.env });
+      return freshBase;
+    };
+    if (mode === "valid") {
+      assert.equal(validateScanReport(report, context, freshReader).validatedRemoteRevision, freshBase);
+    } else {
+      assert.throws(() => validateScanReport(report, context, freshReader));
+    }
+  `;
+
+  const child = spawnSync(
+    process.execPath,
+    ["--input-type=module", "-e", program],
+    {
+      cwd: f.directory,
+      encoding: "utf-8",
+      env: {
+        ...process.env,
+        PATH: `${bin}:${process.env.PATH}`,
+        SCAN_BOUNDARY_INPUT: input,
+        SCAN_GIT_LOG: log,
+        SCAN_LOCAL_GIT: "1",
+        ...redirects,
+      },
+      timeout: 15_000,
+    }
+  );
+
+  assert.equal(child.status, 0, child.stderr);
+
+  return readFileSync(log, "utf-8").split("\n").filter(Boolean);
+};
+
+test("scan evidence R3: inherited Git routing refuses before any Git or fresh callback", (t) => {
+  const f = scanEvidenceFixture(t);
+  const report = f.report(f.evidence());
+
+  const redirects = {
+    GIT_ALTERNATE_OBJECT_DIRECTORIES: path.join(
+      f.directory,
+      "foreign-alternates"
+    ),
+    GIT_COMMON_DIR: path.join(f.directory, "foreign-common"),
+    GIT_CONFIG: path.join(f.directory, "foreign-config"),
+    GIT_CONFIG_COUNT: "1",
+    GIT_CONFIG_GLOBAL: path.join(f.directory, "foreign-global-config"),
+    GIT_CONFIG_KEY_0: "core.worktree",
+    GIT_CONFIG_PARAMETERS: "'core.bare'='true'",
+    GIT_CONFIG_SYSTEM: path.join(f.directory, "foreign-system-config"),
+    GIT_CONFIG_VALUE_0: path.join(f.directory, "foreign-worktree"),
+    GIT_DIR: path.join(f.directory, "foreign-git"),
+    GIT_OBJECT_DIRECTORY: path.join(f.directory, "foreign-objects"),
+    GIT_WORK_TREE: path.join(f.directory, "foreign-worktree"),
+  };
+
+  for (const [name, value] of Object.entries(redirects)) {
+    assert.deepEqual(
+      scanGitBoundaryProbe(f, report, "refuse", { [name]: value }),
+      []
+    );
+  }
+});
+
+test("scan evidence R3: external checkout Git pointer or symlink refuses before Git", (t) => {
+  for (const kind of ["pointer", "symlink"]) {
+    const f = scanEvidenceFixture(t);
+    const report = f.report(f.evidence());
+    const control = path.join(f.checkout, ".git");
+    const external = path.join(f.directory, "external-checkout-git");
+    renameSync(control, external);
+
+    if (kind === "pointer") {
+      writeFileSync(control, `gitdir: ${external}\n`);
+    } else {
+      symlinkSync(external, control);
+    }
+
+    assert.deepEqual(scanGitBoundaryProbe(f, report, "refuse"), []);
+  }
+});
+
+test("scan evidence R3: source Git storage, object aliases and config inclusion refuse before fresh lookup", (t) => {
+  for (const kind of [
+    "pointer",
+    "alternates",
+    "objects-symlink",
+    "commondir",
+    "config-include",
+    "object-hardlink",
+  ]) {
+    const f = scanEvidenceFixture(t);
+    const report = f.report(f.evidence());
+    const control = path.join(f.repository, ".git");
+
+    if (kind === "pointer") {
+      const external = path.join(f.directory, "external-source-git");
+      renameSync(control, external);
+      writeFileSync(control, `gitdir: ${external}\n`);
+    } else if (kind === "alternates") {
+      writeFileSync(
+        path.join(control, "objects", "info", "alternates"),
+        `${path.join(f.checkout, ".git", "objects")}\n`
+      );
+    } else if (kind === "objects-symlink") {
+      const external = path.join(f.directory, "external-source-objects");
+      renameSync(path.join(control, "objects"), external);
+      symlinkSync(external, path.join(control, "objects"));
+    } else if (kind === "commondir") {
+      writeFileSync(path.join(control, "commondir"), "../../external-common\n");
+    } else if (kind === "config-include") {
+      const included = path.join(f.directory, "included-config");
+      writeFileSync(included, "[core]\n\tbare = false\n");
+      const config = path.join(control, "config");
+      writeFileSync(
+        config,
+        `${readFileSync(config, "utf-8")}\n[include]\n\tpath = ${included}\n`
+      );
+    } else {
+      const blob = git(
+        f.repository,
+        "rev-parse",
+        `${f.targetRevision}:skills/demo/SKILL.md`
+      );
+
+      linkSync(
+        path.join(control, "objects", blob.slice(0, 2), blob.slice(2)),
+        path.join(f.directory, "shared-source-object")
+      );
+    }
+
+    const calls = scanGitBoundaryProbe(f, report, "refuse");
+    assert.equal(
+      calls.some((line) => line.includes("fresh-reader")),
+      false
+    );
+    assert.equal(
+      calls.some((line) => /\tfetch(?: |\t)/u.test(line)),
+      false
+    );
+  }
+});
+
+test("scan evidence R3: ordinary owned Git remains unchanged with one explicit child environment", (t) => {
+  const f = scanEvidenceFixture(t);
+  const report = f.report(f.evidence());
+
+  const controls = [
+    path.join(f.checkout, ".git", "HEAD"),
+    path.join(f.checkout, ".git", "config"),
+    path.join(f.repository, ".git", "HEAD"),
+    path.join(f.repository, ".git", "config"),
+  ];
+
+  const before = controls.map((file) => readFileSync(file));
+  const calls = scanGitBoundaryProbe(f, report, "valid");
+  const reads = calls.filter((line) => !line.includes("fresh-reader"));
+  assert.equal(calls.filter((line) => line.includes("fresh-reader")).length, 1);
+  assert.ok(reads.length > 0);
+  assert.ok(reads.some((line) => line.includes("cat-file blob")));
+
+  for (const line of reads) {
+    const fields = line.split("\t");
+    assert.equal(fields[2], "0");
+    assert.equal(fields[3], "1");
+  }
+
+  for (const [index, file] of controls.entries()) {
+    assert.deepEqual(readFileSync(file), before[index]);
+  }
+});
+
+test("scan evidence R4: worktree config storage and extensions refuse before their repository Git", (t) => {
+  for (const owner of ["checkout", "source"]) {
+    for (const kind of ["worktree-file", "extension-without-file"]) {
+      const f = scanEvidenceFixture(t);
+      const report = f.report(f.evidence());
+      const repository = owner === "checkout" ? f.checkout : f.repository;
+      const control = path.join(repository, ".git");
+      const worktreeConfig = path.join(control, "config.worktree");
+
+      if (kind === "worktree-file") {
+        const included = path.join(f.directory, "external-worktree-config");
+        writeFileSync(included, "[core]\n\tbare = false\n");
+        writeFileSync(worktreeConfig, `[include]\n\tpath = ${included}\n`);
+      } else {
+        const config = path.join(control, "config");
+        writeFileSync(
+          config,
+          `${readFileSync(config, "utf-8")}\n[extensions]\n\tworktreeConfig = true\n`
+        );
+        assert.equal(existsSync(worktreeConfig), false);
+      }
+
+      const calls = scanGitBoundaryProbe(f, report, "refuse");
+
+      if (owner === "checkout") {
+        assert.deepEqual(calls, []);
+      } else {
+        assert.equal(
+          calls.some((line) => line.includes(f.repository)),
+          false
+        );
+        assert.equal(
+          calls.some((line) => line.includes("fresh-reader")),
+          false
+        );
+        assert.equal(
+          calls.some((line) => /\tfetch(?: |\t)/u.test(line)),
+          false
+        );
+      }
+    }
+  }
 });

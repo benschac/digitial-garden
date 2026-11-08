@@ -70,6 +70,57 @@ const command = (exe, args, cwd) => {
 
 const git = (cwd, ...args) => command("git", args, cwd);
 
+const scanGitEnvironment = () => {
+  const redirects = new Set([
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_COMMON_DIR",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_INDEX_FILE",
+    "GIT_GRAFT_FILE",
+    "GIT_SHALLOW_FILE",
+    "GIT_NAMESPACE",
+    "GIT_REPLACE_REF_BASE",
+    "GIT_CEILING_DIRECTORIES",
+    "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+    "GIT_NO_REPLACE_OBJECTS",
+    "GIT_EXEC_PATH",
+    "GIT_PREFIX",
+    "GIT_SUPER_PREFIX",
+    "GIT_IMPLICIT_WORK_TREE",
+  ]);
+
+  ensure(
+    !Object.keys(process.env).some(
+      (key) =>
+        redirects.has(key) ||
+        key === "GIT_CONFIG" ||
+        key.startsWith("GIT_CONFIG_")
+    ),
+    "Inherited scan Git routing or explicit configuration requires review"
+  );
+
+  return { ...process.env, GIT_CONFIG_COUNT: "0", GIT_NO_REPLACE_OBJECTS: "1" };
+};
+
+const scanGit = (cwd, ...args) => {
+  const result = spawnSync("git", args, {
+    cwd,
+    encoding: "utf-8",
+    env: scanGitEnvironment(),
+    maxBuffer: 32 * 1024 * 1024,
+    timeout: 120_000,
+  });
+
+  ensure(
+    !result.error && result.status === 0,
+    `Scan Git failed: ${result.error?.message ?? result.stderr}`
+  );
+
+  return result.stdout.trimEnd();
+};
+
 const allowedOrigin = (origin) =>
   [
     "git@github.com:benschac/digitial-garden.git",
@@ -176,17 +227,27 @@ export const validateRequest = (request) => {
   return request;
 };
 
-const treeFiles = (cwd, ref, directory) => {
+const treeFiles = (cwd, ref, directory, ownedScan = false) => {
   ensure(revision.test(ref), "Invalid Git revision");
 
-  const records = git(cwd, "ls-tree", "-r", "-z", ref, "--", `${directory}/`)
+  const records = (ownedScan ? scanGit : git)(
+    cwd,
+    "ls-tree",
+    "-r",
+    "-z",
+    ref,
+    "--",
+    `${directory}/`
+  )
     .split("\0")
     .filter(Boolean);
 
   ensure(records.length > 0, "Missing skill tree");
 
   return records.map((record) => {
-    const [header, file] = record.split("\t");
+    const separator = record.indexOf("\t");
+    const header = record.slice(0, separator);
+    const file = record.slice(separator + 1);
     const [mode, type, object] = header.split(" ");
     ensure(
       type === "blob" && mode === "100644",
@@ -197,10 +258,14 @@ const treeFiles = (cwd, ref, directory) => {
       "Unsafe tree path"
     );
 
-    const result = spawnSync("git", ["cat-file", "blob", object], {
-      cwd,
-      maxBuffer: 32 * 1024 * 1024,
-    });
+    const options = { cwd, maxBuffer: 32 * 1024 * 1024 };
+
+    if (ownedScan) {
+      options.env = scanGitEnvironment();
+      options.timeout = 120_000;
+    }
+
+    const result = spawnSync("git", ["cat-file", "blob", object], options);
 
     ensure(result.status === 0, "Cannot read skill blob");
 
@@ -426,6 +491,7 @@ const singletonExecutorSession = (step, id, name, readBead) => {
     prepare: "skills.worker",
     publish: "skills.publisher",
     review: "skills.reviewer",
+    scan: "skills.scanner",
   }[role];
 
   const alias = `personal-site/${target}`;
@@ -1189,7 +1255,808 @@ const integrationArchiveIdentity = (context) => {
   }
 };
 
+const scanSourceSchema = Schema.Struct({
+  materializedDirectory: Schema.NonEmptyString,
+  repository: Schema.NonEmptyString,
+  revision: revisionSchema,
+  skill: Schema.NonEmptyString,
+  skillPath: Schema.NonEmptyString,
+});
+
+const scanReportSchema = Schema.Struct({
+  details: Schema.optionalKey(Schema.Unknown),
+  retainedManifest: artifactSchema,
+  scan: Schema.Struct({
+    assignee: Schema.NonEmptyString,
+    checkout: Schema.NonEmptyString,
+    registeredCheckout: Schema.NonEmptyString,
+    registeredRevision: revisionSchema,
+    root: nativeIdentity,
+    scanBase: revisionSchema,
+    session: Schema.NonEmptyString,
+    step: nativeIdentity,
+    validatedRemoteRevision: Schema.optionalKey(revisionSchema),
+  }),
+  schema: Schema.Literal("gc.skill-scan-report.v2"),
+  state: Schema.Literal("complete"),
+});
+
+const canonicalScanDirectory = (owner, location) => {
+  ensure(
+    path.isAbsolute(owner) &&
+      path.resolve(owner) === owner &&
+      realpathSync(owner) === owner &&
+      path.isAbsolute(location) &&
+      path.resolve(location) === location &&
+      realpathSync(location) === location,
+    "Noncanonical or symlinked scan directory"
+  );
+  const actual = checkedDirectory(owner, location);
+  ensure(actual === location, "Validated scan path differs from declared path");
+
+  return actual;
+};
+
+const validateScanGit = (directory, repository) => {
+  scanGitEnvironment();
+  canonicalScanDirectory(directory, repository);
+
+  const control = canonicalScanDirectory(
+    repository,
+    path.join(repository, ".git")
+  );
+
+  canonicalScanDirectory(control, path.join(control, "objects"));
+
+  for (const relative of [
+    "commondir",
+    "config.worktree",
+    "gitdir",
+    "objects/info/alternates",
+    "objects/info/http-alternates",
+  ]) {
+    ensure(
+      !existsSync(path.join(control, relative)),
+      "Shared or alternate scan Git storage requires review"
+    );
+  }
+
+  const validateEntries = (current) => {
+    canonicalScanDirectory(control, current);
+
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const location = path.join(current, entry.name);
+
+      if (entry.isDirectory()) {
+        validateEntries(location);
+      } else {
+        checkedFile(control, location);
+      }
+    }
+  };
+
+  validateEntries(control);
+
+  const configuration = readFileSync(
+    checkedFile(control, path.join(control, "config")),
+    "utf-8"
+  );
+
+  ensure(
+    !/^\s*\[\s*include(?:if)?(?:\s|\])/imu.test(configuration),
+    "External scan Git config includes require review"
+  );
+  ensure(
+    !/^\s*\[\s*extensions\s*\]/imu.test(configuration),
+    "Scan Git extensions require review"
+  );
+
+  const actual = scanGit(
+    repository,
+    "rev-parse",
+    "--path-format=absolute",
+    "--git-dir",
+    "--git-common-dir",
+    "--show-toplevel",
+    "--is-bare-repository"
+  ).split("\n");
+
+  ensure(
+    isDeepStrictEqual(actual, [control, control, repository, "false"]),
+    "Scan Git control/common/worktree identity differs from owned clone"
+  );
+};
+
+const scanFiles = (directory) => {
+  const files = [];
+
+  const walk = (current, prefix) => {
+    checkedDirectory(directory, current);
+
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+      ensure(safePath(relative), "Unsafe scan member path");
+      const file = path.join(current, entry.name);
+      const stat = lstatSync(file);
+      ensure(!stat.isSymbolicLink(), "Scan symlink requires review");
+
+      if (stat.isDirectory()) {
+        walk(file, relative);
+      } else {
+        ensure(
+          stat.isFile() && stat.mode % 0o1_0000 === 0o644,
+          "Unsupported scan file kind or mode requires review"
+        );
+        files.push([relative, readFileSync(checkedFile(directory, file))]);
+      }
+    }
+  };
+
+  walk(directory, "");
+
+  return files.toSorted(([a], [b]) => a.localeCompare(b));
+};
+
+const scanMembers = (files) =>
+  files.map(([name, bytes]) => ({
+    gitBlob: createHash("sha1")
+      .update(`blob ${bytes.length}\0`)
+      .update(bytes)
+      .digest("hex"),
+    kind: "file",
+    mode: "0644",
+    path: name,
+    sha256: sha256(bytes),
+  }));
+
+export const collectScanEvidence = (checkout, scanBase, input, directory) => {
+  ensure(revision.test(scanBase), "Invalid scan base");
+  canonicalScanDirectory(directory, checkout);
+  validateScanGit(directory, checkout);
+
+  const installedRoot = canonicalScanDirectory(
+    checkout,
+    path.join(checkout, ".agents/skills")
+  );
+
+  ensure(
+    scanGit(checkout, "rev-parse", "HEAD") === scanBase,
+    "Scan checkout base changed"
+  );
+
+  const sources = Schema.decodeUnknownSync(Schema.Array(scanSourceSchema), {
+    onExcessProperty: "error",
+  })(input);
+
+  const lockBytes = readFileSync(
+    checkedFile(checkout, path.join(checkout, "skills-lock.json"))
+  );
+
+  const lock = JSON.parse(lockBytes);
+  ensure(
+    Schema.is(
+      Schema.Struct({
+        skills: Schema.Record(Schema.String, Schema.Unknown),
+        version: Schema.Literal(1),
+      })
+    )(lock),
+    "Invalid scan lock schema"
+  );
+  ensure(
+    isDeepStrictEqual(
+      lock,
+      JSON.parse(scanGit(checkout, "show", `${scanBase}:skills-lock.json`))
+    ),
+    "Scan lock differs from pinned base"
+  );
+
+  const records = scanGit(
+    checkout,
+    "ls-tree",
+    "-r",
+    "-z",
+    scanBase,
+    "--",
+    ".agents/skills/"
+  )
+    .split("\0")
+    .filter(Boolean);
+
+  const names = [
+    ...new Set(
+      records.map((record) => {
+        const file = record.slice(record.indexOf("\t") + 1);
+        ensure(safePath(file), "Unsafe tracked skill member");
+
+        return file.split("/")[2];
+      })
+    ),
+  ].toSorted((a, b) => a.localeCompare(b));
+
+  ensure(names.length > 0, "Missing tracked skill inventory");
+
+  const actualNames = readdirSync(installedRoot).toSorted((a, b) =>
+    a.localeCompare(b)
+  );
+
+  ensure(
+    isDeepStrictEqual(actualNames, names),
+    "Untracked or missing skill directory requires review"
+  );
+  ensure(
+    Object.keys(lock.skills).every((name) => names.includes(name)),
+    "Lock skill lacks tracked installed tree"
+  );
+  ensure(
+    new Set(sources.map((source) => source.skill)).size === sources.length,
+    "Duplicate scan source"
+  );
+  ensure(
+    isDeepStrictEqual(
+      sources.map((source) => source.skill).toSorted(),
+      Object.keys(lock.skills).toSorted()
+    ),
+    "Incomplete pinned source inventory"
+  );
+
+  const installed = names.map((skill) => {
+    ensure(/^[a-z0-9][a-z0-9-]*$/u.test(skill), "Invalid tracked skill name");
+    const prefix = `.agents/skills/${skill}`;
+
+    const installedDirectory = canonicalScanDirectory(
+      checkout,
+      path.join(checkout, prefix)
+    );
+
+    const files = scanFiles(installedDirectory);
+    ensure(
+      sameFiles(files, treeFiles(checkout, scanBase, prefix, true)),
+      "Installed members differ from pinned scan base"
+    );
+
+    return {
+      hash: hashFiles(files),
+      localOnly: !Object.hasOwn(lock.skills, skill),
+      members: scanMembers(files),
+      skill,
+    };
+  });
+
+  const collectedSources = sources
+    .toSorted((a, b) => a.skill.localeCompare(b.skill))
+    .map((source) => {
+      const entry = lock.skills[source.skill];
+      ensure(
+        Schema.is(
+          Schema.Struct({
+            computedHash: hashSchema,
+            skillPath: Schema.NonEmptyString,
+            source: Schema.NonEmptyString,
+            sourceType: Schema.Literal("github"),
+          })
+        )(entry),
+        "Unsupported source requires review"
+      );
+      ensure(
+        safePath(source.skillPath) &&
+          source.skillPath.endsWith("/SKILL.md") &&
+          source.skillPath === entry.skillPath,
+        "Unsafe or changed source skillPath"
+      );
+      ensure(
+        /^[a-zA-Z0-9][a-zA-Z0-9_.-]*\/[a-zA-Z0-9][a-zA-Z0-9_.-]*$/u.test(
+          entry.source
+        ),
+        "Unsupported source repository"
+      );
+      canonicalScanDirectory(directory, source.repository);
+      canonicalScanDirectory(directory, source.materializedDirectory);
+      ensure(
+        !source.materializedDirectory.startsWith(`${checkout}${path.sep}`) &&
+          source.materializedDirectory !== checkout,
+        "Materialized source overlaps installed checkout"
+      );
+      validateScanGit(directory, source.repository);
+      const origin = scanGit(source.repository, "remote", "get-url", "origin");
+      ensure(
+        [
+          `https://github.com/${entry.source}.git`,
+          `https://github.com/${entry.source}`,
+          `git@github.com:${entry.source}.git`,
+        ].includes(origin),
+        "Pinned source origin mismatch"
+      );
+
+      const expected = treeFiles(
+        source.repository,
+        source.revision,
+        path.posix.dirname(source.skillPath),
+        true
+      );
+
+      const actual = scanFiles(source.materializedDirectory);
+      ensure(
+        sameFiles(expected, actual),
+        "Materialized source members differ from pinned Git source"
+      );
+
+      return {
+        ...source,
+        hash: hashFiles(expected),
+        members: scanMembers(expected),
+      };
+    });
+
+  return {
+    checkout,
+    installed,
+    lockSha256: sha256(lockBytes),
+    scanBase,
+    schema: "skill-scan-evidence.v1",
+    sources: collectedSources,
+  };
+};
+
+export const validateScanEvidence = (evidence, directory) => {
+  ensure(
+    Schema.is(
+      Schema.Struct({
+        checkout: Schema.NonEmptyString,
+        scanBase: revisionSchema,
+        schema: Schema.Literal("skill-scan-evidence.v1"),
+        sources: Schema.Array(Schema.Unknown),
+      })
+    )(evidence),
+    "Invalid scan evidence schema"
+  );
+
+  const references = evidence.sources.map((source) => ({
+    materializedDirectory: source.materializedDirectory,
+    repository: source.repository,
+    revision: source.revision,
+    skill: source.skill,
+    skillPath: source.skillPath,
+  }));
+
+  const actual = collectScanEvidence(
+    evidence.checkout,
+    evidence.scanBase,
+    references,
+    directory
+  );
+
+  ensure(
+    isDeepStrictEqual(evidence, actual),
+    "Scan evidence members, canonical hash or complete installed inventory mismatch"
+  );
+
+  return actual;
+};
+
+const preflightScanReport = (input, context) => {
+  const report = Schema.decodeUnknownSync(scanReportSchema, {
+    onExcessProperty: "error",
+  })(input);
+
+  const { scan } = report;
+  ensure(
+    scan.step === context.subject.id &&
+      scan.root === context.root.id &&
+      scan.assignee === context.subject.assignee &&
+      scan.session === context.executor,
+    "Scan report native identity mismatch"
+  );
+  canonicalScanDirectory(context.directory, scan.checkout);
+  validateScanGit(context.directory, scan.checkout);
+  canonicalScanDirectory(
+    scan.checkout,
+    path.join(scan.checkout, ".agents/skills")
+  );
+  ensure(
+    path.isAbsolute(scan.registeredCheckout) &&
+      path.resolve(scan.registeredCheckout) === scan.registeredCheckout &&
+      realpathSync(scan.registeredCheckout) === scan.registeredCheckout,
+    "Unsafe registered checkout"
+  );
+  ensure(
+    !context.registeredDirectory ||
+      scan.registeredCheckout === context.registeredDirectory,
+    "Registered rig path changed"
+  );
+  const retained = report.retainedManifest;
+  ensure(
+    retained.path === path.join(context.directory, "scan-evidence.json") &&
+      !retained.path.startsWith(`${scan.checkout}${path.sep}`),
+    "Retained evidence self-binding or unexpected path"
+  );
+  const bytes = readFileSync(checkedFile(context.directory, retained.path));
+  ensure(
+    sha256(bytes) === retained.sha256,
+    "Retained evidence digest differs from actual final bytes"
+  );
+  const evidence = JSON.parse(bytes.toString("utf-8"));
+  ensure(
+    Schema.is(
+      Schema.Struct({
+        checkout: Schema.NonEmptyString,
+        scanBase: revisionSchema,
+        sources: Schema.Array(scanSourceSchema),
+      })
+    )(evidence) &&
+      evidence.checkout === scan.checkout &&
+      evidence.scanBase === scan.scanBase,
+    "Retained scan Git source identities differ from report"
+  );
+
+  for (const source of evidence.sources) {
+    validateScanGit(context.directory, source.repository);
+  }
+
+  return report;
+};
+
+export const validateScanReport = (
+  input,
+  context,
+  readFreshBase,
+  finalizing = false
+) => {
+  const proposed = preflightScanReport(input, context);
+  ensure(
+    finalizing || revision.test(proposed.scan.validatedRemoteRevision ?? ""),
+    "Missing finalized remote revision"
+  );
+
+  const freshBase = Schema.is(revisionSchema)(readFreshBase)
+    ? readFreshBase
+    : readFreshBase(proposed.scan.checkout);
+
+  ensure(revision.test(freshBase), "Invalid fresh scan base");
+
+  const report = finalizing
+    ? {
+        ...proposed,
+        scan: { ...proposed.scan, validatedRemoteRevision: freshBase },
+      }
+    : proposed;
+
+  const { scan } = report;
+
+  for (const remote of new Set([freshBase, scan.validatedRemoteRevision])) {
+    ensure(
+      scanGit(
+        scan.checkout,
+        "diff",
+        "--name-only",
+        scan.scanBase,
+        remote,
+        "--",
+        ".agents/skills",
+        "skills-lock.json"
+      ) === "",
+      "Fresh or finalized remote skill or lock scope changed"
+    );
+  }
+
+  ensure(
+    scanGit(scan.registeredCheckout, "rev-parse", "HEAD") ===
+      scan.registeredRevision,
+    "Registered divergence identity changed"
+  );
+
+  const evidence = validateScanEvidence(
+    json(checkedFile(context.directory, report.retainedManifest.path)),
+    context.directory
+  );
+
+  ensure(
+    evidence.checkout === scan.checkout && evidence.scanBase === scan.scanBase,
+    "Report and evidence base or checkout mismatch"
+  );
+
+  return { evidence, report, validatedRemoteRevision: freshBase };
+};
+
+const validateLiveScanClaim = (env, subject, session, owner) => {
+  ensure(
+    env.GC_SESSION_ID === owner.id &&
+      env.BEADS_ACTOR === subject.assignee &&
+      env.GC_INSTANCE_TOKEN &&
+      env.GC_INSTANCE_TOKEN === session.metadata.instance_token &&
+      Date.parse(subject.lease_expires_at) > Date.now() &&
+      session.metadata.current_claim_bead_id === subject.id,
+    "Live scanner claim, instance or lease missing"
+  );
+  ensure(
+    command("gc", ["--city", env.GC_CITY, "hook", "current", "--id-only"]) ===
+      subject.id,
+    "Actual live scanner hook mismatch"
+  );
+};
+
+const resolveScanContext = (env, readBead) => {
+  ensure(
+    Schema.is(
+      Schema.Struct({
+        GC_BEAD_ID: nativeIdentity,
+        GC_CITY: Schema.NonEmptyString,
+      })
+    )(env),
+    "Missing native scan context"
+  );
+  ensure(path.isAbsolute(env.GC_CITY), "Expected absolute scan city");
+  const subject = readBead(env.GC_BEAD_ID);
+  ensure(
+    subject.id === env.GC_BEAD_ID &&
+      ["in_progress", "closed"].includes(subject.status),
+    "Invalid native scan subject"
+  );
+  const rootId = subject.metadata?.["gc.root_bead_id"];
+  ensure(identity.test(rootId ?? ""), "Invalid native scan root");
+  const root = readBead(rootId);
+  ensure(
+    root.id === rootId &&
+      Schema.is(
+        Schema.Struct({
+          metadata: Schema.Struct({
+            "gc.formula_name": Schema.Literal("scan-skills"),
+            "gc.kind": Schema.Literal("workflow"),
+          }),
+          status: Schema.Literals(["open", "in_progress"]),
+        })
+      )(root),
+    "Unexpected native scan workflow"
+  );
+  ensure(
+    nativeRole(subject, readBead) === "scan",
+    "Unexpected native scan role"
+  );
+  ensure(
+    subject.assignee === "personal-site/skills.scanner" &&
+      subject.metadata?.["gc.routed_to"] === "personal-site/skills.scanner" &&
+      subject.metadata?.["gc.run_target"] === "skills.scanner",
+    "Native scanner route or assignee mismatch"
+  );
+  const owner = executorIdentity(subject, readBead);
+  const molecule = path.join(env.GC_CITY, ".gc/molecules", root.id);
+  const artifactDirectory = path.join(molecule, "artifacts", subject.id);
+  ensure(
+    env.GC_ARTIFACT_DIR === artifactDirectory &&
+      (!env.GC_MOLECULE_DIR || env.GC_MOLECULE_DIR === molecule) &&
+      (!env.GC_ROOT_BEAD_ID || env.GC_ROOT_BEAD_ID === root.id),
+    "Native scan artifact identity mismatch"
+  );
+  checkedDirectory(env.GC_CITY, artifactDirectory);
+  const directory = path.join(env.GC_CITY, ".gc/skill-updates", subject.id);
+  checkedDirectory(env.GC_CITY, directory);
+  const session = readBead(owner.id, "city");
+  ensure(
+    session.id === owner.id &&
+      session.metadata?.agent_name === subject.assignee,
+    "Native scan executor session mismatch"
+  );
+
+  if (subject.status === "in_progress") {
+    validateLiveScanClaim(env, subject, session, owner);
+  } else {
+    ensure(
+      subject.metadata?.["gc.outcome"] === "pass" &&
+        Number.isFinite(Date.parse(subject.closed_at)),
+      "Scan subject did not close pass"
+    );
+  }
+
+  return {
+    artifactDirectory,
+    directory,
+    executor: owner.id,
+    readBead,
+    root,
+    subject,
+  };
+};
+
+const freshScanBase = (checkout) => {
+  ensure(
+    allowedOrigin(scanGit(checkout, "remote", "get-url", "origin")),
+    "Unexpected scan origin"
+  );
+
+  const ssh = scanGit(
+    checkout,
+    "ls-remote",
+    "git@github.com:benschac/digitial-garden.git",
+    "refs/heads/main"
+  ).split(/\s+/u);
+
+  const https = scanGit(
+    checkout,
+    "ls-remote",
+    "https://github.com/benschac/digitial-garden.git",
+    "refs/heads/main"
+  ).split(/\s+/u);
+
+  ensure(
+    ssh.length === 2 &&
+      ssh[1] === "refs/heads/main" &&
+      isDeepStrictEqual(ssh, https) &&
+      revision.test(ssh[0]),
+    "Fresh scan remote disagreement"
+  );
+  scanGit(checkout, "fetch", "--no-tags", "origin", "refs/heads/main");
+  ensure(
+    scanGit(checkout, "rev-parse", "FETCH_HEAD") === ssh[0],
+    "Remote changed during scan validation"
+  );
+
+  return ssh[0];
+};
+
+const scannedArchiveContext = (env, readBead) => {
+  const context = resolveScanContext(env, readBead);
+  ensure(
+    context.subject.status === "closed",
+    "Native scan check requires closed iteration"
+  );
+  const iteration = context.subject.metadata?.["gc.iteration"] ?? "1";
+  ensure(
+    !env.GC_ITERATION || env.GC_ITERATION === iteration,
+    "Native scan iteration mismatch"
+  );
+  const repo = fileURLToPath(new URL("..", import.meta.url));
+
+  const policy = Object.fromEntries(
+    [
+      "scripts/skill-update.mjs",
+      "gascity/skill-updates/assets/checks/scanned.sh",
+      "gascity/skill-updates/assets/checks/archive.sh",
+    ].map((name) => [name, sha256(readFileSync(path.join(repo, name)))])
+  );
+
+  return {
+    ...context,
+    archive: path.join(
+      context.directory,
+      "attempts",
+      context.root.id,
+      context.subject.id,
+      "checks/scanned"
+    ),
+    record: {
+      assignee: context.subject.assignee,
+      executorSessionId: context.executor,
+      integration: null,
+      iteration,
+      node: {
+        path: realpathSync(process.execPath),
+        sha256: sha256(readFileSync(process.execPath)),
+        version: process.version,
+      },
+      policy,
+      requestHash: null,
+      root: context.root.id,
+      schema: "skill-check-evidence.v1",
+      stage: "scanned",
+      subject: context.subject.id,
+    },
+  };
+};
+
+const runScanCommand = (args, env, readBead) => {
+  const context = resolveScanContext(env, readBead);
+
+  const rigs = JSON.parse(
+    command("gc", ["--city", env.GC_CITY, "rig", "list", "--json"])
+  );
+
+  ensure(
+    Schema.is(
+      Schema.Struct({
+        rigs: Schema.Array(
+          Schema.Struct({ name: Schema.String, path: Schema.String })
+        ),
+      })
+    )(rigs),
+    "Invalid native rig inventory"
+  );
+  const registered = rigs.rigs.filter((rig) => rig.name === "personal-site");
+  ensure(
+    registered.length === 1 && registered[0].path === env.SKILL_REGISTERED_RIG,
+    "Trusted registered rig path mismatch"
+  );
+  context.registeredDirectory = registered[0].path;
+
+  const engines = json(path.join(context.registeredDirectory, "package.json"))
+    .engines?.node;
+
+  ensure(
+    engines === ">=24.15.0" &&
+      (Number(process.versions.node.split(".")[0]) > 24 ||
+        (Number(process.versions.node.split(".")[0]) === 24 &&
+          Number(process.versions.node.split(".")[1]) >= 15)),
+    "Host Node does not meet the registered root engine"
+  );
+
+  if (args[0] === "scan-collect") {
+    ensure(
+      context.subject.status === "in_progress",
+      "Collection requires live scanner"
+    );
+    const input = json(checkedFile(context.directory, args[1]));
+
+    const evidence = collectScanEvidence(
+      input.checkout,
+      input.scanBase,
+      input.sources,
+      context.directory
+    );
+
+    resolveScanContext(env, readBead);
+    writeRecord(context.directory, "scan-evidence.json", evidence);
+
+    return JSON.stringify({
+      path: path.join(context.directory, "scan-evidence.json"),
+      sha256: sha256(
+        readFileSync(path.join(context.directory, "scan-evidence.json"))
+      ),
+    });
+  }
+
+  const reportPath =
+    args[0] === "scan-finalize"
+      ? checkedFile(context.directory, args[1])
+      : path.join(context.directory, "scan-report.json");
+
+  if (args[0] === "scan-check") {
+    ensure(
+      context.subject.status === "closed" &&
+        context.subject.metadata?.skill_scan_report_path === reportPath,
+      "Native canonical scan report pointer mismatch"
+    );
+    ensure(
+      sha256(readFileSync(checkedFile(context.directory, reportPath))) ===
+        context.subject.metadata?.skill_scan_report_sha256,
+      "Native canonical report digest mismatch"
+    );
+  } else {
+    ensure(
+      context.subject.status === "in_progress",
+      "Finalization requires live scanner"
+    );
+  }
+
+  ensure(context.registeredDirectory, "Trusted registered rig path required");
+  const report = json(checkedFile(context.directory, reportPath));
+
+  const validated = validateScanReport(
+    report,
+    context,
+    freshScanBase,
+    args[0] === "scan-finalize"
+  );
+
+  if (args[0] === "scan-finalize") {
+    resolveScanContext(env, readBead);
+    writeRecord(context.directory, "scan-report.json", validated.report);
+  }
+
+  const canonical = path.join(context.directory, "scan-report.json");
+
+  return JSON.stringify({
+    finalizedRemoteRevision: validated.report.scan.validatedRemoteRevision,
+    path: canonical,
+    scanBase: validated.report.scan.scanBase,
+    sha256: sha256(readFileSync(checkedFile(context.directory, canonical))),
+    state: "validated",
+    validatedRemoteRevision: validated.validatedRemoteRevision,
+  });
+};
+
 const archiveContext = (stage, env, readBead) => {
+  if (stage === "scanned") {
+    return scannedArchiveContext(env, readBead);
+  }
+
   let context = resolveNativeContext(env, readBead);
   let receiptContextError = null;
 
@@ -1306,6 +2173,17 @@ const landingReceiptNames = [
 ];
 
 const checkReceiptSources = (context) => {
+  if (context.record.stage === "scanned") {
+    return [
+      [
+        "receipts",
+        context.directory,
+        ["scan-report.json", "scan-evidence.json"],
+      ],
+      ["native", context.artifactDirectory, archiveNativeNames],
+    ];
+  }
+
   const sources = [
     ["receipts", context.directory, archiveReceiptNames],
     ["native", context.artifactDirectory, archiveNativeNames],
@@ -1391,6 +2269,10 @@ export const beginCheckArchive = (stage, env, readBead) => {
     root: context.root,
     subject: context.subject,
   })) {
+    if (value === undefined) {
+      continue;
+    }
+
     writeFileSync(
       path.join(context.archive, `${name}.json`),
       `${JSON.stringify(value)}\n`,
@@ -1539,7 +2421,10 @@ export const finishCheckArchive = (stage, exitCode, env, readBead) => {
     "candidate.json",
     ...rawLogs.flatMap((name) => [name, `sealed/${name}`]),
     ...["before", "after"].flatMap((phase) => [
-      ...archiveReceiptNames.map((name) => `${phase}/receipts/${name}`),
+      ...(stage === "scanned"
+        ? ["scan-report.json", "scan-evidence.json"]
+        : archiveReceiptNames
+      ).map((name) => `${phase}/receipts/${name}`),
       ...archiveNativeNames.map((name) => `${phase}/native/${name}`),
       ...rootReceiptNames.map((name) => `${phase}/root-receipts/${name}`),
       ...landingReceiptNames.map((name) => `${phase}/landing-receipts/${name}`),
@@ -2473,6 +3358,9 @@ export const main = (args, env = process.env) => {
     qualify: 3,
     record: 4,
     reuse: 2,
+    "scan-check": 1,
+    "scan-collect": 2,
+    "scan-finalize": 2,
     select: 4,
   };
 
@@ -2515,6 +3403,10 @@ export const main = (args, env = process.env) => {
 
     return rows[0];
   };
+
+  if (["scan-collect", "scan-finalize", "scan-check"].includes(args[0])) {
+    return runScanCommand(args, env, readBead);
+  }
 
   if (args[0] === "archive") {
     return args[1] === "begin"
