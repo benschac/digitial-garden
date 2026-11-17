@@ -53,14 +53,14 @@ A single `credits` column can't tell you which credits are locked up in an activ
 
 ## Walking through a match
 
-The credit is valued at $1. For items that are bought and sold, 5% of profit is required on each side of the transaction. If a coffee table is bought for $100, $5 of credit needs to be reserved on both sides of the transaction for both the buyer and seller as a bond.
+The credit is valued at \$1. For items that are bought and sold, 5% of profit is required on each side of the transaction. If a coffee table is bought for \$100, \$5 of credit needs to be reserved on both sides of the transaction for both the buyer and seller as a bond.
 
 | Operation | Alice: available | Alice: reserved | Bob: available | Bob: reserved |
 | --- | --: | --: | --: | --: |
 | Alice and Bob each buy five credits | 5 | 0 | 5 | 0 |
-| Each reserves five credits for the $100 table | 0 | 5 | 0 | 5 |
+| Each reserves five credits for the \$100 table | 0 | 5 | 0 | 5 |
 | The match is cancelled and both holds released | 5 | 0 | 5 | 0 |
-| Each reserves five credits for a new $100 match | 0 | 5 | 0 | 5 |
+| Each reserves five credits for a new \$100 match | 0 | 5 | 0 | 5 |
 | Complete that pickup and spend both holds | 0 | 0 | 0 | 0 |
 
 Reserving a credit is a hold. It stops Alice from double-spending that credit on another offer while keeping it around in case the match falls through and she's owed a refund. Completing the pickup spends the reserved credit.
@@ -151,7 +151,9 @@ Here is a diagram of how the account and ledger tables fit in with purchases, cr
 
 ### Reading the ledger rows
 
-Here is Alice's match from earlier, this time as rows in `match_credit_ledger`. We store credits as integer **milliunits**, with 1,000 milliunits per credit, so we never have to deal with floating-point math:
+Here is Alice's match from earlier, this time as rows in `match_credit_ledger`. We store credits as integer **milliunits**, with 1,000 milliunits per credit, so we never have to deal with floating-point math.
+
+A signed 32-bit Postgres `integer` can hold up to 2,147,483,647 milliunits. Divide by 1,000 milliunits per credit and you get 2,147,483.647 credits. A hold equal to 5% of the sale price would reach that limit on a roughly \$43 million item. That's plenty of room for one match on Treasure It.
 
 | Reason | Available delta | Reserved delta | Available after | Reserved after |
 | --- | --: | --: | --: | --: |
@@ -163,7 +165,7 @@ Here is Alice's match from earlier, this time as rows in `match_credit_ledger`. 
 
 Notice how `reserve` and `release` move the exact same amount between `available` and `reserved`. `purchase_grant` adds to `available`, and `consume` drains `reserved` once the pickup is done.
 
-As long as every balance change goes through the ledger functions, the account row always equals the sum of its ledger rows:
+As long as every balance change goes through the ledger functions, the account row always equals the sum of its ledger rows.
 
 ```tsx
 account.available = sum(ledger.delta_available);
@@ -171,6 +173,12 @@ account.reserved = sum(ledger.delta_reserved);
 ```
 
 We keep those in sync by updating the account row and inserting the ledger row inside the same transaction. App code never edits old ledger rows in place. A release or refund appends a new movement, so we can still see the original charge and what happened afterward.
+
+<Callout title="Why a credit ledger is enough">
+
+Double-entry accounting pairs every debit with an equal credit. When we grant purchased credits, we write one row that adds to Alice's available balance. When she finishes a pickup, we write one row that spends her reserved credits. Those rows give us what we need to see what Alice can spend, what's on hold, and why either balance changed.
+
+</Callout>
 
 A penalty can debit available credits directly, even if that pushes the balance below zero. This was an intentional design and product decision. If the user has 2 credits but they get chosen for 10 items, they should be able to pick up all of those items. If the person who is giving these items away is limited to what they can give away based off of the user's credit balance, they're going to go somewhere else. Being able to go negative gives users flexibility To get as many freedoms as they want without needing to purchase more credits. They just need to reply promptly and show up.
 
@@ -181,10 +189,6 @@ Reserving credits has a stricter rule, though. Alice needs enough available cred
 Let's look at `reserve_match_credit`, the Postgres function that puts a hold on your credits.
 
 The function takes a profile UUID, an offer-thread UUID, an idempotency key, metadata, and an integer amount in milliunits. It returns the profile ID, current available and reserved balances, and the ledger row ID.
-
-{/* TODO: Remove or Figure out another way to reference this in a way that public readers won't be thrown off. Not sure why the comment is rendering here. */}
-
-The snippets below come from the [reservation function with the balance guard restored](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100704_restore_match_credit_reservation_balance_guard.sql).
 
 ### Where the transaction starts
 
@@ -358,7 +362,7 @@ The webhook event ID and this key solve different problems. `stripe_webhook_even
 
 ### Grant credits in one database transaction
 
-The [grant_match_credit_purchase function](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261023197115_migrate_match_credit_milliunits.sql#L542-L695) locks the purchase row, checks the request key, and also looks for a prior `purchase_grant` for that purchase. A different key can't grant the same purchase again. A fresh grant rejects a failed, cancelled, or refunded purchase.
+The `grant_match_credit_purchase` function locks the purchase row, checks the request key, and also looks for a prior `purchase_grant` for that purchase. A different key can't grant the same purchase again. A fresh grant rejects a failed, cancelled, or refunded purchase.
 
 It calculates the amount from the saved `credit_count * 1000`, creates the account if needed, and locks it. Then it updates the account and purchase:
 
@@ -398,7 +402,7 @@ export const resolveBaseMatchFeeCreditMilliunits = (
 ): number => Math.ceil(acceptedAmountCents / 2);
 ```
 
-For a $20 item, `2000` cents comes out to `1000` milliunits, or 1 credit per person. For $20.01, `2001` cents rounds up to `1001` milliunits.
+For a \$20 item, `2000` cents comes out to `1000` milliunits, or 1 credit per person. For \$20.01, `2001` cents rounds up to `1001` milliunits.
 
 When an offer is accepted, we snapshot that result into `base_match_fee_credit_milliunits` on the offer thread. When the pickup finishes days later, settlement reads that snapshot rather than recalculating the fee. That way, if we ever change our fee formula, we won't pull the rug out from under matches that are already in progress.
 
@@ -497,10 +501,14 @@ IF v_buyer_reserved_delta > 0 THEN
   );
 ```
 
-This is an excerpt from the [completion function](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261024100500_preserve_accepted_match_pickup_confirmation_timestamps.sql#L376-L434). Its other branch looks for an existing consume row when no hold remains and raises a stale-reservation error if it can't find one. It repeats the same process for Bob.
+This is an excerpt from the completion function. Its other branch looks for an existing consume row when no hold remains and raises a stale-reservation error if it can't find one. It repeats the same process for Bob.
 
 Inside [`consume_match_credit_reservation`](https://github.com/benschac/another-treasure/blob/b32853902a1ad6b3b287197b5d74f51de17d155b/supabase/migrations/20261023197115_migrate_match_credit_milliunits.sql#L406-L540), Postgres locks the account, checks the request key, and calculates the outstanding reservation for this profile and thread. With no explicit amount supplied, it consumes that outstanding hold. It verifies both the thread's hold and the account's reserved balance before decrementing reserved credits and inserting a `consume` row. A different match's hold cannot stand in for a missing reservation here.
 
 That gives the watcher a useful retry boundary. If settlement fails inside the completion RPC, its database changes roll back together. If the commit succeeds but the response is lost, the next scan normally finds no outstanding hold. A candidate already loaded by another run still has to pass the completion function's checks. The watcher repairs unfinished credit settlement; notification delivery has a separate lifecycle.
 
-Keeping the balance update and its ledger entry in the same transaction has been the most important part of this design. A hold can't succeed without a record of which match it belongs to, and a payment retry can't quietly grant another set of credits. When someone asks why their balance changed, I can follow the rows in `match_credit_ledger` instead of trying to reconstruct it from application logs.
+## Wrapping it up
+
+Keeping the balance update and its ledger entry in the same transaction has been the most important part of this design. A hold can't succeed without a record of which match it belongs to, and a payment retry can't quietly grant another set of credits.
+
+Alice still pays Bob in person for the coffee table. Our part is keeping track of the credits they set aside for the pickup. If Alice asks where those credits went, I can point to the match and show her when we reserved them and whether we released or spent them.
