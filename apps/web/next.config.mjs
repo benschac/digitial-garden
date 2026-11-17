@@ -12,6 +12,7 @@ const nextConfig = {
     runAfterProductionCompile: prepareTypographyMetrics,
   },
   experimental: {
+    agentUpgrade: "security",
     // Restored production caches have served obsolete PostCSS output.
     turbopackFileSystemCacheForBuild: false,
   },
