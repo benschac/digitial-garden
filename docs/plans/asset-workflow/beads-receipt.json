@@ -1,0 +1,198 @@
+{
+  "feature": "local-asset-workflow-20261105",
+  "city": "/Users/benjaminschachter/personal-site-city",
+  "rig": "personal-site",
+  "status": "published-held-verified",
+  "execution_authorized": false,
+  "spec": "docs/specs/asset-workflow.md",
+  "issues": {
+    "EPIC": {
+      "id": "ps-cdek",
+      "title": "Local asset workflow tool",
+      "status": "blocked",
+      "parent": null,
+      "blocked_by": [],
+      "source": "docs/specs/asset-workflow.md",
+      "body_sha256": "65ab5422a1f0a63f67df5aad503ea53df598f1b0b91ef6939b14464636e46a75",
+      "source_sha256": "a42ebc0ba4c0dff3fdd5446800522914161fd81047e20a07d1d0f53382709259",
+      "readback_verified": true
+    },
+    "PRE-01": {
+      "id": "ps-cdek.1",
+      "title": "PRE-01: Publish the approved workflow documentation",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": [],
+      "source": "docs/plans/asset-workflow/preparation/01-workflow-docs.md",
+      "body_sha256": "199bcdec99e617a4f36bc2f9a76716b36c15377dc5cf15efe5cd1a469dbb192e",
+      "source_sha256": "71a4cf2c1b2f0374c158cb49c90d4058ca1be3f7189ec865043a0726a45e5e9c",
+      "readback_verified": true
+    },
+    "PRE-02": {
+      "id": "ps-cdek.2",
+      "title": "PRE-02: Add a small layered reference fixture",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": [],
+      "source": "docs/plans/asset-workflow/preparation/02-reference-fixtures.md",
+      "body_sha256": "1fd1b9274c0080fcdd4d7634866958a2d4efa5cacc10d3c20d1aee54f746a8fc",
+      "source_sha256": "40bd30ba55ef90292209f450b39fbc86ffca59dd201003c05a924329c07623f9",
+      "readback_verified": true
+    },
+    "PRE-03": {
+      "id": "ps-cdek.3",
+      "title": "PRE-03: Qualify and add the chosen canvas dependency",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": [],
+      "source": "docs/plans/asset-workflow/preparation/03-canvas-dependency.md",
+      "body_sha256": "b306dec4146f85a731b0c8764a72ca122340c1362ff84f4dd4b8168b07960d7d",
+      "source_sha256": "da41e31cf5398177792fdbc57a17530010efc684fc7cdc831406561de0c1e817",
+      "readback_verified": true
+    },
+    "AW-01": {
+      "id": "ps-cdek.4",
+      "title": "AW-01: Local project workspace",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": ["ps-cdek.3"],
+      "source": "docs/plans/asset-workflow/issues/01-projects.md",
+      "body_sha256": "6fed2e6486975d670eefbfbf7d77ba0b9d9d251f1d1cf5d275c523b0c1f82937",
+      "source_sha256": "c1d15bd16db718706c51fcd2eca7d8bc0cab7a2e9523522afcf99ece088880c2",
+      "readback_verified": true
+    },
+    "AW-02": {
+      "id": "ps-cdek.5",
+      "title": "AW-02: Upload and reuse project references",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": ["ps-cdek.4"],
+      "source": "docs/plans/asset-workflow/issues/02-references.md",
+      "body_sha256": "f3ea46b45527354b0df008decbdf00b020ebe45b9e5ba27b86faaebc00dad85e",
+      "source_sha256": "c9b939de8b3f32c14fdc2669715546c6dca476df0f04740cba6d52f66c08a00b",
+      "readback_verified": true
+    },
+    "AW-03": {
+      "id": "ps-cdek.6",
+      "title": "AW-03: Save reusable style revisions",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": ["ps-cdek.5"],
+      "source": "docs/plans/asset-workflow/issues/03-style-library.md",
+      "body_sha256": "f1c059e6b0074f5c5f5424d52383d4b3fe88b67d81ac9ea98f919a7c8dfa9a58",
+      "source_sha256": "1f57b79a32631abaac2c25f0dfa8824287fa70e9b1dff45e0e097d16e187e4c5",
+      "readback_verified": true
+    },
+    "AW-04": {
+      "id": "ps-cdek.7",
+      "title": "AW-04: Generate a composition safely",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": ["ps-cdek.5"],
+      "source": "docs/plans/asset-workflow/issues/04-composition-submit.md",
+      "body_sha256": "9c0e19b4ff5e8faffa2f47fcd2c84280cfd4823c3c0ff909948edd6f681e7288",
+      "source_sha256": "a83eaa2ca9d3a81873cce53ca31bf49977e325803ee31339b5b7db6d473c5b6d",
+      "readback_verified": true
+    },
+    "AW-05": {
+      "id": "ps-cdek.8",
+      "title": "AW-05: Resume observation and recover downloads",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": ["ps-cdek.7"],
+      "source": "docs/plans/asset-workflow/issues/05-run-recovery.md",
+      "body_sha256": "2b2c80747e262abab11d815c926b1a0dbbb2706805d15805a30549af99e9ac01",
+      "source_sha256": "27afcd6ee141de73cf39889ba25176df05855a60dc49e23c15d2250f0eca1b95",
+      "readback_verified": true
+    },
+    "AW-06": {
+      "id": "ps-cdek.9",
+      "title": "AW-06: Compare history and select an output",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": ["ps-cdek.7"],
+      "source": "docs/plans/asset-workflow/issues/06-output-selection.md",
+      "body_sha256": "4d57e5def8abd444b6a85f061c67eae0fa3678587cdfd79328f44f875d1a0616",
+      "source_sha256": "ffd6d6f7857121ff579bb85eb8ace2f8d6c36180af602d7ba6777d0a156fcca1",
+      "readback_verified": true
+    },
+    "AW-07": {
+      "id": "ps-cdek.10",
+      "title": "AW-07: Generate with a selected style revision",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": ["ps-cdek.6", "ps-cdek.7"],
+      "source": "docs/plans/asset-workflow/issues/07-style-application.md",
+      "body_sha256": "6142f6e4d79b330e9225d332bd54a16592e7e45fa1cd8d8486bf3de13852102b",
+      "source_sha256": "b29ab02e8fed05395c8cd07ef03e0c439bb4209ff326ff210c76b6f9d9fb7e08",
+      "readback_verified": true
+    },
+    "AW-08": {
+      "id": "ps-cdek.11",
+      "title": "AW-08: Approve an exact composition revision",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": ["ps-cdek.9", "ps-cdek.10"],
+      "source": "docs/plans/asset-workflow/issues/08-approval.md",
+      "body_sha256": "1da86b5f954a8a0f2b748c0fafde34dfec3852833bacd5f7ade2b1efc74423c0",
+      "source_sha256": "a96b584418b8cc55cad8f2505835666490c747e4e2030dc9e390b1d5318b0b25",
+      "readback_verified": true
+    },
+    "AW-09": {
+      "id": "ps-cdek.12",
+      "title": "AW-09: Prepare and inspect transparent layers",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": ["ps-cdek.8", "ps-cdek.11"],
+      "source": "docs/plans/asset-workflow/issues/09-layer-generation.md",
+      "body_sha256": "8761fbdc1340446c3bedd77d744c513a0d7b7395be08c46af54371d24e149168",
+      "source_sha256": "5bdbf8683d1289b19db770f0c5b1ebae71a495e181574d37a11784ccb0e1d25c",
+      "readback_verified": true
+    },
+    "AW-10": {
+      "id": "ps-cdek.13",
+      "title": "AW-10: Save layer presentation edits",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": ["ps-cdek.12"],
+      "source": "docs/plans/asset-workflow/issues/10-layer-editing.md",
+      "body_sha256": "d3e103d240935c3a580be5dad8c70a64ec401dfbc1d89214856d3f3bc9317a14",
+      "source_sha256": "60deb6db14c2ba5cfb1fe63066cd1ff8148e334bf0d9b4d1ab14a4cffa2cc0d3",
+      "readback_verified": true
+    },
+    "AW-11": {
+      "id": "ps-cdek.14",
+      "title": "AW-11: Preview parallax and maximum offsets",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": ["ps-cdek.13"],
+      "source": "docs/plans/asset-workflow/issues/11-motion-preview.md",
+      "body_sha256": "ecd3ba74928f4673abe4bcbd6eaa41b1bb040ddd2eeb754b9a545dc596f3dcac",
+      "source_sha256": "e073ad75791a8e0e60046896b94fda6515c02565a49fc5ac0154b4ad4e8140b1",
+      "readback_verified": true
+    },
+    "AW-12": {
+      "id": "ps-cdek.15",
+      "title": "AW-12: Export a portable asset bundle",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": ["ps-cdek.13"],
+      "source": "docs/plans/asset-workflow/issues/12-portable-export.md",
+      "body_sha256": "cb92d689f346b10dc6fb8a7bc79f555443491c3dd8030974bd9e9b2ee47510bc",
+      "source_sha256": "84dc7a6f0855c1c39c2f1f2bec1402bcee3e5fe3ac4ed52a9a7430b422502993",
+      "readback_verified": true
+    },
+    "AW-13": {
+      "id": "ps-cdek.16",
+      "title": "AW-13: Prove the complete workflow",
+      "status": "blocked",
+      "parent": "ps-cdek",
+      "blocked_by": ["ps-cdek.14", "ps-cdek.15"],
+      "source": "docs/plans/asset-workflow/issues/13-integration-review.md",
+      "body_sha256": "ef8217aeb91a02c9af0dadd1e542a2113d1e32b9376e018e441e0a5f8e9930a0",
+      "source_sha256": "88f723f5b8f5c46c45f09c417675dbb95ade7b09a6e44c2fe45698c7f30847b7",
+      "readback_verified": true
+    }
+  },
+  "ready_children": 0
+}
