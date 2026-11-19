@@ -14,7 +14,7 @@ Use `MermaidDiagram` for static flowcharts and other Mermaid diagrams. Pele `1.1
 
 Use literal string properties and semicolons between flowchart statements. The source must be trusted repository content. The component disables diagram links and images, supplies unique SVG IDs separate from the figure IDs, and retains the description on parse failure. Pele owns resize and font observation plus its keyboard zoom controls. The component cancels pending initialization and destroys the mounted diagram on source changes, Strict Mode replay, and unmount. Colors and the label font use the article's paper/ink palette and UI font token.
 
-The ledger draft at `/blog/creating-double-sided-accounting` exercises three figures inside authored prose. Check that route and `/style-boundaries` at desktop and 390px widths when changing the figure boundary. Run:
+The ledger draft at `/blog/building-a-credit-ledger-with-postgres` exercises three figures inside authored prose. Check that route and `/style-boundaries` at desktop and 390px widths when changing the figure boundary. Run:
 
 ```sh
 cd apps/web

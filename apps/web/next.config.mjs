@@ -27,6 +27,13 @@ const nextConfig = {
   },
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
   reactCompiler: true,
+  redirects: async () => [
+    {
+      destination: "/blog/building-a-credit-ledger-with-postgres",
+      permanent: true,
+      source: "/blog/creating-double-sided-accounting",
+    },
+  ],
   turbopack: {
     rules: {
       "*.wgsl": wgslTurbopackRule(),

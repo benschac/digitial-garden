@@ -15,7 +15,7 @@ Treasure It helps neighbors give away, buy, and sell things in person. On a paid
 
 Say Alice agrees to buy a chair from Bob and they settle on a pickup time. Both people have credits reserved for the match. If Alice backs out, Bob has spent time coordinating a pickup that won't happen. But if Bob is responsible for a scheduling impasse, Alice needs a way to leave without paying the ordinary cancellation penalty.
 
-In [the credit ledger post](/blog/creating-double-sided-accounting), I covered how Treasure It records those credit movements in Postgres. Here I want to walk through the policy that decides which movements should happen.
+In [the credit ledger post](/blog/building-a-credit-ledger-with-postgres), I covered how Treasure It records those credit movements in Postgres. Here I want to walk through the policy that decides which movements should happen.
 
 Consider cancelling a pickup. Who is cancelling? Have both people agreed on a time? Is the other person responsible for a scheduling impasse? Those facts change whose credits are consumed and whose reservation is released.
 
@@ -201,7 +201,7 @@ The function reads the credit-event array, checks its shape, supported event typ
 | `scheduled_backout_penalty_extra` | Debit Alice's account and insert a `consume` ledger row | −F | 0 |
 | `scheduled_backout_forfeit` | `release_match_credit_reservation` for Bob | +F | −F |
 
-The reservation helpers lock the account and check the outstanding hold for that profile and thread. The extra penalty has its own branch because it spends available credits, which can become negative. The [ledger post](/blog/creating-double-sided-accounting#locking-the-account-row-when-reserving-credits) walks through the account update, ledger insert, and helper transaction boundary.
+The reservation helpers lock the account and check the outstanding hold for that profile and thread. The extra penalty has its own branch because it spends available credits, which can become negative. The [ledger post](/blog/building-a-credit-ledger-with-postgres#locking-the-account-row-when-reserving-credits) walks through the account update, ledger insert, and helper transaction boundary.
 
 Each movement gets a key derived from the enclosing request:
 
@@ -252,13 +252,13 @@ For Alice and Bob's pickup, we can follow the whole rule. The decider describes 
 
 ## Policy reference
 
-The cancellation above is one rule in a larger set. Here are the other situations where we grant, hold, or charge credits. The [ledger post](/blog/creating-double-sided-accounting) covers how we record those movements safely. Signup and purchase grants don't need a match decider, and funding and free pickups use their own deciders.
+The cancellation above is one rule in a larger set. Here are the other situations where we grant, hold, or charge credits. The [ledger post](/blog/building-a-credit-ledger-with-postgres) covers how we record those movements safely. Signup and purchase grants don't need a match decider, and funding and free pickups use their own deciders.
 
 Throughout the paid-match rules, **F** means one person's fee, calculated as `Math.ceil(acceptedAmountCents / 2)` milliunits and saved when the offer is accepted. For a $20 item, F is 1,000 milliunits, or one credit per person. A 2F penalty is twice that match's fee, not necessarily two credits.
 
 A deadline passing and a worker processing it are separate things. Bob's match becomes eligible for cancellation when his five-hour funding deadline passes, even if the worker that settles it runs every five minutes.
 
-The [ledger walkthrough](/blog/creating-double-sided-accounting#starting-the-four-hour-response-window) shows how the separate four-hour free-response window starts in SQL and how Trigger.dev processes its reminders and penalties. It also traces [Stripe Checkout through the atomic credit grant](/blog/creating-double-sided-accounting#connecting-stripe-payments-to-credit-grants). Purchasing credits and completing a match's funding are separate operations.
+The [ledger walkthrough](/blog/building-a-credit-ledger-with-postgres#starting-the-four-hour-response-window) shows how the separate four-hour free-response window starts in SQL and how Trigger.dev processes its reminders and penalties. It also traces [Stripe Checkout through the atomic credit grant](/blog/building-a-credit-ledger-with-postgres#connecting-stripe-payments-to-credit-grants). Purchasing credits and completing a match's funding are separate operations.
 
 ### Credit grants and pricing
 

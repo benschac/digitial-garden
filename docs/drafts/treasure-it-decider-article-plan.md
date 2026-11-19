@@ -6,7 +6,7 @@ Researched October 29, 2026 against the local Treasure It checkout at commit `b3
 
 The reader-facing draft is [Turning Marketplace Policies into a Decider](../../apps/web/content/posts/marketplace-policies-with-a-decider.mdx), previewed in development at `/blog/marketplace-policies-with-a-decider`. It remains `status: draft`.
 
-The [ledger draft](../../apps/web/content/posts/creating-double-sided-accounting.mdx) introduces the policy layer and suggests a second post. The follow-up traces one scheduled voluntary cancellation through requirements, decision, events, state evolution, effect descriptions, persistence, and the action shown to each participant. Keep the ledger mechanics in the first post.
+The [ledger draft](../../apps/web/content/posts/building-a-credit-ledger-with-postgres.mdx) introduces the policy layer and suggests a second post. The follow-up traces one scheduled voluntary cancellation through requirements, decision, events, state evolution, effect descriptions, persistence, and the action shown to each participant. Keep the ledger mechanics in the first post.
 
 The local checkout is `/Users/benjaminschachter/another-treasure/another-treasure`. Its `docs/system-map.md:283-294` identifies scattered service rules as the motivation for adapting the pattern. Leave personal anecdotes to the author.
 

@@ -11,7 +11,7 @@ import { MermaidDiagram } from "./mermaid-diagram";
 test("renders every ledger diagram at desktop and mobile widths", () => {
   const post = readFileSync(
     new URL(
-      "../../../content/posts/creating-double-sided-accounting.mdx",
+      "../../../content/posts/building-a-credit-ledger-with-postgres.mdx",
       import.meta.url
     ),
     "utf-8"
@@ -41,7 +41,7 @@ test("renders every ledger diagram at desktop and mobile widths", () => {
 test("compiles the ER figure with multiline source and renders its tables", async () => {
   const post = readFileSync(
     new URL(
-      "../../../content/posts/creating-double-sided-accounting.mdx",
+      "../../../content/posts/building-a-credit-ledger-with-postgres.mdx",
       import.meta.url
     ),
     "utf-8"
